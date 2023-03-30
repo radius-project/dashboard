@@ -1,0 +1,37 @@
+.ResourceView-header {
+    width: 100%;
+    border-bottom: solid 1px #b1acac;
+    padding: 1em;
+    display: flex;
+    align-items: center;
+}
+
+.ResourceView-header h1 {
+    display: inline-block;
+    flex-grow: 1;
+}
+
+.ResourceView-header button {
+    float: right;
+    vertical-align: middle;
+}
+
+.ResourceView-main {
+    width: 100%;
+    flex-grow: 1;
+    border-bottom: solid 3px #b1acac;
+    padding: 1em;
+}
+
+.ResourceView-details {
+    width: 100%;
+    flex-grow: 1;
+    padding: 1em;
+}
+
+.ResourceView-no-selection {
+    align-content: center;
+    text-align: center;
+    font-style: italic;
+    color: #808080;
+}
