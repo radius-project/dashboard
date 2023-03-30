@@ -27,7 +27,17 @@ var rootCmd = &cobra.Command{
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 
-		options, err := dashboard.NewServerOptionsFromEnvironment()
+		port, err := cmd.Flags().GetString("port")
+		if err != nil {
+			return err
+		}
+
+		useLocal, err := cmd.Flags().GetBool("local")
+		if err != nil {
+			return err
+		}
+
+		options, err := dashboard.NewServerOptionsFromFlags(port, useLocal)
 		if err != nil {
 			return err
 		}
@@ -65,6 +75,11 @@ var rootCmd = &cobra.Command{
 
 		return nil
 	},
+}
+
+func init() {
+	rootCmd.Flags().StringP("port", "p", "8080", "Server port")
+	rootCmd.Flags().Bool("local", false, "Use a local server")
 }
 
 func Execute() {

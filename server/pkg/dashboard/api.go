@@ -16,9 +16,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/azure/tokencredentials"
 	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
-	"github.com/project-radius/radius/pkg/cli/connections"
-	"github.com/project-radius/radius/pkg/cli/kubernetes"
-	ucpv20220315 "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
+	ucpv20220901 "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	ucpresources "github.com/project-radius/radius/pkg/ucp/resources"
 
 	k8srest "k8s.io/client-go/rest"
@@ -28,38 +26,12 @@ type API struct {
 	RestConfig *k8srest.Config
 }
 
-func (api *API) ResourceGroupClient() (*ucpv20220315.ResourceGroupsClient, error) {
-	transport, err := k8srest.TransportFor(api.RestConfig)
-	if err != nil {
-		return nil, err
-	}
-
-	transport = kubernetes.NewLocationRewriteRoundTripper(api.RestConfig.Host, transport)
-	transporter := kubernetes.KubernetesTransporter{Client: transport}
-	baseURL := strings.TrimSuffix(api.RestConfig.Host+api.RestConfig.APIPath, "/") + kubernetes.UCPAPIServerBasePath
-	options := connections.GetClientOptions(baseURL, &transporter)
-
-	return ucpv20220315.NewResourceGroupsClient(&tokencredentials.AnonymousCredential{}, options)
+func (api *API) ResourceGroupClient() (*ucpv20220901.ResourceGroupsClient, error) {
+	return ucpv20220901.NewResourceGroupsClient(&tokencredentials.AnonymousCredential{}, nil)
 }
 
 func (api *API) ClientFor(rootScope string, resourceType string) (*generated.GenericResourcesClient, error) {
-
-	// gv := schema.GroupVersion{Group: "api.ucp.dev", Version: "v1alpha3"}
-	// merged.GroupVersion = &gv
-	// merged.APIPath = "/apis"
-	// merged.NegotiatedSerializer = scheme.Codecs.WithoutConversion()
-
-	transport, err := k8srest.TransportFor(api.RestConfig)
-	if err != nil {
-		return nil, err
-	}
-
-	transport = kubernetes.NewLocationRewriteRoundTripper(api.RestConfig.Host, transport)
-	transporter := kubernetes.KubernetesTransporter{Client: transport}
-	baseURL := strings.TrimSuffix(api.RestConfig.Host+api.RestConfig.APIPath, "/") + kubernetes.UCPAPIServerBasePath
-	options := connections.GetClientOptions(baseURL, &transporter)
-
-	return generated.NewGenericResourcesClient(rootScope, resourceType, &tokencredentials.AnonymousCredential{}, options)
+	return generated.NewGenericResourcesClient(rootScope, resourceType, &tokencredentials.AnonymousCredential{}, nil)
 }
 
 var resourceTypes = []string{

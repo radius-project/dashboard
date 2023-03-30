@@ -27,6 +27,31 @@ type ServerOptions struct {
 	RestConfig *rest.Config
 }
 
+func NewServerOptionsFromFlags(port string, useLocal bool) (ServerOptions, error) {
+	if port == "" {
+		return ServerOptions{}, errors.New("flag: PORT must be set")
+	}
+
+	var config *rest.Config
+	var err error
+	if useLocal {
+		config, err = createLocal()
+		if err != nil {
+			return ServerOptions{}, fmt.Errorf("failed to read Kubernetes config: %w", err)
+		}
+	} else {
+		config, err = createCluster()
+		if err != nil {
+			return ServerOptions{}, fmt.Errorf("failed to read Kubernetes config: %w", err)
+		}
+	}
+
+	return ServerOptions{
+		Port:       port,
+		RestConfig: config,
+	}, nil
+}
+
 func NewServerOptionsFromEnvironment() (ServerOptions, error) {
 	port := os.Getenv("PORT")
 	if port == "" {
