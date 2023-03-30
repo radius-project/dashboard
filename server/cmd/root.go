@@ -12,8 +12,7 @@ import (
 	"syscall"
 
 	"github.com/go-logr/logr"
-	"github.com/project-radius/radius/pkg/dashboard"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
+	"github.com/project-radius/dashboard/server/pkg/dashboard"
 	"github.com/spf13/cobra"
 )
 
@@ -22,8 +21,9 @@ var rootCmd = &cobra.Command{
 	Short: "Run the Radius dashboard",
 	Long:  `Run the Radius dashboard`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		logger := ucplog.NewLogger()
-		ctx := logr.NewContext(cmd.Context(), logger)
+		logger := logr.Discard()
+
+		ctx := logr.NewContext(context.Background(), logger)
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 
