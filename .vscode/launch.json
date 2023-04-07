@@ -49,7 +49,7 @@
     ],
     "compounds": [
         {
-            "name": "✅ Debug Radius Dashboard",
+            "name": "✅ Debug Dashboard with Edge",
             "configurations": [
                 "Debug Frontend",
                 "Debug Backend",
@@ -62,5 +62,17 @@
                 "order": 1
             }
         },
+        {
+            "name": "Debug Dashboard",
+            "configurations": [
+                "Debug Frontend",
+                "Debug Backend"
+            ],
+            "presentation": {
+                "hidden": false,
+                "group": "",
+                "order": 2
+            }
+        }
     ]
 }
