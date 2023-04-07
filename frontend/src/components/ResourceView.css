@@ -27,6 +27,7 @@
     width: 100%;
     flex-grow: 1;
     padding: 1em;
+    height: 70%;
 }
 
 .ResourceView-no-selection {

@@ -2,6 +2,7 @@ import React from "react";
 import DataTable, { TableColumn } from 'react-data-table-component';
 import { useErrorHandler } from "react-error-boundary";
 import RefreshButton from "./RefreshButton";
+import Graph from "./Graph";
 import "./ResourceView.css"
 
 export interface Resource<TProperties> {
@@ -43,7 +44,6 @@ export default function ResourceView<TProperties>(props: { resourceType: string 
 
   let [selected, setSelected] = React.useState<Resource<TProperties> | null>(null);
 
-  
   async function fetchResources() {
     try {
       setState({ loading: true, resources: state.resources })
@@ -54,7 +54,7 @@ export default function ResourceView<TProperties>(props: { resourceType: string 
       }
 
       const response = await fetch(url)
-      const data = await response.json();
+      const data = await response.json(); 
 
       setState({ loading: false, resources: data.value })
     } catch (error) {
@@ -93,7 +93,7 @@ export default function ResourceView<TProperties>(props: { resourceType: string 
       </div>
       <div className="ResourceView-details">
         {!!selected ?
-          <pre>{JSON.stringify(selected, null, 2)}</pre> :
+          <Graph environment={selected} /> :
           <p className="ResourceView-no-selection">{props.selectionMessage}</p>}
       </div>
     </>
