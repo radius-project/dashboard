@@ -48,15 +48,15 @@ export default function ResourceView<TProperties>(props: { resourceType: string 
     try {
       setState({ loading: true, resources: state.resources })
 
-      let url = '/api/resources'
+      let url = '/api/v1/resource/resourceGroups/default/providers/'
       if (props.resourceType && props.resourceType.length > 0) {
-        url += "?resourceType=" + encodeURIComponent(props.resourceType);
+        url += encodeURIComponent(props.resourceType);
       }
 
       const response = await fetch(url)
       const data = await response.json();
 
-      setState({ loading: false, resources: data.values })
+      setState({ loading: false, resources: data.value })
     } catch (error) {
       errorHandler(error)
     }
