@@ -6,8 +6,15 @@ from functools import lru_cache
 
 app = Flask(__name__)
 
-api_host = ''
-bearer_token = ''
+if 'KUBERNETES_SERVICE_HOST' in os.environ:
+    print('Using in-cluster config')
+    config.load_incluster_config()
+else:
+    print('Using kube-config locally')
+    config.load_kube_config()
+
+api_host = client.CoreV1Api().api_client.configuration.host
+bearer_token = client.CoreV1Api().api_client.configuration.api_key['authorization']
 
 group = 'api.ucp.dev'
 version = 'v1alpha3'
@@ -22,12 +29,20 @@ resource_versions = {
 def index():
     return jsonify({'message': 'Welcome to the Radius dashboard server'})
 
-@app.route(f'/api/{version}/<path:resource_id>', methods=['GET'])
-def get_resource(resource_id):
-    return show_resource(resource_id)
+@app.route(f'/api/v1/resource/<path:resource_id>', methods=['GET'])
+def get_resource(resource_id, cache=True):
+    if cache:
+        print(f'Cache hit for {resource_id}')
+        return get_resource_from_cache(resource_id)
+    else:
+        print(f'Cache miss for {resource_id}')
+        return get_resource_from_server(resource_id)
 
-@lru_cache(maxsize=100) # Cache up to 100 items
-def show_resource(resource_id):
+@lru_cache(maxsize=100)
+def get_resource_from_cache(resource_id):
+    return get_resource_from_server(resource_id)
+
+def get_resource_from_server(resource_id):
     response = {}
     resource_path = f"/planes/radius/local/{resource_id}"
     
@@ -53,7 +68,9 @@ def show_resource(resource_id):
         return jsonify({'message': 'Not implemented'})
     # Get all resources of all types in a provider
     if len(resource_id_parts) == 4:
-        return jsonify({'message': 'Not implemented'})
+        #return jsonify({'message': 'Not implemented'})
+        resource_group = resource_id_parts[1]
+        resource_namespace = resource_id_parts[3]
     # Get all resources of a specific type in a provider
     if len(resource_id_parts) == 5:
         resource_group = resource_id_parts[1]
@@ -72,35 +89,26 @@ def show_resource(resource_id):
         # Fallback version
         api_version = '2022-03-15-privatepreview'
 
+    url = f"{api_host}/apis/{group}/{version}{resource_path}"
     headers = {'Authorization': f'{bearer_token}'}
     url_params = {'api-version': f'{api_version}'}
-    try:
-        r = requests.get(
-            f"{api_host}/apis/{group}/{version}{resource_path}",
-            headers=headers,
-            params=url_params,
-            verify=False,
-            allow_redirects=True
-        )
-        print(r.url)
+
+    r = requests.get(
+        url=url,
+        headers=headers,
+        params=url_params,
+        verify=False,
+        allow_redirects=True
+    )
+
+    if r.status_code == 200:
         response = r.json()
-    except Exception as e:
-        print(e)
-    
-    return response
+    else:
+        print(f'Error: {r.status_code} - {r.text}')
+        return jsonify({'message': 'Error'})
+
+    return jsonify(response)
     
 if __name__ == '__main__':
-    mode = 'in-cluster' if 'KUBERNETES_SERVICE_HOST' in os.environ else 'kube-config'
-
-    if mode == 'kube-config':
-        print('Using kube-config locally')
-        config.load_kube_config()
-    else:
-        print('Using in-cluster config')
-        config.load_incluster_config()
-
-    api_host = client.CoreV1Api().api_client.configuration.host
-    bearer_token = client.CoreV1Api().api_client.configuration.api_key['authorization']
-
     app.run(debug=True)
     
