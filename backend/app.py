@@ -3,6 +3,7 @@ from kubernetes import client, config
 import os
 import requests
 from functools import lru_cache
+import json
 
 app = Flask(__name__)
 
@@ -22,7 +23,17 @@ version = 'v1alpha3'
 resource_versions = {
     'System.Resources/resourceGroups': '2022-09-01-privatepreview',
     'Applications.Core/environments': '2022-03-15-privatepreview',
-    'Applications.Core/applications': '2022-03-15-privatepreview'
+    'Applications.Core/applications': '2022-03-15-privatepreview',
+    'Applications.Core/httpRoutes': '2022-03-15-privatepreview',
+    'Applications.Core/gateways': '2022-03-15-privatepreview',
+    'Applications.Link/mongoDatabases': '2022-03-15-privatepreview',
+    'Applications.Link/sqlDatabases': '2022-03-15-privatepreview',
+    'Applications.Link/redisCaches': '2022-03-15-privatepreview',
+    'Applications.Link/rabbitMQMessageQueues': '2022-03-15-privatepreview',
+    'Applications.Link/daprStateStores': '2022-03-15-privatepreview',
+    'Applications.Link/daprPubSubBrokers': '2022-03-15-privatepreview',
+    'Applications.Link/daprSecretStores': '2022-03-15-privatepreview',
+    'Applications.Link/daprInvokeHttpRoutes': '2022-03-15-privatepreview',
 }
 
 @app.route('/', methods=['GET'])
@@ -30,19 +41,12 @@ def index():
     return jsonify({'message': 'Welcome to the Radius dashboard server'})
 
 @app.route(f'/api/v1/resource/<path:resource_id>', methods=['GET'])
-def get_resource(resource_id, cache=True):
-    if cache:
-        print(f'Cache hit for {resource_id}')
-        return get_resource_from_cache(resource_id)
-    else:
-        print(f'Cache miss for {resource_id}')
-        return get_resource_from_server(resource_id)
+def resource_route(resource_id):
+    resource = get_resource(resource_id)
+    return jsonify(resource)
 
 @lru_cache(maxsize=100)
-def get_resource_from_cache(resource_id):
-    return get_resource_from_server(resource_id)
-
-def get_resource_from_server(resource_id):
+def get_resource(resource_id) -> dict:
     response = {}
     resource_path = f"/planes/radius/local/{resource_id}"
     
@@ -65,7 +69,7 @@ def get_resource_from_server(resource_id):
         resource_group = resource_id_parts[1]
     # Get all providers
     if len(resource_id_parts) == 3:
-        return jsonify({'message': 'Not implemented'})
+        return {'message': 'Not implemented'}
     # Get all resources of all types in a provider
     if len(resource_id_parts) == 4:
         #return jsonify({'message': 'Not implemented'})
@@ -103,12 +107,38 @@ def get_resource_from_server(resource_id):
 
     if r.status_code == 200:
         response = r.json()
+
+        resources = list()
+        if resource_type == 'applications' and resource_name != '':
+            print('Getting resources for application: ' + resource_path)
+            # For this call let's assume all application resources will be in the same resource group, which is not always true for advanced applications
+            resources = get_app_resources(resource_path, resource_group)
+
+        response.update({'resources': resources})
+        
     else:
         print(f'Error: {r.status_code} - {r.text}')
-        return jsonify({'message': 'Error'})
+        response = {'message': 'Error'}
 
-    return jsonify(response)
+    return response
     
+def get_app_resources(application_id, resource_group_name) -> list:
+
+    resources = list()
+
+    for type, version in resource_versions.items():
+        data = dict()
+        if type == 'Applications.Core/applications' or type == 'Applications.Core/environments' or type.startswith('System'):
+            continue
+        print(f'Checking for all resources of type {type}')
+        data = get_resource(f'resourceGroups/{resource_group_name}/providers/{type}')
+        values = data['value']
+        for value in values:
+            if value['properties']['application'].lower() == application_id.lower():
+                resources.append(value)
+            
+    return resources
+
 if __name__ == '__main__':
     app.run(debug=True)
     
