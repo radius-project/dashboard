@@ -1,16 +1,17 @@
 import ReactFlow, { Background, Controls } from 'reactflow';
+import { Application } from './ApplicationView';
 import 'reactflow/dist/style.css';
 
 function Graph(
     props: {
-        environment: any
+        appName: string,
     }
 ){
     const nodes = [
         {
             id: '1',
             position: { x: 0, y: 0 },
-            data: { label: props.environment.name },
+            data: { label: props.appName },
         },
     ];
     return (

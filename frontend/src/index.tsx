@@ -31,22 +31,22 @@ const router = createBrowserRouter([
         index: true,
         element: <IndexPage />
       },
-      {
-        path: "environments",
-        element: <EnvironmentPage />
-      },
+      //{
+      //  path: "environments",
+      //  element: <EnvironmentPage />
+      //},
       {
         path: "applications",
         element: <ApplicationPage />
       },
-      {
-        path: "containers",
-        element: <ContainerPage />
-      },
-      {
-        path: "resources",
-        element: <ResourcePage />
-      }
+      //{
+      //  path: "containers",
+      //  element: <ContainerPage />
+      //},
+      //{
+      //  path: "resources",
+      //  element: <ResourcePage />
+      //}
     ]
   },
 ]);

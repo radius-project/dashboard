@@ -39,14 +39,14 @@ export const extractResourceName = (id: string | undefined): string | null => {
 }
 
 export default function ResourceView<TProperties>(props: { resourceType: string | undefined, heading: string, selectionMessage: string, columns: TableColumn<Resource<TProperties>>[] }) {
-  let [state, setState] = React.useState({ loading: true, resources: [] })
+  let [state, setState] = React.useState({ loading: true, applications: [], application: [] })
   const errorHandler = useErrorHandler();
 
   let [selected, setSelected] = React.useState<Resource<TProperties> | null>(null);
 
   async function fetchResources() {
     try {
-      setState({ loading: true, resources: state.resources })
+      setState({ loading: true, applications: state.applications, application: state.application })
 
       let url = '/api/v1/resource/resourceGroups/default/providers/'
       if (props.resourceType && props.resourceType.length > 0) {
@@ -56,7 +56,7 @@ export default function ResourceView<TProperties>(props: { resourceType: string 
       const response = await fetch(url)
       const data = await response.json(); 
 
-      setState({ loading: false, resources: data.value })
+      setState({ loading: false, applications: data.value, application: state.application })
     } catch (error) {
       errorHandler(error)
     }
@@ -87,13 +87,13 @@ export default function ResourceView<TProperties>(props: { resourceType: string 
       <div className="ResourceView-main">
         <DataTable
           columns={props.columns}
-          data={state.resources}
+          data={state.applications}
           onRowClicked={onRowClicked}
         />
       </div>
       <div className="ResourceView-details">
         {!!selected ?
-          <Graph environment={selected} /> :
+          <p>ENV_VIEW</p> :
           <p className="ResourceView-no-selection">{props.selectionMessage}</p>}
       </div>
     </>

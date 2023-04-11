@@ -25,10 +25,7 @@ export default function Root() {
       <div className="Root-container">
         <div className="Root-sidebar">
           <Nav className="sidebar-options flex-column">
-            <NavLink to={`environments`}><FontAwesomeIcon icon={faCube} fixedWidth />  Environments</NavLink>
             <NavLink to={`applications`}><FontAwesomeIcon icon={faPager} fixedWidth />  Applications</NavLink>
-            <NavLink to={`containers`}><FontAwesomeIcon icon={faCubes} fixedWidth />  Containers</NavLink>
-            <NavLink to={`resources`}><FontAwesomeIcon icon={faBorderAll} fixedWidth />  Resources</NavLink>
           </Nav>
         </div>
         <div className={navigation.state === "loading" ? "Root-detail loading" : "Root-detail"}>
