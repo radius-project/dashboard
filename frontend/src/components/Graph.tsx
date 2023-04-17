@@ -4,16 +4,20 @@ import 'reactflow/dist/style.css';
 
 function Graph(
     props: {
-        appName: string,
+        application: Application
     }
 ){
-    const nodes = [
-        {
-            id: '1',
-            position: { x: 0, y: 0 },
-            data: { label: props.appName },
-        },
-    ];
+    const nodes = props.application.resources.map((resource, index) => {
+        return {
+            id: resource.id,
+            position: { x: 0, y: index * 100 },
+            data: { label: resource.name + ' (' + resource.type + ')' },
+        }
+    });
+
+    
+
+
     return (
         <div style={{ height: '100%' }}>
             <ReactFlow nodes={nodes}>

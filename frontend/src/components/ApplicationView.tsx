@@ -5,12 +5,24 @@ import RefreshButton from "./RefreshButton";
 import Graph from "./Graph";
 import "./ApplicationView.css"
 
-export interface Application<TProperties> {
+interface ResourceProperties {
+    environment: string
+    provisioningState: string
+    status: object
+}
+
+interface Resource {
     id: string
+    location: string
     name: string
     type: string
-    properties: TProperties
-    resources: object[]
+    tags: object
+    properties: ResourceProperties
+    systemData: object
+}
+
+export interface Application extends Resource {
+    resources: Resource[]
 }
 
 export const extractResourceGroup = (id: string): string | null => {
@@ -39,26 +51,30 @@ export const extractResourceName = (id: string | undefined): string | null => {
     return null
 }
 
-export default function ApplicationView<TProperties>(
+export default function ApplicationView(
     props: {
-        columns: TableColumn<Application<TProperties>>[]
+        columns: TableColumn<Application>[]
     }
 ) {
-    let [state, setState] = React.useState({ loading: true, applications: [], application: [] })
-    const errorHandler = useErrorHandler();
+    let [selected, setSelected] = React.useState<Application | null>(null);
 
-    let [selected, setSelected] = React.useState<Application<TProperties> | null>(null);
+    let [applicationList, setApplicationList] = React.useState<Application[]>([]);
+    let [selectedApplication, setApplication] = React.useState<Application | null>(null);
+    let [loading, setLoading] = React.useState<boolean>(true);
+
+    const errorHandler = useErrorHandler();
 
     async function fetchApplications() {
         try {
-            setState({ loading: true, applications: state.applications, application: state.application })
+            setLoading(true)
 
             let url = '/api/v1/resource/resourceGroups/default/providers/Applications.Core/applications'
 
             const response = await fetch(url)
             const data = await response.json();
 
-            setState({ loading: false, applications: data.value, application: state.application })
+            setApplicationList(data.value)
+            setLoading(false)
         } catch (error) {
             errorHandler(error)
         }
@@ -66,14 +82,15 @@ export default function ApplicationView<TProperties>(
 
     async function fetchApplication(name: string) {
         try {
-            setState({ loading: true, applications: state.applications, application: state.application })
+            setLoading(true)
 
             let url = '/api/v1/resource/resourceGroups/default/providers/Applications.Core/applications/' + name
 
             const response = await fetch(url)
             const data = await response.json();
 
-            setState({ loading: false, applications: state.applications, application: data })
+            setApplication(data)
+            setLoading(false)
         } catch (error) {
             errorHandler(error)
         }
@@ -83,13 +100,13 @@ export default function ApplicationView<TProperties>(
         fetchApplications();
     }, [])
 
-    const onRowClicked = (row: Application<TProperties>) => {
+    const onRowClicked = (row: Application) => {
         fetchApplication(row.name);
-        setSelected(row);
+        //setSelected(row);
     };
 
     const onRefreshClicked = () => {
-        if (state.loading) {
+        if (loading) {
             return
         }
 
@@ -100,21 +117,22 @@ export default function ApplicationView<TProperties>(
         <>
             <div className="ApplicationView-header">
                 <h1>Applications</h1>
-                <RefreshButton loading={state.loading} onRefreshClicked={onRefreshClicked} />
+                <RefreshButton loading={loading} onRefreshClicked={onRefreshClicked} />
             </div>
             <div className="ApplicationView-main">
                 <DataTable
                     columns={props.columns}
-                    data={state.applications}
+                    data={applicationList}
                     onRowClicked={onRowClicked}
                 />
             </div>
             <div className="ApplicationView-details">
-                {!!selected ?
+                {!!selectedApplication ?
                     <Graph
-                        appName='test'
+                        application={selectedApplication}
                     /> :
-                    <p className="ApplicationView-no-selection">Select an application</p>}
+                    <p className="ApplicationView-no-selection">Select an application</p>
+                }
             </div>
         </>
     );
