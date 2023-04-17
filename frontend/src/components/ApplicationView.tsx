@@ -5,10 +5,17 @@ import RefreshButton from "./RefreshButton";
 import Graph from "./Graph";
 import "./ApplicationView.css"
 
+interface ConnectionProperties {
+    disableEnvVars: boolean
+    iam: object
+    source: string
+}
+
 interface ResourceProperties {
     environment: string
     provisioningState: string
     status: object
+    connections: object
 }
 
 interface Resource {
