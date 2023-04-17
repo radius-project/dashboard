@@ -24,6 +24,7 @@ resource_versions = {
     'System.Resources/resourceGroups': '2022-09-01-privatepreview',
     'Applications.Core/environments': '2022-03-15-privatepreview',
     'Applications.Core/applications': '2022-03-15-privatepreview',
+    'Applications.Core/containers': '2022-03-15-privatepreview',
     'Applications.Core/httpRoutes': '2022-03-15-privatepreview',
     'Applications.Core/gateways': '2022-03-15-privatepreview',
     'Applications.Link/mongoDatabases': '2022-03-15-privatepreview',
@@ -45,7 +46,7 @@ def resource_route(resource_id):
     resource = get_resource(resource_id)
     return jsonify(resource)
 
-@lru_cache(maxsize=100)
+#@lru_cache(maxsize=100)
 def get_resource(resource_id) -> dict:
     response = {}
     resource_path = f"/planes/radius/local/{resource_id}"
