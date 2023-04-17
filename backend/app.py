@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory, send_file
 from kubernetes import client, config
 import os
 import requests
@@ -37,20 +37,36 @@ resource_versions = {
     'Applications.Link/daprInvokeHttpRoutes': '2022-03-15-privatepreview',
 }
 
+
 @app.route('/', methods=['GET'])
 def index():
     return jsonify({'message': 'Welcome to the Radius dashboard server'})
+
 
 @app.route(f'/api/v1/resource/<path:resource_id>', methods=['GET'])
 def resource_route(resource_id):
     resource = get_resource(resource_id)
     return jsonify(resource)
 
-#@lru_cache(maxsize=100)
+
+@app.route(f'/api/v1/icon/<path:resource_type>', methods=['GET'])
+def icon_route(resource_type):
+    if resource_type in resource_versions:
+        return send_from_directory(
+            'static/icons',
+            resource_type.split('/')[1] + '.svg'
+        )
+    else:
+        return send_from_directory(
+            'static/icons',
+            'resource' + '.svg'
+        )
+
+@lru_cache(maxsize=100)
 def get_resource(resource_id) -> dict:
     response = {}
     resource_path = f"/planes/radius/local/{resource_id}"
-    
+
     # Split the resource_id into the resource group and resource name
     resource_id_parts = resource_id.split('/')
 
@@ -73,7 +89,7 @@ def get_resource(resource_id) -> dict:
         return {'message': 'Not implemented'}
     # Get all resources of all types in a provider
     if len(resource_id_parts) == 4:
-        #return jsonify({'message': 'Not implemented'})
+        # return jsonify({'message': 'Not implemented'})
         resource_group = resource_id_parts[1]
         resource_namespace = resource_id_parts[3]
     # Get all resources of a specific type in a provider
@@ -116,13 +132,14 @@ def get_resource(resource_id) -> dict:
             resources = get_app_resources(resource_path, resource_group)
 
         response.update({'resources': resources})
-        
+
     else:
         print(f'Error: {r.status_code} - {r.text}')
         response = {'message': 'Error'}
 
     return response
-    
+
+
 def get_app_resources(application_id, resource_group_name) -> list:
 
     resources = list()
@@ -132,14 +149,15 @@ def get_app_resources(application_id, resource_group_name) -> list:
         if type == 'Applications.Core/applications' or type == 'Applications.Core/environments' or type.startswith('System'):
             continue
         print(f'Checking for all resources of type {type}')
-        data = get_resource(f'resourceGroups/{resource_group_name}/providers/{type}')
+        data = get_resource(
+            f'resourceGroups/{resource_group_name}/providers/{type}')
         values = data['value']
         for value in values:
             if value['properties']['application'].lower() == application_id.lower():
                 resources.append(value)
-            
+
     return resources
+
 
 if __name__ == '__main__':
     app.run(debug=True)
-    
