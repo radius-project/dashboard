@@ -20,8 +20,8 @@ function ResourceNode(props: {
     return (
         <>
             <div className="resource-node">
-                <Handle type="target" position={Position.Left} isConnectable={isConnectable} />
                 <div className="resource-node-circle">
+                    <Handle type="target" position={Position.Left} isConnectable={isConnectable} />
                     <img src={iconUrl} alt="resource icon" className="resource-node-icon" />
                 </div>
                 <div className="resource-node-details">
