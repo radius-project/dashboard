@@ -62,7 +62,7 @@ def icon_route(resource_type):
             'resource' + '.svg'
         )
 
-@lru_cache(maxsize=100)
+#@lru_cache(maxsize=100)
 def get_resource(resource_id) -> dict:
     response = {}
     resource_path = f"/planes/radius/local/{resource_id}"
@@ -155,6 +155,22 @@ def get_app_resources(application_id, resource_group_name) -> list:
         for value in values:
             if value['properties']['application'].lower() == application_id.lower():
                 resources.append(value)
+
+    routeProvidesMapping = dict()
+    for resource in resources:
+        if resource['type'] == 'Applications.Core/containers':
+            for port in resource['properties']['container']['ports']:
+                properties = resource['properties']['container']['ports'][port]
+                provides = properties['provides']
+                routeProvidesMapping[provides] = resource['id']
+
+    for resource in resources:
+        if resource['type'] == 'Applications.Core/containers':
+            for connection in resource['properties']['connections']:
+                properties = resource['properties']['connections'][connection]
+                source = properties['source']
+                if 'Applications.Core/httpRoutes' in source:
+                    resources[resources.index(resource)]['properties']['connections'][connection]['source'] = routeProvidesMapping[source]
 
     return resources
 
