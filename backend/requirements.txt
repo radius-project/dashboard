@@ -1,2 +1,3 @@
 Flask == 2.2.3
 kubernetes == 26.1.0
+requests == 2.26.0
