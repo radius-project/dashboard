@@ -3,8 +3,12 @@ import { Application } from './ApplicationView';
 import 'reactflow/dist/style.css';
 
 import ResourceNode from './nodes/ResourceNode';
+import RouteNode from './nodes/RouteNode';
 
-const nodeTypes = { resource: ResourceNode }
+const nodeTypes = {
+    resource: ResourceNode,
+    route: RouteNode
+}
 
 function Graph(
     props: {
@@ -14,6 +18,8 @@ function Graph(
     let yOffsetMap: { [key: string]: number } = {};
     let xOffset = 4;
     let yOffset = 1;
+
+    let type = 'resource'
 
     const nodes = props.application.resources.map((resource, index) => {
         if (resource.type === 'Applications.Core/containers') {
@@ -25,16 +31,10 @@ function Graph(
                 yOffsetMap[resource.type] += 1;
             }
             yOffset = yOffsetMap[resource.type];
+            type = 'resource';
         }
         else if (resource.type === 'Applications.Core/httpRoutes') {
-            xOffset = 2;
-            if (!yOffsetMap[resource.type]) {
-                yOffsetMap[resource.type] = 1;
-            }
-            else {
-                yOffsetMap[resource.type] += 1;
-            }
-            yOffset = yOffsetMap[resource.type];
+            type = 'route';
         }
         else {
             xOffset = 3;
@@ -45,12 +45,13 @@ function Graph(
                 yOffsetMap['other'] += 1;
             }
             yOffset = yOffsetMap['other'];
+            type = 'resource';
         }
 
         return {
             id: resource.id,
             position: { x: xOffset * 500, y: yOffset * 100 },
-            type: 'resource',
+            type: type,
             data: {
                 label: resource.name + ' (' + resource.type + ')',
                 name: resource.name,
