@@ -1,4 +1,4 @@
-import ReactFlow, { Background, Controls } from 'reactflow';
+import ReactFlow, { Background, Controls, MiniMap } from 'reactflow';
 import { Application } from './ApplicationView';
 import 'reactflow/dist/style.css';
 
@@ -16,14 +16,17 @@ function Graph(
     }
 ) {
     let yOffsetMap: { [key: string]: number } = {};
-    let xOffset = 4;
+    let xOffset = 1;
     let yOffset = 1;
+
+    let xScale = 350;
+    let yScale = 150;
 
     let type = 'resource'
 
     const nodes = props.application.resources.map((resource, index) => {
         if (resource.type === 'Applications.Core/containers') {
-            xOffset = 1;
+            xOffset = 3;
             if (!yOffsetMap[resource.type]) {
                 yOffsetMap[resource.type] = 1;
             }
@@ -36,8 +39,13 @@ function Graph(
         else if (resource.type === 'Applications.Core/httpRoutes') {
             type = 'route';
         }
+        else if (resource.type === 'Applications.Core/gateways') {
+            xOffset = 1;
+            yOffset = 1;
+            type = 'resource';
+        }
         else {
-            xOffset = 3;
+            xOffset = 5;
             if (!yOffsetMap['other']) {
                 yOffsetMap['other'] = 1;
             }
@@ -48,14 +56,21 @@ function Graph(
             type = 'resource';
         }
 
+        let url = '';
+        if (resource.properties.resource) {
+            url = 'https://ms.portal.azure.com/#@microsoft.onmicrosoft.com/resource' + resource.properties.resource;
+        }
+
+
         return {
             id: resource.id,
-            position: { x: xOffset * 500, y: yOffset * 100 },
+            position: { x: xOffset * xScale, y: yOffset * yScale },
             type: type,
             data: {
                 label: resource.name + ' (' + resource.type + ')',
                 name: resource.name,
-                type: resource.type
+                type: resource.type,
+                url: url,
             },
         }
     });
@@ -84,6 +99,7 @@ function Graph(
                 edges={edges}
                 nodeTypes={nodeTypes}
             >
+                <MiniMap />
                 <Background />
                 <Controls />
             </ReactFlow>

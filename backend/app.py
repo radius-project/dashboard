@@ -15,7 +15,8 @@ else:
     config.load_kube_config()
 
 api_host = client.CoreV1Api().api_client.configuration.host
-bearer_token = client.CoreV1Api().api_client.configuration.api_key['authorization']
+bearer_token = client.CoreV1Api(
+).api_client.configuration.api_key['authorization']
 
 group = 'api.ucp.dev'
 version = 'v1alpha3'
@@ -62,7 +63,9 @@ def icon_route(resource_type):
             'resource' + '.svg'
         )
 
-#@lru_cache(maxsize=100)
+# @lru_cache(maxsize=100)
+
+
 def get_resource(resource_id) -> dict:
     response = {}
     resource_path = f"/planes/radius/local/{resource_id}"
@@ -156,6 +159,7 @@ def get_app_resources(application_id, resource_group_name) -> list:
             if value['properties']['application'].lower() == application_id.lower():
                 resources.append(value)
 
+    # Redirect route connections to the source containers
     routeProvidesMapping = dict()
     for resource in resources:
         if resource['type'] == 'Applications.Core/containers':
@@ -171,6 +175,19 @@ def get_app_resources(application_id, resource_group_name) -> list:
                 source = properties['source']
                 if 'Applications.Core/httpRoutes' in source:
                     resources[resources.index(resource)]['properties']['connections'][connection]['source'] = routeProvidesMapping[source]
+
+    # Create connections for gateways
+    gatewayConnections = dict()
+    for resource in resources:
+        if resource['type'] == 'Applications.Core/gateways':
+            connections = dict()
+            for route in resource['properties']['routes']:
+                name = route['path']
+                source = route['destination']
+                connections[name] = dict()
+                connections[name]['source'] = routeProvidesMapping[source]
+            # Add the gateway connections to the gateway resource
+            resources[resources.index(resource)]['properties']['connections'] = connections
 
     return resources
 

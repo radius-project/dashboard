@@ -16,6 +16,7 @@ interface ResourceProperties {
     provisioningState: string
     status: object
     connections: object
+    resource: string
 }
 
 interface Resource {

@@ -11,6 +11,7 @@ function ResourceNode(props: {
         label: string
         name: string
         type: string
+        url: string
     }
 }) {
 
@@ -25,11 +26,17 @@ function ResourceNode(props: {
                     <img src={iconUrl} alt="resource icon" className="resource-node-icon" />
                 </div>
                 <div className="resource-node-details">
-                    <h3 className='resource-node-title'>{props.data.name}</h3>
-                    <p className='resource-node-subtitle'>{props.data.type}</p>
-                </div>
-                <Handle type="source" position={Position.Right} id="b" isConnectable={isConnectable} />
+                    {props.data.url ? (
+                        <a className='resource-node-title' href={props.data.url} target='_blank' rel='noopener noreferrer'>
+                            {props.data.name}
+                        </a>
+                    ) : (
+                        <h3 className='resource-node-title'>{props.data.name}</h3>
+                    )}
+                <p className='resource-node-subtitle'>{props.data.type}</p>
             </div>
+            <Handle type="source" position={Position.Right} id="b" isConnectable={isConnectable} />
+        </div >
         </>
     )
 }
