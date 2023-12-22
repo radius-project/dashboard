@@ -1,0 +1,27 @@
+name: Build
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+permissions:
+  contents: read
+  pull-requests: read
+  issues: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Install Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "yarn"
+          cache-dependency-path: "yarn.lock"
+      - run: yarn install --frozen-lockfile
+      - run: yarn workspaces run build
+      - run: yarn workspace rad-components run build-storybook

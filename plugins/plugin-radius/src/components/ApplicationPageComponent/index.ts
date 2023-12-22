@@ -1,0 +1,1 @@
+export { ApplicationPageComponent } from './ApplicationPageComponent';
