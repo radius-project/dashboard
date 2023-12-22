@@ -1,1 +1,3 @@
-__pycache__
+.pnp.cjs
+.yarn/
+node_modules/
