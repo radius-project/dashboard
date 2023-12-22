@@ -1,0 +1,70 @@
+{
+  "name": "rad-components",
+  "version": "0.0.1",
+  "description": "Components for use with Radius",
+  "type": "module",
+  "main": "dist/index.cjs.js",
+  "module": "dist/index.es.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "/dist"
+  ],
+  "scripts": {
+    "build": "tsc && vite build",
+    "build:all": "tsc && vite build",
+    "format": "prettier --write --parser typescript '**/*.{ts,tsx}'",
+    "lint": "eslint . --ext .ts,.tsx --ignore-path .gitignore --fix",
+    "test": "vitest run",
+    "test-watch": "vitest",
+    "test:ui": "vitest --ui",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@storybook/addon-essentials": "^7.6.4",
+    "@storybook/addon-interactions": "^7.6.4",
+    "@storybook/addon-links": "^7.6.4",
+    "@storybook/addon-onboarding": "^1.0.10",
+    "@storybook/blocks": "^7.6.4",
+    "@storybook/react": "^7.6.4",
+    "@storybook/react-vite": "^7.6.4",
+    "@storybook/test": "^7.6.4",
+    "@testing-library/jest-dom": "^6.1.5",
+    "@testing-library/react": "^14.1.2",
+    "@types/d3": "^7.4.3",
+    "@types/d3-force": "^3.0.9",
+    "@types/dagre": "^0",
+    "@types/react": "^18.2.45",
+    "@typescript-eslint/eslint-plugin": "^6.14.0",
+    "@typescript-eslint/parser": "^6.14.0",
+    "eslint": "^8.55.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.0.1",
+    "eslint-plugin-react": "^7.33.2",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-storybook": "^0.6.15",
+    "jsdom": "^23.0.1",
+    "prettier": "^3.1.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "storybook": "^7.6.4",
+    "styled-components": "^6.1.1",
+    "typescript": "^5.3.3",
+    "vite": "^5.0.8",
+    "vite-plugin-dts": "^3.6.4",
+    "vitest": "^1.0.4"
+  },
+  "peerDependencies": {
+    "react": "^18.2.0"
+  },
+  "dependencies": {
+    "@dagrejs/dagre": "^1.0.4",
+    "d3": "^7.8.5",
+    "d3-force": "^3.0.0",
+    "dagre": "^0.8.5",
+    "reactflow": "^11.10.1"
+  }
+}
