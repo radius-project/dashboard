@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "repository": "git@github.com/radius-project/dashboard.git",
+  "author": "The Radius Authors",
+  "license": "Apache-2.0",
+  "private": true,
+  "packageManager": "yarn@4.0.2",
+  "workspaces": [
+    "packages/*"
+  ]
+}
