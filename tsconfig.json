@@ -1,0 +1,15 @@
+{
+  "extends": "./node_modules/@backstage/cli/config/tsconfig.json",
+  "include": [
+    "packages/*/src",
+    "plugins/*/src",
+  ],
+  "exclude": [
+    "node_modules",
+    "packages/rad-components/",
+  ],
+  "compilerOptions": {
+    "outDir": "dist-types",
+    "rootDir": ".",
+  }
+}

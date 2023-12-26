@@ -1,0 +1,17 @@
+import { Canvas, Meta } from "@storybook/blocks";
+import Example from "./Example.tsx";
+import * as AppGraph from "./AppGraph.stories.tsx";
+
+<Meta of={AppGraph} title="AppGraph" name="AppGraph" />
+
+# AppGraph2
+
+AppGraph displays the topology of different applications.
+
+#### Example: Demo Application
+
+<Canvas of={AppGraph.Demo} />
+
+#### Arguments
+
+- **resource** _`AppGraph`_ - The application graph to display.
