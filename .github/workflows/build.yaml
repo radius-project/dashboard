@@ -34,3 +34,7 @@ jobs:
         run: yarn workspaces foreach -A run build:all
       - name: Build Storybook
         run: yarn workspace rad-components run build-storybook
+      - name: Run Tests
+        run: yarn run test:all
+      - name: Run E2E Tests
+        run: yarn run test:e2e
