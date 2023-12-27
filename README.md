@@ -15,6 +15,8 @@ It is organized as a mono-repo.
 
 You'll also want an environment where you can experiment with Radius.
 
+For development, we recommend VS Code. This repo is configured with recommended extensions that can automate parts of the development process when installed.
+
 ## Building
 
 **Install dependencies:**
@@ -55,3 +57,29 @@ yarn workspace rad-components run storybook
 ```
 
 This will launch Storybook at `http://localhost:6006`
+
+## Linting
+
+This project is configured to use `eslint` for linting, along with recommended rules for React and TypeScript. This is checked as part of the pull-request process.
+
+**Run the linter manually:**
+
+```
+yarn run lint:all
+```
+
+## Formatting
+
+This project is configured to use `prettier` for code formatting. This is checked as part of the pull-request process.
+
+**Run the formatter to find violations:**
+
+```
+yarn run format:check
+```
+
+**Run the formatter to automatically fix violations:**
+
+```
+yarn run format:write
+```

@@ -1,4 +1,7 @@
-import { createPlugin, createRoutableExtension } from '@backstage/core-plugin-api';
+import {
+  createPlugin,
+  createRoutableExtension,
+} from '@backstage/core-plugin-api';
 
 import { rootRouteRef } from './routes';
 
@@ -13,7 +16,9 @@ export const EnvironmentPage = radiusPlugin.provide(
   createRoutableExtension({
     name: 'Environments',
     component: () =>
-      import('./components/EnvironmentPageComponent').then(m => m.EnvironmentPageComponent),
+      import('./components/EnvironmentPageComponent').then(
+        m => m.EnvironmentPageComponent,
+      ),
     mountPoint: rootRouteRef,
   }),
 );
@@ -22,7 +27,9 @@ export const ApplicationPage = radiusPlugin.provide(
   createRoutableExtension({
     name: 'Applications',
     component: () =>
-      import('./components/ApplicationPageComponent').then(m => m.ApplicationPageComponent),
+      import('./components/ApplicationPageComponent').then(
+        m => m.ApplicationPageComponent,
+      ),
     mountPoint: rootRouteRef,
   }),
 );

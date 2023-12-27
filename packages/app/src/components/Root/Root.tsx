@@ -57,7 +57,7 @@ const SidebarLogo = () => {
   );
 };
 
-export const Root = ({ children }: PropsWithChildren<{}>) => (
+export const Root = ({ children }: PropsWithChildren<NonNullable<object>>) => (
   <SidebarPage>
     <Sidebar>
       <SidebarLogo />

@@ -7,6 +7,6 @@ createDevApp()
   .addPage({
     element: <EnvironmentPage />,
     title: 'Root Page',
-    path: '/radius'
+    path: '/radius',
   })
   .render();

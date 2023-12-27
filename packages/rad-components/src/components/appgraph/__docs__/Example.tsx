@@ -1,18 +1,16 @@
-import React, { FC } from "react";
-import AppGraph, { AppGraphProps } from "../AppGraph";
-import * as sampledata from "../../../sampledata";
+import React, { FC } from 'react';
+import AppGraph, { AppGraphProps } from '../AppGraph';
+import * as sampledata from '../../../sampledata';
 
-const Example: FC<AppGraphProps> = ({
-  graph = sampledata.DemoApplication,
-}) => {
+const Example: FC<AppGraphProps> = ({ graph = sampledata.DemoApplication }) => {
   return (
     <div
       style={{
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "stretch",
-        height: "100%",
-        minHeight: "500px",
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'stretch',
+        height: '100%',
+        minHeight: '500px',
       }}
     >
       <AppGraph graph={graph} />

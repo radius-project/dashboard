@@ -1,9 +1,9 @@
-import type { Meta, StoryObj } from "@storybook/react";
-import Example from "./Example";
-import * as sampledata from "../../../sampledata";
+import type { Meta, StoryObj } from '@storybook/react';
+import Example from './Example';
+import * as sampledata from '../../../sampledata';
 
 const meta: Meta<typeof Example> = {
-  title: "ResourceNode",
+  title: 'ResourceNode',
   component: Example,
 };
 
