@@ -32,9 +32,9 @@ node_modules/
 .env.test
 
 # Build output
-dist
-dist-types
-storybook-static
+dist/
+dist-types/
+storybook-static/
 
 # Temporary change files created by Vim
 *.swp

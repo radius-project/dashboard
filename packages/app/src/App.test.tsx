@@ -17,7 +17,7 @@ describe('App', () => {
           },
           context: 'test',
         },
-      ] as any,
+      ] as unknown as string,
     };
 
     const rendered = await renderWithEffects(<App />);

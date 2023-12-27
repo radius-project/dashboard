@@ -16,13 +16,21 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      - run: corepack enable
-      - name: Install Node.js 20
+      - name: Enable corepack
+        run: corepack enable
+      - name: Install Node.js 20 # Must be after corepack is enabled.
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
-          cache: "yarn"
-          cache-dependency-path: "yarn.lock"
-      - run: yarn install --frozen-lockfile
-      - run: yarn workspaces foreach -A run build:all
-      - run: yarn workspace rad-components run build-storybook
+          node-version: '20'
+          cache: 'yarn'
+          cache-dependency-path: 'yarn.lock'
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+      - name: Lint
+        run: yarn run lint:all
+      - name: Format
+        run: yarn run format:check
+      - name: Build
+        run: yarn workspaces foreach -A run build:all
+      - name: Build Storybook
+        run: yarn workspace rad-components run build-storybook

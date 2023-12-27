@@ -12,7 +12,10 @@ import { ExampleFetchComponent } from '../ExampleFetchComponent';
 
 export const EnvironmentPageComponent = () => (
   <Page themeId="tool">
-    <Header title="Environments" subtitle="Displaying environments where applications can be deployed." />
+    <Header
+      title="Environments"
+      subtitle="Displaying environments where applications can be deployed."
+    />
     <Content>
       <ContentHeader title="Plugin title">
         <SupportButton>A description of your plugin goes here.</SupportButton>
