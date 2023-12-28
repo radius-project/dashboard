@@ -58,6 +58,20 @@ yarn workspace rad-components run storybook
 
 This will launch Storybook at `http://localhost:6006`
 
+## Testing
+
+**Run tests:**
+
+```
+yarn run test:all
+```
+
+**Run E2E tests:**
+
+```
+yarn run test:e2e
+```
+
 ## Linting
 
 This project is configured to use `eslint` for linting, along with recommended rules for React and TypeScript. This is checked as part of the pull-request process.

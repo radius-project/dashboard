@@ -22,6 +22,8 @@ describe('ApplicationPageComponent', () => {
 
   it('should render', async () => {
     await renderInTestApp(<ApplicationPageComponent />);
-    expect(screen.getByText('Welcome to radius!')).toBeInTheDocument();
+    expect(
+      screen.getByText('Displaying deployed applications.'),
+    ).toBeInTheDocument();
   });
 });

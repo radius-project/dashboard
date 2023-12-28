@@ -17,5 +17,10 @@
   },
   "[typescriptreact]": {
     "editor.tabSize": 2
-  }
+  },
+  "jest.jestCommandLine": "yarn run test:all",
+  "jest.virtualFolders": [
+    { "name": "unit-tests", "jestCommandLine": "yarn run test:all" },
+    { "name": "e2e-tests", "jestCommandLine": "yarn run test:e2e" }
+  ]
 }
