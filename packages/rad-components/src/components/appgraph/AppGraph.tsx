@@ -14,13 +14,9 @@ import { ResourceNode } from '../resourcenode/index';
 
 import 'reactflow/dist/style.css';
 
-export type AppGraphProps = {
-  graph: AppGraphData;
-};
-
 const nodeTypes = { default: ResourceNode };
 
-const LayoutFlow = (props: AppGraphProps) => {
+const LayoutFlow = (props: { graph: AppGraphData }) => {
   const initial = initialNodes(props.graph);
 
   const { fitView } = useReactFlow();
@@ -41,10 +37,17 @@ const LayoutFlow = (props: AppGraphProps) => {
     [nodes, edges],
   );
 
+  // Notes on our usage of ReactFlow:
+  //
+  // - We're using an uncontrolled flow: https://reactflow.dev/learn/advanced-use/uncontrolled-flow
+  // - We implemented a custom node type: https://reactflow.dev/learn/customization/custom-nodes
+  // - We're using Dagre for layout: https://reactflow.dev/learn/layouting/layouting#dagre
+
   return (
     <ReactFlow
-      nodes={nodes}
-      edges={edges}
+      defaultNodes={nodes}
+      defaultEdges={edges}
+      defaultEdgeOptions={{ type: 'bezier', animated: true }}
       nodeTypes={nodeTypes}
       onNodesChange={onNodesChange}
       onEdgesChange={onEdgesChange}
@@ -53,9 +56,9 @@ const LayoutFlow = (props: AppGraphProps) => {
   );
 };
 
-function AppGraph(props: AppGraphProps) {
+function AppGraph(props: { graph: AppGraphData }) {
   return (
-    <div {...props} style={{ height: 'auto', width: '100%' }}>
+    <div {...props} style={{ height: '100%', width: '100%' }}>
       <ReactFlowProvider>
         <LayoutFlow graph={props.graph} />
       </ReactFlowProvider>
@@ -70,11 +73,27 @@ function initialNodes(graph: AppGraphData): {
   const nodes: Node<Resource>[] = [];
   const edges: Edge[] = [];
 
-  let i = 0;
+  // Very simple layout scheme here for nodes.
+  const orderData: { [order: number]: number } = {};
+
   for (const resource of graph.resources) {
+    // The computed 'Order' is used to compute the 'y' coordinate for the initial layout.
+    // This is computed based on the number of inbound connections (or whether it's a container).
+    const order =
+      resource.connections?.filter(c => c.direction === 'Inbound').length ||
+      resource.type === 'Applications.Core/containers'
+        ? 0
+        : 3;
+
+    // The computed 'Rank' is used to compute the 'x' coordinate for the initial layout.
+    // This is computed based on the number of resources at the same 'Order'.
+    const rank = (orderData[order] = (orderData[order] || 0) + 1);
+
+    // This provides the initial bias for the layout. Dagre will adjust this.
+
     nodes.push({
       id: resource.id,
-      position: { x: 0, y: 200 * i++ },
+      position: { x: rank * 50, y: order * 50 },
       data: resource,
       type: 'default',
     });
@@ -84,16 +103,14 @@ function initialNodes(graph: AppGraphData): {
         if (connection.direction === 'Inbound') {
           edges.push({
             id: `${connection.id}-${resource.id}`,
-            type: 'smoothstep',
-            source: connection.id,
-            target: resource.id,
+            source: resource.id,
+            target: connection.id,
           });
         } else {
           edges.push({
             id: `${resource.id}-${connection.id}`,
-            type: 'smoothstep',
-            source: resource.id,
-            target: connection.id,
+            source: connection.id,
+            target: resource.id,
           });
         }
       }

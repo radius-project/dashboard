@@ -4,11 +4,7 @@ import HomeIcon from '@material-ui/icons/Home';
 import ExtensionIcon from '@material-ui/icons/Extension';
 import PublicIcon from '@material-ui/icons/Public';
 import ListAltIcon from '@material-ui/icons/ListAlt';
-import MapIcon from '@material-ui/icons/MyLocation';
-import LibraryBooks from '@material-ui/icons/LibraryBooks';
-import CreateComponentIcon from '@material-ui/icons/AddCircleOutline';
-import LogoFull from './LogoFull';
-import LogoIcon from './LogoIcon';
+import AssessmentIcon from '@material-ui/icons/Assessment';
 import {
   Settings as SidebarSettings,
   UserSettingsSignInAvatar,
@@ -28,6 +24,7 @@ import {
 } from '@backstage/core-components';
 import MenuIcon from '@material-ui/icons/Menu';
 import SearchIcon from '@material-ui/icons/Search';
+import { RadiusLogo } from '@internal/plugin-radius';
 
 const useSidebarLogoStyles = makeStyles({
   root: {
@@ -42,6 +39,10 @@ const useSidebarLogoStyles = makeStyles({
     width: sidebarConfig.drawerWidthClosed,
     marginLeft: 24,
   },
+  svg: {
+    width: 'auto',
+    height: 28,
+  },
 });
 
 const SidebarLogo = () => {
@@ -51,7 +52,11 @@ const SidebarLogo = () => {
   return (
     <div className={classes.root}>
       <Link to="/" underline="none" className={classes.link} aria-label="Home">
-        {isOpen ? <LogoFull /> : <LogoIcon />}
+        {isOpen ? (
+          <RadiusLogo shape="full" className={classes.svg} />
+        ) : (
+          <RadiusLogo shape="square" className={classes.svg} />
+        )}
       </Link>
     </div>
   );
@@ -67,17 +72,14 @@ export const Root = ({ children }: PropsWithChildren<NonNullable<object>>) => (
       <SidebarDivider />
       <SidebarGroup label="Menu" icon={<MenuIcon />}>
         {/* Global nav, not org-specific */}
-        <SidebarItem icon={HomeIcon} to="catalog" text="Home" />
+        <SidebarItem icon={HomeIcon} to="/" text="Home" />
         <SidebarItem icon={ListAltIcon} to="applications" text="Applications" />
         <SidebarItem icon={PublicIcon} to="environments" text="Environments" />
-        <SidebarItem icon={ExtensionIcon} to="api-docs" text="APIs" />
-        <SidebarItem icon={LibraryBooks} to="docs" text="Docs" />
-        <SidebarItem icon={CreateComponentIcon} to="create" text="Create..." />
+        <SidebarItem icon={AssessmentIcon} to="resources" text="Resources" />
+        <SidebarItem icon={ExtensionIcon} to="catalog" text="Catalog" />
         {/* End global nav */}
         <SidebarDivider />
-        <SidebarScrollWrapper>
-          <SidebarItem icon={MapIcon} to="tech-radar" text="Tech Radar" />
-        </SidebarScrollWrapper>
+        <SidebarScrollWrapper />
       </SidebarGroup>
       <SidebarSpace />
       <SidebarDivider />

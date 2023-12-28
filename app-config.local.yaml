@@ -1,0 +1,28 @@
+# Backstage override configuration for your local development environment
+#
+# This will be used with `yarn dev`
+#
+# The configuration provided here is meant to be used with a local copy of the dashboard
+# talking to a local Kubernetes cluster on localhost. The local Kubernetes cluster should
+# have Radius installed.
+#
+# Use `kubectl proxy` to open a proxy to your local Kubernetes cluster.
+
+# See: https://backstage.io/docs/conf/writing for the file as a whole.
+
+# See: https://backstage.io/docs/features/kubernetes/configuration/
+kubernetes:
+  # Configure backstage to support multiple kubernetes clusters, even though
+  # only one is used here.
+  serviceLocatorMethod:
+    type: multiTenant
+  # Use the local proxy on localhost:8001 to talk to the local Kubernetes cluster.
+  clusterLocatorMethods:
+    - type: localKubectlProxy
+
+backend:
+  # Allow the backend to make requests to the local Kubernetes cluster.
+  reading:
+    allow:
+      - host: localhost:8001
+      - host: 127.0.0.1:8001
