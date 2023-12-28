@@ -34,9 +34,66 @@ import { CatalogGraphPage } from '@backstage/plugin-catalog-graph';
 import { RequirePermission } from '@backstage/plugin-permission-react';
 import { catalogEntityCreatePermission } from '@backstage/plugin-catalog-common/alpha';
 import { ApplicationPage, EnvironmentPage } from '@internal/plugin-radius';
+import {
+  UnifiedThemeProvider,
+  createBaseThemeOptions,
+  createUnifiedTheme,
+  genPageTheme,
+  palettes,
+  shapes,
+} from '@backstage/theme';
+
+const lightTheme = createUnifiedTheme({
+  ...createBaseThemeOptions({
+    palette: {
+      ...palettes.light,
+      primary: {
+        main: '#db4c24',
+      },
+    },
+  }),
+  defaultPageTheme: 'other',
+  pageTheme: {
+    other: genPageTheme({ colors: ['#db4c24', '#db4c24'], shape: shapes.wave }),
+  },
+});
+
+const darkTheme = createUnifiedTheme({
+  ...createBaseThemeOptions({
+    // https://m2.material.io/inline-tools/color/
+    palette: {
+      ...palettes.dark,
+      primary: {
+        main: '#db4c24',
+      },
+    },
+  }),
+  defaultPageTheme: 'other',
+  pageTheme: {
+    other: genPageTheme({ colors: ['#db4c24', '#db4c24'], shape: shapes.wave }),
+  },
+});
 
 const app = createApp({
   apis,
+  themes: [
+    {
+      id: 'light',
+      title: 'Light',
+      variant: 'light',
+      Provider: ({ children }) => (
+        <UnifiedThemeProvider theme={lightTheme} children={children} />
+      ),
+    },
+    {
+      id: 'dark',
+      title: 'Dark',
+      variant: 'dark',
+      Provider: ({ children }) => (
+        <UnifiedThemeProvider theme={darkTheme} children={children} />
+      ),
+    },
+  ],
   bindRoutes({ bind }) {
     bind(catalogPlugin.externalRoutes, {
       createComponent: scaffolderPlugin.routes.root,

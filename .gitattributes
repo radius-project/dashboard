@@ -4,5 +4,8 @@
 # shell scripts always use LF
 *.sh text eol=lf
 
+# svg files are text
+*.svg test
+
 # images are binary
 *.png binary
