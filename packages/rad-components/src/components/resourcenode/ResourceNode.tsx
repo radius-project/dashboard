@@ -1,21 +1,23 @@
-import React, { PropsWithChildren } from 'react';
+import React from 'react';
 import { Resource } from '../../graph';
+import { Handle, NodeProps, Position } from 'reactflow';
 
-export interface ResourceNodeProps {
-  data: Resource;
-}
+//  Note: the default style assigned to a node gives it a 150px width
+// from style: .react-flow__node-default.
+//
+// We're setting a f
 
-function ResourceNode(props: PropsWithChildren<ResourceNodeProps>) {
+function ResourceNode(props: Pick<NodeProps<Resource>, 'data'>) {
   return (
-    <div
-      className="resource-node"
-      style={{ border: '1px solid', padding: '5px' }}
-    >
-      <h3 style={{ textAlign: 'center' }}>{props.data.name}</h3>
-      <hr />
-      <h5>{props.data.type}</h5>
-      <h6>asdsfdsdfafdfdff</h6>
-    </div>
+    <>
+      <Handle type="target" position={Position.Top} />
+      <div style={{ padding: '2px', fontSize: '.6rem' }}>
+        <h3 style={{ textAlign: 'center' }}>{props.data.name}</h3>
+        <hr />
+        <h6>{props.data.type}</h6>
+      </div>
+      <Handle type="source" position={Position.Bottom} />
+    </>
   );
 }
 

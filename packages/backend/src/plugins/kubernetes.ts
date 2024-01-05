@@ -13,5 +13,6 @@ export default async function createPlugin(
     catalogApi,
     permissions: env.permissions,
   }).build();
+
   return router;
 }
