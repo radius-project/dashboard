@@ -52,7 +52,7 @@ yarn workspaces foreach -A run build:all
 
 ```bash
 # Substitute rad-components with any package name
-yarn workspace rad-components run build:all
+yarn workspace rad-components run build
 ```
 
 ## Scripts
@@ -66,6 +66,14 @@ yarn workspace rad-components run lint
 ```
 
 ## Developing: Dashboard
+
+**Launch the Dashboard:**
+
+```bash
+yarn dev
+```
+
+This will launch the Dashboard at `http://localhost:3000`.
 
 ### Configuration
 
@@ -81,7 +89,7 @@ This file is checked in but `.gitignored`'d. Feel free to make changes as needed
 yarn workspace rad-components run storybook
 ```
 
-This will launch Storybook at `http://localhost:6006`
+This will launch Storybook at `http://localhost:6006`.
 
 ## Testing
 

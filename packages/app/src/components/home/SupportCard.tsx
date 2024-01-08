@@ -22,10 +22,11 @@ const actions = () => (
   </CardActions>
 );
 
-export const SupportCard = () => (
+export const SupportCard = ({ className }: { className?: string }) => (
   <InfoCard
     title="Get help with Radius"
     subheader="Report issues or ask other users for help"
+    className={className}
     actions={actions()}
   >
     <Typography variant="body1">

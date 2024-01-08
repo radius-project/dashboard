@@ -25,10 +25,11 @@ const actions = () => (
   </CardActions>
 );
 
-export const CommunityCard = () => (
+export const CommunityCard = ({ className }: { className?: string }) => (
   <InfoCard
     title="Join the community"
     subheader="Find ways to participate and contribute"
+    className={className}
     actions={actions()}
   >
     <Typography variant="body1">

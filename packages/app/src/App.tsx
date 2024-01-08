@@ -25,6 +25,7 @@ import { CatalogGraphPage } from '@backstage/plugin-catalog-graph';
 import {
   ApplicationListPage,
   EnvironmentListPage,
+  RecipeListPage,
   ResourceListPage,
   ResourcePage,
   radiusPlugin,
@@ -129,6 +130,7 @@ const routes = (
     <Route path="/catalog-graph" element={<CatalogGraphPage />} />
     <Route path="/applications" element={<ApplicationListPage />} />
     <Route path="/environments" element={<EnvironmentListPage />} />
+    <Route path="/recipes" element={<RecipeListPage />} />
     <Route path="/resources" element={<ResourceListPage />} />
     <Route
       path="/resources/:group/:namespace/:type/:name"

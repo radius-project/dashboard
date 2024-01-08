@@ -8,6 +8,7 @@ import {
 import {
   applicationListPageRouteRef,
   environmentListPageRouteRef,
+  recipeListPageRouteRef,
   resourceListPageRouteRef,
   resourcePageRouteRef,
   rootRouteRef,
@@ -15,6 +16,7 @@ import {
 import { RadiusApi } from './api';
 import { KubernetesApi, kubernetesApiRef } from '@backstage/plugin-kubernetes';
 import { RadiusApiImpl } from './api/api';
+import { featureRadiusCatalog as featureRadiusCatalog } from './features';
 
 export const radiusApiRef = createApiRef<RadiusApi>({
   id: 'radius-api',
@@ -32,6 +34,11 @@ export const radiusPlugin = createPlugin({
         return new RadiusApiImpl(deps.kubernetesApi);
       },
     }),
+  ],
+  featureFlags: [
+    {
+      name: featureRadiusCatalog,
+    },
   ],
   routes: {
     root: rootRouteRef,
@@ -53,6 +60,14 @@ export const ApplicationListPage = radiusPlugin.provide(
     component: () =>
       import('./components/applications').then(m => m.ApplicationListPage),
     mountPoint: applicationListPageRouteRef,
+  }),
+);
+
+export const RecipeListPage = radiusPlugin.provide(
+  createRoutableExtension({
+    name: 'recipes',
+    component: () => import('./components/recipes').then(m => m.RecipeListPage),
+    mountPoint: recipeListPageRouteRef,
   }),
 );
 

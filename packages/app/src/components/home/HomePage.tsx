@@ -2,15 +2,22 @@ import { HomePageCompanyLogo } from '@backstage/plugin-home';
 import { Grid, makeStyles } from '@material-ui/core';
 import React from 'react';
 import { SearchContextProvider } from '@backstage/plugin-search-react';
-import { Content, InfoCard, Page } from '@backstage/core-components';
-import { RadiusLogo } from '@internal/plugin-radius';
+import { Content, Page } from '@backstage/core-components';
+import {
+  ApplicationListInfoCard,
+  EnvironmentListInfoCard,
+  RadiusLogo,
+} from '@internal/plugin-radius';
 import LearnCard from './LearnCard';
 import CommunityCard from './CommunityCard';
 import SupportCard from './SupportCard';
 
-const useLogoStyles = makeStyles(theme => ({
+const useStyles = makeStyles(theme => ({
   container: {
     margin: theme.spacing(5, 0),
+  },
+  infoCard: {
+    height: '100%',
   },
   svg: {
     width: 'auto',
@@ -19,7 +26,7 @@ const useLogoStyles = makeStyles(theme => ({
 }));
 
 export const HomePage = () => {
-  const { container, svg } = useLogoStyles();
+  const { container, infoCard, svg } = useStyles();
 
   return (
     <SearchContextProvider>
@@ -32,29 +39,21 @@ export const HomePage = () => {
             />
             <Grid container item xs={12}>
               <Grid item xs={8} md={4}>
-                <LearnCard />
+                <LearnCard className={infoCard} />
               </Grid>
               <Grid item xs={8} md={4}>
-                <CommunityCard />
+                <CommunityCard className={infoCard} />
               </Grid>
               <Grid item xs={8} md={4}>
-                <SupportCard />
+                <SupportCard className={infoCard} />
               </Grid>
             </Grid>
             <Grid container item xs={12}>
               <Grid item xs={12} md={6}>
-                <InfoCard title="Applications">
-                  Applications are great.
-                  {/* placeholder for content */}
-                  <div style={{ height: 250 }} />
-                </InfoCard>
+                <ApplicationListInfoCard />
               </Grid>
               <Grid item xs={12} md={6}>
-                <InfoCard title="Environments">
-                  You&apos;re going to need some enviornments. Trust us.
-                  {/* placeholder for content */}
-                  <div style={{ height: 250 }} />
-                </InfoCard>
+                <EnvironmentListInfoCard />
               </Grid>
             </Grid>
           </Grid>

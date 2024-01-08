@@ -7,13 +7,15 @@ import {
 } from '@backstage/core-components';
 import { OverviewTab } from './OverviewTab';
 import { DetailsTab } from './DetailsTab';
-import { Resource } from '../../resources';
+import { EnvironmentProperties, Resource } from '../../resources';
 import useAsync from 'react-use/lib/useAsync';
 import { useApi, useRouteRefParams } from '@backstage/core-plugin-api';
 import { resourcePageRouteRef } from '../../routes';
 import { ApplicationTab } from './ApplicationTab';
-import { ResourcesTab } from './ResourcesTab';
+import { ApplicationResourcesTab } from './ApplicationResourcesTab';
 import { radiusApiRef } from '../../plugin';
+import { RecipesTab } from './RecipesTab';
+import { EnvironmentResourcesTab } from './EnvironmentResourcesTab';
 
 export const ResourcePage = () => {
   const radiusApi = useApi(radiusApiRef);
@@ -34,6 +36,14 @@ export const ResourcePage = () => {
 
   const hasApplication = value?.properties?.application || false;
   const isApplication = value?.type === 'Applications.Core/applications';
+  let application: string | undefined = undefined;
+  if (hasApplication) {
+    application = value.properties.application as string;
+  } else if (isApplication) {
+    application = value.id;
+  }
+
+  const isEnvironment = value?.type === 'Applications.Core/environments';
 
   return (
     <ResourceLayout resource={value}>
@@ -44,14 +54,26 @@ export const ResourcePage = () => {
         <TabbedLayout.Route path="details" title="Details">
           <DetailsTab resource={value} />
         </TabbedLayout.Route>
-        {hasApplication && (
-          <TabbedLayout.Route path="application" title="Application">
-            <ApplicationTab resource={value} />
+        {application && (
+          <TabbedLayout.Route path="application" title="App Graph">
+            <ApplicationTab application={application} />
           </TabbedLayout.Route>
         )}
         {isApplication && (
           <TabbedLayout.Route path="resources" title="Resources">
-            <ResourcesTab resource={value} />
+            <ApplicationResourcesTab resource={value} />
+          </TabbedLayout.Route>
+        )}
+        {isEnvironment && (
+          <TabbedLayout.Route path="recipes" title="Recipes">
+            <RecipesTab
+              resource={value as unknown as Resource<EnvironmentProperties>}
+            />
+          </TabbedLayout.Route>
+        )}
+        {isEnvironment && (
+          <TabbedLayout.Route path="resources" title="Resources">
+            <EnvironmentResourcesTab resource={value} />
           </TabbedLayout.Route>
         )}
       </TabbedLayout>

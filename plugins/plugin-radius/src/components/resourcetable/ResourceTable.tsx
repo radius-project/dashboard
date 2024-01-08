@@ -17,15 +17,21 @@ import { radiusApiRef } from '../../plugin';
 const DataTable = (props: {
   resources: Resource[];
   title: string;
+  filters?: { environment?: string; application?: string };
   resourceType?: string;
 }) => {
   const columns: TableColumn<Resource>[] = [
     {
       title: 'Name',
+      type: 'string',
       render: row => <ResourceLink id={row.id} />,
     },
-    { title: 'Resource Group', render: row => parseResourceId(row.id)?.group },
-    { title: 'Type', field: 'type' },
+    {
+      title: 'Resource Group',
+      type: 'string',
+      render: row => parseResourceId(row.id)?.group,
+    },
+    { title: 'Type', field: 'type', type: 'string' },
   ];
 
   // Special case some additional fields by hiding them when they would never have a value.
@@ -35,6 +41,7 @@ const DataTable = (props: {
     columns.push({
       title: 'Environment',
       field: 'properties.environment',
+      type: 'string',
       render: row => (
         <OptionalResourceLink id={row.properties?.environment as string} />
       ),
@@ -43,6 +50,7 @@ const DataTable = (props: {
     columns.push({
       title: 'Application',
       field: 'properties.application',
+      type: 'string',
       render: row => (
         <OptionalResourceLink id={row.properties?.application as string} />
       ),
@@ -50,6 +58,7 @@ const DataTable = (props: {
     columns.push({
       title: 'Environment',
       field: 'properties.environment',
+      type: 'string',
       render: row => (
         <OptionalResourceLink id={row.properties?.environment as string} />
       ),
@@ -58,12 +67,42 @@ const DataTable = (props: {
 
   columns.push({ title: 'Status', field: 'properties.provisioningState' });
 
+  const data = props.resources.filter(resource => {
+    // If the id equals the filter, then exclude it. 'resource.id' will always be a string.
+    if (
+      props.filters?.environment?.toLowerCase() === resource.id.toLowerCase()
+    ) {
+      return false;
+    } else if (
+      props.filters?.application?.toLowerCase() === resource.id.toLowerCase()
+    ) {
+      return false;
+    }
+
+    const application = resource.properties?.application as string;
+    const environment = resource.properties?.environment as string;
+    if (
+      props.filters?.environment &&
+      environment?.toLowerCase() !== props.filters.environment.toLowerCase()
+    ) {
+      return false;
+    }
+    if (
+      props.filters?.application &&
+      application?.toLowerCase() !== props.filters.application.toLowerCase()
+    ) {
+      return false;
+    }
+
+    return true;
+  });
+
   return (
     <Table
       title={props.title}
       options={{ search: false, paging: false }}
       columns={columns}
-      data={props.resources}
+      data={data}
     />
   );
 };
@@ -71,6 +110,7 @@ const DataTable = (props: {
 export const ResourceTable = (props: {
   title: string;
   resourceType?: string;
+  filters?: { environment?: string; application?: string };
 }) => {
   const radiusApi = useApi(radiusApiRef);
   const { value, loading, error } = useAsync(
@@ -91,6 +131,7 @@ export const ResourceTable = (props: {
     <DataTable
       resources={value?.value || []}
       title={props.title}
+      filters={props.filters}
       resourceType={props.resourceType}
     />
   );

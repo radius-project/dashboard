@@ -5,6 +5,7 @@ import ExtensionIcon from '@material-ui/icons/Extension';
 import PublicIcon from '@material-ui/icons/Public';
 import ListAltIcon from '@material-ui/icons/ListAlt';
 import AssessmentIcon from '@material-ui/icons/Assessment';
+import RestaurantIcon from '@material-ui/icons/Restaurant';
 import {
   Settings as SidebarSettings,
   UserSettingsSignInAvatar,
@@ -76,6 +77,7 @@ export const Root = ({ children }: PropsWithChildren<NonNullable<object>>) => (
         <SidebarItem icon={ListAltIcon} to="applications" text="Applications" />
         <SidebarItem icon={PublicIcon} to="environments" text="Environments" />
         <SidebarItem icon={AssessmentIcon} to="resources" text="Resources" />
+        <SidebarItem icon={RestaurantIcon} to="recipes" text="Recipes" />
         <SidebarItem icon={ExtensionIcon} to="catalog" text="Catalog" />
         {/* End global nav */}
         <SidebarDivider />
