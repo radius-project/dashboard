@@ -108,14 +108,15 @@ export class RadiusApiImpl implements RadiusApi {
       const groupResources = await this.makeRequest<
         ResourceList<Record<string, never>>
       >(cluster, path);
-      for (const resource of groupResources.value) {
-        // Deployments show up in tracked resources, but the RP may not hold onto them.
-        // There's limited value here so skip them for now.
-        if (resource.type === 'Microsoft.Resources/deployments') {
-          continue;
+      if (groupResources.value) {
+        for (const resource of groupResources.value) {
+          // Deployments show up in tracked resources, but the RP may not hold onto them.
+          // There's limited value here so skip them for now.
+          if (resource.type === 'Microsoft.Resources/deployments') {
+            continue;
+          }
+          resources.push(await this.getResourceById<T>({ id: resource.id }));
         }
-
-        resources.push(await this.getResourceById<T>({ id: resource.id }));
       }
     }
     return { value: resources };
