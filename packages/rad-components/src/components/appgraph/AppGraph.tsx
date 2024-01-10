@@ -18,10 +18,13 @@ const nodeTypes = { default: ResourceNode };
 
 const LayoutFlow = (props: { graph: AppGraphData }) => {
   const initial = initialNodes(props.graph);
+  const layoutedNodes = getLayoutedElements(initial.nodes, initial.edges, {
+    direction: 'TB',
+  });
 
   const { fitView } = useReactFlow();
-  const [nodes, setNodes, onNodesChange] = useNodesState(initial.nodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initial.edges);
+  const [nodes, setNodes, onNodesChange] = useNodesState(layoutedNodes.nodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(layoutedNodes.edges);
 
   useCallback(
     direction => {
@@ -94,6 +97,8 @@ function initialNodes(graph: AppGraphData): {
     nodes.push({
       id: resource.id,
       position: { x: rank * 50, y: order * 50 },
+      height: 250,
+      width: 175,
       data: resource,
       type: 'default',
     });
