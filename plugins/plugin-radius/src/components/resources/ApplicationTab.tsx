@@ -38,7 +38,7 @@ export type Direction = 'Outbound' | 'Inbound';
 
 const useStyles = makeStyles({
   container: {
-    height: '800px',
+    height: '500px',
     width: '100%',
   },
 });
@@ -87,9 +87,6 @@ export const ApplicationTab = ({ application }: { application: string }) => {
         <div className={styles.container}>
           <AppGraph graph={value!} />
         </div>
-      </InfoCard>
-      <InfoCard title="Application Graph Data">
-        <pre>{JSON.stringify(value, null, 2)}</pre>
       </InfoCard>
     </>
   );
