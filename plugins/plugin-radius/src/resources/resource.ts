@@ -16,6 +16,12 @@ export interface ApplicationProperties {
   environment: string;
 }
 
+export interface Recipe {
+  templateKind: string;
+  templatePath: string;
+}
+
 export interface EnvironmentProperties {
   provisioningState: string;
+  recipes: Record<string, Record<string, Recipe>>;
 }

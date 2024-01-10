@@ -1,5 +1,5 @@
 import React from 'react';
-import { Resource, parseResourceId } from '../../resources';
+import { parseResourceId } from '../../resources';
 import {
   InfoCard,
   Progress,
@@ -43,9 +43,8 @@ const useStyles = makeStyles({
   },
 });
 
-export const ApplicationTab = (props: { resource: Resource }) => {
+export const ApplicationTab = ({ application }: { application: string }) => {
   const styles = useStyles();
-  const application = props.resource.properties?.application as string;
   const kubernetesApi = useApi(kubernetesApiRef);
   const { value, loading, error } =
     useAsync(async (): Promise<AppGraphData> => {

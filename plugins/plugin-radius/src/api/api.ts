@@ -128,7 +128,8 @@ export class RadiusApiImpl implements RadiusApi {
     const cluster = await this.selectCluster();
 
     const path = makePathForId(opts.id);
-    return this.makeRequest<Resource<T>>(cluster, path);
+    const resource = await this.makeRequest<Resource<T>>(cluster, path);
+    return await this.fixupResource(resource);
   }
 
   async listApplications<T = ApplicationProperties>(opts?: {
@@ -193,5 +194,18 @@ export class RadiusApiImpl implements RadiusApi {
 
     const data = (await response.json()) as T;
     return data;
+  }
+
+  private async fixupResource<T>(resource: Resource<T>): Promise<Resource<T>> {
+    const p = resource.properties as { [key: string]: string };
+    if (p.application && !p.environment) {
+      const app = await this.getResourceById<ApplicationProperties>({
+        id: p.application,
+      });
+      p.environment = app.properties.environment;
+    }
+
+    resource.properties = p as T;
+    return resource;
   }
 }

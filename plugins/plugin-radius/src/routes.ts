@@ -12,6 +12,10 @@ export const environmentListPageRouteRef = createRouteRef({
   id: 'radius-environment-list-page',
 });
 
+export const recipeListPageRouteRef = createRouteRef({
+  id: 'radius-recipe-list-page',
+});
+
 export const resourceListPageRouteRef = createRouteRef({
   id: 'radius-resource-list-page',
 });

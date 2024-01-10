@@ -29,10 +29,11 @@ const actions = () => (
   </CardActions>
 );
 
-export const LearnCard = () => (
+export const LearnCard = ({ className }: { className?: string }) => (
   <InfoCard
     title="Learn more"
     subheader="Discover documentation, tutorials, and reference materials"
+    className={className}
     actions={actions()}
   >
     <Typography variant="body1">
