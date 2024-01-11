@@ -13,6 +13,7 @@ import { AppGraph as AppGraphData, Resource } from '../../graph';
 import { ResourceNode } from '../resourcenode/index';
 
 import 'reactflow/dist/style.css';
+import { parseResourceId } from '@internal/plugin-radius/src/resources';
 
 const nodeTypes = { default: ResourceNode };
 
@@ -104,6 +105,21 @@ function initialNodes(graph: AppGraphData): {
     });
 
     if (resource.connections) {
+      for (const connection of resource.connections) {
+        // We have a bug where the connections have the wrong direction.
+        const parsedConnection = parseResourceId(connection.id);
+        if (!parsedConnection) {
+          continue;
+        }
+
+        if (
+          connection.direction === 'Inbound' &&
+          parsedConnection.type === 'Applications.Core/gateways'
+        ) {
+          connection.direction = 'Outbound';
+        }
+      }
+
       for (const connection of resource.connections) {
         if (connection.direction === 'Inbound') {
           edges.push({
