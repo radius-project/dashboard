@@ -1,5 +1,5 @@
 {
-  "name": "rad-components",
+  "name": "@radapp.io/rad-components",
   "version": "0.0.1",
   "description": "Components for use with Radius",
   "type": "module",

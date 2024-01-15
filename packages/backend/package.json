@@ -1,6 +1,6 @@
 {
-  "name": "backend",
-  "version": "0.0.0",
+  "name": "@internal/backend",
+  "version": "0.0.1",
   "main": "dist/index.cjs.js",
   "types": "src/index.ts",
   "private": true,
@@ -13,7 +13,7 @@
     "lint": "backstage-cli package lint",
     "test": "backstage-cli package test",
     "clean": "backstage-cli package clean",
-    "build-image": "docker build ../.. -f Dockerfile --tag backstage"
+    "build-image": "docker build ../.. -f Dockerfile -t ghcr.io/radius-project/dashboard"
   },
   "dependencies": {
     "@backstage/backend-common": "^0.20.0",
@@ -38,8 +38,8 @@
     "@backstage/plugin-search-backend-module-techdocs": "^0.1.12",
     "@backstage/plugin-search-backend-node": "^1.2.12",
     "@backstage/plugin-techdocs-backend": "^1.9.1",
+    "@internal/app": "^0.0.1",
     "@internal/plugin-radius-backend": "^0.1.0",
-    "app": "^0.1.0",
     "better-sqlite3": "^9.0.0",
     "dockerode": "^3.3.1",
     "express": "^4.17.1",

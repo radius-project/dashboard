@@ -8,7 +8,7 @@ import {
 import { kubernetesApiRef } from '@backstage/plugin-kubernetes';
 import { useApi } from '@backstage/core-plugin-api';
 import useAsync from 'react-use/lib/useAsync';
-import { AppGraph } from 'rad-components';
+import { AppGraph } from '@radapp.io/rad-components';
 import { makeStyles } from '@material-ui/core';
 
 export interface AppGraphData {
