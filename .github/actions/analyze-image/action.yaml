@@ -15,11 +15,20 @@ outputs: {}
 runs:
   using: 'composite'
   steps:
-    - run: |
+    - name: Analyze with Dive
+      shell: bash
+      run: |
         docker run \
         --rm \
         -v ${{ inputs.docker-socket }}:/var/run/docker.sock \
         -e CI=true \
         wagoodman/dive:latest \
         ${{ inputs.image }}
+    - name: Print (uncompressed) total size
       shell: bash
+      run: |
+        docker inspect -f "{{ .Size }}" ${{ inputs.image }} | awk '{ byte =$1 /1024/1024; print byte " MB" }'
+    - name: Print layers
+      shell: bash
+      run: |
+        docker history ${{ inputs.image }}

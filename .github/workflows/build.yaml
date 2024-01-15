@@ -11,6 +11,11 @@ permissions:
   pull-requests: read
   issues: read
   packages: write
+env:
+  CI_LINT: ${{ github.event_name == 'pull_request' }}
+  CI_TEST: ${{ github.event_name == 'pull_request' }}
+  CI_PUBLISH_RELASE: false ## TODO: enable me later.
+  CI_PUBLISH_PRERELEASE: ${{ github.repository == 'radius-project/dashboard' && github.ref == 'refs/heads/main' && github.event_name == 'push' }}
 jobs:
   build:
     name: Build Packages
@@ -29,8 +34,10 @@ jobs:
       - name: Install dependencies
         run: yarn install --frozen-lockfile
       - name: Lint
+        if: ${{ env.CI_LINT == 'true' }}
         run: yarn run lint:all
       - name: Format
+        if: ${{ env.CI_LINT == 'true' }}
         run: yarn run format:check
       - name: Build TypeScript
         run: yarn run tsc
@@ -39,8 +46,10 @@ jobs:
       - name: Build Storybook
         run: yarn workspace @radapp.io/rad-components run build-storybook
       - name: Run Tests
+        if: ${{ env.CI_TEST == 'true' }}
         run: yarn run test:all
       - name: Run E2E Tests
+        if: ${{ env.CI_TEST == 'true' }}
         run: yarn run test:e2e
   build-and-publish-container:
     name: Build and Publish Container
@@ -68,6 +77,13 @@ jobs:
         uses: ./.github/actions/analyze-image
         with:
           image: ghcr.io/radius-project/dashboard:latest
+      - name: Login (to ghcr.io on push to main)
+        if: ${{ env.CI_PUBLISH_PRERELEASE == 'true' || env.CI_PUBLISH_RELASE == 'true' }}
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{github.actor}}
+          password: ${{secrets.GITHUB_TOKEN}}
       - name: Push Image (to ghcr.io on push to main)
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        if: ${{ env.CI_PUBLISH_PRERELEASE == 'true' }}
         run: docker push ghcr.io/radius-project/dashboard:latest
