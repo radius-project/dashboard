@@ -1,0 +1,25 @@
+name: 'Analyze Image (dive)'
+description: |
+  Analyze a container image using dive (https://github.com/wagoodman/dive).
+
+  This will output statistics about the layers, size, and wasted space in the image.
+inputs:
+  image:
+    description: 'Image to analyze'
+    required: true
+  docker-socket:
+    description: 'Path to the docker socket'
+    required: false
+    default: '/var/run/docker.sock'
+outputs: {}
+runs:
+  using: 'composite'
+  steps:
+    - run: |
+        docker run \
+        --rm \
+        -v ${{ inputs.docker-socket }}:/var/run/docker.sock \
+        -e CI=true \
+        wagoodman/dive:latest \
+        ${{ inputs.image }}
+      shell: bash
