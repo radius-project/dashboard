@@ -9,8 +9,8 @@ const Example: FC<AppGraphProps> = ({ graph = sampledata.DemoApplication }) => {
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'stretch',
-        height: '100%',
-        minHeight: '500px',
+        height: '500px',
+        width: '800px',
       }}
     >
       <AppGraph graph={graph} />

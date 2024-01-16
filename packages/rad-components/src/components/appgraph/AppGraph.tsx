@@ -60,7 +60,9 @@ const LayoutFlow = (props: { graph: AppGraphData }) => {
   );
 };
 
-function AppGraph(props: { graph: AppGraphData }) {
+export type AppGraphProps = { graph: AppGraphData };
+
+function AppGraph(props: AppGraphProps) {
   return (
     <div {...props} style={{ height: '100%', width: '100%' }}>
       <ReactFlowProvider>
