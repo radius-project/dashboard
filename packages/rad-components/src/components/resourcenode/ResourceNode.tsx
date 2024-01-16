@@ -4,10 +4,10 @@ import { Handle, NodeProps, Position } from 'reactflow';
 
 //  Note: the default style assigned to a node gives it a 150px width
 // from style: .react-flow__node-default.
-//
-// We're setting a f
 
-function ResourceNode(props: Pick<NodeProps<Resource>, 'data'>) {
+export type ResourceNodeProps = Pick<NodeProps<Resource>, 'data'>;
+
+function ResourceNode(props: ResourceNodeProps) {
   return (
     <>
       <Handle type="target" position={Position.Top} />
