@@ -20,8 +20,6 @@ import {
   SidebarPage,
   SidebarScrollWrapper,
   SidebarSpace,
-  SidebarSubmenu,
-  SidebarSubmenuItem,
   useSidebarOpenState,
   Link,
 } from '@backstage/core-components';
