@@ -1,6 +1,6 @@
 {
   "name": "@radapp.io/rad-components",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "description": "Components for use with Radius",
   "type": "module",
   "main": "dist/index.cjs.js",
@@ -64,12 +64,16 @@
     "typescript": "^5.3.3"
   },
   "peerDependencies": {
-    "react": "^16.13.1 || ^17.0.2",
-    "react-dom": "^16.13.1 || ^17.0.2"
+    "react": "^16.13.1 || ^17.0.2 || ^18.2.0",
+    "react-dom": "^16.13.1 || ^17.0.2 || ^18.2.0"
   },
   "dependencies": {
     "@dagrejs/dagre": "^1.0.4",
     "dagre": "^0.8.5",
     "reactflow": "^11.10.1"
+  },
+  "publishConfig": {
+    "registry": "https://registry.yarnpkg.com",
+    "access": "public"
   }
 }
