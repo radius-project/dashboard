@@ -1,7 +1,6 @@
 import { HomePageCompanyLogo } from '@backstage/plugin-home';
 import { Grid, makeStyles } from '@material-ui/core';
 import React from 'react';
-import { SearchContextProvider } from '@backstage/plugin-search-react';
 import { Content, Page } from '@backstage/core-components';
 import {
   ApplicationListInfoCard,
@@ -29,36 +28,34 @@ export const HomePage = () => {
   const { container, infoCard, svg } = useStyles();
 
   return (
-    <SearchContextProvider>
-      <Page themeId="home">
-        <Content>
-          <Grid container justifyContent="center" spacing={6}>
-            <HomePageCompanyLogo
-              className={container}
-              logo={<RadiusLogo className={svg} />}
-            />
-            <Grid container item xs={12}>
-              <Grid item xs={8} md={4}>
-                <LearnCard className={infoCard} />
-              </Grid>
-              <Grid item xs={8} md={4}>
-                <CommunityCard className={infoCard} />
-              </Grid>
-              <Grid item xs={8} md={4}>
-                <SupportCard className={infoCard} />
-              </Grid>
+    <Page themeId="home">
+      <Content>
+        <Grid container justifyContent="center" spacing={6}>
+          <HomePageCompanyLogo
+            className={container}
+            logo={<RadiusLogo className={svg} />}
+          />
+          <Grid container item xs={12}>
+            <Grid item xs={8} md={4}>
+              <LearnCard className={infoCard} />
             </Grid>
-            <Grid container item xs={12}>
-              <Grid item xs={12} md={6}>
-                <ApplicationListInfoCard />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <EnvironmentListInfoCard />
-              </Grid>
+            <Grid item xs={8} md={4}>
+              <CommunityCard className={infoCard} />
+            </Grid>
+            <Grid item xs={8} md={4}>
+              <SupportCard className={infoCard} />
             </Grid>
           </Grid>
-        </Content>
-      </Page>
-    </SearchContextProvider>
+          <Grid container item xs={12}>
+            <Grid item xs={12} md={6}>
+              <ApplicationListInfoCard />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <EnvironmentListInfoCard />
+            </Grid>
+          </Grid>
+        </Grid>
+      </Content>
+    </Page>
   );
 };
