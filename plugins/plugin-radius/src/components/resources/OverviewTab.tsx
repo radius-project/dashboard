@@ -1,6 +1,7 @@
 import React from 'react';
-import { Resource, parseResourceId } from '../../resources';
 import { InfoCard, StructuredMetadataTable } from '@backstage/core-components';
+import { Box } from '@material-ui/core';
+import { Resource, parseResourceId } from '../../resources';
 import { ResourceLink } from '../resourcelink/ResourceLink';
 import { ResourceBreadcrumbs } from '../resourcebreadcrumbs';
 
@@ -24,9 +25,11 @@ export const OverviewTab = (props: { resource: Resource }) => {
 
   return (
     <>
-      <ResourceBreadcrumbs resource={props.resource} />
+      <Box mb={3}>
+        <ResourceBreadcrumbs resource={props.resource} />
+      </Box>
       <InfoCard title="Resource Overview">
-          <StructuredMetadataTable metadata={metadata} />
+        <StructuredMetadataTable metadata={metadata} />
       </InfoCard>
     </>
   );
