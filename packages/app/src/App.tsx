@@ -1,9 +1,6 @@
 import React from 'react';
 import { Route } from 'react-router-dom';
-import { apiDocsPlugin } from '@backstage/plugin-api-docs';
 import { catalogPlugin } from '@backstage/plugin-catalog';
-import { catalogImportPlugin } from '@backstage/plugin-catalog-import';
-import { orgPlugin } from '@backstage/plugin-org';
 import { UserSettingsPage } from '@backstage/plugin-user-settings';
 import { apis } from './apis';
 import { HomepageCompositionRoot } from '@backstage/plugin-home';
@@ -90,12 +87,6 @@ const app = createApp({
   bindRoutes({ bind }) {
     bind(radiusPlugin.externalRoutes, {});
     bind(catalogPlugin.externalRoutes, {});
-    bind(apiDocsPlugin.externalRoutes, {
-      registerApi: catalogImportPlugin.routes.importPage,
-    });
-    bind(orgPlugin.externalRoutes, {
-      catalogIndex: catalogPlugin.routes.catalogIndex,
-    });
   },
 });
 
