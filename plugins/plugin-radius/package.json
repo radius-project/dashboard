@@ -48,7 +48,6 @@
     "@backstage/dev-utils": "^1.0.25",
     "@backstage/plugin-kubernetes-common": "^0.7.2",
     "@backstage/test-utils": "^1.4.6",
-    "@radapp.io/rad-components": "^0.0.7",
     "@testing-library/dom": "^8.0.0",
     "@testing-library/jest-dom": "^5.10.1",
     "@testing-library/react": "^12.1.3",
