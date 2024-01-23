@@ -14,10 +14,10 @@ import {
   ApplicationProperties,
   Resource,
   ResourceList,
-  parseResourceId,
 } from '../../resources';
 import { ResourceLink } from '../resourcelink';
 import { resourcePageRouteRef } from '../../routes';
+import { parseResourceId } from '@radapp.io/rad-components';
 
 const ApplicationListInfoContent = () => {
   const route = useRouteRef(resourcePageRouteRef);
