@@ -1,7 +1,6 @@
 import React, { PropsWithChildren } from 'react';
 import { makeStyles } from '@material-ui/core';
 import HomeIcon from '@material-ui/icons/Home';
-import ExtensionIcon from '@material-ui/icons/Extension';
 import PublicIcon from '@material-ui/icons/Public';
 import ListAltIcon from '@material-ui/icons/ListAlt';
 import AssessmentIcon from '@material-ui/icons/Assessment';
@@ -10,7 +9,6 @@ import {
   Settings as SidebarSettings,
   UserSettingsSignInAvatar,
 } from '@backstage/plugin-user-settings';
-import { SidebarSearchModal } from '@backstage/plugin-search';
 import {
   Sidebar,
   sidebarConfig,
@@ -24,7 +22,6 @@ import {
   Link,
 } from '@backstage/core-components';
 import MenuIcon from '@material-ui/icons/Menu';
-import SearchIcon from '@material-ui/icons/Search';
 import { RadiusLogo } from '@internal/plugin-radius';
 
 const useSidebarLogoStyles = makeStyles({
@@ -67,9 +64,6 @@ export const Root = ({ children }: PropsWithChildren<NonNullable<object>>) => (
   <SidebarPage>
     <Sidebar>
       <SidebarLogo />
-      <SidebarGroup label="Search" icon={<SearchIcon />} to="/search">
-        <SidebarSearchModal />
-      </SidebarGroup>
       <SidebarDivider />
       <SidebarGroup label="Menu" icon={<MenuIcon />}>
         {/* Global nav, not org-specific */}
@@ -78,7 +72,6 @@ export const Root = ({ children }: PropsWithChildren<NonNullable<object>>) => (
         <SidebarItem icon={ListAltIcon} to="applications" text="Applications" />
         <SidebarItem icon={AssessmentIcon} to="resources" text="Resources" />
         <SidebarItem icon={RestaurantIcon} to="recipes" text="Recipes" />
-        <SidebarItem icon={ExtensionIcon} to="catalog" text="Catalog" />
         {/* End global nav */}
         <SidebarDivider />
         <SidebarScrollWrapper />

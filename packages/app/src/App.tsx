@@ -1,20 +1,8 @@
 import React from 'react';
 import { Route } from 'react-router-dom';
-import { apiDocsPlugin } from '@backstage/plugin-api-docs';
-import {
-  CatalogEntityPage,
-  CatalogIndexPage,
-  catalogPlugin,
-} from '@backstage/plugin-catalog';
-import { catalogImportPlugin } from '@backstage/plugin-catalog-import';
-import { scaffolderPlugin } from '@backstage/plugin-scaffolder';
-import { orgPlugin } from '@backstage/plugin-org';
-import { SearchPage } from '@backstage/plugin-search';
-import { techdocsPlugin } from '@backstage/plugin-techdocs';
+import { catalogPlugin } from '@backstage/plugin-catalog';
 import { UserSettingsPage } from '@backstage/plugin-user-settings';
 import { apis } from './apis';
-import { entityPage } from './components/catalog/EntityPage';
-import { searchPage } from './components/search/SearchPage';
 import { HomepageCompositionRoot } from '@backstage/plugin-home';
 import { Root } from './components/Root';
 
@@ -30,6 +18,7 @@ import {
   ResourcePage,
   radiusPlugin,
 } from '@internal/plugin-radius';
+import { kubernetesPlugin } from '@backstage/plugin-kubernetes';
 import {
   UnifiedThemeProvider,
   createBaseThemeOptions,
@@ -91,23 +80,13 @@ const app = createApp({
       ),
     },
   ],
+  plugins: [
+    // Called for side-effect since we're not using their UI.
+    kubernetesPlugin,
+  ],
   bindRoutes({ bind }) {
     bind(radiusPlugin.externalRoutes, {});
-    bind(catalogPlugin.externalRoutes, {
-      createComponent: scaffolderPlugin.routes.root,
-      viewTechDoc: techdocsPlugin.routes.docRoot,
-      createFromTemplate: scaffolderPlugin.routes.selectedTemplate,
-    });
-    bind(apiDocsPlugin.externalRoutes, {
-      registerApi: catalogImportPlugin.routes.importPage,
-    });
-    bind(scaffolderPlugin.externalRoutes, {
-      registerComponent: catalogImportPlugin.routes.importPage,
-      viewTechDoc: techdocsPlugin.routes.docRoot,
-    });
-    bind(orgPlugin.externalRoutes, {
-      catalogIndex: catalogPlugin.routes.catalogIndex,
-    });
+    bind(catalogPlugin.externalRoutes, {});
   },
 });
 
@@ -115,16 +94,6 @@ const routes = (
   <FlatRoutes>
     <Route path="/" element={<HomepageCompositionRoot />}>
       <HomePage />
-    </Route>
-    <Route path="/catalog" element={<CatalogIndexPage />} />
-    <Route
-      path="/catalog/:namespace/:kind/:name"
-      element={<CatalogEntityPage />}
-    >
-      {entityPage}
-    </Route>
-    <Route path="/search" element={<SearchPage />}>
-      {searchPage}
     </Route>
     <Route path="/settings" element={<UserSettingsPage />} />
     <Route path="/catalog-graph" element={<CatalogGraphPage />} />
