@@ -1,6 +1,7 @@
 import React from 'react';
 import { Resource } from '../../resources';
 import { ResourceTable } from '../resourcetable';
+import { ResourceBreadcrumbs } from '../resourcebreadcrumbs';
 
 export const ApplicationResourcesTab = ({
   resource,
@@ -8,9 +9,12 @@ export const ApplicationResourcesTab = ({
   resource: Resource;
 }) => {
   return (
-    <ResourceTable
-      title="Application Resources"
-      filters={{ application: resource.id }}
-    />
+    <>
+      <ResourceBreadcrumbs resource={resource} />
+      <ResourceTable
+        title="Application Resources"
+        filters={{ application: resource.id }}
+      />
+    </>
   );
 };
