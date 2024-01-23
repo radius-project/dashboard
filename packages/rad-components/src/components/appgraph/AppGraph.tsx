@@ -13,7 +13,7 @@ import { AppGraph as AppGraphData, Resource } from '../../graph';
 import { ResourceNode } from '../resourcenode/index';
 
 import 'reactflow/dist/style.css';
-import { parseResourceId } from './resourceId';
+import { parseResourceId } from '../../resourceId';
 
 const nodeTypes = { default: ResourceNode };
 

@@ -1,11 +1,14 @@
 {
   "name": "@radapp.io/rad-components",
-  "version": "0.0.3",
+  "version": "0.0.5",
   "description": "Components for use with Radius",
   "type": "module",
   "main": "dist/index.cjs.js",
-  "module": "dist/index.es.js",
+  "module": "dist/index.esm.js",
   "types": "dist/index.d.ts",
+  "backstage": {
+    "role": "web-library"
+  },
   "files": [
     "/dist"
   ],
