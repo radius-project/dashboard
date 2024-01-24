@@ -1,0 +1,52 @@
+# Building the Radius Dashboard
+
+## Prerequisites
+
+- Install a modern version of [Node.js](https://nodejs.org/en/download). We use v21.X.X but other versions are ok.
+- Enable corepack with `corepack enable`.
+
+You'll also want an [environment](https://docs.radapp.io/guides/deploy-apps/environments/overview/) where you can experiment with Radius.
+
+For development, we recommend VS Code. This repo is configured with recommended extensions that can automate parts of the development process when installed.
+
+## Building the code
+
+**Install dependencies:**
+
+```bash
+yarn install
+```
+
+**Build all packages:**
+
+```bash
+yarn workspaces foreach -A run build:all
+```
+
+**Build a specific package**
+
+```bash
+# Substitute rad-components with any package name
+yarn workspace @radapp.io/rad-components run build
+```
+
+**Build the dashboard container**
+
+```bash
+yarn install
+yarn tsc
+yarn build:backend --config ../../app-config.yaml --config ../../app-config.dashboard.yaml
+yarn build-image
+```
+
+The current `Dockerfile` is set up to build the container using state from the repo like the `node_modules/` folder. This is why the set of steps described above is required.
+
+## Scripts
+
+**Run a specific script in a specific package**
+
+```bash
+# Substitute rad-components with any package name
+# Substitute link with any script name
+yarn workspace @radapp.io/rad-components run lint
+```
