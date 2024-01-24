@@ -1,5 +1,5 @@
 name: Engineering Improvement
-description: Report problems or suggestions to improve the Radius engineering processes and/or pipelines
+description: Report problems or suggestions to improve the Radius Dashboard engineering processes and/or pipelines
 title: '<TITLE>'
 labels: ['maintenance']
 body:
@@ -34,30 +34,16 @@ body:
       description: Have you found a way to implement or fix the issue?
     validations:
       required: false
-  - type: markdown
-    attributes:
-      value: '## System information'
-  - type: textarea
-    attributes:
-      label: rad Version
-      description: What rad cli version are you running?
-      placeholder: PASTE OUTPUT OF "rad version"
-    validations:
-      required: true
-  - type: textarea
-    attributes:
-      label: Operating system
-      description: What operating system (macOS Monterey, Windows 11, etc.) and architecture (x86, x64, arm64, etc.) are you running?
-      placeholder: |
-        For example: macOS Monterey, M1 chip
-    validations:
-      required: false
   - type: textarea
     attributes:
       label: Additional context
-      description: Add any other context about the problem here
+      description: Add any other context about the problem here.
       placeholder: |
         Links? References? Anything that will give us more context about the issue you are encountering!
+
+        What browser (Chrome, Firefox, Edge, etc.) are you using to access the dashboard? For example: Chrome Version 121.0.6167.85 (Official Build) (arm64)
+
+        What rad cli version are you running? You can run `rad version` and past the output here.
 
         Tip: You can attach images or files by clicking this area to highlight it and then dragging files in.
     validations:
