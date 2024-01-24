@@ -1,6 +1,13 @@
 # Radius Dashboard
 
-Frontend experience for Project Radius
+Radius Dashboard is the frontend experience for [Radius](https://github.com/radius-project/radius), a cloud-native application platform that enables developers and the platform engineers that support them to collaborate on delivering and managing cloud-native applications that follow organizational best practices for cost, operations and security, by default. Radius is an open-source project that supports deploying applications across private cloud, Microsoft Azure, and Amazon Web Services, with more cloud providers to come.
+
+The Radius Dashboard is built on [Backstage](https://backstage.io/), an open-source platform for building developer portals that provides a rich set of components to accelerate UI development. The Radius Dashboard is a skinned deployment of Backstage that includes a set of plugins that provide the Radius experience. The components that make up the dashboard are built with extensibility in mind so that they can be used in other contexts beyond Backstage in the future.
+
+Key features of the Radius Dashboard currently include: 
+- *Application graph visualization*: A visualization of the application graph that shows how resources within an application are connected to each other and the underlying infrastructure.
+- *Resource overview and details*: Detailed information about resources within Radius, including applications, environments, and infrastructure.
+- *Recipes directory*: A listing of all the Radius Recipes available to the user for a given environment. 
 
 ## Organization
 
@@ -145,3 +152,17 @@ yarn run format:check
 ```
 yarn run format:write
 ```
+
+## Getting help
+
+- ❓ **Have a question?** - Visit our [Discord server](https://discord.gg/SRG3ePMKNy) to post your question and we'll get back to you ASAP
+- ⚠️ **Found an issue?** - Refer to our [Issues guide](docs/contributing/contributing-issues) for instructions on filing a bug report
+- 💡 **Have a proposal?** - Refer to our [Issues guide](docs/contributing/contributing-issues) for instructions on filing a feature request
+
+## Community
+
+We welcome your contributions and suggestions! One of the easiest ways to contribute is to participate in Issue discussions, chat on [Discord server](https://discord.gg/SRG3ePMKNy) or the monthly [community calls](#community-calls). For more information on the community engagement, developer and contributing guidelines and more, head over to the [Radius community repo](https://github.com/radius-project/community).
+
+## Code of conduct
+
+Please refer to our [Radius Community Code of Conduct](https://github.com/radius-project/community/blob/main/CODE-OF-CONDUCT.md)
