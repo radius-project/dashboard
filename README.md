@@ -42,7 +42,7 @@ We welcome your contributions and suggestions! One of the easiest ways to contri
 
 ## Security
 
-Please refer to our guide on [Reporting security vulnerabilities](SECURITY.md)
+Please refer to our guide on [Reporting security vulnerabilities](https://github.com/radius-project/radius/blob/main/SECURITY.md).
 
 ## Code of conduct
 
