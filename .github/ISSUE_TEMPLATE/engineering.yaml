@@ -1,11 +1,11 @@
 name: Engineering Improvement
 description: Report problems or suggestions to improve the Radius engineering processes and/or pipelines
-title: "<TITLE>"
-labels: ["maintenance"]
+title: '<TITLE>'
+labels: ['maintenance']
 body:
   - type: markdown
     attributes:
-      value: "## Engineering Improvement"
+      value: '## Engineering Improvement'
   - type: textarea
     attributes:
       label: Area for Improvement
@@ -36,7 +36,7 @@ body:
       required: false
   - type: markdown
     attributes:
-      value: "## System information"
+      value: '## System information'
   - type: textarea
     attributes:
       label: rad Version

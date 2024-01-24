@@ -1,11 +1,11 @@
 name: Bug Report
 description: Report broken functionality within Radius Dashboard
-title: "<BUG TITLE>"
-labels: ["bug"]
+title: '<BUG TITLE>'
+labels: ['bug']
 body:
   - type: markdown
     attributes:
-      value: "## Bug information"
+      value: '## Bug information'
   - type: textarea
     attributes:
       label: Steps to reproduce
@@ -36,7 +36,7 @@ body:
       required: false
   - type: markdown
     attributes:
-      value: "## System information"
+      value: '## System information'
   - type: textarea
     attributes:
       label: rad Version

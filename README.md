@@ -4,10 +4,11 @@ Radius Dashboard is the frontend experience for [Radius](https://github.com/radi
 
 The Radius Dashboard is built on [Backstage](https://backstage.io/), an open-source platform for building developer portals that provides a rich set of components to accelerate UI development. The Radius Dashboard is a skinned deployment of Backstage that includes a set of plugins that provide the Radius experience. The components that make up the dashboard are built with extensibility in mind so that they can be used in other contexts beyond Backstage in the future.
 
-Key features of the Radius Dashboard currently include: 
-- *Application graph visualization*: A visualization of the application graph that shows how resources within an application are connected to each other and the underlying infrastructure.
-- *Resource overview and details*: Detailed information about resources within Radius, including applications, environments, and infrastructure.
-- *Recipes directory*: A listing of all the Radius Recipes available to the user for a given environment. 
+Key features of the Radius Dashboard currently include:
+
+- _Application graph visualization_: A visualization of the application graph that shows how resources within an application are connected to each other and the underlying infrastructure.
+- _Resource overview and details_: Detailed information about resources within Radius, including applications, environments, and infrastructure.
+- _Recipes directory_: A listing of all the Radius Recipes available to the user for a given environment.
 
 ## Organization
 
