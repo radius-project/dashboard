@@ -6,9 +6,19 @@ This page how to run and develop the Radius Dashboard and its components.
 
 **Launch the Dashboard:**
 
+_Run in separate terminals:_
+
+```bash
+kubectl proxy
+```
+
 ```bash
 yarn dev
 ```
+
+You can leave these commands running while you work on the Dashboard. Changes you make will be reflected in the browser pretty immediately.
+
+The Dashboard is configured to look for a Kubernetes API server on `localhost:8001`. Running `kubectl proxy` will open a port-forward to your currently-configured Kubernetes cluster.
 
 This will launch the Dashboard at `http://localhost:3000`.
 

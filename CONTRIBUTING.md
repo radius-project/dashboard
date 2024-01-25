@@ -9,7 +9,6 @@ You can find our full **contributor documentation** including instructions at th
 - [Code organization](docs/contributing/contributing-code/contributing-code-organization/)
 - [Code building](docs/contributing/contributing-code/contributing-code-building/)
 - [Code developing](docs/contributing/contributing-code/contributing-code-developing/)
-- [Code testing](docs/contributing/contributing-code/contributing-code-testing/)
 - [Contributing issues](docs/contributing/contributing-issues/)
 
 ## Current status
