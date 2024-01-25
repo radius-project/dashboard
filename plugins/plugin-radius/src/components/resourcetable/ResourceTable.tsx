@@ -1,5 +1,5 @@
 import React from 'react';
-import { Resource, ResourceList, parseResourceId } from '../../resources';
+import { Resource, ResourceList } from '../../resources';
 import {
   Progress,
   ResponseErrorPanel,
@@ -13,6 +13,7 @@ import {
 import { useApi } from '@backstage/core-plugin-api';
 import useAsync from 'react-use/lib/useAsync';
 import { radiusApiRef } from '../../plugin';
+import { parseResourceId } from '@radapp.io/rad-components';
 
 const DataTable = (props: {
   resources: Resource[];

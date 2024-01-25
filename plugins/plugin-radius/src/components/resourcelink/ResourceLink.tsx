@@ -1,6 +1,6 @@
 import React, { PropsWithChildren } from 'react';
 import { Link } from '@backstage/core-components';
-import { parseResourceId } from '../../resources/resourceId';
+import { parseResourceId } from '@radapp.io/rad-components';
 import { useRouteRef } from '@backstage/core-plugin-api';
 import { resourcePageRouteRef } from '../../routes';
 

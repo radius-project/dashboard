@@ -1,9 +1,10 @@
 import React from 'react';
+import { Resource } from '../../resources';
 import { InfoCard, StructuredMetadataTable } from '@backstage/core-components';
 import { Box } from '@material-ui/core';
-import { Resource, parseResourceId } from '../../resources';
 import { ResourceLink } from '../resourcelink/ResourceLink';
 import { ResourceBreadcrumbs } from '../resourcebreadcrumbs';
+import { parseResourceId } from '@radapp.io/rad-components';
 
 export const OverviewTab = (props: { resource: Resource }) => {
   const metadata: { [key: string]: unknown } = {

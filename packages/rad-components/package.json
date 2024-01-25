@@ -1,10 +1,10 @@
 {
   "name": "@radapp.io/rad-components",
-  "version": "0.0.1",
+  "version": "0.0.8",
   "description": "Components for use with Radius",
   "type": "module",
   "main": "dist/index.cjs.js",
-  "module": "dist/index.es.js",
+  "module": "dist/index.esm.js",
   "types": "dist/index.d.ts",
   "backstage": {
     "role": "web-library"
@@ -27,7 +27,6 @@
     "@babel/core": "^7.23.0",
     "@babel/preset-env": "^7.23.6",
     "@babel/preset-react": "^7.23.3",
-    "@backstage/cli": "^0.25.0",
     "@juggle/resize-observer": "^3.4.0",
     "@storybook/addon-essentials": "^7.6.6",
     "@storybook/addon-interactions": "^7.6.6",
@@ -64,12 +63,16 @@
     "typescript": "^5.3.3"
   },
   "peerDependencies": {
-    "react": "^16.13.1 || ^17.0.2",
-    "react-dom": "^16.13.1 || ^17.0.2"
+    "react": "^16.13.1 || ^17.0.2 || ^18.2.0",
+    "react-dom": "^16.13.1 || ^17.0.2 || ^18.2.0"
   },
   "dependencies": {
     "@dagrejs/dagre": "^1.0.4",
     "dagre": "^0.8.5",
     "reactflow": "^11.10.1"
+  },
+  "publishConfig": {
+    "registry": "https://registry.yarnpkg.com",
+    "access": "public"
   }
 }
