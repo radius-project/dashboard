@@ -1,5 +1,5 @@
 import React from 'react';
-import { parseResourceId } from '../../resources';
+import { parseResourceId } from '@radapp.io/rad-components';
 import {
   InfoCard,
   Progress,

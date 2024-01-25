@@ -13,7 +13,7 @@ import { AppGraph as AppGraphData, Resource } from '../../graph';
 import { ResourceNode } from '../resourcenode/index';
 
 import 'reactflow/dist/style.css';
-import { parseResourceId } from '@internal/plugin-radius/src/resources';
+import { parseResourceId } from '../../resourceId';
 
 const nodeTypes = { default: ResourceNode };
 

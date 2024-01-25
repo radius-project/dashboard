@@ -1,4 +1,4 @@
-import { parseResourceId } from './resourceId';
+import { parseResourceId } from '@radapp.io/rad-components';
 
 describe('parseResourceId', () => {
   it('should parse a valid environment resource ID', () => {

@@ -10,14 +10,10 @@ import { useApi, useRouteRef } from '@backstage/core-plugin-api';
 import React from 'react';
 import useAsync from 'react-use/lib/useAsync';
 import { radiusApiRef } from '../../plugin';
-import {
-  EnvironmentProperties,
-  Resource,
-  ResourceList,
-  parseResourceId,
-} from '../../resources';
+import { EnvironmentProperties, Resource, ResourceList } from '../../resources';
 import { ResourceLink } from '../resourcelink';
 import { resourcePageRouteRef } from '../../routes';
+import { parseResourceId } from '@radapp.io/rad-components';
 
 const EnvironmentListInfoContent = () => {
   const route = useRouteRef(resourcePageRouteRef);
