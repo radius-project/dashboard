@@ -22,4 +22,3 @@ export interface Connection {
 }
 
 export type Direction = 'Outbound' | 'Inbound';
-
