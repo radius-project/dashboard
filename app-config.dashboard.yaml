@@ -21,7 +21,7 @@ kubernetes:
     - type: config
       clusters:
         - name: self
-          url: https://kubernetes
+          url: https://kubernetes.default.svc.cluster.local
           authProvider: serviceAccount
           skipTLSVerify: true
           skipMetricsLookup: true
