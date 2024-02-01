@@ -23,11 +23,13 @@ Key features of the Radius Dashboard currently include:
    ```bash
    kubectl apply -f https://raw.githubusercontent.com/radius-project/dashboard/main/deploy/dashboard.yaml
    ```
+
 1. Once the manifest is applied and the resources are created, port-forward the dashboard service to your local machine:
 
    ```bash
    kubectl port-forward --namespace=radius-system svc/dashboard 3000:80
    ```
+
 1. Access the dashboard at [http://localhost:3000](http://localhost:3000)
 
 ## Getting help

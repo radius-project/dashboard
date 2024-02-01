@@ -48,9 +48,9 @@ metadata:
   name: dashboard-role
   namespace: radius-system
 rules:
-  - apiGroups: ["", "api.ucp.dev"]
-    resources: ["*"]
-    verbs: ["*"]
+  - apiGroups: ['', 'api.ucp.dev']
+    resources: ['*']
+    verbs: ['*']
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
