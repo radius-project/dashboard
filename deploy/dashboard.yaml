@@ -16,7 +16,7 @@ spec:
       serviceAccountName: dashboard-account
       containers:
         - name: dashboard
-          image: ghcr.io/aaroncrawfis/dashboard:latest
+          image: ghcr.io/radius-project/dashboard:latest
           imagePullPolicy: Always
           ports:
             - name: http
