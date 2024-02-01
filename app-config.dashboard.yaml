@@ -21,6 +21,8 @@ kubernetes:
     - type: config
       clusters:
         - name: self
+          # The URL to the in-cluster Kubernetes API server.
+          # Backstage docs state it should be ignored when in-cluster, but it appears to be used.
           url: https://kubernetes.default.svc.cluster.local
           authProvider: serviceAccount
           skipTLSVerify: true
