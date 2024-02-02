@@ -2,7 +2,7 @@
 
 Radius Dashboard is the frontend experience for [Radius](https://github.com/radius-project/radius), a cloud-native application platform that enables developers and the platform engineers that support them to collaborate on delivering and managing cloud-native applications that follow organizational best practices for cost, operations and security, by default. Radius is an open-source project that supports deploying applications across private cloud, Microsoft Azure, and Amazon Web Services, with more cloud providers to come.
 
-> NOTE: Radius Dashboard is currently in a prototype stage and thus is not yet packaged into Radius and its releases, though we are planning to add it to the Radius installation soon. The best way to use Radius Dashboard right now is to clone the repo and run it locally, see the [contribution guide](./CONTRIBUTING.md) for instructions on how to build and run the code.
+> NOTE: Radius Dashboard is currently in a prototype stage and thus is not yet packaged into Radius and its releases, though we are planning to add it to the Radius installation soon. The best way to use Radius Dashboard right now is to [manually install it in your cluster](#kubernetes-installation), or clone the repo and run it locally. See the [contribution guide](./CONTRIBUTING.md) for instructions on how to build and run the code.
 
 The Radius Dashboard is built on [Backstage](https://backstage.io/), an open-source platform for building developer portals that provides a rich set of components to accelerate UI development. The Radius Dashboard is a skinned deployment of Backstage that includes a set of plugins that provide the Radius experience. The components that make up the dashboard are built with extensibility in mind so that they can be used in other contexts beyond Backstage in the future.
 
@@ -11,6 +11,26 @@ Key features of the Radius Dashboard currently include:
 - _Application graph visualization_: A visualization of the application graph that shows how resources within an application are connected to each other and the underlying infrastructure.
 - _Resource overview and details_: Detailed information about resources within Radius, including applications, environments, and infrastructure.
 - _Recipes directory_: A listing of all the Radius Recipes available to the user for a given environment.
+
+## Kubernetes installation
+
+> NOTE: The Radius Dashboard is currently in a prototype stage and is distributed separately from the main Radius project. The best way to use Radius Dashboard right now is to manually install it in your cluster:
+
+1. Make sure you have a Kubernetes cluster running and `kubectl` installed and configured to point to your cluster.
+1. Ensure you have Radius installed and running in your cluster. If you don't have Radius installed, you can follow the [Radius installation guide](https://docs.radapp.io/installation/)
+1. Apply the [Radius Dashboard manifest](./deploy/dashboard.yaml) to your cluster:
+
+   ```bash
+   kubectl apply -f https://raw.githubusercontent.com/radius-project/dashboard/main/deploy/dashboard.yaml
+   ```
+
+1. Once the manifest is applied and the resources are created, port-forward the dashboard service to your local machine:
+
+   ```bash
+   kubectl port-forward --namespace=radius-system svc/dashboard 3000:80
+   ```
+
+1. Access the dashboard at [http://localhost:3000](http://localhost:3000)
 
 ## Getting help
 

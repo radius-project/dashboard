@@ -20,12 +20,13 @@ kubernetes:
   clusterLocatorMethods:
     - type: config
       clusters:
-        - name: minikube
-          url: https://kubernetes
+        - name: self
+          # The URL to the in-cluster Kubernetes API server.
+          # Backstage docs state it should be ignored when in-cluster, but it appears to be used.
+          url: https://kubernetes.default.svc.cluster.local
           authProvider: serviceAccount
           skipTLSVerify: true
           skipMetricsLookup: true
-          serviceAccountToken: 'asdf'
 catalog:
   # Overrides the default list locations from app-config.yaml as these contain example data.
   # See https://backstage.io/docs/features/software-catalog/#adding-components-to-the-catalog for more details
