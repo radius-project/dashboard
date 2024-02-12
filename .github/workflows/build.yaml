@@ -16,7 +16,7 @@ permissions:
 env:
   CI_LINT: ${{ github.event_name == 'pull_request' }}
   CI_TEST: ${{ github.event_name == 'pull_request' }}
-  CI_PUBLISH_RELEASE: ${{ github.repository == 'radius-project/dashboard' && github.ref == 'refs/tags/v*' && github.event_name == 'push' }}
+  CI_PUBLISH_RELEASE: ${{ github.repository == 'radius-project/dashboard' && startsWith(github.ref, 'refs/tags/v') && github.event_name == 'push' }}
   CI_PUBLISH_LATEST: ${{ github.repository == 'radius-project/dashboard' && github.ref == 'refs/heads/main' && github.event_name == 'push' }}
 jobs:
   build:
