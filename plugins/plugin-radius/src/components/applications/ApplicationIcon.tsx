@@ -1,21 +1,12 @@
 import React from 'react';
 import { SvgIcon, SvgIconProps } from '@material-ui/core';
 
-export const ApplicationIcon = (
-  props: SvgIconProps & { shape?: 'full' | 'square' },
-) => {
+export const ApplicationIcon = () => {
   const originalWidth = 1080;
   const originalHeight = 1080;
 
   return (
-    <SvgIcon
-      {...props}
-      viewBox={
-        props.shape === 'square'
-          ? `0 0 ${originalHeight} ${originalHeight}`
-          : `0 0 ${originalWidth} ${originalHeight}`
-      }
-    >
+    <SvgIcon viewBox={`0 0 ${originalWidth} ${originalHeight}`}>
       <g>
         <path
           fill="#d0b1fc"

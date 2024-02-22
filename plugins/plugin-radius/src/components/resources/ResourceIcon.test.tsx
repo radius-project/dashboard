@@ -9,18 +9,4 @@ describe('ResourceIcon', () => {
     expect(svg).toBeInTheDocument();
     expect(svg).toHaveAttribute('viewBox', '0 0 1080 1080');
   });
-
-  it('should render the full logo when asked', () => {
-    const result = render(<ResourceIcon shape="full" />);
-    const svg = result.baseElement.querySelector('svg');
-    expect(svg).toBeInTheDocument();
-    expect(svg).toHaveAttribute('viewBox', '0 0 1080 1080');
-  });
-
-  it('should render the square logo when asked', () => {
-    const result = render(<ResourceIcon shape="square" />);
-    const svg = result.baseElement.querySelector('svg');
-    expect(svg).toBeInTheDocument();
-    expect(svg).toHaveAttribute('viewBox', '0 0 1080 1080');
-  });
 });
