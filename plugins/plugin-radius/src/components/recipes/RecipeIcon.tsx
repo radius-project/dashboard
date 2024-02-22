@@ -1,5 +1,5 @@
 import React from 'react';
-import { SvgIcon, SvgIconProps } from '@material-ui/core';
+import { SvgIcon } from '@material-ui/core';
 
 export const RecipeIcon = () => {
   const originalWidth = 1080;
