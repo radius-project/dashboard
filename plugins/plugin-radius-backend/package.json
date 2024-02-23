@@ -24,7 +24,7 @@
     "postpack": "backstage-cli package postpack"
   },
   "dependencies": {
-    "@backstage/backend-common": "^0.20.0",
+    "@backstage/backend-common": "^0.20.2",
     "@backstage/config": "^1.1.1",
     "@types/express": "*",
     "express": "^4.17.1",
