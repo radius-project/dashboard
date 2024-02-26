@@ -1,10 +1,5 @@
 import React, { PropsWithChildren } from 'react';
 import { makeStyles } from '@material-ui/core';
-import HomeIcon from '@material-ui/icons/Home';
-import PublicIcon from '@material-ui/icons/Public';
-import ListAltIcon from '@material-ui/icons/ListAlt';
-import AssessmentIcon from '@material-ui/icons/Assessment';
-import RestaurantIcon from '@material-ui/icons/Restaurant';
 import {
   Settings as SidebarSettings,
   UserSettingsSignInAvatar,
@@ -22,7 +17,14 @@ import {
   Link,
 } from '@backstage/core-components';
 import MenuIcon from '@material-ui/icons/Menu';
-import { RadiusLogo } from '@internal/plugin-radius';
+import {
+  RadiusLogo,
+  RadiusLogomarkReverse,
+  ApplicationIcon,
+  EnvironmentIcon,
+  ResourceIcon,
+  RecipeIcon,
+} from '@internal/plugin-radius';
 
 const useSidebarLogoStyles = makeStyles({
   root: {
@@ -67,11 +69,19 @@ export const Root = ({ children }: PropsWithChildren<NonNullable<object>>) => (
       <SidebarDivider />
       <SidebarGroup label="Menu" icon={<MenuIcon />}>
         {/* Global nav, not org-specific */}
-        <SidebarItem icon={HomeIcon} to="/" text="Home" />
-        <SidebarItem icon={PublicIcon} to="environments" text="Environments" />
-        <SidebarItem icon={ListAltIcon} to="applications" text="Applications" />
-        <SidebarItem icon={AssessmentIcon} to="resources" text="Resources" />
-        <SidebarItem icon={RestaurantIcon} to="recipes" text="Recipes" />
+        <SidebarItem icon={RadiusLogomarkReverse} to="/" text="Home" />
+        <SidebarItem
+          icon={EnvironmentIcon}
+          to="environments"
+          text="Environments"
+        />
+        <SidebarItem
+          icon={ApplicationIcon}
+          to="applications"
+          text="Applications"
+        />
+        <SidebarItem icon={ResourceIcon} to="resources" text="Resources" />
+        <SidebarItem icon={RecipeIcon} to="recipes" text="Recipes" />
         {/* End global nav */}
         <SidebarDivider />
         <SidebarScrollWrapper />
