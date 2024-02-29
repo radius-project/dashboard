@@ -61,8 +61,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      - name: Parse release version and set environment variables
-        run: python ./.github/scripts/get_release_version.py
       - name: Enable corepack
         run: corepack enable
       - name: Install Node.js 21 # Must be after corepack is enabled.
@@ -97,5 +95,5 @@ jobs:
       - name: Push Image to ghcr.io (push to tag)
         if: ${{ env.CI_PUBLISH_RELEASE == 'true' }}
         run: |
-          docker tag ghcr.io/radius-project/dashboard:latest ghcr.io/radius-project/dashboard:${{ env.REL_TAG }}
-          docker push ghcr.io/radius-project/dashboard:${{ env.REL_TAG }}
+          docker tag ghcr.io/radius-project/dashboard:latest ghcr.io/radius-project/dashboard:${{ env.REL_CHANNEL }}
+          docker push ghcr.io/radius-project/dashboard:${{ env.REL_CHANNEL }}
