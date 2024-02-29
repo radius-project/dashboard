@@ -97,5 +97,5 @@ jobs:
       - name: Push Image to ghcr.io (push to tag)
         if: ${{ env.CI_PUBLISH_RELEASE == 'true' }}
         run: |
-          docker tag ghcr.io/radius-project/dashboard:latest ghcr.io/radius-project/dashboard:${{ env.REL_TAG }}
-          docker push ghcr.io/radius-project/dashboard:${{ env.REL_TAG }}
+          docker tag ghcr.io/radius-project/dashboard:latest ghcr.io/radius-project/dashboard:${{ env.REL_CHANNEL }}
+          docker push ghcr.io/radius-project/dashboard:${{ env.REL_CHANNEL }}
