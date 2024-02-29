@@ -61,6 +61,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+      - name: Parse release version and set environment variables
+        run: python ./.github/scripts/get_release_version.py
       - name: Enable corepack
         run: corepack enable
       - name: Install Node.js 21 # Must be after corepack is enabled.
