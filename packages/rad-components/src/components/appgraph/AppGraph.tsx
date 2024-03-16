@@ -7,6 +7,7 @@ import {
   useNodesState,
   useEdgesState,
   ReactFlowProvider,
+  Controls,
 } from 'reactflow';
 import Dagre, { Label } from '@dagrejs/dagre';
 import { AppGraph as AppGraphData, Resource } from '../../graph';
@@ -56,7 +57,9 @@ const LayoutFlow = (props: { graph: AppGraphData }) => {
       onNodesChange={onNodesChange}
       onEdgesChange={onEdgesChange}
       fitView
-    />
+    >
+      <Controls showInteractive={false} />
+    </ReactFlow>
   );
 };
 
