@@ -85,7 +85,7 @@ jobs:
           image: ghcr.io/radius-project/dashboard:latest
       - name: Login to ghcr.io
         if: ${{ env.CI_PUBLISH_LATEST == 'true' || env.CI_PUBLISH_RELEASE == 'true' }}
-        uses: docker/login-action@v1
+        uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
