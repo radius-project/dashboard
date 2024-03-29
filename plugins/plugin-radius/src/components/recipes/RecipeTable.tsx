@@ -18,17 +18,21 @@ export const RecipeTable = ({
 }) => {
   const raw = environment.properties?.recipes;
 
+  let recipes: DisplayRecipe[] = [];
+
   // Recipes are stored two-levels of nested object, so we need to flatten them out.
   // First level is the recipe type, second level is the recipe name.
-  const recipes = Object.keys(raw).flatMap(recipeType =>
-    Object.keys(raw[recipeType]).map(recipeName => {
-      return {
-        type: recipeType,
-        name: recipeName,
-        ...raw[recipeType][recipeName],
-      };
-    }),
-  );
+  if (raw) {
+    recipes = Object.keys(raw).flatMap(recipeType =>
+      Object.keys(raw[recipeType]).map(recipeName => {
+        return {
+          type: recipeType,
+          name: recipeName,
+          ...raw[recipeType][recipeName],
+        };
+      }),
+    );
+  }
 
   const columns: TableColumn<DisplayRecipe>[] = [
     { title: 'Name', field: 'name' },

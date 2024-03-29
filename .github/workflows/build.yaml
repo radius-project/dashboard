@@ -3,6 +3,8 @@ on:
   push:
     branches:
       - main
+    tags:
+      - v*
   pull_request:
     branches:
       - main
@@ -14,8 +16,8 @@ permissions:
 env:
   CI_LINT: ${{ github.event_name == 'pull_request' }}
   CI_TEST: ${{ github.event_name == 'pull_request' }}
-  CI_PUBLISH_RELASE: false ## TODO: enable me later.
-  CI_PUBLISH_PRERELEASE: ${{ github.repository == 'radius-project/dashboard' && github.ref == 'refs/heads/main' && github.event_name == 'push' }}
+  CI_PUBLISH_RELEASE: ${{ github.repository == 'radius-project/dashboard' && startsWith(github.ref, 'refs/tags/v') && github.event_name == 'push' }}
+  CI_PUBLISH_LATEST: ${{ github.repository == 'radius-project/dashboard' && github.ref == 'refs/heads/main' && github.event_name == 'push' }}
 jobs:
   build:
     name: Build Packages
@@ -23,6 +25,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+      - name: Parse release version and set environment variables
+        run: python ./.github/scripts/get_release_version.py
       - name: Enable corepack
         run: corepack enable
       - name: Install Node.js 21 # Must be after corepack is enabled.
@@ -57,6 +61,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+      - name: Parse release version and set environment variables
+        run: python ./.github/scripts/get_release_version.py
       - name: Enable corepack
         run: corepack enable
       - name: Install Node.js 21 # Must be after corepack is enabled.
@@ -77,13 +83,19 @@ jobs:
         uses: ./.github/actions/analyze-image
         with:
           image: ghcr.io/radius-project/dashboard:latest
-      - name: Login (to ghcr.io on push to main)
-        if: ${{ env.CI_PUBLISH_PRERELEASE == 'true' || env.CI_PUBLISH_RELASE == 'true' }}
-        uses: docker/login-action@v1
+      - name: Login to ghcr.io
+        if: ${{ env.CI_PUBLISH_LATEST == 'true' || env.CI_PUBLISH_RELEASE == 'true' }}
+        uses: docker/login-action@v3
         with:
           registry: ghcr.io
-          username: ${{github.actor}}
-          password: ${{secrets.GITHUB_TOKEN}}
-      - name: Push Image (to ghcr.io on push to main)
-        if: ${{ env.CI_PUBLISH_PRERELEASE == 'true' }}
-        run: docker push ghcr.io/radius-project/dashboard:latest
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Push Image to ghcr.io (push to main)
+        if: ${{ env.CI_PUBLISH_LATEST == 'true' }}
+        run: |
+          docker push ghcr.io/radius-project/dashboard:latest
+      - name: Push Image to ghcr.io (push to tag)
+        if: ${{ env.CI_PUBLISH_RELEASE == 'true' }}
+        run: |
+          docker tag ghcr.io/radius-project/dashboard:latest ghcr.io/radius-project/dashboard:${{ env.REL_CHANNEL }}
+          docker push ghcr.io/radius-project/dashboard:${{ env.REL_CHANNEL }}
