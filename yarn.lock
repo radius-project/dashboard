@@ -5262,7 +5262,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@internal/backend@workspace:packages/backend"
   dependencies:
-    "@backstage/backend-common": "npm:^0.20.0"
+    "@backstage/backend-common": "npm:^0.20.2"
     "@backstage/backend-tasks": "npm:^0.5.13"
     "@backstage/catalog-client": "npm:^1.5.1"
     "@backstage/catalog-model": "npm:^1.4.3"
@@ -5297,7 +5297,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@internal/plugin-radius-backend@workspace:plugins/plugin-radius-backend"
   dependencies:
-    "@backstage/backend-common": "npm:^0.20.0"
+    "@backstage/backend-common": "npm:^0.20.2"
     "@backstage/cli": "npm:^0.25.0"
     "@backstage/config": "npm:^1.1.1"
     "@types/express": "npm:*"
