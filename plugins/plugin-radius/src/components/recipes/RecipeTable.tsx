@@ -1,5 +1,5 @@
 import React from 'react';
-import { Table, TableColumn } from '@backstage/core-components';
+import { Table, TableColumn, TableFilter } from '@backstage/core-components';
 import { EnvironmentProperties, Resource } from '../../resources';
 
 interface DisplayRecipe {
@@ -41,12 +41,33 @@ export const RecipeTable = ({
     { title: 'Template Path', field: 'templatePath' },
   ];
 
+  const filters: TableFilter[] = [
+        {
+          column: 'Name',
+          type: 'select',
+        },
+        {
+          column: 'Type',
+          type: 'multiple-select',
+        },
+        {
+          column: 'Kind',
+          type: 'multiple-select',
+        },
+        {
+          column: 'Template Path',
+          type: 'multiple-select',
+        },
+
+      ];
+
   return (
     <Table
       title={title || 'Recipes'}
-      options={{ search: false, paging: false }}
+      options={{ search: true, paging: false, sorting: true}}
       columns={columns}
       data={recipes}
+      filters={filters}
     />
   );
 };
