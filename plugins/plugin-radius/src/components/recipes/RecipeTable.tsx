@@ -42,29 +42,28 @@ export const RecipeTable = ({
   ];
 
   const filters: TableFilter[] = [
-        {
-          column: 'Name',
-          type: 'select',
-        },
-        {
-          column: 'Type',
-          type: 'multiple-select',
-        },
-        {
-          column: 'Kind',
-          type: 'multiple-select',
-        },
-        {
-          column: 'Template Path',
-          type: 'multiple-select',
-        },
-
-      ];
+    {
+      column: 'Name',
+      type: 'select',
+    },
+    {
+      column: 'Type',
+      type: 'multiple-select',
+    },
+    {
+      column: 'Kind',
+      type: 'multiple-select',
+    },
+    {
+      column: 'Template Path',
+      type: 'multiple-select',
+    },
+  ];
 
   return (
     <Table
       title={title || 'Recipes'}
-      options={{ search: true, paging: false, sorting: true}}
+      options={{ search: true, paging: false, sorting: true }}
       columns={columns}
       data={recipes}
       filters={filters}
