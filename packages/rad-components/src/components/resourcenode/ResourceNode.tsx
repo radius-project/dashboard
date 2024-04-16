@@ -9,17 +9,18 @@ import { parseResourceId } from '@radapp.io/rad-components';
 export type ResourceNodeProps = Pick<NodeProps<Resource>, 'data'>;
 
 function ResourceNode(props: ResourceNodeProps) {
-
-  const group = parseResourceId(props.data.id)?.group
+  const group = parseResourceId(props.data.id)?.group;
 
   return (
     <>
-      <NodeToolbar position={Position.Left} align={"center"}>
-      <div style={{ padding: '4px', backgroundColor: 'grey', fontSize: '.6rem'}}>
-        <p style={{ textAlign: 'left' }}>Name: {props.data.name}</p>
-        <p style={{ textAlign: 'left' }}>Type: {props.data.type}</p>
-        <p style={{ textAlign: 'left' }}>Group: {group}</p>
-      </div>
+      <NodeToolbar position={Position.Left} align={'center'}>
+        <div
+          style={{ padding: '4px', backgroundColor: 'grey', fontSize: '.6rem' }}
+        >
+          <p style={{ textAlign: 'left' }}>Name: {props.data.name}</p>
+          <p style={{ textAlign: 'left' }}>Type: {props.data.type}</p>
+          <p style={{ textAlign: 'left' }}>Group: {group}</p>
+        </div>
       </NodeToolbar>
 
       <Handle type="target" position={Position.Top} />
