@@ -17,8 +17,10 @@ permissions:
   issues: write
 
 jobs:
-  alert:
+  ado:
     runs-on: ubuntu-latest
+    environment:
+      name: issues
     steps:
       # Auth using Azure Service Principals was added as a part of v2.3
       # reference: https://github.com/danhellem/github-actions-issue-to-work-item/pull/143
