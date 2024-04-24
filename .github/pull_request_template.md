@@ -8,7 +8,7 @@ _Please explain the changes you've made._
 
 Please select **one** of the following options that describes your change and delete the others. Clearly identifying the type of change you are making will help us review your PR faster, and is used in authoring release notes.
 
-If you are making a bug fix or functionality change to Radius and do not have an associated issue link please create one now. 
+If you are making a bug fix or functionality change to Radius Dashboard and do not have an associated issue link please create one now. 
 
 -->
 
