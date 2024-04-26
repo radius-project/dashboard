@@ -2,9 +2,8 @@
 
 _Please explain the changes you've made._
 
- ## Type of change
- 
- 
+## Type of change
+
 <!--
 
 Please select **one** of the following options that describes your change and delete the others. Clearly identifying the type of change you are making will help us review your PR faster, and is used in authoring release notes.
