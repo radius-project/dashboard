@@ -7,9 +7,5 @@ export const RecipesTab = ({
 }: {
   resource: Resource<EnvironmentProperties>;
 }) => {
-  return (
-    <RecipeTable
-      environment={resource}
-    />
-  );
+  return <RecipeTable environment={resource} />;
 };
