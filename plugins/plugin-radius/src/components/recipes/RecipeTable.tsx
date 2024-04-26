@@ -44,7 +44,7 @@ export const RecipeTable = ({
   const filters: TableFilter[] = [
     {
       column: 'Name',
-      type: 'select',
+      type: 'multiple-select',
     },
     {
       column: 'Type',
@@ -62,8 +62,7 @@ export const RecipeTable = ({
 
   return (
     <Table
-      title={title || 'Recipes'}
-      options={{ search: true, paging: false, sorting: true }}
+      options={{ search: false, paging: false, sorting: true }}
       columns={columns}
       data={recipes}
       filters={filters}
