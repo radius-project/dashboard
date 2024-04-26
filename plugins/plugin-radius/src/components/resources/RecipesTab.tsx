@@ -7,10 +7,5 @@ export const RecipesTab = ({
 }: {
   resource: Resource<EnvironmentProperties>;
 }) => {
-  return (
-    <RecipeTable
-      environment={resource}
-      title={`Recipes for ${resource.name}`}
-    />
-  );
+  return <RecipeTable environment={resource} />;
 };
