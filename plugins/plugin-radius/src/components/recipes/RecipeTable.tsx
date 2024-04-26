@@ -11,7 +11,6 @@ interface DisplayRecipe {
 
 export const RecipeTable = ({
   environment,
-  title,
 }: {
   environment: Resource<EnvironmentProperties>;
   title?: string;

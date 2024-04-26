@@ -10,7 +10,6 @@ export const RecipesTab = ({
   return (
     <RecipeTable
       environment={resource}
-      title={`Recipes for ${resource.name}`}
     />
   );
 };
