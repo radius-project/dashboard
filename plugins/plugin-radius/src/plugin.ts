@@ -1,4 +1,6 @@
 import {
+  ConfigApi,
+  configApiRef,
   createApiFactory,
   createApiRef,
   createPlugin,
@@ -15,7 +17,7 @@ import {
 } from './routes';
 import { RadiusApi } from './api';
 import { KubernetesApi, kubernetesApiRef } from '@backstage/plugin-kubernetes';
-import { RadiusApiImpl } from './api/api';
+import { DirectConnection, KubernetesConnection, RadiusApiImpl } from './api/api';
 import { featureRadiusCatalog as featureRadiusCatalog } from './features';
 
 export const radiusApiRef = createApiRef<RadiusApi>({
@@ -28,10 +30,18 @@ export const radiusPlugin = createPlugin({
     createApiFactory({
       api: radiusApiRef,
       deps: {
+        configApi: configApiRef,
         kubernetesApi: kubernetesApiRef,
       },
-      factory: (deps: { kubernetesApi: KubernetesApi }) => {
-        return new RadiusApiImpl(deps.kubernetesApi);
+      factory: (deps: { configApi: ConfigApi, kubernetesApi: KubernetesApi }) => {
+        const connectionKind = deps.configApi.getOptionalString('radius.connection.kind') ?? 'kubernetes';
+        if (connectionKind === 'kubernetes') {
+          return new RadiusApiImpl(new KubernetesConnection(deps.kubernetesApi));
+        } else if (connectionKind === 'direct') {
+          return new RadiusApiImpl(new DirectConnection(`${deps.configApi.getString('backend.baseUrl')}/api/proxy/radius`));
+        }
+
+        throw new Error(`Unsupported connection kind: ${connectionKind}`);
       },
     }),
   ],
