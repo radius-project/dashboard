@@ -43,6 +43,12 @@ jobs:
       - name: Format
         if: ${{ env.CI_LINT == 'true' }}
         run: yarn run format:check
+      - name: Link Configuration
+        if: ${{ env.CI_LINT == 'true' }}
+        run: |
+          yarn backstage-cli config:check --config app-config.dashboard.yaml
+          yarn backstage-cli config:check --config app-config.dev.yaml
+          yarn backstage-cli config:check --config app-config.local.yaml
       - name: Build TypeScript
         run: yarn run tsc
       - name: Build
