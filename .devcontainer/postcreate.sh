@@ -7,3 +7,4 @@ wget -q "https://raw.githubusercontent.com/radius-project/radius/main/deploy/ins
 export COREPACK_ENABLE_DOWNLOAD_PROMPT=0 # Disable corepack download prompt (silent option)
 sudo corepack enable
 yarn install
+yarn playwright install chrome
