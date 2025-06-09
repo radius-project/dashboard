@@ -51,7 +51,7 @@
     "@types/react": "^17",
     "@types/react-dom": "^17",
     "@backstage/backend-common": "^0.20.0",
-    "jsonpath-plus": "^10",
+    "jsonpath-plus": "^10.3.0",
     "mysql2": "^3"
   },
   "prettier": "@spotify/prettier-config",
