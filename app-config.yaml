@@ -91,6 +91,16 @@ catalog:
     - type: radius
       target: http://127.0.0.1:8001/apis/api.ucp.dev/v1alpha3
 
+kubernetes:
+  serviceLocatorMethod:
+    type: multiTenant
+  clusterLocatorMethods:
+    - type: config
+      clusters:
+        - name: local-cluster
+          url: http://localhost:8001
+          authProvider: serviceAccount
+
     ## Uncomment these lines to add more example data
     # - type: url
     #   target: https://github.com/backstage/backstage/blob/master/packages/catalog-model/examples/all.yaml
