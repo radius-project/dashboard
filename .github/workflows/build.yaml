@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Parse release version and set environment variables
         run: python ./.github/scripts/get_release_version.py
       - name: Enable corepack
@@ -60,7 +60,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Parse release version and set environment variables
         run: python ./.github/scripts/get_release_version.py
       - name: Enable corepack
