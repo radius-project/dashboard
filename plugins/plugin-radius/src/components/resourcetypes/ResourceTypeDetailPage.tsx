@@ -514,7 +514,7 @@ This should test whether copy buttons appear properly.`;
                   }
 
                   // Extract schema info for property filtering
-                  let propertiesSchemaInfo = null;
+                  let propertiesSchemaInfo: { properties: Record<string, unknown>; required: string[] } | null = null;
                   
                   if (schemaInfo?.properties) {
                     propertiesSchemaInfo = {
@@ -581,7 +581,7 @@ This should test whether copy buttons appear properly.`;
                           propType = 'map';
                         }
                         
-                        const actualRequiredFields = propertiesSchemaInfo.required || [];
+                        const actualRequiredFields = propertiesSchemaInfo?.required || [];
                         
                         return {
                           name: propName,
@@ -1307,7 +1307,7 @@ This should test whether copy buttons appear properly.`;
                   }
 
                   // Extract schema info for property filtering
-                  let propertiesSchemaInfo = null;
+                  let propertiesSchemaInfo: { properties: Record<string, unknown>; required: string[] } | null = null;
                   
                   if (schemaInfo?.properties) {
                     propertiesSchemaInfo = {
@@ -1370,7 +1370,7 @@ This should test whether copy buttons appear properly.`;
                           propType = 'map';
                         }
                         
-                        const actualRequiredFields = propertiesSchemaInfo.required || [];
+                        const actualRequiredFields = propertiesSchemaInfo?.required || [];
                         
                         return {
                           name: propName,
