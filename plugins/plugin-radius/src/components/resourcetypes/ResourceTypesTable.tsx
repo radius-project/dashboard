@@ -1,5 +1,11 @@
 import React, { useState } from 'react';
-import { Table, TableColumn, Progress, ResponseErrorPanel, Link } from '@backstage/core-components';
+import {
+  Table,
+  TableColumn,
+  Progress,
+  ResponseErrorPanel,
+  Link,
+} from '@backstage/core-components';
 import { Checkbox, FormControlLabel, Box } from '@material-ui/core';
 import useAsync from 'react-use/lib/useAsync';
 import { useApi } from '@backstage/core-plugin-api';
@@ -9,7 +15,12 @@ type RT = {
   id: string;
   name: string;
   type: string;
-  properties: { namespace: string; type: string; apiVersion: string; apiVersions?: string[] };
+  properties: {
+    namespace: string;
+    type: string;
+    apiVersion: string;
+    apiVersions?: string[];
+  };
 };
 
 export const ResourceTypesTable = (props: { title: string }) => {
@@ -17,7 +28,11 @@ export const ResourceTypesTable = (props: { title: string }) => {
   const radiusApi = useApi(radiusApiRef);
   const { value, loading, error } = useAsync(async () => {
     // call the API method we added
-    return (await radiusApi.listResourceTypes()) as { value: RT[] } | undefined;
+    return (await radiusApi.listResourceTypes()) as
+      | {
+          value: RT[];
+        }
+      | undefined;
   });
 
   if (loading) return <Progress />;
@@ -31,24 +46,30 @@ export const ResourceTypesTable = (props: { title: string }) => {
     ? allData
     : allData.filter(rt => {
         const namespace = rt.properties?.namespace ?? '';
-        return !EXCLUDED_NAMESPACES.some(prefix => namespace.startsWith(prefix));
+        return !EXCLUDED_NAMESPACES.some(prefix =>
+          namespace.startsWith(prefix),
+        );
       });
 
   const columns: TableColumn<RT>[] = [
-    { 
-      title: 'Type', 
-      field: 'properties.type', 
+    {
+      title: 'Type',
+      field: 'properties.type',
       type: 'string',
       render: (row: RT) => (
-        <Link to={`/resource-types/${encodeURIComponent(row.properties.namespace)}/${encodeURIComponent(row.properties.type)}`}>
+        <Link
+          to={`/resource-types/${encodeURIComponent(
+            row.properties.namespace,
+          )}/${encodeURIComponent(row.properties.type)}`}
+        >
           {row.properties.type}
         </Link>
       ),
     },
     { title: 'Namespace', field: 'properties.namespace', type: 'string' },
-    { 
-      title: 'API Versions', 
-      field: 'properties.apiVersion', 
+    {
+      title: 'API Versions',
+      field: 'properties.apiVersion',
       type: 'string',
       render: (row: RT) => (
         <div style={{ whiteSpace: 'pre-line', lineHeight: '1.6' }}>
@@ -72,7 +93,7 @@ export const ResourceTypesTable = (props: { title: string }) => {
           control={
             <Checkbox
               checked={showOtherResourceTypes}
-              onChange={(e) => setShowOtherResourceTypes(e.target.checked)}
+              onChange={e => setShowOtherResourceTypes(e.target.checked)}
               color="primary"
             />
           }
