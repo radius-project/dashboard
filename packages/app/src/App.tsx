@@ -15,6 +15,8 @@ import {
   EnvironmentListPage,
   RecipeListPage,
   ResourceListPage,
+  ResourceTypesListPage,
+  ResourceTypeDetailPage,
   ResourcePage,
   radiusPlugin,
 } from '@internal/plugin-radius';
@@ -100,6 +102,8 @@ const routes = (
     <Route path="/applications" element={<ApplicationListPage />} />
     <Route path="/environments" element={<EnvironmentListPage />} />
     <Route path="/recipes" element={<RecipeListPage />} />
+        <Route path="/resource-types" element={<ResourceTypesListPage />} />
+      <Route path="/resource-types/:namespace/:typeName" element={<ResourceTypeDetailPage />} />
     <Route path="/resources" element={<ResourceListPage />} />
     <Route
       path="/resources/:group/:namespace/:type/:name"

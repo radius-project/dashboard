@@ -6,12 +6,16 @@ export {
   RecipeListPage,
   ResourceListPage,
   ResourcePage,
+  ResourceTypesListPage,
+  ResourceTypeDetailPage,
 } from './plugin';
 export {
   applicationListPageRouteRef,
   environmentListPageRouteRef,
   recipeListPageRouteRef,
   resourceListPageRouteRef,
+  resourceTypesListPageRouteRef,
+  resourceTypeDetailPageRouteRef,
   resourcePageRouteRef,
 } from './routes';
 export { RadiusLogo } from './components/logo/RadiusLogo';
@@ -22,3 +26,4 @@ export { ResourceIcon } from './components/resources/ResourceIcon';
 export { RecipeIcon } from './components/recipes/RecipeIcon';
 export { ApplicationListInfoCard } from './components/applications/ApplicationListInfoCard';
 export { EnvironmentListInfoCard } from './components/environments/EnvironmentListInfoCard';
+// Resource types page is exposed via the plugin exports
