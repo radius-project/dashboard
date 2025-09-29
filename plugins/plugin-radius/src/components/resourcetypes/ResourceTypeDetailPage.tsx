@@ -867,8 +867,6 @@ This should test whether copy buttons appear properly.`;
                     a.title.localeCompare(b.title)
                   );
 
-
-
                   return (
                     <div key={version} id={`version-${version}`} style={{ marginBottom: '32px' }}>
                       <Typography variant="h6" gutterBottom style={{ marginBottom: '16px' }}>
@@ -882,8 +880,6 @@ This should test whether copy buttons appear properly.`;
                         }}>{version}</code>
                       </Typography>
 
-
-                      
                       {properties.length > 0 ? (
                         <TableContainer component={Paper}>
                           <Table>
@@ -1671,8 +1667,6 @@ This should test whether copy buttons appear properly.`;
                         }}>{version}</code>
                       </Typography>
 
-
-                      
                       {properties.length > 0 ? (
                         <TableContainer component={Paper}>
                           <Table>
