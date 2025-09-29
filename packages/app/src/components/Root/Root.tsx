@@ -71,6 +71,11 @@ export const Root = ({ children }: PropsWithChildren<NonNullable<object>>) => (
         {/* Global nav, not org-specific */}
         <SidebarItem icon={RadiusLogomarkReverse} to="/" text="Home" />
         <SidebarItem
+          icon={ResourceIcon}
+          to="resource-types"
+          text="Resource Types"
+        />
+        <SidebarItem
           icon={EnvironmentIcon}
           to="environments"
           text="Environments"
@@ -81,11 +86,6 @@ export const Root = ({ children }: PropsWithChildren<NonNullable<object>>) => (
           text="Applications"
         />
         <SidebarItem icon={ResourceIcon} to="resources" text="Resources" />
-        <SidebarItem
-          icon={ResourceIcon}
-          to="resource-types"
-          text="Resource Types"
-        />
         <SidebarItem icon={RecipeIcon} to="recipes" text="Recipes" />
         {/* End global nav */}
         <SidebarDivider />
