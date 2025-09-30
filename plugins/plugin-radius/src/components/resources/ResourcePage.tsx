@@ -7,15 +7,13 @@ import {
 } from '@backstage/core-components';
 import { OverviewTab } from './OverviewTab';
 import { DetailsTab } from './DetailsTab';
-import { EnvironmentProperties, Resource } from '../../resources';
+import { Resource } from '../../resources';
 import useAsync from 'react-use/lib/useAsync';
 import { useApi, useRouteRefParams } from '@backstage/core-plugin-api';
 import { resourcePageRouteRef } from '../../routes';
 import { ApplicationTab } from './ApplicationTab';
 import { ApplicationResourcesTab } from './ApplicationResourcesTab';
 import { radiusApiRef } from '../../plugin';
-import { RecipesTab } from './RecipesTab';
-import { EnvironmentResourcesTab } from './EnvironmentResourcesTab';
 
 export const ResourcePage = () => {
   const radiusApi = useApi(radiusApiRef);
@@ -43,8 +41,6 @@ export const ResourcePage = () => {
     application = value.id;
   }
 
-  const isEnvironment = value?.type === 'Applications.Core/environments';
-
   return (
     <ResourceLayout resource={value}>
       <TabbedLayout>
@@ -62,18 +58,6 @@ export const ResourcePage = () => {
         {isApplication && (
           <TabbedLayout.Route path="resources" title="Resources">
             <ApplicationResourcesTab resource={value} />
-          </TabbedLayout.Route>
-        )}
-        {isEnvironment && (
-          <TabbedLayout.Route path="recipes" title="Recipes">
-            <RecipesTab
-              resource={value as unknown as Resource<EnvironmentProperties>}
-            />
-          </TabbedLayout.Route>
-        )}
-        {isEnvironment && (
-          <TabbedLayout.Route path="resources" title="Resources">
-            <EnvironmentResourcesTab resource={value} />
           </TabbedLayout.Route>
         )}
       </TabbedLayout>

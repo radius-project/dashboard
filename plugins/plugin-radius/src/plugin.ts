@@ -8,6 +8,7 @@ import {
 import {
   applicationListPageRouteRef,
   environmentListPageRouteRef,
+  environmentPageRouteRef,
   recipeListPageRouteRef,
   resourceListPageRouteRef,
   resourcePageRouteRef,
@@ -85,5 +86,13 @@ export const ResourcePage = radiusPlugin.provide(
     name: 'Resources',
     component: () => import('./components/resources').then(m => m.ResourcePage),
     mountPoint: resourcePageRouteRef,
+  }),
+);
+
+export const EnvironmentPage = radiusPlugin.provide(
+  createRoutableExtension({
+    name: 'Environments',
+    component: () => import('./components/environments').then(m => m.EnvironmentPage),
+    mountPoint: environmentPageRouteRef,
   }),
 );

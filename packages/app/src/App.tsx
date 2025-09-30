@@ -13,6 +13,7 @@ import { CatalogGraphPage } from '@backstage/plugin-catalog-graph';
 import {
   ApplicationListPage,
   EnvironmentListPage,
+  EnvironmentPage,
   RecipeListPage,
   ResourceListPage,
   ResourcePage,
@@ -104,6 +105,10 @@ const routes = (
     <Route
       path="/resources/:group/:namespace/:type/:name"
       element={<ResourcePage />}
+    />
+    <Route
+      path="/environments/:group/:namespace/:type/:name"
+      element={<EnvironmentPage />}
     />
   </FlatRoutes>
 );

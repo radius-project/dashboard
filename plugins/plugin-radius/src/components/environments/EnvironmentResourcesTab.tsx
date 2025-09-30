@@ -1,16 +1,16 @@
 import React from 'react';
-import { Resource } from '../../resources';
+import { Resource, EnvironmentProperties } from '../../resources';
 import { ResourceTable } from '../resourcetable';
 
 export const EnvironmentResourcesTab = ({
-  resource,
+  environment,
 }: {
-  resource: Resource;
+  environment: Resource<EnvironmentProperties>;
 }) => {
   return (
     <ResourceTable
       title="Environment Resources"
-      filters={{ environment: resource.id }}
+      filters={{ environment: environment.id }}
     />
   );
 };

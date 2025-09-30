@@ -2,7 +2,7 @@ import React, { PropsWithChildren } from 'react';
 import { Link } from '@backstage/core-components';
 import { parseResourceId } from '@radapp.io/rad-components';
 import { useRouteRef } from '@backstage/core-plugin-api';
-import { resourcePageRouteRef } from '../../routes';
+import { resourcePageRouteRef, environmentPageRouteRef } from '../../routes';
 
 export const ResourceLink = (props: PropsWithChildren<{ id: string }>) => {
   const parsed = parseResourceId(props.id);
@@ -10,7 +10,12 @@ export const ResourceLink = (props: PropsWithChildren<{ id: string }>) => {
     throw new Error(`Invalid resource id ${props.id}`);
   }
 
-  const route = useRouteRef(resourcePageRouteRef);
+  const resourceRoute = useRouteRef(resourcePageRouteRef);
+  const environmentRoute = useRouteRef(environmentPageRouteRef);
+  
+  // Route environments to environment page, everything else to resource page
+  const isEnvironment = parsed.type === 'Applications.Core/environments';
+  const route = isEnvironment ? environmentRoute : resourceRoute;
 
   return (
     <Link
