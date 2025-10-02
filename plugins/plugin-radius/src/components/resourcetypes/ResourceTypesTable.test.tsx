@@ -125,7 +125,8 @@ describe('ResourceTypesTable', () => {
       </TestApiProvider>,
       {
         mountedRoutes: {
-          '/resource-types/:namespace/:typeName': resourceTypeDetailPageRouteRef,
+          '/resource-types/:namespace/:typeName':
+            resourceTypeDetailPageRouteRef,
         },
       },
     );
@@ -213,7 +214,8 @@ describe('ResourceTypesTable', () => {
       </TestApiProvider>,
       {
         mountedRoutes: {
-          '/resource-types/:namespace/:typeName': resourceTypeDetailPageRouteRef,
+          '/resource-types/:namespace/:typeName':
+            resourceTypeDetailPageRouteRef,
         },
       },
     );

@@ -18,15 +18,13 @@ jest.mock('react-router-dom', () => {
 describe('ResourceTypeDetailPage', () => {
   it('should display loading indicator while loading', async () => {
     // This is the boilerplate for an unresolved promise.
-    const deferred: ((
-      resolve: {
-        Name: string;
-        Description: string;
-        ResourceProviderNamespace: string;
-        APIVersions: Record<string, { Schema?: unknown }>;
-        APIVersionList: string[];
-      },
-    ) => void)[] = [];
+    const deferred: ((resolve: {
+      Name: string;
+      Description: string;
+      ResourceProviderNamespace: string;
+      APIVersions: Record<string, { Schema?: unknown }>;
+      APIVersionList: string[];
+    }) => void)[] = [];
     const api: Pick<RadiusApi, 'getResourceType'> = {
       getResourceType: async () =>
         new Promise<{
@@ -70,7 +68,9 @@ describe('ResourceTypeDetailPage', () => {
       expect(screen.queryByTestId('progress')).toBeNull();
     });
 
-    expect(screen.getByRole('heading', { name: 'containers' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'containers' }),
+    ).toBeInTheDocument();
     expect(
       screen.getByText('Resource Type in Applications.Core'),
     ).toBeInTheDocument();
@@ -122,7 +122,9 @@ describe('ResourceTypeDetailPage', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'containers' })).toBeInTheDocument();
+      expect(
+        screen.getByRole('heading', { name: 'containers' }),
+      ).toBeInTheDocument();
     });
 
     expect(
