@@ -5,6 +5,7 @@ import { UserSettingsPage } from '@backstage/plugin-user-settings';
 import { apis } from './apis';
 import { HomepageCompositionRoot } from '@backstage/plugin-home';
 import { Root } from './components/Root';
+import { HomePage } from './components/home/HomePage';
 
 import { AlertDisplay, OAuthRequestDialog } from '@backstage/core-components';
 import { createApp } from '@backstage/app-defaults';
@@ -16,6 +17,8 @@ import {
   EnvironmentPage,
   RecipeListPage,
   ResourceListPage,
+  ResourceTypesListPage,
+  ResourceTypeDetailPage,
   ResourcePage,
   radiusPlugin,
 } from '@internal/plugin-radius';
@@ -28,7 +31,6 @@ import {
   palettes,
   shapes,
 } from '@backstage/theme';
-import { HomePage } from './components/home/HomePage';
 
 const lightTheme = createUnifiedTheme({
   ...createBaseThemeOptions({
@@ -101,6 +103,11 @@ const routes = (
     <Route path="/applications" element={<ApplicationListPage />} />
     <Route path="/environments" element={<EnvironmentListPage />} />
     <Route path="/recipes" element={<RecipeListPage />} />
+    <Route path="/resource-types" element={<ResourceTypesListPage />} />
+    <Route
+      path="/resource-types/:namespace/:typeName"
+      element={<ResourceTypeDetailPage />}
+    />
     <Route path="/resources" element={<ResourceListPage />} />
     <Route
       path="/resources/:group/:namespace/:type/:name"

@@ -71,6 +71,11 @@ export const Root = ({ children }: PropsWithChildren<NonNullable<object>>) => (
         {/* Global nav, not org-specific */}
         <SidebarItem icon={RadiusLogomarkReverse} to="/" text="Home" />
         <SidebarItem
+          icon={ResourceIcon}
+          to="resource-types"
+          text="Resource Types"
+        />
+        <SidebarItem
           icon={EnvironmentIcon}
           to="environments"
           text="Environments"
