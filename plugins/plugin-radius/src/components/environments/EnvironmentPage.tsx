@@ -30,7 +30,9 @@ export const EnvironmentPage = () => {
   } else if (error) {
     return <ResponseErrorPanel error={error} />;
   } else if (!value) {
-    throw new Error('Unable to load Environments. No error, but value is ${value}.');
+    throw new Error(
+      'Unable to load Environments. No error, but value is ${value}.',
+    );
   }
 
   return (
