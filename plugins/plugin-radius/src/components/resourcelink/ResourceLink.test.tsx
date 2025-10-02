@@ -2,7 +2,7 @@ import React from 'react';
 import { screen, waitFor } from '@testing-library/react';
 import { ResourceLink } from './ResourceLink';
 import { renderInTestApp } from '@backstage/test-utils';
-import { resourcePageRouteRef } from '../../routes';
+import { resourcePageRouteRef, environmentPageRouteRef } from '../../routes';
 import { ErrorBoundary, FallbackProps } from 'react-error-boundary';
 
 describe('ResourceLink', () => {
@@ -12,11 +12,12 @@ describe('ResourceLink', () => {
     await renderInTestApp(<ResourceLink id={id}>Hi There!</ResourceLink>, {
       mountedRoutes: {
         '/resource/:group/:namespace/:type/:name': resourcePageRouteRef,
+        '/environment/:group/:namespace/:type/:name': environmentPageRouteRef,
       },
     });
     expect(screen.getByRole('link', { name: 'Hi There!' })).toHaveAttribute(
       'href',
-      '/resource/test-group/Applications.Core/environments/test-environment',
+      '/environment/test-group/Applications.Core/environments/test-environment',
     );
   });
 
@@ -26,13 +27,29 @@ describe('ResourceLink', () => {
     await renderInTestApp(<ResourceLink id={id} />, {
       mountedRoutes: {
         '/resource/:group/:namespace/:type/:name': resourcePageRouteRef,
+        '/environment/:group/:namespace/:type/:name': environmentPageRouteRef,
       },
     });
     expect(
       screen.getByRole('link', { name: 'test-environment' }),
     ).toHaveAttribute(
       'href',
-      '/resource/test-group/Applications.Core/environments/test-environment',
+      '/environment/test-group/Applications.Core/environments/test-environment',
+    );
+  });
+
+  it('should route non-environment resources to resource page', async () => {
+    const id =
+      '/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/applications/test-app';
+    await renderInTestApp(<ResourceLink id={id}>Test App</ResourceLink>, {
+      mountedRoutes: {
+        '/resource/:group/:namespace/:type/:name': resourcePageRouteRef,
+        '/environment/:group/:namespace/:type/:name': environmentPageRouteRef,
+      },
+    });
+    expect(screen.getByRole('link', { name: 'Test App' })).toHaveAttribute(
+      'href',
+      '/resource/test-group/Applications.Core/applications/test-app',
     );
   });
 
@@ -47,6 +64,7 @@ describe('ResourceLink', () => {
       {
         mountedRoutes: {
           '/resource/:group/:namespace/:type/:name': resourcePageRouteRef,
+          '/environment/:group/:namespace/:type/:name': environmentPageRouteRef,
         },
       },
     );

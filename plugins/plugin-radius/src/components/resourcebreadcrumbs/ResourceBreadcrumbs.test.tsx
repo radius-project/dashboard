@@ -3,7 +3,7 @@ import { screen } from '@testing-library/react';
 import { ResourceBreadcrumbs } from './ResourceBreadcrumbs';
 import React from 'react';
 import { Resource } from '../../resources';
-import { resourcePageRouteRef } from '../../routes';
+import { resourcePageRouteRef, environmentPageRouteRef } from '../../routes';
 
 describe('ResourceBreadcrumbs', () => {
   it('should render breadcrumbs', async () => {
@@ -13,9 +13,9 @@ describe('ResourceBreadcrumbs', () => {
       type: 'Applications.Datastores/redisCaches',
       properties: {
         application:
-          '/planes/radius/local/resourceGroups/default/providers/applications.core/applications/dashboard-app',
+          '/planes/radius/local/resourceGroups/default/providers/Applications.Core/applications/dashboard-app',
         environment:
-          '/planes/radius/local/resourceGroups/default/providers/applications.core/environments/default',
+          '/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default',
       },
       systemData: {},
     };
@@ -24,18 +24,19 @@ describe('ResourceBreadcrumbs', () => {
       {
         mountedRoutes: {
           '/resource/:group/:namespace/:type/:name': resourcePageRouteRef,
+          '/environment/:group/:namespace/:type/:name': environmentPageRouteRef,
         },
       },
     );
     expect(rendered.getByText('default')).toBeVisible();
     expect(screen.getByRole('link', { name: 'default' })).toHaveAttribute(
       'href',
-      '/resource/default/applications.core/environments/default',
+      '/environment/default/Applications.Core/environments/default',
     );
     expect(rendered.getByText('dashboard-app')).toBeVisible();
     expect(screen.getByRole('link', { name: 'dashboard-app' })).toHaveAttribute(
       'href',
-      '/resource/default/applications.core/applications/dashboard-app',
+      '/resource/default/Applications.Core/applications/dashboard-app',
     );
   });
 });
