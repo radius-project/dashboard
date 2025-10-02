@@ -99,7 +99,7 @@ export const ResourceTypesTable = (props: { title: string }) => {
           }
           label={
             <span style={{ color: '#656d76', fontSize: '14px' }}>
-              Show all Resource Types
+              Show all resource types
             </span>
           }
         />
