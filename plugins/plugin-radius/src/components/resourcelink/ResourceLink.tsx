@@ -12,7 +12,7 @@ export const ResourceLink = (props: PropsWithChildren<{ id: string }>) => {
 
   const resourceRoute = useRouteRef(resourcePageRouteRef);
   const environmentRoute = useRouteRef(environmentPageRouteRef);
-  
+
   // Route environments to environment page, everything else to resource page
   const isEnvironment = parsed.type === 'Applications.Core/environments';
   const route = isEnvironment ? environmentRoute : resourceRoute;

@@ -19,7 +19,9 @@ export const EnvironmentPage = () => {
   const params = useRouteRefParams(environmentPageRouteRef);
   const id = `/planes/radius/local/resourceGroups/${params.group}/providers/${params.namespace}/${params.type}/${params.name}`;
 
-  const { value, loading, error } = useAsync(async (): Promise<Resource<EnvironmentProperties>> => {
+  const { value, loading, error } = useAsync(async (): Promise<
+    Resource<EnvironmentProperties>
+  > => {
     return radiusApi.getResourceById<EnvironmentProperties>({ id });
   }, [id]);
 

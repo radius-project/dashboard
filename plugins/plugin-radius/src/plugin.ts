@@ -92,7 +92,8 @@ export const ResourcePage = radiusPlugin.provide(
 export const EnvironmentPage = radiusPlugin.provide(
   createRoutableExtension({
     name: 'Environments',
-    component: () => import('./components/environments').then(m => m.EnvironmentPage),
+    component: () =>
+      import('./components/environments').then(m => m.EnvironmentPage),
     mountPoint: environmentPageRouteRef,
   }),
 );

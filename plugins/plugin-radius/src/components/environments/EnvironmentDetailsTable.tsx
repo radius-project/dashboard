@@ -4,8 +4,8 @@ import { InfoCard } from '@backstage/core-components';
 import { Box, Grid, Typography } from '@material-ui/core';
 import { parseResourceId } from '@radapp.io/rad-components';
 
-export const EnvironmentDetailsTable = (props: { 
-  environment: Resource<EnvironmentProperties> 
+export const EnvironmentDetailsTable = (props: {
+  environment: Resource<EnvironmentProperties>;
 }) => {
   const { environment } = props;
   const properties = environment.properties;
@@ -15,15 +15,15 @@ export const EnvironmentDetailsTable = (props: {
     if (!properties?.providers) {
       return 'Kubernetes';
     }
-    
+
     if (properties.providers.azure) {
       return 'Azure';
     }
-    
+
     if (properties.providers.aws) {
       return 'AWS';
     }
-    
+
     return 'Kubernetes';
   };
 
@@ -60,42 +60,48 @@ export const EnvironmentDetailsTable = (props: {
 
   if (kind === 'Azure' && properties?.providers?.azure) {
     const azure = properties.providers.azure;
-    
+
     // Get subscription ID from explicit field or parse from scope
     let subscriptionId = azure.subscriptionId;
     if (!subscriptionId && azure.scope) {
       subscriptionId = extractSubscriptionId(azure.scope);
     }
-    
+
     // Get resource group from explicit field or parse from scope
     let resourceGroup = azure.resourceGroup;
     if (!resourceGroup && azure.scope) {
       resourceGroup = extractResourceGroup(azure.scope);
     }
-    
+
     if (subscriptionId) {
-      providerInfo.push({ label: 'Azure Subscription ID', value: subscriptionId });
+      providerInfo.push({
+        label: 'Azure Subscription ID',
+        value: subscriptionId,
+      });
       hasProviderInfo = true;
     }
     if (resourceGroup) {
-      providerInfo.push({ label: 'Azure Resource Group', value: resourceGroup });
+      providerInfo.push({
+        label: 'Azure Resource Group',
+        value: resourceGroup,
+      });
       hasProviderInfo = true;
     }
   } else if (kind === 'AWS' && properties?.providers?.aws) {
     const aws = properties.providers.aws;
-    
+
     // Get account ID from explicit field or parse from scope
     let accountId = aws.accountId;
     if (!accountId && aws.scope) {
       accountId = extractAwsAccountId(aws.scope);
     }
-    
+
     // Get region from explicit field or parse from scope
     let region = aws.region;
     if (!region && aws.scope) {
       region = extractAwsRegion(aws.scope);
     }
-    
+
     if (accountId) {
       providerInfo.push({ label: 'AWS Account ID', value: accountId });
       hasProviderInfo = true;
@@ -118,17 +124,13 @@ export const EnvironmentDetailsTable = (props: {
             <Typography variant="body2" color="textSecondary">
               Kubernetes Cluster
             </Typography>
-            <Typography variant="body1">
-              local
-            </Typography>
+            <Typography variant="body1">local</Typography>
           </Box>
           <Box mb={2}>
             <Typography variant="body2" color="textSecondary">
               Kubernetes Namespace
             </Typography>
-            <Typography variant="body1">
-              {namespace}
-            </Typography>
+            <Typography variant="body1">{namespace}</Typography>
           </Box>
         </Grid>
 
@@ -141,9 +143,7 @@ export const EnvironmentDetailsTable = (props: {
                   <Typography variant="body2" color="textSecondary">
                     {info.label}
                   </Typography>
-                  <Typography variant="body1">
-                    {info.value}
-                  </Typography>
+                  <Typography variant="body1">{info.value}</Typography>
                 </Box>
               ))
             ) : (

@@ -4,8 +4,8 @@ import { EnvironmentDetailsTable } from './EnvironmentDetailsTable';
 import { RecipeTable } from '../recipes/RecipeTable';
 import { Grid } from '@material-ui/core';
 
-export const EnvironmentOverviewTab = (props: { 
-  environment: Resource<EnvironmentProperties> 
+export const EnvironmentOverviewTab = (props: {
+  environment: Resource<EnvironmentProperties>;
 }) => {
   return (
     <Grid container spacing={3} direction="column">

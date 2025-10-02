@@ -37,23 +37,25 @@ const DataTable = (props: {
 
   // Helper function to determine environment kind
   const getEnvironmentKind = (resource: Resource): string => {
-    const providers = resource.properties?.providers as {
-      azure?: Record<string, unknown>;
-      aws?: Record<string, unknown>;
-    } | undefined;
-    
+    const providers = resource.properties?.providers as
+      | {
+          azure?: Record<string, unknown>;
+          aws?: Record<string, unknown>;
+        }
+      | undefined;
+
     if (!providers) {
       return 'Kubernetes';
     }
-    
+
     if (providers.azure) {
       return 'Azure';
     }
-    
+
     if (providers.aws) {
       return 'AWS';
     }
-    
+
     return 'Kubernetes';
   };
 
@@ -143,22 +145,23 @@ const DataTable = (props: {
   });
 
   // Sort environments by resource group (ascending) then by name (ascending)
-  const sortedData = props.resourceType === 'Applications.Core/environments'
-    ? [...data].sort((a, b) => {
-        const groupA = parseResourceId(a.id)?.group || '';
-        const groupB = parseResourceId(b.id)?.group || '';
-        const nameA = a.name || '';
-        const nameB = b.name || '';
-        
-        // First sort by resource group (ascending)
-        if (groupA !== groupB) {
-          return groupA.localeCompare(groupB);
-        }
-        
-        // Then sort by name (ascending)
-        return nameA.localeCompare(nameB);
-      })
-    : data;
+  const sortedData =
+    props.resourceType === 'Applications.Core/environments'
+      ? [...data].sort((a, b) => {
+          const groupA = parseResourceId(a.id)?.group || '';
+          const groupB = parseResourceId(b.id)?.group || '';
+          const nameA = a.name || '';
+          const nameB = b.name || '';
+
+          // First sort by resource group (ascending)
+          if (groupA !== groupB) {
+            return groupA.localeCompare(groupB);
+          }
+
+          // Then sort by name (ascending)
+          return nameA.localeCompare(nameB);
+        })
+      : data;
 
   return (
     <Table

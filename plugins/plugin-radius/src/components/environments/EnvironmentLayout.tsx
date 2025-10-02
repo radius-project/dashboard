@@ -1,4 +1,10 @@
-import { Content, Header, Page, Breadcrumbs, Link } from '@backstage/core-components';
+import {
+  Content,
+  Header,
+  Page,
+  Breadcrumbs,
+  Link,
+} from '@backstage/core-components';
 import { useRouteRefParams } from '@backstage/core-plugin-api';
 import { Grid, Typography, Box } from '@material-ui/core';
 import React, { PropsWithChildren } from 'react';

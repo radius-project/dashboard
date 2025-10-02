@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Grid, 
-  Typography, 
+import {
+  Grid,
+  Typography,
   Box,
   FormControl,
   InputLabel,
@@ -24,23 +24,23 @@ import { radiusApiRef } from '../../plugin';
 import { ResourceList, Resource } from '../../resources';
 import { parseResourceId } from '@radapp.io/rad-components';
 
-const EnvironmentListPageContent = ({ 
-  environments 
-}: { 
-  environments: Resource[] 
+const EnvironmentListPageContent = ({
+  environments,
+}: {
+  environments: Resource[];
 }) => {
   // Extract unique resource groups and sort them in ascending order
   const resourceGroups = Array.from(
     new Set(
       environments
         .map(env => parseResourceId(env.id)?.group)
-        .filter((group): group is string => !!group)
-    )
+        .filter((group): group is string => !!group),
+    ),
   ).sort((a, b) => a.localeCompare(b));
 
   const allGroupsOption = 'all';
   const storageKey = 'radius-environment-filter-resource-group';
-  
+
   // Initialize state from localStorage or default to 'all'
   const [selectedGroup, setSelectedGroup] = useState<string>(() => {
     const saved = localStorage.getItem(storageKey);
@@ -77,11 +77,18 @@ const EnvironmentListPageContent = ({
                 onChange={evt => handleGroupChange(evt.target.value as string)}
                 style={{ fontSize: '0.875rem' }}
               >
-                <MenuItem value={allGroupsOption} style={{ fontSize: '0.875rem' }}>
+                <MenuItem
+                  value={allGroupsOption}
+                  style={{ fontSize: '0.875rem' }}
+                >
                   All Resource Groups
                 </MenuItem>
                 {resourceGroups.map(group => (
-                  <MenuItem key={group} value={group} style={{ fontSize: '0.875rem' }}>
+                  <MenuItem
+                    key={group}
+                    value={group}
+                    style={{ fontSize: '0.875rem' }}
+                  >
                     {group}
                   </MenuItem>
                 ))}
@@ -93,7 +100,9 @@ const EnvironmentListPageContent = ({
           <ResourceTable
             title="Environments"
             resourceType="Applications.Core/environments"
-            resourceGroupFilter={selectedGroup === allGroupsOption ? undefined : selectedGroup}
+            resourceGroupFilter={
+              selectedGroup === allGroupsOption ? undefined : selectedGroup
+            }
           />
         </Grid>
       </Grid>
