@@ -124,7 +124,7 @@ export const EnvironmentDetailsTable = (props: {
             <Typography variant="body2" color="textSecondary">
               Kubernetes Cluster
             </Typography>
-            <Typography variant="body1">local</Typography>
+            <Typography variant="body1">Radius control plane cluster</Typography>
           </Box>
           <Box mb={2}>
             <Typography variant="body2" color="textSecondary">
