@@ -17,6 +17,31 @@ export interface RadiusApi {
     resourceGroup?: string;
   }): Promise<ResourceList<T>>;
 
+  // List available resource types from System.Resources provider for a given plane and provider
+  listResourceTypes(opts?: {
+    planeName?: string;
+    resourceProviderName?: string;
+  }): Promise<
+    ResourceList<{
+      namespace: string;
+      type: string;
+      apiVersion: string;
+      apiVersions?: string[];
+    }>
+  >;
+
+  getResourceType(opts: {
+    namespace: string;
+    typeName: string;
+    planeName?: string;
+  }): Promise<{
+    Name: string;
+    Description: string;
+    ResourceProviderNamespace: string;
+    APIVersions: Record<string, { Schema?: unknown }>;
+    APIVersionList: string[];
+  }>;
+
   listResources<T = { [key: string]: unknown }>(opts?: {
     resourceType?: string;
     resourceGroup?: string;
@@ -154,6 +179,193 @@ export class RadiusApiImpl implements RadiusApi {
       type: 'Applications.Core/environments',
     });
     return this.makeRequest<ResourceList<T>>(cluster, path);
+  }
+
+  async getResourceType(opts: {
+    namespace: string;
+    typeName: string;
+    planeName?: string;
+  }): Promise<{
+    Name: string;
+    Description: string;
+    ResourceProviderNamespace: string;
+    APIVersions: Record<string, { Schema?: unknown }>;
+    APIVersionList: string[];
+  }> {
+    const cluster = await this.selectCluster();
+    const plane = opts?.planeName || 'local';
+
+    // Try to get specific resource type details from UCP API
+    // This endpoint should match what 'rad resource-type show' calls
+    const specificPath = makePath({
+      scopes: [{ type: 'radius', value: plane }],
+      action: `providers/${opts.namespace}/resourceTypes/${opts.typeName}`,
+    });
+
+    try {
+      // Try the specific resource type endpoint first
+      const specificData = await this.makeRequest<{
+        Name: string;
+        Description?: string;
+        ResourceProviderNamespace: string;
+        APIVersions: Record<string, { Schema?: unknown }>;
+        APIVersionList: string[];
+      }>(cluster, specificPath);
+
+      return {
+        Name: specificData.Name,
+        Description:
+          specificData.Description ||
+          'No description available for this resource type.',
+        ResourceProviderNamespace: specificData.ResourceProviderNamespace,
+        APIVersions: specificData.APIVersions,
+        APIVersionList: specificData.APIVersionList,
+      };
+    } catch (error) {
+      // Fallback to the providers endpoint if specific endpoint fails
+      const providersPath = makePath({
+        scopes: [{ type: 'radius', value: plane }],
+        action: 'providers',
+      });
+
+      const data = await this.makeRequest<{ [key: string]: unknown }>(
+        cluster,
+        providersPath,
+      );
+      const providers =
+        (
+          data as {
+            value?: Array<{
+              name: string;
+              resourceTypes: Record<
+                string,
+                {
+                  apiVersions: Record<string, unknown>;
+                  description?: string;
+                }
+              >;
+            }>;
+          }
+        ).value || [];
+
+      // Find the specific resource type in providers list
+      for (const provider of providers) {
+        if (provider.name === opts.namespace) {
+          const resourceTypes = provider.resourceTypes || {};
+          const resourceType = resourceTypes[opts.typeName];
+
+          if (resourceType) {
+            const apiVersions = Object.keys(resourceType.apiVersions || {});
+
+            return {
+              Name: `${opts.namespace}/${opts.typeName}`,
+              Description:
+                resourceType.description ||
+                `This is the ${opts.typeName} resource type from the ${opts.namespace} provider. It allows you to define and manage ${opts.typeName} resources within your Radius applications.`,
+              ResourceProviderNamespace: opts.namespace,
+              APIVersions: resourceType.apiVersions as Record<
+                string,
+                { Schema?: unknown }
+              >,
+              APIVersionList: apiVersions,
+            };
+          }
+        }
+      }
+
+      throw new Error(
+        `Resource type ${opts.namespace}/${opts.typeName} not found`,
+      );
+    }
+  }
+
+  async listResourceTypes(opts?: {
+    planeName?: string;
+    resourceProviderName?: string;
+  }): Promise<
+    ResourceList<{
+      namespace: string;
+      type: string;
+      apiVersion: string;
+      apiVersions?: string[];
+    }>
+  > {
+    const cluster = await this.selectCluster();
+
+    const plane = opts?.planeName || 'local';
+
+    // Use the ListResourceProviderSummaries endpoint: /planes/radius/{planeName}/providers
+    const path = makePath({
+      scopes: [{ type: 'radius', value: plane }],
+      action: 'providers',
+    });
+
+    // Get the resource provider summaries
+    const data = await this.makeRequest<{ [key: string]: unknown }>(
+      cluster,
+      path,
+    );
+
+    const items: Array<{
+      id: string;
+      name: string;
+      type: string;
+      systemData: Record<string, never>;
+      properties: {
+        namespace: string;
+        type: string;
+        apiVersion: string;
+        apiVersions?: string[];
+      };
+    }> = [];
+
+    // Parse the providers response structure
+    const providers =
+      (
+        data as {
+          value?: Array<{
+            name: string;
+            resourceTypes: Record<
+              string,
+              {
+                apiVersions: Record<string, unknown>;
+              }
+            >;
+          }>;
+        }
+      ).value || [];
+
+    // Extract resource types from each provider, filtering for Radius namespaces
+    for (const provider of providers) {
+      const namespace = provider.name;
+      const resourceTypes = provider.resourceTypes || {};
+
+      // Include all namespaces - filtering will be done on the frontend
+      // This includes Applications.*, Microsoft.Resources, etc.
+
+      for (const [typeName, typeInfo] of Object.entries(resourceTypes)) {
+        const apiVersions = Object.keys(typeInfo.apiVersions || {});
+        const fullName = `${namespace}/${typeName}`;
+
+        // Create a single entry with all API versions
+        if (apiVersions.length > 0) {
+          items.push({
+            id: fullName,
+            name: fullName,
+            type: 'System.Resources/resourceTypes',
+            systemData: {},
+            properties: {
+              namespace,
+              type: typeName, // Show only the type name without namespace
+              apiVersions: apiVersions, // Store all API versions
+              apiVersion: apiVersions.join('\n'), // Display versions separated by newlines
+            },
+          });
+        }
+      }
+    }
+
+    return { value: items };
   }
 
   private async selectCluster(): Promise<string> {

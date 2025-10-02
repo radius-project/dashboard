@@ -10,6 +10,8 @@ import {
   environmentListPageRouteRef,
   recipeListPageRouteRef,
   resourceListPageRouteRef,
+  resourceTypesListPageRouteRef,
+  resourceTypeDetailPageRouteRef,
   resourcePageRouteRef,
   rootRouteRef,
 } from './routes';
@@ -85,5 +87,23 @@ export const ResourcePage = radiusPlugin.provide(
     name: 'Resources',
     component: () => import('./components/resources').then(m => m.ResourcePage),
     mountPoint: resourcePageRouteRef,
+  }),
+);
+
+export const ResourceTypesListPage = radiusPlugin.provide(
+  createRoutableExtension({
+    name: 'Resource Types',
+    component: () =>
+      import('./components/resourcetypes').then(m => m.ResourceTypesListPage),
+    mountPoint: resourceTypesListPageRouteRef,
+  }),
+);
+
+export const ResourceTypeDetailPage = radiusPlugin.provide(
+  createRoutableExtension({
+    name: 'Resource Type Detail',
+    component: () =>
+      import('./components/resourcetypes').then(m => m.ResourceTypeDetailPage),
+    mountPoint: resourceTypeDetailPageRouteRef,
   }),
 );
