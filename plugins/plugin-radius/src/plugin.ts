@@ -99,7 +99,7 @@ export const EnvironmentPage = radiusPlugin.provide(
     mountPoint: environmentPageRouteRef,
   }),
 );
-    
+
 export const ResourceTypesListPage = radiusPlugin.provide(
   createRoutableExtension({
     name: 'Resource Types',

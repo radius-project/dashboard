@@ -5,7 +5,9 @@ import { Resource, EnvironmentProperties } from '../../resources';
 
 // Mock the child components
 jest.mock('./EnvironmentDetailsTable', () => ({
-  EnvironmentDetailsTable: () => <div data-testid="environment-details-table">EnvironmentDetailsTable</div>,
+  EnvironmentDetailsTable: () => (
+    <div data-testid="environment-details-table">EnvironmentDetailsTable</div>
+  ),
 }));
 
 jest.mock('../recipes/RecipeTable', () => ({

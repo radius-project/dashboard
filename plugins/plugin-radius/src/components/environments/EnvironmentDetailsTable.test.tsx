@@ -23,10 +23,14 @@ describe('EnvironmentDetailsTable', () => {
 
     expect(screen.getByText('default / k8s-env')).toBeInTheDocument();
     expect(screen.getByText('Kubernetes Cluster')).toBeInTheDocument();
-    expect(screen.getByText('Radius control plane cluster')).toBeInTheDocument();
+    expect(
+      screen.getByText('Radius control plane cluster'),
+    ).toBeInTheDocument();
     expect(screen.getByText('Kubernetes Namespace')).toBeInTheDocument();
     expect(screen.getByText('my-namespace')).toBeInTheDocument();
-    expect(screen.getByText('No cloud provider configured')).toBeInTheDocument();
+    expect(
+      screen.getByText('No cloud provider configured'),
+    ).toBeInTheDocument();
   });
 
   it('should render Azure environment details with subscription and resource group', () => {
@@ -43,7 +47,8 @@ describe('EnvironmentDetailsTable', () => {
         },
         providers: {
           azure: {
-            scope: '/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/my-resource-group',
+            scope:
+              '/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/my-resource-group',
           },
         },
       },
@@ -54,7 +59,9 @@ describe('EnvironmentDetailsTable', () => {
     expect(screen.getByText('test-group / azure-env')).toBeInTheDocument();
     expect(screen.getByText('azure-namespace')).toBeInTheDocument();
     expect(screen.getByText('Azure Subscription ID')).toBeInTheDocument();
-    expect(screen.getByText('12345678-1234-1234-1234-123456789012')).toBeInTheDocument();
+    expect(
+      screen.getByText('12345678-1234-1234-1234-123456789012'),
+    ).toBeInTheDocument();
     expect(screen.getByText('Azure Resource Group')).toBeInTheDocument();
     expect(screen.getByText('my-resource-group')).toBeInTheDocument();
   });

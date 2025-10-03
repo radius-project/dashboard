@@ -36,14 +36,17 @@ describe('EnvironmentLayout', () => {
       </EnvironmentLayout>,
       {
         mountedRoutes: {
-          '/environments/:group/:namespace/:type/:name': environmentPageRouteRef,
+          '/environments/:group/:namespace/:type/:name':
+            environmentPageRouteRef,
         },
       },
     );
 
     expect(screen.getByText('Environment')).toBeInTheDocument();
     expect(
-      screen.getByText('Displaying details for Applications.Core/environments: test-env'),
+      screen.getByText(
+        'Displaying details for Applications.Core/environments: test-env',
+      ),
     ).toBeInTheDocument();
 
     // Check breadcrumbs
@@ -59,7 +62,8 @@ describe('EnvironmentLayout', () => {
       </EnvironmentLayout>,
       {
         mountedRoutes: {
-          '/environments/:group/:namespace/:type/:name': environmentPageRouteRef,
+          '/environments/:group/:namespace/:type/:name':
+            environmentPageRouteRef,
         },
       },
     );
@@ -75,7 +79,8 @@ describe('EnvironmentLayout', () => {
       </EnvironmentLayout>,
       {
         mountedRoutes: {
-          '/environments/:group/:namespace/:type/:name': environmentPageRouteRef,
+          '/environments/:group/:namespace/:type/:name':
+            environmentPageRouteRef,
         },
       },
     );

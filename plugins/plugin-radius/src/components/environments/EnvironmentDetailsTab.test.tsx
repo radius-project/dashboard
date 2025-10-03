@@ -31,7 +31,9 @@ describe('EnvironmentDetailsTab', () => {
 
     // Check that JSON stringified data is rendered
     const preElement = screen.getByText((content, element) => {
-      return element?.tagName.toLowerCase() === 'pre' && content.includes('test-env');
+      return (
+        element?.tagName.toLowerCase() === 'pre' && content.includes('test-env')
+      );
     });
     expect(preElement).toBeInTheDocument();
   });
@@ -41,6 +43,8 @@ describe('EnvironmentDetailsTab', () => {
 
     const preElement = document.querySelector('pre');
     expect(preElement?.textContent).toContain('"name": "test-env"');
-    expect(preElement?.textContent).toContain('"type": "Applications.Core/environments"');
+    expect(preElement?.textContent).toContain(
+      '"type": "Applications.Core/environments"',
+    );
   });
 });

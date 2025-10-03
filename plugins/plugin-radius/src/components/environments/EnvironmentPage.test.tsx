@@ -23,7 +23,9 @@ jest.mock('./EnvironmentDetailsTab', () => ({
 }));
 
 jest.mock('./EnvironmentResourcesTab', () => ({
-  EnvironmentResourcesTab: () => <div data-testid="resources-tab">Resources</div>,
+  EnvironmentResourcesTab: () => (
+    <div data-testid="resources-tab">Resources</div>
+  ),
 }));
 
 const mockEnvironment: Resource<EnvironmentProperties> = {
@@ -45,9 +47,11 @@ describe('EnvironmentPage', () => {
   it('should render loading state initially', async () => {
     const deferred: ((resolve: Resource<EnvironmentProperties>) => void)[] = [];
     const api: Pick<RadiusApi, 'getResourceById'> = {
-      getResourceById: async <T = { [key: string]: unknown }>() =>
+      getResourceById: async <T = { [key: string]: unknown },>() =>
         new Promise<Resource<T>>(resolve => {
-          deferred.push(resolve as (resolve: Resource<EnvironmentProperties>) => void);
+          deferred.push(
+            resolve as (resolve: Resource<EnvironmentProperties>) => void,
+          );
         }),
     };
 
@@ -57,9 +61,12 @@ describe('EnvironmentPage', () => {
       </TestApiProvider>,
       {
         mountedRoutes: {
-          '/environments/:group/:namespace/:type/:name': environmentPageRouteRef,
+          '/environments/:group/:namespace/:type/:name':
+            environmentPageRouteRef,
         },
-        routeEntries: ['/environments/test-group/Applications.Core/environments/test-env'],
+        routeEntries: [
+          '/environments/test-group/Applications.Core/environments/test-env',
+        ],
       },
     );
 
@@ -70,7 +77,7 @@ describe('EnvironmentPage', () => {
 
   it('should render error state when API call fails', async () => {
     const api: Pick<RadiusApi, 'getResourceById'> = {
-      getResourceById: async () => 
+      getResourceById: async () =>
         Promise.reject(new Error('Failed to fetch environment')),
     };
 
@@ -80,9 +87,12 @@ describe('EnvironmentPage', () => {
       </TestApiProvider>,
       {
         mountedRoutes: {
-          '/environments/:group/:namespace/:type/:name': environmentPageRouteRef,
+          '/environments/:group/:namespace/:type/:name':
+            environmentPageRouteRef,
         },
-        routeEntries: ['/environments/test-group/Applications.Core/environments/test-env'],
+        routeEntries: [
+          '/environments/test-group/Applications.Core/environments/test-env',
+        ],
       },
     );
 
@@ -94,7 +104,7 @@ describe('EnvironmentPage', () => {
 
   it('should render environment page with tabs when data loads successfully', async () => {
     const api: Pick<RadiusApi, 'getResourceById'> = {
-      getResourceById: async <T = { [key: string]: unknown }>() => 
+      getResourceById: async <T = { [key: string]: unknown },>() =>
         Promise.resolve(mockEnvironment as Resource<T>),
     };
 
@@ -104,9 +114,12 @@ describe('EnvironmentPage', () => {
       </TestApiProvider>,
       {
         mountedRoutes: {
-          '/environments/:group/:namespace/:type/:name': environmentPageRouteRef,
+          '/environments/:group/:namespace/:type/:name':
+            environmentPageRouteRef,
         },
-        routeEntries: ['/environments/test-group/Applications.Core/environments/test-env/overview'],
+        routeEntries: [
+          '/environments/test-group/Applications.Core/environments/test-env/overview',
+        ],
       },
     );
 
@@ -122,9 +135,11 @@ describe('EnvironmentPage', () => {
   });
 
   it('should call API with resource ID when loading', async () => {
-    const getResourceByIdMock = jest.fn().mockImplementation(async <T = { [key: string]: unknown }>() =>
-      Promise.resolve(mockEnvironment as Resource<T>),
-    );
+    const getResourceByIdMock = jest
+      .fn()
+      .mockImplementation(async <T = { [key: string]: unknown },>() =>
+        Promise.resolve(mockEnvironment as Resource<T>),
+      );
     const api: Pick<RadiusApi, 'getResourceById'> = {
       getResourceById: getResourceByIdMock,
     };
@@ -135,9 +150,12 @@ describe('EnvironmentPage', () => {
       </TestApiProvider>,
       {
         mountedRoutes: {
-          '/environments/:group/:namespace/:type/:name': environmentPageRouteRef,
+          '/environments/:group/:namespace/:type/:name':
+            environmentPageRouteRef,
         },
-        routeEntries: ['/environments/my-group/Applications.Core/environments/my-env'],
+        routeEntries: [
+          '/environments/my-group/Applications.Core/environments/my-env',
+        ],
       },
     );
 
@@ -151,7 +169,7 @@ describe('EnvironmentPage', () => {
 
   it('should render Overview tab by default', async () => {
     const api: Pick<RadiusApi, 'getResourceById'> = {
-      getResourceById: async <T = { [key: string]: unknown }>() => 
+      getResourceById: async <T = { [key: string]: unknown },>() =>
         Promise.resolve(mockEnvironment as Resource<T>),
     };
 
@@ -161,9 +179,12 @@ describe('EnvironmentPage', () => {
       </TestApiProvider>,
       {
         mountedRoutes: {
-          '/environments/:group/:namespace/:type/:name': environmentPageRouteRef,
+          '/environments/:group/:namespace/:type/:name':
+            environmentPageRouteRef,
         },
-        routeEntries: ['/environments/test-group/Applications.Core/environments/test-env/overview'],
+        routeEntries: [
+          '/environments/test-group/Applications.Core/environments/test-env/overview',
+        ],
       },
     );
 
@@ -172,4 +193,3 @@ describe('EnvironmentPage', () => {
     });
   });
 });
-
