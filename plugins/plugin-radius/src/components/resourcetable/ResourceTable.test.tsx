@@ -5,7 +5,7 @@ import { RadiusApi } from '../../api';
 import { radiusApiRef } from '../../plugin';
 import { ResourceList } from '../../resources';
 import { ResourceTable } from './ResourceTable';
-import { resourcePageRouteRef } from '../../routes';
+import { resourcePageRouteRef, environmentPageRouteRef } from '../../routes';
 
 describe('ResourceTable', () => {
   it('should display loading indicator while loading', async () => {
@@ -136,6 +136,7 @@ describe('ResourceTable', () => {
       {
         mountedRoutes: {
           '/resources': resourcePageRouteRef,
+          '/environments': environmentPageRouteRef,
         },
       },
     );

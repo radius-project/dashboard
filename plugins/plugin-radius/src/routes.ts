@@ -33,3 +33,8 @@ export const resourcePageRouteRef = createRouteRef({
   id: 'radius-resource-page',
   params: ['group', 'namespace', 'type', 'name'],
 });
+
+export const environmentPageRouteRef = createRouteRef({
+  id: 'radius-environment-page',
+  params: ['group', 'namespace', 'type', 'name'],
+});

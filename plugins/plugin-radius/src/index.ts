@@ -2,6 +2,7 @@ export { featureRadiusCatalog } from './features';
 export {
   ApplicationListPage,
   EnvironmentListPage,
+  EnvironmentPage,
   radiusPlugin,
   RecipeListPage,
   ResourceListPage,
@@ -12,6 +13,7 @@ export {
 export {
   applicationListPageRouteRef,
   environmentListPageRouteRef,
+  environmentPageRouteRef,
   recipeListPageRouteRef,
   resourceListPageRouteRef,
   resourceTypesListPageRouteRef,
