@@ -37,7 +37,7 @@ describe('EnvironmentListPage', () => {
     const [header] = rows;
 
     // Verify correct headings (we had headings that will never be shown for an environment)
-    const expectedColumns = ['Name', 'Resource Group', 'Type', 'Status'];
+    const expectedColumns = ['Name', 'Resource Group', 'Kind'];
     const headings = header.querySelectorAll('th');
     expect(headings).toHaveLength(expectedColumns.length);
     headings.forEach((heading, index) => {

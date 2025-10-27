@@ -24,4 +24,22 @@ export interface Recipe {
 export interface EnvironmentProperties {
   provisioningState: string;
   recipes: Record<string, Record<string, Recipe>>;
+  compute?: {
+    namespace?: string;
+    kubernetes?: {
+      namespace?: string;
+    };
+  };
+  providers?: {
+    azure?: {
+      scope?: string;
+      subscriptionId?: string;
+      resourceGroup?: string;
+    };
+    aws?: {
+      scope?: string;
+      accountId?: string;
+      region?: string;
+    };
+  };
 }

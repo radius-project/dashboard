@@ -20,6 +20,7 @@ const DataTable = (props: {
   title: string;
   filters?: { environment?: string; application?: string };
   resourceType?: string;
+  resourceGroupFilter?: string;
 }) => {
   const columns: TableColumn<Resource>[] = [
     {
@@ -32,8 +33,42 @@ const DataTable = (props: {
       type: 'string',
       render: row => parseResourceId(row.id)?.group,
     },
-    { title: 'Type', field: 'type', type: 'string' },
   ];
+
+  // Helper function to determine environment kind
+  const getEnvironmentKind = (resource: Resource): string => {
+    const providers = resource.properties?.providers as
+      | {
+          azure?: Record<string, unknown>;
+          aws?: Record<string, unknown>;
+        }
+      | undefined;
+
+    if (!providers) {
+      return 'Kubernetes';
+    }
+
+    if (providers.azure) {
+      return 'Azure';
+    }
+
+    if (providers.aws) {
+      return 'AWS';
+    }
+
+    return 'Kubernetes';
+  };
+
+  // Add Kind column for environment resources, Type column for others
+  if (props.resourceType === 'Applications.Core/environments') {
+    columns.push({
+      title: 'Kind',
+      type: 'string',
+      render: row => getEnvironmentKind(row),
+    });
+  } else {
+    columns.push({ title: 'Type', field: 'type', type: 'string' });
+  }
 
   // Special case some additional fields by hiding them when they would never have a value.
   if (props.resourceType === 'Applications.Core/environments') {
@@ -66,7 +101,10 @@ const DataTable = (props: {
     });
   }
 
-  columns.push({ title: 'Status', field: 'properties.provisioningState' });
+  // Add Status column for non-environment resources
+  if (props.resourceType !== 'Applications.Core/environments') {
+    columns.push({ title: 'Status', field: 'properties.provisioningState' });
+  }
 
   const data = props.resources.filter(resource => {
     // If the id equals the filter, then exclude it. 'resource.id' will always be a string.
@@ -95,15 +133,42 @@ const DataTable = (props: {
       return false;
     }
 
+    // Filter by resource group if specified
+    if (props.resourceGroupFilter) {
+      const resourceGroup = parseResourceId(resource.id)?.group;
+      if (resourceGroup !== props.resourceGroupFilter) {
+        return false;
+      }
+    }
+
     return true;
   });
+
+  // Sort environments by resource group (ascending) then by name (ascending)
+  const sortedData =
+    props.resourceType === 'Applications.Core/environments'
+      ? [...data].sort((a, b) => {
+          const groupA = parseResourceId(a.id)?.group || '';
+          const groupB = parseResourceId(b.id)?.group || '';
+          const nameA = a.name || '';
+          const nameB = b.name || '';
+
+          // First sort by resource group (ascending)
+          if (groupA !== groupB) {
+            return groupA.localeCompare(groupB);
+          }
+
+          // Then sort by name (ascending)
+          return nameA.localeCompare(nameB);
+        })
+      : data;
 
   return (
     <Table
       title={props.title}
       options={{ search: false, paging: false }}
       columns={columns}
-      data={data}
+      data={sortedData}
     />
   );
 };
@@ -112,6 +177,7 @@ export const ResourceTable = (props: {
   title: string;
   resourceType?: string;
   filters?: { environment?: string; application?: string };
+  resourceGroupFilter?: string;
 }) => {
   const radiusApi = useApi(radiusApiRef);
   const { value, loading, error } = useAsync(
@@ -134,6 +200,7 @@ export const ResourceTable = (props: {
       title={props.title}
       filters={props.filters}
       resourceType={props.resourceType}
+      resourceGroupFilter={props.resourceGroupFilter}
     />
   );
 };

@@ -12,11 +12,11 @@ import useAsync from 'react-use/lib/useAsync';
 import { radiusApiRef } from '../../plugin';
 import { EnvironmentProperties, Resource, ResourceList } from '../../resources';
 import { ResourceLink } from '../resourcelink';
-import { resourcePageRouteRef } from '../../routes';
+import { environmentPageRouteRef } from '../../routes';
 import { parseResourceId } from '@radapp.io/rad-components';
 
 const EnvironmentListInfoContent = () => {
-  const route = useRouteRef(resourcePageRouteRef);
+  const route = useRouteRef(environmentPageRouteRef);
 
   const radiusApi = useApi(radiusApiRef);
   const { value, loading, error } = useAsync(
@@ -56,7 +56,7 @@ const EnvironmentListInfoContent = () => {
         });
         return (
           <>
-            <LinkButton to={`${base}/recipes`}>Recipes</LinkButton>
+            <LinkButton to={`${base}/overview`}>Overview</LinkButton>
             <LinkButton to={`${base}/resources`}>Resources</LinkButton>
           </>
         );
