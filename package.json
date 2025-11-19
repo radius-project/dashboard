@@ -25,8 +25,8 @@
     "fix": "backstage-cli repo fix",
     "lint": "backstage-cli repo lint --since origin/main",
     "lint:all": "backstage-cli repo lint",
-    "format:check": "prettier --check ./**/*.{js,jsx,ts,tsx,mjs,cjs}",
-    "format:write": "prettier --write ./**/*.{js,jsx,ts,tsx,mjs,cjs}",
+    "format:check": "prettier --check \"**/*.{js,jsx,ts,tsx,mjs,cjs}\"",
+    "format:write": "prettier --write \"**/*.{js,jsx,ts,tsx,mjs,cjs}\"",
     "new": "backstage-cli new --scope internal"
   },
   "workspaces": {
