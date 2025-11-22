@@ -1,4 +1,7 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
 name: Build
+
 on:
   push:
     branches:
@@ -8,92 +11,118 @@ on:
   pull_request:
     branches:
       - main
+
 permissions:
   contents: read
   pull-requests: read
   issues: read
   packages: write
+
 env:
   CI_LINT: ${{ github.event_name == 'pull_request' }}
   CI_TEST: ${{ github.event_name == 'pull_request' }}
   CI_PUBLISH_RELEASE: ${{ github.repository == 'radius-project/dashboard' && startsWith(github.ref, 'refs/tags/v') && github.event_name == 'push' }}
   CI_PUBLISH_LATEST: ${{ github.repository == 'radius-project/dashboard' && github.ref == 'refs/heads/main' && github.event_name == 'push' }}
+
 jobs:
   build:
     name: Build Packages
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+
       - name: Parse release version and set environment variables
         run: python ./.github/scripts/get_release_version.py
+
       - name: Enable corepack
         run: corepack enable
+
       - name: Install Node.js 21 # Must be after corepack is enabled.
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
         with:
-          node-version: '21'
-          cache: 'yarn'
-          cache-dependency-path: 'yarn.lock'
+          node-version: 21
+          cache: yarn
+          cache-dependency-path: yarn.lock
+
       - name: Install dependencies
         run: yarn install --frozen-lockfile
+
       - name: Lint
         if: ${{ env.CI_LINT == 'true' }}
         run: yarn run lint:all
+
       - name: Format
         if: ${{ env.CI_LINT == 'true' }}
         run: yarn run format:check
+
       - name: Build TypeScript
         run: yarn run tsc
+
       - name: Build
         run: yarn workspaces foreach -A run build:all
+
       - name: Build Storybook
         run: yarn workspace @radapp.io/rad-components run build-storybook
+
       - name: Run Tests
         if: ${{ env.CI_TEST == 'true' }}
         run: yarn run test:all
+
       - name: Run E2E Tests
         if: ${{ env.CI_TEST == 'true' }}
         run: yarn run test:e2e
+
   build-and-publish-container:
     name: Build and Publish Container
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+
       - name: Parse release version and set environment variables
         run: python ./.github/scripts/get_release_version.py
+
       - name: Enable corepack
         run: corepack enable
+
       - name: Install Node.js 21 # Must be after corepack is enabled.
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
         with:
-          node-version: '21'
-          cache: 'yarn'
-          cache-dependency-path: 'yarn.lock'
+          node-version: 21
+          cache: yarn
+          cache-dependency-path: yarn.lock
+
       - name: Install dependencies
         run: yarn install --frozen-lockfile
+
       - name: Build TypeScript
         run: yarn run tsc
+
       - name: Build Image
         run: yarn build:backend --config ../../app-config.yaml --config ../../app-config.dashboard.yaml
+
       - name: Build Image
         run: yarn build-image
+
       - name: Analyze Image
         uses: ./.github/actions/analyze-image
         with:
           image: ghcr.io/radius-project/dashboard:latest
+
       - name: Login to ghcr.io
         if: ${{ env.CI_PUBLISH_LATEST == 'true' || env.CI_PUBLISH_RELEASE == 'true' }}
-        uses: docker/login-action@v3
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Push Image to ghcr.io (push to main)
         if: ${{ env.CI_PUBLISH_LATEST == 'true' }}
         run: |
           docker push ghcr.io/radius-project/dashboard:latest
+
       - name: Push Image to ghcr.io (push to tag)
         if: ${{ env.CI_PUBLISH_RELEASE == 'true' }}
         run: |
