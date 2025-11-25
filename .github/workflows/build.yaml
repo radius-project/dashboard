@@ -12,11 +12,7 @@ on:
     branches:
       - main
 
-permissions:
-  contents: read
-  pull-requests: read
-  issues: read
-  packages: write
+permissions: {}
 
 env:
   CI_LINT: ${{ github.event_name == 'pull_request' }}
@@ -27,10 +23,15 @@ env:
 jobs:
   build:
     name: Build Packages
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
     steps:
-      - name: Checkout code
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+      - name: Checkout
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        with:
+          persist-credentials: false
 
       - name: Parse release version and set environment variables
         run: python ./.github/scripts/get_release_version.py
@@ -75,10 +76,16 @@ jobs:
 
   build-and-publish-container:
     name: Build and Publish Container
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      packages: write
     steps:
-      - name: Checkout code
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+      - name: Checkout
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        with:
+          persist-credentials: false
 
       - name: Parse release version and set environment variables
         run: python ./.github/scripts/get_release_version.py
