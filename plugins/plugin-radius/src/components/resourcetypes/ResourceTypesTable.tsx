@@ -40,7 +40,7 @@ export const ResourceTypesTable = (props: { title: string }) => {
 
   // Filter resource types based on checkbox state
   // Hide commonly built-in namespaces by default to reduce clutter
-  const EXCLUDED_NAMESPACES = ['Applications.', 'Microsoft.'];
+  const EXCLUDED_NAMESPACES = ['Applications.', 'Microsoft.', 'Radius.Core'];
   const allData = value?.value || [];
   const filteredData = showOtherResourceTypes
     ? allData
