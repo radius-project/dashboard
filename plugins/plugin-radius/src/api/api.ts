@@ -42,6 +42,21 @@ export interface RadiusApi {
     APIVersionList: string[];
   }>;
 
+  // Learn a resource type schema from a Terraform module in a Git repository
+  learnResourceType(opts: {
+    gitUrl: string;
+    namespace?: string;
+    typeName?: string;
+    planeName?: string;
+  }): Promise<{
+    namespace: string;
+    typeName: string;
+    yaml: string;
+    variableCount: number;
+    generatedTypeName: boolean;
+    inferredNamespace: boolean;
+  }>;
+
   listResources<T = { [key: string]: unknown }>(opts?: {
     resourceType?: string;
     resourceGroup?: string;
@@ -368,6 +383,98 @@ export class RadiusApiImpl implements RadiusApi {
     return { value: items };
   }
 
+  async learnResourceType(opts: {
+    gitUrl: string;
+    namespace?: string;
+    typeName?: string;
+    planeName?: string;
+  }): Promise<{
+    namespace: string;
+    typeName: string;
+    yaml: string;
+    variableCount: number;
+    generatedTypeName: boolean;
+    inferredNamespace: boolean;
+  }> {
+    const cluster = await this.selectCluster();
+    const plane = opts.planeName || 'local';
+
+    // Normalize inputs - trim whitespace and convert empty strings to undefined
+    // This prevents malformed API paths and requests with whitespace-only values
+    const normalizedGitUrl = opts.gitUrl.trim();
+    const normalizedNamespace = opts.namespace?.trim() || undefined;
+    const normalizedTypeName = opts.typeName?.trim() || undefined;
+
+    // Validate required field after normalization
+    if (!normalizedGitUrl) {
+      throw new Error('gitUrl is required and cannot be empty');
+    }
+
+    // Default provider to Custom.Resources if no namespace is specified
+    // This follows the convention that learned resource types without an explicit
+    // namespace go into the Custom.Resources provider
+    const provider = normalizedNamespace || 'Custom.Resources';
+
+    // Build the learn endpoint path
+    // Format: /planes/radius/{plane}/providers/System.Resources/resourceproviders/{provider}/resourcetypes/learn
+    const path = makePath({
+      scopes: [{ type: 'radius', value: plane }],
+      type: 'System.Resources/resourceproviders',
+      name: provider,
+      action: 'resourcetypes/learn',
+    });
+
+    // Build the request body with normalized values - only include optional fields if provided
+    const requestBody: {
+      gitUrl: string;
+      namespace?: string;
+      typeName?: string;
+    } = {
+      gitUrl: normalizedGitUrl,
+    };
+
+    if (normalizedNamespace) {
+      requestBody.namespace = normalizedNamespace;
+    }
+
+    if (normalizedTypeName) {
+      requestBody.typeName = normalizedTypeName;
+    }
+
+    // Call the learn endpoint with POST
+    const response = await this.makePostRequest<
+      typeof requestBody,
+      {
+        resourceNamespace?: string;
+        namespace?: string;
+        typeName: string;
+        yaml: string;
+        variableCount: number;
+        generatedTypeName: boolean;
+        inferredNamespace: boolean;
+      }
+    >(cluster, path, requestBody);
+
+    // Defensive response handling - check both possible field names for future compatibility
+    // Backend currently uses 'resourceNamespace', but may use 'namespace' in the future
+    const namespace = response.resourceNamespace ?? response.namespace;
+    if (!namespace) {
+      throw new Error(
+        'Invalid API response: missing namespace field (expected resourceNamespace or namespace)',
+      );
+    }
+
+    // Transform response to match interface
+    return {
+      namespace,
+      typeName: response.typeName,
+      yaml: response.yaml,
+      variableCount: response.variableCount,
+      generatedTypeName: response.generatedTypeName,
+      inferredNamespace: response.inferredNamespace,
+    };
+  }
+
   private async selectCluster(): Promise<string> {
     const clusters = await this.kubernetesApi.getClusters();
     for (const cluster of clusters) {
@@ -405,6 +512,35 @@ export class RadiusApiImpl implements RadiusApi {
     }
 
     const data = (await response.json()) as T;
+    return data;
+  }
+
+  private async makePostRequest<TRequest, TResponse>(
+    cluster: string,
+    path: string,
+    body: TRequest,
+  ): Promise<TResponse> {
+    const response = await this.kubernetesApi.proxy({
+      clusterName: cluster,
+      path: path,
+      init: {
+        referrerPolicy: 'no-referrer',
+        mode: 'cors',
+        cache: 'no-cache',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      },
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Request failed: ${response.status}:\n\n${text}`);
+    }
+
+    const data = (await response.json()) as TResponse;
     return data;
   }
 
