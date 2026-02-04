@@ -29,7 +29,7 @@ const LayoutFlow = (props: { graph: AppGraphData }) => {
   const [edges, setEdges, onEdgesChange] = useEdgesState(layoutedNodes.edges);
 
   useCallback(
-    direction => {
+    (direction: string) => {
       const layouted = getLayoutedElements(nodes, edges, { direction });
 
       setNodes([...layouted.nodes]);

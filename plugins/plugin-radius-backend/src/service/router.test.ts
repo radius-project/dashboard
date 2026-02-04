@@ -1,4 +1,3 @@
-import { getVoidLogger } from '@backstage/backend-common';
 import express from 'express';
 import request from 'supertest';
 
@@ -8,9 +7,7 @@ describe('createRouter', () => {
   let app: express.Express;
 
   beforeAll(async () => {
-    const router = await createRouter({
-      logger: getVoidLogger(),
-    });
+    const router = await createRouter();
     app = express().use(router);
   });
 
