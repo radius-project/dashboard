@@ -5,10 +5,6 @@ import {
 import * as express from 'express';
 import Router from 'express-promise-router';
 
-export interface RouterOptions {
-  logger: typeof coreServices.logger;
-}
-
 export async function createRouter(): Promise<express.Router> {
   const router = Router();
   router.use(express.json());
@@ -30,7 +26,8 @@ export const radiusPlugin = createBackendPlugin({
       async init({ httpRouter, logger }) {
         logger.info('Initializing Radius backend plugin');
         const router = await createRouter();
-        // @ts-expect-error - Type incompatibility between express-promise-router and express 5 types
+        // @ts-expect-error - express-promise-router types are incompatible with Express 5 Handler type
+        // See: https://github.com/express-promise-router/express-promise-router/issues/119
         httpRouter.use(router);
       },
     });
