@@ -70,7 +70,9 @@ auth:
   # For production deployments that require authentication, configure a
   # proper auth provider like GitHub, Azure AD, or OIDC.
   providers:
-    guest: {}
+    guest:
+      # Allow guest access outside development mode (required for CI and production)
+      dangerouslyAllowOutsideDevelopment: true
 
 scaffolder:
   {}
