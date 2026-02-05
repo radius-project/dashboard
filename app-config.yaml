@@ -32,6 +32,12 @@ backend:
     connection: ':memory:'
   # workingDirectory: /tmp # Use this to configure a working directory for the scaffolder, defaults to the OS temp-dir
 
+  # Disable default auth policy for local development.
+  # This allows unauthenticated requests which is required for guest users.
+  # WARNING: Do not use this setting in production.
+  auth:
+    dangerouslyDisableDefaultAuthPolicy: true
+
 integrations:
   github:
     - host: github.com
@@ -65,7 +71,8 @@ techdocs:
 
 auth:
   # see https://backstage.io/docs/auth/ to learn about auth providers
-  providers: {}
+  providers:
+    guest: {}
 
 scaffolder:
   {}
