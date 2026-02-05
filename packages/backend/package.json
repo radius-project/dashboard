@@ -24,7 +24,7 @@
     "@backstage/plugin-kubernetes-backend": "^0.21.0",
     "@backstage/plugin-proxy-backend": "^0.6.9",
     "@internal/app": "^0.0.1",
-    "better-sqlite3": "^9.0.0",
+    "better-sqlite3": "^12.6.2",
     "node-gyp": "^12.1.0",
     "pg": "^8.17.1"
   },
