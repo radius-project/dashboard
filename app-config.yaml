@@ -32,6 +32,17 @@ backend:
     connection: ':memory:'
   # workingDirectory: /tmp # Use this to configure a working directory for the scaffolder, defaults to the OS temp-dir
 
+  # External access configuration for lightweight authentication.
+  # This enables static token authentication for API access.
+  # Services can authenticate by sending: Authorization: Bearer <token>
+  # To enable, set the BACKEND_AUTH_SECRET environment variable.
+  auth:
+    externalAccess:
+      - type: static
+        options:
+          token: ${BACKEND_AUTH_SECRET}
+          subject: external-access
+
 integrations:
   github:
     - host: github.com
@@ -64,11 +75,32 @@ techdocs:
     type: 'local' # Alternatives - 'googleGcs' or 'awsS3'. Read documentation for using alternatives.
 
 auth:
-  # see https://backstage.io/docs/auth/ to learn about auth providers
-  # The guest provider allows unauthenticated access. This is suitable for
-  # the Radius Dashboard which is intended to be accessible without login.
-  # For production deployments that require authentication, configure a
-  # proper auth provider like GitHub, Azure AD, or OIDC.
+  # Authentication providers for user login.
+  # See https://backstage.io/docs/auth/ to learn about auth providers.
+  #
+  # OPTION 1: Guest Provider (current configuration)
+  # The guest provider allows unauthenticated browser access. This is suitable
+  # for internal deployments where network-level security is in place.
+  # WARNING: This allows anyone with network access to use the dashboard.
+  #
+  # OPTION 2: GitHub OAuth (recommended for production)
+  # Uncomment and configure for secure user authentication:
+  #   providers:
+  #     github:
+  #       development:
+  #         clientId: ${AUTH_GITHUB_CLIENT_ID}
+  #         clientSecret: ${AUTH_GITHUB_CLIENT_SECRET}
+  #
+  # OPTION 3: Microsoft Azure AD
+  #   providers:
+  #     microsoft:
+  #       development:
+  #         clientId: ${AUTH_MICROSOFT_CLIENT_ID}
+  #         clientSecret: ${AUTH_MICROSOFT_CLIENT_SECRET}
+  #         tenantId: ${AUTH_MICROSOFT_TENANT_ID}
+  #
+  # For API-only access (no browser login), use the backend.auth.externalAccess
+  # configuration above with static tokens.
   providers:
     guest:
       dangerouslyAllowOutsideDevelopment: true
