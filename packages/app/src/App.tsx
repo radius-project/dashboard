@@ -10,7 +10,7 @@ import { HomePage } from './components/home/HomePage';
 import {
   AlertDisplay,
   OAuthRequestDialog,
-  SignInPage,
+  ProxiedSignInPage,
 } from '@backstage/core-components';
 import { createApp } from '@backstage/app-defaults';
 import { AppRouter, FlatRoutes } from '@backstage/core-app-api';
@@ -70,8 +70,9 @@ const darkTheme = createUnifiedTheme({
 const app = createApp({
   apis,
   components: {
-    // Auto sign-in with guest provider - signs in automatically without showing login page
-    SignInPage: props => <SignInPage {...props} auto providers={['guest']} />,
+    // ProxiedSignInPage automatically signs in through the backend guest auth module
+    // with just a loading spinner, no user interaction required
+    SignInPage: props => <ProxiedSignInPage {...props} provider="guest" />,
   },
   themes: [
     {
