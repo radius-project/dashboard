@@ -19,9 +19,7 @@ import { test, expect } from '@playwright/test';
 test('App should render the home page', async ({ page }) => {
   await page.goto('/');
 
-  // Wait for auto guest sign-in to complete and home page content to appear
-  // The SignInPage with auto prop will automatically sign in as guest
-  await expect(page.getByText('Learn More')).toBeVisible({ timeout: 30000 });
+  await expect(page.getByText('Learn More')).toBeVisible();
   await expect(page.getByText('Join the Community')).toBeVisible();
   await expect(page.getByText('Get help with Radius')).toBeVisible();
 });
