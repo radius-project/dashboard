@@ -51,8 +51,11 @@ export interface RadiusApi {
 const pathPrefix = '/apis/api.ucp.dev/v1alpha3';
 const apiVersion = '?api-version=2023-10-01-preview';
 
-export const makePathForId = (id: string) => {
-  return `${pathPrefix}${id}${apiVersion}`;
+export const makePathForId = (id: string, customApiVersion?: string) => {
+  const version = customApiVersion
+    ? `?api-version=${customApiVersion}`
+    : apiVersion;
+  return `${pathPrefix}${id}${version}`;
 };
 
 export const makePath = ({
@@ -60,11 +63,13 @@ export const makePath = ({
   type,
   name,
   action,
+  customApiVersion,
 }: {
   scopes: { type: string; value?: string }[];
   type?: string;
   name?: string;
   action?: string;
+  customApiVersion?: string;
 }) => {
   const scopePart = scopes
     .map(s => {
@@ -79,7 +84,7 @@ export const makePath = ({
   const namePart = name ? `/${name}` : '';
   const actionPart = action ? `/${action}` : '';
   const id = `/planes/${scopePart}${typePart}${namePart}${actionPart}`;
-  return makePathForId(id);
+  return makePathForId(id, customApiVersion);
 };
 
 export class RadiusApiImpl implements RadiusApi {
@@ -97,9 +102,11 @@ export class RadiusApiImpl implements RadiusApi {
 
     // Fast path for listing resources of a specific type.
     if (opts?.resourceType) {
+      const resourceApiVersion = await this.getBestApiVersion(opts.resourceType);
       const path = makePath({
         scopes: this.makeScopes(opts),
         type: opts.resourceType,
+        customApiVersion: resourceApiVersion,
       });
       return this.makeRequest<ResourceList<T>>(cluster, path);
     }
@@ -152,6 +159,17 @@ export class RadiusApiImpl implements RadiusApi {
   }): Promise<Resource<T>> {
     const cluster = await this.selectCluster();
 
+    // Extract resource type from ID to determine appropriate API version
+    const resourceType = this.extractResourceTypeFromId(opts.id);
+
+    if (resourceType) {
+      const resourceApiVersion = await this.getBestApiVersion(resourceType);
+      const path = makePathForId(opts.id, resourceApiVersion);
+      const resource = await this.makeRequest<Resource<T>>(cluster, path);
+      return await this.fixupResource(resource);
+    }
+
+    // Fallback to existing behavior if resource type can't be extracted
     const path = makePathForId(opts.id);
     const resource = await this.makeRequest<Resource<T>>(cluster, path);
     return await this.fixupResource(resource);
@@ -419,5 +437,25 @@ export class RadiusApiImpl implements RadiusApi {
 
     resource.properties = p as T;
     return resource;
+  }
+
+  private async getBestApiVersion(resourceType: string): Promise<string> {
+    try {
+      const [namespace, typeName] = resourceType.split('/');
+      const typeInfo = await this.getResourceType({ namespace, typeName });
+
+      // Use first available version (assumes they're ordered sensibly)
+      return typeInfo.APIVersionList[0] || '2023-10-01-preview';
+    } catch {
+      // Fallback to default on any error
+      return '2023-10-01-preview';
+    }
+  }
+
+  private extractResourceTypeFromId(id: string): string | null {
+    // Parse resource ID to extract resource type
+    // Example: /planes/radius/local/resourceGroups/my-group/providers/Radius.Data/postgreSqlDatabases/postgresql
+    const match = id.match(/\/providers\/([^/]+\/[^/]+)/);
+    return match ? match[1] : null;
   }
 }
