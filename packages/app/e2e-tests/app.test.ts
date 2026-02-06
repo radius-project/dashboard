@@ -19,6 +19,9 @@ import { test, expect } from '@playwright/test';
 test('App should render the home page', async ({ page }) => {
   await page.goto('/');
 
+  // Refresh page to complete guest authentication
+  await page.reload();
+
   await expect(page.getByText('Learn More')).toBeVisible();
   await expect(page.getByText('Join the Community')).toBeVisible();
   await expect(page.getByText('Get help with Radius')).toBeVisible();
