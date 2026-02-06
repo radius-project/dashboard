@@ -67,11 +67,12 @@ auth:
   # see https://backstage.io/docs/auth/ to learn about auth providers
   # The guest provider allows unauthenticated access. This is suitable for
   # the Radius Dashboard which is intended to be accessible without login.
-  # The SignInPage with auto prop handles automatic guest sign-in.
+  # dangerouslyAllowOutsideDevelopment enables guest auth in CI/production.
   # For production deployments that require authentication, configure a
   # proper auth provider like GitHub, Azure AD, or OIDC.
   providers:
-    guest: {}
+    guest:
+      dangerouslyAllowOutsideDevelopment: true
 
 scaffolder:
   {}
