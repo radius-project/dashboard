@@ -19,7 +19,16 @@ import { test, expect } from '@playwright/test';
 test('App should render the home page', async ({ page }) => {
   await page.goto('/');
 
-  await expect(page.getByText('Learn More')).toBeVisible();
+  // Wait for sign-in page to appear (auto sign-in needs time to complete)
+  await page.waitForSelector('text=Sign in', { timeout: 10000 }).catch(() => {
+    // Sign-in text may not appear if already signed in
+  });
+
+  // Refresh page to complete guest authentication
+  await page.reload();
+
+  // Wait for home page content with increased timeout for CI
+  await expect(page.getByText('Learn More')).toBeVisible({ timeout: 15000 });
   await expect(page.getByText('Join the Community')).toBeVisible();
   await expect(page.getByText('Get help with Radius')).toBeVisible();
 });

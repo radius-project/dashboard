@@ -65,7 +65,14 @@ techdocs:
 
 auth:
   # see https://backstage.io/docs/auth/ to learn about auth providers
-  providers: {}
+  # The guest provider allows unauthenticated access. This is suitable for
+  # the Radius Dashboard which is intended to be accessible without login.
+  # The ProxiedSignInPage automatically signs in through the backend guest
+  # auth module with just a loading spinner, no user interaction required.
+  # For production deployments that require authentication, configure a
+  # proper auth provider like GitHub, Azure AD, or OIDC.
+  providers:
+    guest: {}
 
 scaffolder:
   {}
