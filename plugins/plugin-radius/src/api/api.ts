@@ -102,7 +102,9 @@ export class RadiusApiImpl implements RadiusApi {
 
     // Fast path for listing resources of a specific type.
     if (opts?.resourceType) {
-      const resourceApiVersion = await this.getBestApiVersion(opts.resourceType);
+      const resourceApiVersion = await this.getBestApiVersion(
+        opts.resourceType,
+      );
       const path = makePath({
         scopes: this.makeScopes(opts),
         type: opts.resourceType,

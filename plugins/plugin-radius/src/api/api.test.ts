@@ -112,7 +112,10 @@ describe('makePath', () => {
 
 describe('makePathForId', () => {
   it('uses custom API version when provided', () => {
-    const path = makePathForId('/planes/radius/local/test', '2024-01-01-preview');
+    const path = makePathForId(
+      '/planes/radius/local/test',
+      '2024-01-01-preview',
+    );
     expect(path).toEqual(
       '/apis/api.ucp.dev/v1alpha3/planes/radius/local/test?api-version=2024-01-01-preview',
     );
@@ -206,21 +209,24 @@ describe('RadiusApi', () => {
       });
 
       it('extracts resource type from valid resource ID', () => {
-        const id = '/planes/radius/local/resourceGroups/my-group/providers/Applications.Core/applications/my-app';
+        const id =
+          '/planes/radius/local/resourceGroups/my-group/providers/Applications.Core/applications/my-app';
         // eslint-disable-next-line dot-notation
         const result = api['extractResourceTypeFromId'](id);
         expect(result).toEqual('Applications.Core/applications');
       });
 
       it('extracts resource type from database resource ID', () => {
-        const id = '/planes/radius/local/resourceGroups/my-group/providers/Radius.Data/postgreSqlDatabases/postgresql';
+        const id =
+          '/planes/radius/local/resourceGroups/my-group/providers/Radius.Data/postgreSqlDatabases/postgresql';
         // eslint-disable-next-line dot-notation
         const result = api['extractResourceTypeFromId'](id);
         expect(result).toEqual('Radius.Data/postgreSqlDatabases');
       });
 
       it('extracts resource type from containerized resource ID', () => {
-        const id = '/planes/radius/local/resourceGroups/my-group/providers/Applications.Dapr/daprStateStores/redis-state';
+        const id =
+          '/planes/radius/local/resourceGroups/my-group/providers/Applications.Dapr/daprStateStores/redis-state';
         // eslint-disable-next-line dot-notation
         const result = api['extractResourceTypeFromId'](id);
         expect(result).toEqual('Applications.Dapr/daprStateStores');
@@ -247,21 +253,24 @@ describe('RadiusApi', () => {
       });
 
       it('handles resource ID with trailing slash', () => {
-        const id = '/planes/radius/local/resourceGroups/my-group/providers/Applications.Core/applications/my-app/';
+        const id =
+          '/planes/radius/local/resourceGroups/my-group/providers/Applications.Core/applications/my-app/';
         // eslint-disable-next-line dot-notation
         const result = api['extractResourceTypeFromId'](id);
         expect(result).toEqual('Applications.Core/applications');
       });
 
       it('handles resource ID with multiple providers sections', () => {
-        const id = '/planes/radius/local/resourceGroups/my-group/providers/Applications.Core/applications/providers/nested';
+        const id =
+          '/planes/radius/local/resourceGroups/my-group/providers/Applications.Core/applications/providers/nested';
         // eslint-disable-next-line dot-notation
         const result = api['extractResourceTypeFromId'](id);
         expect(result).toEqual('Applications.Core/applications');
       });
 
       it('handles resource ID with special characters in type', () => {
-        const id = '/planes/radius/local/resourceGroups/my-group/providers/Custom.Provider-v2/special_resource-type/instance';
+        const id =
+          '/planes/radius/local/resourceGroups/my-group/providers/Custom.Provider-v2/special_resource-type/instance';
         // eslint-disable-next-line dot-notation
         const result = api['extractResourceTypeFromId'](id);
         expect(result).toEqual('Custom.Provider-v2/special_resource-type');
@@ -282,12 +291,17 @@ describe('RadiusApi', () => {
         };
 
         const api = new RadiusApiImpl({
-          getClusters: async () => [{ name: 'test-cluster', authProvider: 'test' }],
-          proxy: async () => Promise.resolve(new Response(JSON.stringify(mockTypeInfo))),
+          getClusters: async () => [
+            { name: 'test-cluster', authProvider: 'test' },
+          ],
+          proxy: async () =>
+            Promise.resolve(new Response(JSON.stringify(mockTypeInfo))),
         });
 
         // eslint-disable-next-line dot-notation
-        const result = await api['getBestApiVersion']('Applications.Core/applications');
+        const result = await api['getBestApiVersion'](
+          'Applications.Core/applications',
+        );
         expect(result).toEqual('2024-01-01-preview');
       });
 
@@ -301,29 +315,41 @@ describe('RadiusApi', () => {
         };
 
         const api = new RadiusApiImpl({
-          getClusters: async () => [{ name: 'test-cluster', authProvider: 'test' }],
-          proxy: async () => Promise.resolve(new Response(JSON.stringify(mockTypeInfo))),
+          getClusters: async () => [
+            { name: 'test-cluster', authProvider: 'test' },
+          ],
+          proxy: async () =>
+            Promise.resolve(new Response(JSON.stringify(mockTypeInfo))),
         });
 
         // eslint-disable-next-line dot-notation
-        const result = await api['getBestApiVersion']('Applications.Core/applications');
+        const result = await api['getBestApiVersion'](
+          'Applications.Core/applications',
+        );
         expect(result).toEqual('2023-10-01-preview');
       });
 
       it('returns default version when getResourceType throws error', async () => {
         const api = new RadiusApiImpl({
-          getClusters: async () => [{ name: 'test-cluster', authProvider: 'test' }],
-          proxy: async () => Promise.resolve(new Response('error', { status: 404 })),
+          getClusters: async () => [
+            { name: 'test-cluster', authProvider: 'test' },
+          ],
+          proxy: async () =>
+            Promise.resolve(new Response('error', { status: 404 })),
         });
 
         // eslint-disable-next-line dot-notation
-        const result = await api['getBestApiVersion']('NonExistent.Provider/invalidType');
+        const result = await api['getBestApiVersion'](
+          'NonExistent.Provider/invalidType',
+        );
         expect(result).toEqual('2023-10-01-preview');
       });
 
       it('returns default version when resource type format is invalid', async () => {
         const api = new RadiusApiImpl({
-          getClusters: async () => [{ name: 'test-cluster', authProvider: 'test' }],
+          getClusters: async () => [
+            { name: 'test-cluster', authProvider: 'test' },
+          ],
           proxy: async () => Promise.resolve(new Response('{}')),
         });
 
@@ -334,23 +360,33 @@ describe('RadiusApi', () => {
 
       it('handles network errors gracefully', async () => {
         const api = new RadiusApiImpl({
-          getClusters: async () => { throw new Error('Network error'); },
-          proxy: async () => { throw new Error('Network error'); },
+          getClusters: async () => {
+            throw new Error('Network error');
+          },
+          proxy: async () => {
+            throw new Error('Network error');
+          },
         });
 
         // eslint-disable-next-line dot-notation
-        const result = await api['getBestApiVersion']('Applications.Core/applications');
+        const result = await api['getBestApiVersion'](
+          'Applications.Core/applications',
+        );
         expect(result).toEqual('2023-10-01-preview');
       });
 
       it('handles malformed response from getResourceType', async () => {
         const api = new RadiusApiImpl({
-          getClusters: async () => [{ name: 'test-cluster', authProvider: 'test' }],
+          getClusters: async () => [
+            { name: 'test-cluster', authProvider: 'test' },
+          ],
           proxy: async () => Promise.resolve(new Response('invalid json')),
         });
 
         // eslint-disable-next-line dot-notation
-        const result = await api['getBestApiVersion']('Applications.Core/applications');
+        const result = await api['getBestApiVersion'](
+          'Applications.Core/applications',
+        );
         expect(result).toEqual('2023-10-01-preview');
       });
 
@@ -363,12 +399,17 @@ describe('RadiusApi', () => {
         };
 
         const api = new RadiusApiImpl({
-          getClusters: async () => [{ name: 'test-cluster', authProvider: 'test' }],
-          proxy: async () => Promise.resolve(new Response(JSON.stringify(mockTypeInfo))),
+          getClusters: async () => [
+            { name: 'test-cluster', authProvider: 'test' },
+          ],
+          proxy: async () =>
+            Promise.resolve(new Response(JSON.stringify(mockTypeInfo))),
         });
 
         // eslint-disable-next-line dot-notation
-        const result = await api['getBestApiVersion']('Applications.Core/applications');
+        const result = await api['getBestApiVersion'](
+          'Applications.Core/applications',
+        );
         expect(result).toEqual('2023-10-01-preview');
       });
     });
@@ -376,7 +417,9 @@ describe('RadiusApi', () => {
     describe('Enhanced Methods Integration', () => {
       describe('listResources with dynamic versions', () => {
         it('uses dynamic API version for specific resource type', async () => {
-          const mockResourceList = { value: [{ id: 'test-1', name: 'test-app' }] };
+          const mockResourceList = {
+            value: [{ id: 'test-1', name: 'test-app' }],
+          };
           const mockTypeInfo = {
             Name: 'Applications.Core/applications',
             Description: 'Application resource type',
@@ -387,18 +430,30 @@ describe('RadiusApi', () => {
 
           let requestedPath = '';
           const api = new RadiusApiImpl({
-            getClusters: async () => [{ name: 'test-cluster', authProvider: 'test' }],
+            getClusters: async () => [
+              { name: 'test-cluster', authProvider: 'test' },
+            ],
             proxy: async ({ path }: { path: string }) => {
               requestedPath = path;
               // First call for getResourceType, second for actual resource list
-              if (path.includes('providers/Applications.Core/resourceTypes/applications')) {
-                return Promise.resolve(new Response(JSON.stringify(mockTypeInfo)));
+              if (
+                path.includes(
+                  'providers/Applications.Core/resourceTypes/applications',
+                )
+              ) {
+                return Promise.resolve(
+                  new Response(JSON.stringify(mockTypeInfo)),
+                );
               }
-              return Promise.resolve(new Response(JSON.stringify(mockResourceList)));
+              return Promise.resolve(
+                new Response(JSON.stringify(mockResourceList)),
+              );
             },
           });
 
-          const result = await api.listResources({ resourceType: 'Applications.Core/applications' });
+          const result = await api.listResources({
+            resourceType: 'Applications.Core/applications',
+          });
 
           expect(result).toEqual(mockResourceList);
           // Verify the final request used the dynamic API version
@@ -407,14 +462,16 @@ describe('RadiusApi', () => {
 
         it('falls back to listing all resource groups when no resourceType specified', async () => {
           const mockGroups = {
-            value: [{ name: 'group1', id: '/groups/group1' }]
+            value: [{ name: 'group1', id: '/groups/group1' }],
           };
           const mockGroupResources = {
-            value: [{
-              id: '/planes/radius/local/resourceGroups/group1/providers/Applications.Core/applications/app1',
-              type: 'Applications.Core/applications',
-              name: 'app1',
-            }]
+            value: [
+              {
+                id: '/planes/radius/local/resourceGroups/group1/providers/Applications.Core/applications/app1',
+                type: 'Applications.Core/applications',
+                name: 'app1',
+              },
+            ],
           };
           const mockResource = {
             id: '/planes/radius/local/resourceGroups/group1/providers/Applications.Core/applications/app1',
@@ -423,16 +480,24 @@ describe('RadiusApi', () => {
           };
 
           const api = new RadiusApiImpl({
-            getClusters: async () => [{ name: 'test-cluster', authProvider: 'test' }],
+            getClusters: async () => [
+              { name: 'test-cluster', authProvider: 'test' },
+            ],
             proxy: async ({ path }: { path: string }) => {
               if (path.includes('/resourceGroups?')) {
-                return Promise.resolve(new Response(JSON.stringify(mockGroups)));
+                return Promise.resolve(
+                  new Response(JSON.stringify(mockGroups)),
+                );
               }
               if (path.includes('/resources?')) {
-                return Promise.resolve(new Response(JSON.stringify(mockGroupResources)));
+                return Promise.resolve(
+                  new Response(JSON.stringify(mockGroupResources)),
+                );
               }
               if (path.includes('Applications.Core/applications/app1')) {
-                return Promise.resolve(new Response(JSON.stringify(mockResource)));
+                return Promise.resolve(
+                  new Response(JSON.stringify(mockResource)),
+                );
               }
               return Promise.resolve(new Response('{}'));
             },
@@ -446,7 +511,8 @@ describe('RadiusApi', () => {
 
       describe('getResourceById with dynamic versions', () => {
         it('uses dynamic API version when resource type can be extracted', async () => {
-          const resourceId = '/planes/radius/local/resourceGroups/my-group/providers/Applications.Core/applications/my-app';
+          const resourceId =
+            '/planes/radius/local/resourceGroups/my-group/providers/Applications.Core/applications/my-app';
           const mockTypeInfo = {
             Name: 'Applications.Core/applications',
             Description: 'Application resource type',
@@ -462,14 +528,20 @@ describe('RadiusApi', () => {
 
           let resourceRequestPath = '';
           const api = new RadiusApiImpl({
-            getClusters: async () => [{ name: 'test-cluster', authProvider: 'test' }],
+            getClusters: async () => [
+              { name: 'test-cluster', authProvider: 'test' },
+            ],
             proxy: async ({ path }: { path: string }) => {
               if (path.includes('resourceTypes/applications')) {
-                return Promise.resolve(new Response(JSON.stringify(mockTypeInfo)));
+                return Promise.resolve(
+                  new Response(JSON.stringify(mockTypeInfo)),
+                );
               }
               if (path.includes(resourceId)) {
                 resourceRequestPath = path;
-                return Promise.resolve(new Response(JSON.stringify(mockResource)));
+                return Promise.resolve(
+                  new Response(JSON.stringify(mockResource)),
+                );
               }
               return Promise.resolve(new Response('{}'));
             },
@@ -479,7 +551,9 @@ describe('RadiusApi', () => {
 
           expect(result.name).toEqual('my-app');
           // Verify the resource request used the dynamic API version
-          expect(resourceRequestPath).toContain('api-version=2024-01-01-preview');
+          expect(resourceRequestPath).toContain(
+            'api-version=2024-01-01-preview',
+          );
         });
 
         it('falls back to default API version when resource type cannot be extracted', async () => {
@@ -492,10 +566,14 @@ describe('RadiusApi', () => {
 
           let resourceRequestPath = '';
           const api = new RadiusApiImpl({
-            getClusters: async () => [{ name: 'test-cluster', authProvider: 'test' }],
+            getClusters: async () => [
+              { name: 'test-cluster', authProvider: 'test' },
+            ],
             proxy: async ({ path }: { path: string }) => {
               resourceRequestPath = path;
-              return Promise.resolve(new Response(JSON.stringify(mockResource)));
+              return Promise.resolve(
+                new Response(JSON.stringify(mockResource)),
+              );
             },
           });
 
@@ -503,11 +581,14 @@ describe('RadiusApi', () => {
 
           expect(result.name).toEqual('fallback-resource');
           // Verify it used the default API version
-          expect(resourceRequestPath).toContain('api-version=2023-10-01-preview');
+          expect(resourceRequestPath).toContain(
+            'api-version=2023-10-01-preview',
+          );
         });
 
         it('falls back to default API version when getBestApiVersion fails', async () => {
-          const resourceId = '/planes/radius/local/resourceGroups/my-group/providers/InvalidProvider/invalidType/resource';
+          const resourceId =
+            '/planes/radius/local/resourceGroups/my-group/providers/InvalidProvider/invalidType/resource';
           const mockResource = {
             id: resourceId,
             name: 'error-fallback-resource',
@@ -516,13 +597,19 @@ describe('RadiusApi', () => {
 
           let resourceRequestPath = '';
           const api = new RadiusApiImpl({
-            getClusters: async () => [{ name: 'test-cluster', authProvider: 'test' }],
+            getClusters: async () => [
+              { name: 'test-cluster', authProvider: 'test' },
+            ],
             proxy: async ({ path }: { path: string }) => {
               if (path.includes('resourceTypes/invalidType')) {
-                return Promise.resolve(new Response('Not Found', { status: 404 }));
+                return Promise.resolve(
+                  new Response('Not Found', { status: 404 }),
+                );
               }
               resourceRequestPath = path;
-              return Promise.resolve(new Response(JSON.stringify(mockResource)));
+              return Promise.resolve(
+                new Response(JSON.stringify(mockResource)),
+              );
             },
           });
 
@@ -530,24 +617,38 @@ describe('RadiusApi', () => {
 
           expect(result.name).toEqual('error-fallback-resource');
           // Verify it fell back to default API version
-          expect(resourceRequestPath).toContain('api-version=2023-10-01-preview');
+          expect(resourceRequestPath).toContain(
+            'api-version=2023-10-01-preview',
+          );
         });
       });
 
       describe('Error Handling and Edge Cases', () => {
         it('handles chain of failures gracefully in getResourceById', async () => {
-          const resourceId = '/planes/radius/local/resourceGroups/my-group/providers/Applications.Core/applications/my-app';
-          const mockResource = { id: resourceId, name: 'my-app', properties: {} };
+          const resourceId =
+            '/planes/radius/local/resourceGroups/my-group/providers/Applications.Core/applications/my-app';
+          const mockResource = {
+            id: resourceId,
+            name: 'my-app',
+            properties: {},
+          };
 
           let proxyCallCount = 0;
           const api = new RadiusApiImpl({
-            getClusters: async () => [{ name: 'test-cluster', authProvider: 'test' }],
+            getClusters: async () => [
+              { name: 'test-cluster', authProvider: 'test' },
+            ],
             proxy: async ({ path }: { path: string }) => {
               proxyCallCount++;
-              if (path.includes('resourceTypes/applications') && proxyCallCount === 1) {
+              if (
+                path.includes('resourceTypes/applications') &&
+                proxyCallCount === 1
+              ) {
                 throw new Error('Network error');
               }
-              return Promise.resolve(new Response(JSON.stringify(mockResource)));
+              return Promise.resolve(
+                new Response(JSON.stringify(mockResource)),
+              );
             },
           });
 
@@ -558,7 +659,9 @@ describe('RadiusApi', () => {
 
         it('handles timeout scenarios in getBestApiVersion', async () => {
           const api = new RadiusApiImpl({
-            getClusters: async () => [{ name: 'test-cluster', authProvider: 'test' }],
+            getClusters: async () => [
+              { name: 'test-cluster', authProvider: 'test' },
+            ],
             proxy: async () => {
               return new Promise((_, reject) => {
                 setTimeout(() => reject(new Error('Timeout')), 100);
@@ -567,26 +670,41 @@ describe('RadiusApi', () => {
           });
 
           // eslint-disable-next-line dot-notation
-          const result = await api['getBestApiVersion']('Applications.Core/applications');
+          const result = await api['getBestApiVersion'](
+            'Applications.Core/applications',
+          );
           expect(result).toEqual('2023-10-01-preview');
         });
 
         it('handles listResources with dynamic version resolution error', async () => {
-          const mockResourceList = { value: [{ id: 'test-1', name: 'test-app' }] };
+          const mockResourceList = {
+            value: [{ id: 'test-1', name: 'test-app' }],
+          };
 
           let proxyCallCount = 0;
           const api = new RadiusApiImpl({
-            getClusters: async () => [{ name: 'test-cluster', authProvider: 'test' }],
+            getClusters: async () => [
+              { name: 'test-cluster', authProvider: 'test' },
+            ],
             proxy: async ({ path }: { path: string }) => {
               proxyCallCount++;
-              if (path.includes('resourceTypes/applications') && proxyCallCount === 1) {
-                return Promise.resolve(new Response('Server Error', { status: 500 }));
+              if (
+                path.includes('resourceTypes/applications') &&
+                proxyCallCount === 1
+              ) {
+                return Promise.resolve(
+                  new Response('Server Error', { status: 500 }),
+                );
               }
-              return Promise.resolve(new Response(JSON.stringify(mockResourceList)));
+              return Promise.resolve(
+                new Response(JSON.stringify(mockResourceList)),
+              );
             },
           });
 
-          const result = await api.listResources({ resourceType: 'Applications.Core/applications' });
+          const result = await api.listResources({
+            resourceType: 'Applications.Core/applications',
+          });
           expect(result).toEqual(mockResourceList);
           expect(proxyCallCount).toEqual(3); // getBestApiVersion makes 2 calls (specific + fallback), then resource list
         });
