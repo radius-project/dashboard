@@ -1,2 +1,15 @@
 # These owners are the maintainers and approvers of this repo
 *       @radius-project/maintainers-dashboard @radius-project/approvers-dashboard
+
+# Allows on-call members to respond to changes in .github and .devcontainer folders
+.github/*.yaml      @radius-project/on-call @radius-project/maintainers-dashboard @radius-project/approvers-dashboard
+.devcontainer/**    @radius-project/on-call @radius-project/maintainers-dashboard @radius-project/approvers-dashboard
+
+# Node packages
+package*.json                                 @radius-project/on-call @radius-project/maintainers-dashboard @radius-project/approvers-dashboard
+yarn.lock                                     @radius-project/on-call @radius-project/maintainers-dashboard @radius-project/approvers-dashboard
+packages/app/package.json                     @radius-project/on-call @radius-project/maintainers-dashboard @radius-project/approvers-dashboard
+packages/rad-components/package.json          @radius-project/on-call @radius-project/maintainers-dashboard @radius-project/approvers-dashboard
+packages/backend/package.json                 @radius-project/on-call @radius-project/maintainers-dashboard @radius-project/approvers-dashboard
+plugins/plugin-radius-backend/package.json    @radius-project/on-call @radius-project/maintainers-dashboard @radius-project/approvers-dashboard
+plugins/plugin-radius/package.json            @radius-project/on-call @radius-project/maintainers-dashboard @radius-project/approvers-dashboard
