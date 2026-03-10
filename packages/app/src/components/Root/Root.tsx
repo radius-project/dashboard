@@ -74,44 +74,44 @@ export const Root = ({ children }: PropsWithChildren<NonNullable<object>>) => {
   useGlobalStyles();
   return (
     <SidebarPage>
-    <Sidebar>
-      <SidebarLogo />
-      <SidebarDivider />
-      <SidebarGroup label="Menu" icon={<MenuIcon />}>
-        {/* Global nav, not org-specific */}
-        <SidebarItem icon={RadiusLogomarkReverse} to="/" text="Home" />
-        <SidebarItem
-          icon={ResourceIcon}
-          to="resource-types"
-          text="Resource Types"
-        />
-        <SidebarItem
-          icon={EnvironmentIcon}
-          to="environments"
-          text="Environments"
-        />
-        <SidebarItem
-          icon={ApplicationIcon}
-          to="applications"
-          text="Applications"
-        />
-        <SidebarItem icon={ResourceIcon} to="resources" text="Resources" />
-        <SidebarItem icon={RecipeIcon} to="recipes" text="Recipes" />
-        {/* End global nav */}
+      <Sidebar>
+        <SidebarLogo />
         <SidebarDivider />
-        <SidebarScrollWrapper />
-      </SidebarGroup>
-      <SidebarSpace />
-      <SidebarDivider />
-      <SidebarGroup
-        label="Settings"
-        icon={<UserSettingsSignInAvatar />}
-        to="/settings"
-      >
-        <SidebarSettings />
-      </SidebarGroup>
-    </Sidebar>
-    {children}
-  </SidebarPage>
+        <SidebarGroup label="Menu" icon={<MenuIcon />}>
+          {/* Global nav, not org-specific */}
+          <SidebarItem icon={RadiusLogomarkReverse} to="/" text="Home" />
+          <SidebarItem
+            icon={ResourceIcon}
+            to="resource-types"
+            text="Resource Types"
+          />
+          <SidebarItem
+            icon={EnvironmentIcon}
+            to="environments"
+            text="Environments"
+          />
+          <SidebarItem
+            icon={ApplicationIcon}
+            to="applications"
+            text="Applications"
+          />
+          <SidebarItem icon={ResourceIcon} to="resources" text="Resources" />
+          <SidebarItem icon={RecipeIcon} to="recipes" text="Recipes" />
+          {/* End global nav */}
+          <SidebarDivider />
+          <SidebarScrollWrapper />
+        </SidebarGroup>
+        <SidebarSpace />
+        <SidebarDivider />
+        <SidebarGroup
+          label="Settings"
+          icon={<UserSettingsSignInAvatar />}
+          to="/settings"
+        >
+          <SidebarSettings />
+        </SidebarGroup>
+      </Sidebar>
+      {children}
+    </SidebarPage>
   );
 };
