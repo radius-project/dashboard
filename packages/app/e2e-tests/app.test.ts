@@ -19,10 +19,14 @@ import { test, expect } from '@playwright/test';
 test('App should render the home page', async ({ page }) => {
   await page.goto('/');
 
-  // Click the Enter button on the sign-in page to complete guest authentication
+  // Click the Enter button on the sign-in page to complete guest authentication.
+  // This opens a popup window for the auth flow which must be handled.
   const enterButton = page.getByRole('button', { name: 'Enter' });
   await enterButton.waitFor({ state: 'visible' });
+  const popupPromise = page.waitForEvent('popup');
   await enterButton.click();
+  const popup = await popupPromise;
+  await popup.waitForEvent('close');
 
   // Verify home page content is visible
   await expect(page.getByText('Learn More')).toBeVisible();
