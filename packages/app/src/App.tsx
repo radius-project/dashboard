@@ -49,13 +49,6 @@ const lightTheme = createUnifiedTheme({
   pageTheme: {
     other: genPageTheme({ colors: ['#db4c24', '#db4c24'], shape: shapes.wave }),
   },
-  components: {
-    MuiLink: {
-      defaultProps: {
-        underline: 'none',
-      },
-    },
-  },
 });
 
 const darkTheme = createUnifiedTheme({
@@ -71,13 +64,6 @@ const darkTheme = createUnifiedTheme({
   defaultPageTheme: 'other',
   pageTheme: {
     other: genPageTheme({ colors: ['#db4c24', '#db4c24'], shape: shapes.wave }),
-  },
-  components: {
-    MuiLink: {
-      defaultProps: {
-        underline: 'none',
-      },
-    },
   },
 });
 

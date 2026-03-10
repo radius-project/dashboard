@@ -26,6 +26,14 @@ import {
   RecipeIcon,
 } from '@internal/plugin-radius';
 
+const useGlobalStyles = makeStyles({
+  '@global': {
+    a: {
+      textDecoration: 'none',
+    },
+  },
+});
+
 const useSidebarLogoStyles = makeStyles({
   root: {
     width: sidebarConfig.drawerWidthClosed,
@@ -62,8 +70,10 @@ const SidebarLogo = () => {
   );
 };
 
-export const Root = ({ children }: PropsWithChildren<NonNullable<object>>) => (
-  <SidebarPage>
+export const Root = ({ children }: PropsWithChildren<NonNullable<object>>) => {
+  useGlobalStyles();
+  return (
+    <SidebarPage>
     <Sidebar>
       <SidebarLogo />
       <SidebarDivider />
@@ -103,4 +113,5 @@ export const Root = ({ children }: PropsWithChildren<NonNullable<object>>) => (
     </Sidebar>
     {children}
   </SidebarPage>
-);
+  );
+};
