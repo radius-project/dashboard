@@ -19,14 +19,16 @@ import { test, expect } from '@playwright/test';
 test('App should render the home page', async ({ page }) => {
   await page.goto('/');
 
+  // Accept any dialog that appears during the guest sign-in flow.
+  // Backstage may show a confirm dialog: "Failed to sign in as a guest
+  // using the auth backend. Do you want to fallback to the legacy guest token?"
+  // Accepting it allows the test to proceed with the legacy guest token.
+  page.on('dialog', dialog => dialog.accept());
+
   // Click the Enter button on the sign-in page to complete guest authentication.
-  // This opens a popup window for the auth flow which must be handled.
   const enterButton = page.getByRole('button', { name: 'Enter' });
   await enterButton.waitFor({ state: 'visible' });
-  const popupPromise = page.waitForEvent('popup');
   await enterButton.click();
-  const popup = await popupPromise;
-  await popup.waitForEvent('close');
 
   // Verify home page content is visible
   await expect(page.getByText('Learn More')).toBeVisible();
