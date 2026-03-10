@@ -61,7 +61,7 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-test-renderer": "^18.3.1",
-    "storybook": "^7.6.4",
+    "storybook": "^7.6.21",
     "typescript": "^5.9.3"
   },
   "peerDependencies": {
