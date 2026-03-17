@@ -40,7 +40,7 @@ jobs:
         run: corepack enable
 
       - name: Install Node.js 21 # Must be after corepack is enabled.
-        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version: 21
           cache: yarn
@@ -94,7 +94,7 @@ jobs:
         run: corepack enable
 
       - name: Install Node.js 21 # Must be after corepack is enabled.
-        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version: 21
           cache: yarn
@@ -119,7 +119,7 @@ jobs:
 
       - name: Login to ghcr.io
         if: ${{ env.CI_PUBLISH_LATEST == 'true' || env.CI_PUBLISH_RELEASE == 'true' }}
-        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
