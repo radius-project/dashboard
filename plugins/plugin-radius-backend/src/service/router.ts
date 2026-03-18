@@ -3,10 +3,9 @@ import {
   coreServices,
 } from '@backstage/backend-plugin-api';
 import * as express from 'express';
-import Router from 'express-promise-router';
 
 export async function createRouter(): Promise<express.Router> {
-  const router = Router();
+  const router = express.Router();
   router.use(express.json());
 
   router.get('/health', (_, response) => {
@@ -26,8 +25,7 @@ export const radiusPlugin = createBackendPlugin({
       async init({ httpRouter, logger }) {
         logger.info('Initializing Radius backend plugin');
         const router = await createRouter();
-        // @ts-expect-error - express-promise-router types are incompatible with Express 5 Handler type
-        // See: https://github.com/express-promise-router/express-promise-router/issues/119
+        // @ts-expect-error - Express 5 Router types are not fully compatible with Backstage's Handler type. See: https://github.com/express-promise-router/express-promise-router/issues/119
         httpRouter.use(router);
       },
     });

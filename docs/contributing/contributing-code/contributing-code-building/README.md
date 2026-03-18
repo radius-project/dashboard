@@ -2,8 +2,8 @@
 
 ## Prerequisites
 
-- Install a modern version of [Node.js](https://nodejs.org/en/download). We use v21.X.X but other versions are ok.
-- Enable corepack with `corepack enable`.
+- Install a modern version of [Node.js](https://nodejs.org/en/download). We use v24.X.X but other versions >= 22 are ok.
+- Install [Yarn](https://yarnpkg.com/getting-started/install) or enable corepack with `corepack enable`.
 
 You'll also want an [environment](https://docs.radapp.io/guides/deploy-apps/environments/overview/) where you can experiment with Radius. This means you need to have a Kubernetes cluster where Radius is installed. The Dashboard interacts with the Radius API to access the data it displays.
 
@@ -17,15 +17,15 @@ The most common problem with building and developing in the repo is having the w
 node version
 ```
 
-Another common problem is having `yarn` installed globally. This can override the version specified in our `package.json`. Check your version with:
+Check your yarn version with:
 
 ```bash
 yarn --version
 ```
 
-This should make the version specified in `package.json` in the `packageManager` field.
+This should match the version specified in `package.json` in the `packageManager` field.
 
-## Commom commands
+## Common commands
 
 You will need these commands to successfully develop the Dashboard and contribute core to the repository.
 
@@ -104,7 +104,7 @@ This is a more complete command reference for what our packages support. You wil
 **Build all packages:**
 
 ```bash
-yarn workspaces foreach -A run build:all
+yarn run build:all
 ```
 
 **Build a specific package**
@@ -165,6 +165,6 @@ yarn run test:e2e
 
 ```bash
 # Substitute rad-components with any package name
-# Substitute link with any script name
+# Substitute lint with any script name
 yarn workspace @radapp.io/rad-components run lint
 ```

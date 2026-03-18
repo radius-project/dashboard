@@ -11,6 +11,7 @@
 # See: https://backstage.io/docs/conf/writing for the file as a whole.
 
 # See: https://backstage.io/docs/features/kubernetes/configuration/
+---
 kubernetes:
   # Configure backstage to support multiple kubernetes clusters, even though
   # only one is used here.

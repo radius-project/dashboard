@@ -1,6 +1,6 @@
 import React from 'react';
 import { Route } from 'react-router-dom';
-import { catalogPlugin } from '@backstage/plugin-catalog';
+import { catalogPlugin, CatalogEntityPage } from '@backstage/plugin-catalog';
 import { UserSettingsPage } from '@backstage/plugin-user-settings';
 import { apis } from './apis';
 import { HomepageCompositionRoot } from '@backstage/plugin-home';
@@ -109,6 +109,10 @@ const routes = (
       <HomePage />
     </Route>
     <Route path="/settings" element={<UserSettingsPage />} />
+    <Route
+      path="/catalog/:namespace/:kind/:name"
+      element={<CatalogEntityPage />}
+    />
     <Route path="/catalog-graph" element={<CatalogGraphPage />} />
     <Route path="/applications" element={<ApplicationListPage />} />
     <Route path="/environments" element={<EnvironmentListPage />} />

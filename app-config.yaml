@@ -1,6 +1,8 @@
+---
 app:
   title: Radius Dashboard
   baseUrl: http://localhost:3000
+  packageName: '@internal/app'
 
 organization:
   name: Radius

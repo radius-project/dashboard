@@ -39,7 +39,7 @@ const LayoutFlow = (props: { graph: AppGraphData }) => {
         fitView();
       });
     },
-    [nodes, edges],
+    [nodes, edges, setNodes, setEdges, fitView],
   );
 
   // Notes on our usage of ReactFlow:

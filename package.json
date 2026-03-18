@@ -4,9 +4,9 @@
   "repository": "git@github.com/radius-project/dashboard.git",
   "author": "The Radius Authors",
   "private": true,
-  "packageManager": "yarn@4.0.2",
+  "packageManager": "yarn@4.13.0",
   "engines": {
-    "node": "18 || 20 || 21"
+    "node": "24"
   },
   "scripts": {
     "dev": "concurrently \"yarn start\" \"yarn start-backend\"",
@@ -29,27 +29,23 @@
     "format:write": "prettier --write \"**/*.{js,jsx,ts,tsx,mjs,cjs}\"",
     "new": "backstage-cli new --scope internal"
   },
-  "workspaces": {
-    "packages": [
-      "packages/*",
-      "plugins/*"
-    ]
-  },
+  "workspaces": [
+    "packages/*",
+    "plugins/*"
+  ],
   "devDependencies": {
-    "@backstage/cli": "^0.35.1",
-    "@backstage/e2e-test-utils": "^0.1.1",
-    "@playwright/test": "^1.57.0",
-    "@spotify/eslint-config-react": "^15.0.0",
-    "@spotify/eslint-config-typescript": "^15.0.0",
+    "@backstage/cli": "^0.36.0",
+    "@backstage/cli-defaults": "^0.1.0",
+    "@backstage/e2e-test-utils": "^0.1.2",
+    "@internal/app": "workspace:^",
+    "@module-federation/enhanced": "^2.2.2",
+    "@playwright/test": "^1.58.2",
     "@spotify/prettier-config": "^15.0.0",
-    "@typescript-eslint/eslint-plugin": "^8.17.0",
-    "@typescript-eslint/parser": "^8.17.0",
-    "@typescript-eslint/utils": "^6.16.0",
     "concurrently": "^9.2.1",
-    "eslint": "^8.57.0",
+    "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0",
-    "node-gyp": "^12.1.0",
-    "prettier": "^3.8.0",
+    "node-gyp": "^12.2.0",
+    "prettier": "^3.8.1",
     "typescript": "~5.9.3"
   },
   "resolutions": {

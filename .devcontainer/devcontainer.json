@@ -2,8 +2,14 @@
 // README at: https://github.com/devcontainers/templates/tree/main/src/typescript-node
 {
   "name": "Dashboard",
-  "image": "mcr.microsoft.com/devcontainers/typescript-node:1-20-bullseye",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu24.04",
   "features": {
+    "ghcr.io/devcontainers/features/common-utils:2.5.7": {
+      "configureZshAsDefaultShell": false
+    },
+    "ghcr.io/devcontainers/features/node:1.7.1": {
+      "installYarnUsingApt": false
+    },
     "ghcr.io/devcontainers/features/kubectl-helm-minikube:1.3.1": {
       "version": "latest",
       "helm": "latest",

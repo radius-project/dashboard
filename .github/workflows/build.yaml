@@ -36,18 +36,14 @@ jobs:
       - name: Parse release version and set environment variables
         run: python ./.github/scripts/get_release_version.py
 
-      - name: Enable corepack
-        run: corepack enable
-
-      - name: Install Node.js 21 # Must be after corepack is enabled.
+      - name: Setup Node
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
-          node-version: 21
+          node-version-file: .node-version
           cache: yarn
-          cache-dependency-path: yarn.lock
 
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: yarn install --immutable
 
       - name: Lint
         if: ${{ env.CI_LINT == 'true' }}
@@ -93,24 +89,23 @@ jobs:
       - name: Enable corepack
         run: corepack enable
 
-      - name: Install Node.js 21 # Must be after corepack is enabled.
+      - name: Setup Node
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
-          node-version: 21
+          node-version-file: .node-version
           cache: yarn
-          cache-dependency-path: yarn.lock
 
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: yarn install --immutable
 
       - name: Build TypeScript
         run: yarn run tsc
 
-      - name: Build Image
-        run: yarn build:backend --config ../../app-config.yaml --config ../../app-config.dashboard.yaml
+      - name: Build Backend
+        run: yarn run build:backend --config ../../app-config.yaml --config ../../app-config.dashboard.yaml
 
       - name: Build Image
-        run: yarn build-image
+        run: yarn run build-image
 
       - name: Analyze Image
         uses: ./.github/actions/analyze-image

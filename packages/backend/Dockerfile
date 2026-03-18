@@ -9,10 +9,10 @@
 #
 # Once the commands have been run, you can build the image using `yarn build-image`
 
-FROM node:18-bookworm-slim
+FROM node:24-bookworm-slim
 
-# Ensure that we use the correct version of Yarn.
-RUN corepack enable && yarn -v
+# Install yarn
+RUN corepack enable && corepack prepare yarn@4.13.0 --activate
 
 # Install sqlite3 dependencies and build tools required for better-sqlite3.
 # You can skip this if you don't use sqlite3 in the image,
@@ -31,7 +31,7 @@ USER node
 WORKDIR /app
 
 # This switches many Node.js dependencies to production mode.
-ENV NODE_ENV production
+ENV NODE_ENV=production
 
 # Copy repo skeleton first, to avoid unnecessary docker cache invalidation.
 # The skeleton contains the package.json of each package in the monorepo,
@@ -39,8 +39,8 @@ ENV NODE_ENV production
 COPY --chown=node:node .yarnrc.yml yarn.lock package.json packages/backend/dist/skeleton.tar.gz ./
 RUN tar xzf skeleton.tar.gz && rm skeleton.tar.gz
 
-RUN --mount=type=cache,target=/home/node/.yarn,sharing=locked,uid=1000,gid=1000 \
-    YARN_CACHE_FOLDER=/home/node/.yarn yarn workspaces focus --production @internal/backend
+RUN --mount=type=cache,target=/home/node/.yarn/berry/cache,sharing=locked,uid=1000,gid=1000 \
+    yarn workspaces focus @internal/backend --production
 
 # Then copy the rest of the backend bundle, along with any other files we might want.
 COPY --chown=node:node packages/backend/dist/bundle.tar.gz app-config*.yaml ./

@@ -1,6 +1,6 @@
 # Understanding the Radius Dashboard repo code organization
 
-This repo uses [corepack](https://nodejs.org/api/corepack.html) and [yarn workspaces](https://classic.yarnpkg.com/lang/en/docs/workspaces/).
+This repo uses [Yarn workspaces](https://yarnpkg.com/features/workspaces).
 
 It is organized as a mono-repo, and contains the following packages.
 
@@ -13,7 +13,7 @@ It is organized as a mono-repo, and contains the following packages.
 | `@radapp.io/plugin-radius`         | `./plugins/plugin-radius`         | The Radius frontend (React) plugin for Backstage.                               |
 | `@radapp.io/plugin-radius-backend` | `./plugins/plugin-radius-backend` | The Radius backend (Node.js) plugin for Backstage.                              |
 
-### Understanding the organization
+## Understanding the organization
 
 Our repo builds three primary outputs:
 
