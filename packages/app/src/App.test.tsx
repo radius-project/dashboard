@@ -12,9 +12,10 @@ jest.mock('@backstage/plugin-catalog-graph', () => ({
 
 jest.mock('@backstage/app-defaults', () => ({
   createApp: () => ({
-    createRoot: () => function MockAppRoot() {
-      return <div>Mock App</div>;
-    },
+    createRoot: () =>
+      function MockAppRoot() {
+        return <div>Mock App</div>;
+      },
   }),
 }));
 

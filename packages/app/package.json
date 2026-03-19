@@ -7,8 +7,8 @@
     "role": "frontend"
   },
   "scripts": {
-    "start": "backstage-cli package start --config ../../app-config.yaml --config ../../app-config.local.yaml",
-    "build": "backstage-cli package build --config ../../app-config.yaml --config ../../app-config.local.yaml",
+    "start": "backstage-cli package start",
+    "build": "backstage-cli package build",
     "clean": "backstage-cli package clean",
     "test": "backstage-cli package test",
     "lint": "backstage-cli package lint"
@@ -22,7 +22,7 @@
     "@backstage/core-components": "^0.18.8",
     "@backstage/core-plugin-api": "^1.12.4",
     "@backstage/integration-react": "^1.2.16",
-    "@backstage/plugin-catalog": "^1.33.1",
+    "@backstage/plugin-catalog": "^2.0.0",
     "@backstage/plugin-catalog-common": "^1.1.8",
     "@backstage/plugin-catalog-graph": "^0.6.0",
     "@backstage/plugin-catalog-react": "^2.1.0",

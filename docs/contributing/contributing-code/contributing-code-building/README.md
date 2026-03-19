@@ -119,7 +119,7 @@ yarn workspace @radapp.io/rad-components run build
 ```bash
 yarn install
 yarn tsc
-yarn build:backend --config ../../app-config.yaml --config ../../app-config.dashboard.yaml
+yarn build:backend
 yarn build-image
 ```
 

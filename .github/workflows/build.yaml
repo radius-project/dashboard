@@ -105,7 +105,7 @@ jobs:
         run: yarn run tsc
 
       - name: Build Backend
-        run: yarn run build:backend --config ../../app-config.yaml --config ../../app-config.dashboard.yaml
+        run: yarn run build:backend
 
       - name: Build Image
         run: yarn run build-image
