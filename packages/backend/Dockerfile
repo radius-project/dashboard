@@ -39,6 +39,10 @@ ENV NODE_ENV=production
 COPY --chown=node:node .yarnrc.yml yarn.lock package.json packages/backend/dist/skeleton.tar.gz ./
 RUN tar xzf skeleton.tar.gz && rm skeleton.tar.gz
 
+# Ensure the .yarn/berry directory exists and is owned by the node user,
+# so yarn can create both cache and index subdirectories.
+RUN mkdir -p /home/node/.yarn/berry
+
 RUN --mount=type=cache,target=/home/node/.yarn/berry/cache,sharing=locked,uid=1000,gid=1000 \
     yarn workspaces focus @internal/backend --production
 
