@@ -32,6 +32,6 @@ jobs:
           persist-credentials: false
 
       - name: Build Dev Container
-        uses: devcontainers/ci@1b8fb16e4e8d242059a66a557c8bf29a247ef751 # v0.3
+        uses: devcontainers/ci@8bf61b26e9c3a98f69cb6ce2f88d24ff59b785c6 # v0.3
         with:
           runCmd: node --version && yarn --version && kubectl version --client && rad version
