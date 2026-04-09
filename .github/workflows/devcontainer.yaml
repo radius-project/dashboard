@@ -8,11 +8,13 @@ on:
       - main
     paths:
       - ".devcontainer/**"
+      - ".github/workflows/devcontainer.yaml"
   pull_request:
     branches:
       - main
     paths:
       - ".devcontainer/**"
+      - ".github/workflows/devcontainer.yaml"
 
 permissions: {}
 
@@ -32,4 +34,4 @@ jobs:
       - name: Build Dev Container
         uses: devcontainers/ci@1b8fb16e4e8d242059a66a557c8bf29a247ef751 # v0.3
         with:
-          runCmd: echo "Dev container build successful"
+          runCmd: node --version && yarn --version && kubectl version --client && rad version
