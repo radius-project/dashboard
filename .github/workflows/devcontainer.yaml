@@ -1,0 +1,35 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
+name: Dev Container Build
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".devcontainer/**"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".devcontainer/**"
+
+permissions: {}
+
+jobs:
+  build:
+    name: Build Dev Container
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Build Dev Container
+        uses: devcontainers/ci@1b8fb16e4e8d242059a66a557c8bf29a247ef751 # v0.3
+        with:
+          runCmd: echo "Dev container build successful"

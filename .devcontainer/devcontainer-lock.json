@@ -1,5 +1,10 @@
 {
   "features": {
+    "ghcr.io/devcontainers-extra/features/corepack:1": {
+      "version": "1.0.2",
+      "resolved": "ghcr.io/devcontainers-extra/features/corepack@sha256:5142e3f736841bf4cd1b9d8e6a2e51885cab510d5f014eac10be9b0627a9bf97",
+      "integrity": "sha256:5142e3f736841bf4cd1b9d8e6a2e51885cab510d5f014eac10be9b0627a9bf97"
+    },
     "ghcr.io/devcontainers/features/common-utils:2.5.7": {
       "version": "2.5.7",
       "resolved": "ghcr.io/devcontainers/features/common-utils@sha256:dbf431d6b42d55cde50fa1df75c7f7c3999a90cde6d73f7a7071174b3c3d0cc4",
@@ -19,6 +24,19 @@
       "version": "1.7.1",
       "resolved": "ghcr.io/devcontainers/features/node@sha256:8c0de46939b61958041700ee89e3493f3b2e4131a06dc46b4d9423427d06e5f6",
       "integrity": "sha256:8c0de46939b61958041700ee89e3493f3b2e4131a06dc46b4d9423427d06e5f6"
+    },
+    "ghcr.io/dhoeric/features/oras:1": {
+      "version": "1.0.0",
+      "resolved": "ghcr.io/dhoeric/features/oras@sha256:d08787b42a60d49b001260e00967fd2206326f552e5f7f09ce2535de2f351d8d",
+      "integrity": "sha256:d08787b42a60d49b001260e00967fd2206326f552e5f7f09ce2535de2f351d8d"
+    },
+    "ghcr.io/radius-project/devcontainer-features/radcli:0": {
+      "version": "0.1.0",
+      "resolved": "ghcr.io/radius-project/devcontainer-features/radcli@sha256:3d43cbe806dfb608f3aacee83f2a6e60e21fac3275748aa9fdb1c4fd2595b5fd",
+      "integrity": "sha256:3d43cbe806dfb608f3aacee83f2a6e60e21fac3275748aa9fdb1c4fd2595b5fd",
+      "dependsOn": [
+        "ghcr.io/dhoeric/features/oras:1"
+      ]
     },
     "ghcr.io/rio/features/k3d:1.1.0": {
       "version": "1.1.0",
