@@ -14,7 +14,7 @@ For development, we recommend VS Code. This repo is configured with recommended 
 The most common problem with building and developing in the repo is having the wrong version of Node.JS. Check your version with:
 
 ```bash
-node version
+node --version
 ```
 
 Check your yarn version with:

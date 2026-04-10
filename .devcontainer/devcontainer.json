@@ -10,6 +10,7 @@
     "ghcr.io/devcontainers/features/node:1.7.1": {
       "installYarnUsingApt": false
     },
+    "ghcr.io/devcontainers-extra/features/corepack:1": {},
     "ghcr.io/devcontainers/features/kubectl-helm-minikube:1.3.1": {
       "version": "latest",
       "helm": "latest",
@@ -21,15 +22,17 @@
     "ghcr.io/devcontainers/features/docker-in-docker:2.16.1": {
       "version": "latest",
       "moby": true
-    }
+    },
+    "ghcr.io/radius-project/devcontainer-features/radcli:0": {}
   },
-
   // Use 'forwardPorts' to make a list of ports inside the container available locally.
-  "forwardPorts": [3000, 7007, 8001],
-
+  "forwardPorts": [
+    3000,
+    7007,
+    8001
+  ],
   // Use 'postCreateCommand' to run commands after the container is created.
   "postCreateCommand": "./.devcontainer/postcreate.sh",
-
   // Configure tool-specific properties.
   "customizations": {
     "vscode": {
