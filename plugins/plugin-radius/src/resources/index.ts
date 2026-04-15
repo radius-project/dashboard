@@ -4,3 +4,9 @@ export type {
   ApplicationProperties,
   EnvironmentProperties,
 } from './resource';
+
+export {
+  isEnvironmentType,
+  isApplicationType,
+  getEquivalentTypes,
+} from './resourceTypes';

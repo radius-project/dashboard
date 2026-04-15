@@ -4,6 +4,7 @@ import {
   EnvironmentProperties,
   Resource,
   ResourceList,
+  getEquivalentTypes,
 } from '../resources';
 
 export interface RadiusApi {
@@ -102,6 +103,12 @@ export class RadiusApiImpl implements RadiusApi {
 
     // Fast path for listing resources of a specific type.
     if (opts?.resourceType) {
+      const equivalentTypes = getEquivalentTypes(opts.resourceType);
+      if (equivalentTypes) {
+        // Query all equivalent types and merge results
+        return this.listMultipleTypes<T>(cluster, opts, equivalentTypes);
+      }
+
       const resourceApiVersion = await this.getBestApiVersion(
         opts.resourceType,
       );
@@ -182,11 +189,10 @@ export class RadiusApiImpl implements RadiusApi {
   }): Promise<ResourceList<T>> {
     const cluster = await this.selectCluster();
 
-    const path = makePath({
-      scopes: this.makeScopes(opts),
-      type: 'Applications.Core/applications',
-    });
-    return this.makeRequest<ResourceList<T>>(cluster, path);
+    return this.listMultipleTypes<T>(cluster, opts, [
+      'Applications.Core/applications',
+      'Radius.Core/applications',
+    ]);
   }
 
   async listEnvironments<T = EnvironmentProperties>(opts?: {
@@ -194,11 +200,10 @@ export class RadiusApiImpl implements RadiusApi {
   }): Promise<ResourceList<T>> {
     const cluster = await this.selectCluster();
 
-    const path = makePath({
-      scopes: this.makeScopes(opts),
-      type: 'Applications.Core/environments',
-    });
-    return this.makeRequest<ResourceList<T>>(cluster, path);
+    return this.listMultipleTypes<T>(cluster, opts, [
+      'Applications.Core/environments',
+      'Radius.Core/environments',
+    ]);
   }
 
   async getResourceType(opts: {
@@ -386,6 +391,47 @@ export class RadiusApiImpl implements RadiusApi {
     }
 
     return { value: items };
+  }
+
+  private async listMultipleTypes<T>(
+    cluster: string,
+    opts: { resourceGroup?: string } | undefined,
+    types: string[],
+  ): Promise<ResourceList<T>> {
+    const results = await Promise.allSettled(
+      types.map(async type => {
+        const resourceApiVersion = await this.getBestApiVersion(type);
+        const path = makePath({
+          scopes: this.makeScopes(opts),
+          type,
+          customApiVersion: resourceApiVersion,
+        });
+        return this.makeRequest<ResourceList<T>>(cluster, path);
+      }),
+    );
+
+    const allResources: Resource<T>[] = [];
+    const seenIds = new Set<string>();
+    for (const result of results) {
+      if (result.status === 'fulfilled' && result.value?.value) {
+        for (const resource of result.value.value) {
+          if (!seenIds.has(resource.id)) {
+            seenIds.add(resource.id);
+            allResources.push(resource);
+          }
+        }
+      }
+    }
+
+    // If all requests failed, throw the first error
+    if (allResources.length === 0) {
+      const firstError = results.find(r => r.status === 'rejected');
+      if (firstError && firstError.status === 'rejected') {
+        throw firstError.reason;
+      }
+    }
+
+    return { value: allResources };
   }
 
   private async selectCluster(): Promise<string> {

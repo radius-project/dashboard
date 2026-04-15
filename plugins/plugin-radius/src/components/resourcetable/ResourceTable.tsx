@@ -14,6 +14,7 @@ import { useApi } from '@backstage/core-plugin-api';
 import useAsync from 'react-use/lib/useAsync';
 import { radiusApiRef } from '../../plugin';
 import { parseResourceId } from '@radapp.io/rad-components';
+import { isEnvironmentType, isApplicationType } from '../../resources';
 
 const DataTable = (props: {
   resources: Resource[];
@@ -60,7 +61,7 @@ const DataTable = (props: {
   };
 
   // Add Kind column for environment resources, Type column for others
-  if (props.resourceType === 'Applications.Core/environments') {
+  if (isEnvironmentType(props.resourceType)) {
     columns.push({
       title: 'Kind',
       type: 'string',
@@ -71,9 +72,9 @@ const DataTable = (props: {
   }
 
   // Special case some additional fields by hiding them when they would never have a value.
-  if (props.resourceType === 'Applications.Core/environments') {
+  if (isEnvironmentType(props.resourceType)) {
     // Nothing to add
-  } else if (props.resourceType === 'Applications.Core/applications') {
+  } else if (isApplicationType(props.resourceType)) {
     columns.push({
       title: 'Environment',
       field: 'properties.environment',
@@ -102,7 +103,7 @@ const DataTable = (props: {
   }
 
   // Add Status column for non-environment resources
-  if (props.resourceType !== 'Applications.Core/environments') {
+  if (!isEnvironmentType(props.resourceType)) {
     columns.push({ title: 'Status', field: 'properties.provisioningState' });
   }
 
@@ -145,8 +146,7 @@ const DataTable = (props: {
   });
 
   // Sort environments by resource group (ascending) then by name (ascending)
-  const sortedData =
-    props.resourceType === 'Applications.Core/environments'
+  const sortedData = isEnvironmentType(props.resourceType)
       ? [...data].sort((a, b) => {
           const groupA = parseResourceId(a.id)?.group || '';
           const groupB = parseResourceId(b.id)?.group || '';
