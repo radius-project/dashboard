@@ -9,7 +9,7 @@ import {
   ReactFlowProvider,
   Controls,
 } from 'reactflow';
-import Dagre from '@dagrejs/dagre';
+import { layout as dagreLayout, NodeLabel as DagreNodeLabel, graphlib } from '@dagrejs/dagre';
 import { AppGraph as AppGraphData, Resource } from '../../graph';
 import { ResourceNode } from '../resourcenode/index';
 
@@ -146,7 +146,7 @@ function initialNodes(graph: AppGraphData): {
   return { nodes, edges };
 }
 
-const g = new Dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
+const g = new graphlib.Graph().setDefaultEdgeLabel(() => ({}));
 
 function getLayoutedElements(
   nodes: Node[],
@@ -156,9 +156,9 @@ function getLayoutedElements(
   g.setGraph({ rankdir: options.direction });
 
   edges.forEach(edge => g.setEdge(edge.source, edge.target));
-  nodes.forEach(node => g.setNode(node.id, node as Dagre.Label));
+  nodes.forEach(node => g.setNode(node.id, node as DagreNodeLabel));
 
-  Dagre.layout(g);
+  dagreLayout(g);
 
   return {
     nodes: nodes.map(node => {
