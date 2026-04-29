@@ -147,21 +147,21 @@ const DataTable = (props: {
 
   // Sort environments by resource group (ascending) then by name (ascending)
   const sortedData = isEnvironmentType(props.resourceType)
-      ? [...data].sort((a, b) => {
-          const groupA = parseResourceId(a.id)?.group || '';
-          const groupB = parseResourceId(b.id)?.group || '';
-          const nameA = a.name || '';
-          const nameB = b.name || '';
+    ? [...data].sort((a, b) => {
+        const groupA = parseResourceId(a.id)?.group || '';
+        const groupB = parseResourceId(b.id)?.group || '';
+        const nameA = a.name || '';
+        const nameB = b.name || '';
 
-          // First sort by resource group (ascending)
-          if (groupA !== groupB) {
-            return groupA.localeCompare(groupB);
-          }
+        // First sort by resource group (ascending)
+        if (groupA !== groupB) {
+          return groupA.localeCompare(groupB);
+        }
 
-          // Then sort by name (ascending)
-          return nameA.localeCompare(nameB);
-        })
-      : data;
+        // Then sort by name (ascending)
+        return nameA.localeCompare(nameB);
+      })
+    : data;
 
   return (
     <Table

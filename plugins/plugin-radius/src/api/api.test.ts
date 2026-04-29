@@ -462,9 +462,7 @@ describe('RadiusApi', () => {
               p.includes('Applications.Core/applications') &&
               !p.includes('resourceTypes'),
           );
-          expect(appsCoreListPath).toContain(
-            'api-version=2024-01-01-preview',
-          );
+          expect(appsCoreListPath).toContain('api-version=2024-01-01-preview');
         });
 
         it('falls back to listing all resource groups when no resourceType specified', async () => {
