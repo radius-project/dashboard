@@ -9,7 +9,11 @@ import {
   ReactFlowProvider,
   Controls,
 } from 'reactflow';
-import { layout as dagreLayout, NodeLabel as DagreNodeLabel, graphlib } from '@dagrejs/dagre';
+import {
+  layout as dagreLayout,
+  NodeLabel as DagreNodeLabel,
+  graphlib,
+} from '@dagrejs/dagre';
 import { AppGraph as AppGraphData, Resource } from '../../graph';
 import { ResourceNode } from '../resourcenode/index';
 
