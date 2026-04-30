@@ -108,7 +108,7 @@ export const ApplicationTab = ({ application }: { application: string }) => {
 
     if (!response.ok) {
       const text = await response.text();
-      throw new Error(`Request failed: ${response.status}:\n\n ${text}`);
+      throw new Error(`Request failed: ${response.status}:\n\n${text}`);
     }
 
     return (await response.json()) as AppGraphData;
