@@ -35,6 +35,7 @@ export interface RadiusApi {
     namespace: string;
     typeName: string;
     planeName?: string;
+    clusterName?: string;
   }): Promise<{
     Name: string;
     Description: string;
@@ -111,6 +112,7 @@ export class RadiusApiImpl implements RadiusApi {
 
       const resourceApiVersion = await this.getBestApiVersion(
         opts.resourceType,
+        cluster,
       );
       const path = makePath({
         scopes: this.makeScopes(opts),
@@ -172,7 +174,10 @@ export class RadiusApiImpl implements RadiusApi {
     const resourceType = this.extractResourceTypeFromId(opts.id);
 
     if (resourceType) {
-      const resourceApiVersion = await this.getBestApiVersion(resourceType);
+      const resourceApiVersion = await this.getBestApiVersion(
+        resourceType,
+        cluster,
+      );
       const path = makePathForId(opts.id, resourceApiVersion);
       const resource = await this.makeRequest<Resource<T>>(cluster, path);
       return await this.fixupResource(resource);
@@ -210,6 +215,7 @@ export class RadiusApiImpl implements RadiusApi {
     namespace: string;
     typeName: string;
     planeName?: string;
+    clusterName?: string;
   }): Promise<{
     Name: string;
     Description: string;
@@ -217,7 +223,7 @@ export class RadiusApiImpl implements RadiusApi {
     APIVersions: Record<string, { Schema?: unknown }>;
     APIVersionList: string[];
   }> {
-    const cluster = await this.selectCluster();
+    const cluster = opts.clusterName || (await this.selectCluster());
     const plane = opts?.planeName || 'local';
 
     // Try to get specific resource type details from UCP API
@@ -400,7 +406,7 @@ export class RadiusApiImpl implements RadiusApi {
   ): Promise<ResourceList<T>> {
     const results = await Promise.allSettled(
       types.map(async type => {
-        const resourceApiVersion = await this.getBestApiVersion(type);
+        const resourceApiVersion = await this.getBestApiVersion(type, cluster);
         const path = makePath({
           scopes: this.makeScopes(opts),
           type,
@@ -424,7 +430,8 @@ export class RadiusApiImpl implements RadiusApi {
     }
 
     // If all requests failed, throw the first error
-    if (allResources.length === 0) {
+    const hasFulfilledResult = results.some(r => r.status === 'fulfilled');
+    if (!hasFulfilledResult) {
       const firstError = results.find(r => r.status === 'rejected');
       if (firstError && firstError.status === 'rejected') {
         throw firstError.reason;
@@ -487,10 +494,17 @@ export class RadiusApiImpl implements RadiusApi {
     return resource;
   }
 
-  private async getBestApiVersion(resourceType: string): Promise<string> {
+  private async getBestApiVersion(
+    resourceType: string,
+    clusterName?: string,
+  ): Promise<string> {
     try {
       const [namespace, typeName] = resourceType.split('/');
-      const typeInfo = await this.getResourceType({ namespace, typeName });
+      const typeInfo = await this.getResourceType({
+        namespace,
+        typeName,
+        clusterName,
+      });
 
       // Use first available version (assumes they're ordered sensibly)
       return typeInfo.APIVersionList[0] || '2023-10-01-preview';

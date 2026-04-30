@@ -52,9 +52,9 @@ export const ApplicationTab = ({ application }: { application: string }) => {
   // Extract the resource type from the application id so we can pick the
   // correct api-version and detect whether the backend exposes a getGraph
   // action for this namespace.
-  const typeMatch = application.match(/\/providers\/([^/]+)\/([^/]+)/);
-  const namespace = typeMatch?.[1];
-  const typeName = typeMatch?.[2];
+  const parsedType = parseResourceId(application)?.type;
+  const [namespace, typeName] = parsedType?.split('/') || [];
+  const displayType = parsedType || 'unknown/unknown';
 
   // The Radius backend currently only registers the `getGraph` custom action
   // for `Applications.Core/applications` (see radius/pkg/corerp/setup/setup.go
@@ -120,8 +120,8 @@ export const ApplicationTab = ({ application }: { application: string }) => {
         title={`Application Graph: ${parseResourceId(application)?.name}`}
       >
         The application graph is not yet available for{' '}
-        <code>{`${namespace}/${typeName}`}</code> resources. The Radius backend
-        only exposes the <code>getGraph</code> action for{' '}
+        <code>{displayType}</code> resources. The Radius backend only exposes
+        the <code>getGraph</code> action for{' '}
         <code>Applications.Core/applications</code> today.
       </InfoCard>
     );
