@@ -181,7 +181,7 @@ describe('RadiusApi', () => {
     });
     // eslint-disable-next-line dot-notation
     await expect(api['makeRequest']('cluster', 'path')).rejects.toThrow(
-      'invalid json response body at  reason: Unexpected token \'e\', "test" is not valid JSON',
+      'Unexpected token \'e\', "test" is not valid JSON',
     );
   });
   it('makeRequest parses JSON', async () => {
