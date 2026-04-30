@@ -10,6 +10,7 @@ import { useApi } from '@backstage/core-plugin-api';
 import useAsync from 'react-use/lib/useAsync';
 import { AppGraph } from '@radapp.io/rad-components';
 import { makeStyles } from '@material-ui/core';
+import { radiusApiRef } from '../../plugin';
 
 export interface AppGraphData {
   name: string;
@@ -46,6 +47,7 @@ const useStyles = makeStyles({
 export const ApplicationTab = ({ application }: { application: string }) => {
   const styles = useStyles();
   const kubernetesApi = useApi(kubernetesApiRef);
+  const radiusApi = useApi(radiusApiRef);
   const { value, loading, error } =
     useAsync(async (): Promise<AppGraphData> => {
       let first = '';
@@ -54,9 +56,28 @@ export const ApplicationTab = ({ application }: { application: string }) => {
         first = cluster.name;
       }
 
+      // Determine the appropriate API version based on the application's
+      // resource type (e.g. Applications.Core/applications vs Radius.Core/applications).
+      let apiVersionString = '2023-10-01-preview';
+      const typeMatch = application.match(/\/providers\/([^/]+)\/([^/]+)/);
+      if (typeMatch) {
+        const [, namespace, typeName] = typeMatch;
+        try {
+          const typeInfo = await radiusApi.getResourceType({
+            namespace,
+            typeName,
+          });
+          if (typeInfo.APIVersionList && typeInfo.APIVersionList.length > 0) {
+            apiVersionString = typeInfo.APIVersionList[0];
+          }
+        } catch {
+          // Fall back to the default api-version on lookup failure.
+        }
+      }
+
       const response = await kubernetesApi.proxy({
         clusterName: first,
-        path: `/apis/api.ucp.dev/v1alpha3/${application}/getGraph?api-version=2023-10-01-preview`,
+        path: `/apis/api.ucp.dev/v1alpha3/${application}/getGraph?api-version=${apiVersionString}`,
         init: {
           referrerPolicy: 'no-referrer',
           mode: 'cors',
