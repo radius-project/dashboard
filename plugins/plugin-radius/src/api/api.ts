@@ -430,8 +430,8 @@ export class RadiusApiImpl implements RadiusApi {
     }
 
     // If all requests failed, throw the first error
-    const hasFulfilledResult = results.some(r => r.status === 'fulfilled');
-    if (!hasFulfilledResult) {
+    const hasAnyFulfilledResult = results.some(r => r.status === 'fulfilled');
+    if (!hasAnyFulfilledResult) {
       const firstError = results.find(r => r.status === 'rejected');
       if (firstError && firstError.status === 'rejected') {
         throw firstError.reason;

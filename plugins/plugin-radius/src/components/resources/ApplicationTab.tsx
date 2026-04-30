@@ -53,7 +53,10 @@ export const ApplicationTab = ({ application }: { application: string }) => {
   // correct api-version and detect whether the backend exposes a getGraph
   // action for this namespace.
   const parsedType = parseResourceId(application)?.type;
-  const [namespace, typeName] = parsedType?.split('/') || [];
+  const [namespace, typeName] = parsedType?.split('/') ?? [
+    'unknown',
+    'unknown',
+  ];
   const displayType = parsedType || 'unknown/unknown';
 
   // The Radius backend currently only registers the `getGraph` custom action
