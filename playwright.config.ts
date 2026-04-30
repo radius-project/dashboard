@@ -20,6 +20,10 @@ import { generateProjects } from '@backstage/e2e-test-utils/playwright';
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
+// When PLAYWRIGHT_URL is set (e.g. running e2e against a pre-started container),
+// skip starting the local dev server.
+const useExternalServer = !!process.env.PLAYWRIGHT_URL;
+
 export default defineConfig({
   timeout: 60_000,
 
@@ -27,13 +31,16 @@ export default defineConfig({
     timeout: 5_000,
   },
 
-  // Run your local dev server before starting the tests
-  webServer: {
-    command: 'yarn start',
-    port: 3000,
-    reuseExistingServer: true,
-    timeout: 60_000,
-  },
+  // Run your local dev server before starting the tests, unless an external
+  // server URL is provided via PLAYWRIGHT_URL.
+  webServer: useExternalServer
+    ? undefined
+    : {
+        command: 'yarn start',
+        port: 3000,
+        reuseExistingServer: true,
+        timeout: 60_000,
+      },
 
   forbidOnly: !!process.env.CI,
 

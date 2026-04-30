@@ -6,17 +6,19 @@ on:
   push:
     branches:
       - main
+      - 'ci/**'
     tags:
       - v*
   pull_request:
     branches:
       - main
+  workflow_dispatch:
 
 permissions: {}
 
 env:
-  CI_LINT: ${{ github.event_name == 'pull_request' }}
-  CI_TEST: ${{ github.event_name == 'pull_request' }}
+  CI_LINT: ${{ github.event_name == 'pull_request' || startsWith(github.ref, 'refs/heads/ci/') || github.event_name == 'workflow_dispatch' }}
+  CI_TEST: ${{ github.event_name == 'pull_request' || startsWith(github.ref, 'refs/heads/ci/') || github.event_name == 'workflow_dispatch' }}
   CI_PUBLISH_RELEASE: ${{ github.repository == 'radius-project/dashboard' && startsWith(github.ref, 'refs/tags/v') && github.event_name == 'push' }}
   CI_PUBLISH_LATEST: ${{ github.repository == 'radius-project/dashboard' && github.ref == 'refs/heads/main' && github.event_name == 'push' }}
 
@@ -69,17 +71,20 @@ jobs:
         if: ${{ env.CI_TEST == 'true' }}
         run: yarn run test:all
 
-      - name: Run E2E Tests
-        if: ${{ env.CI_TEST == 'true' }}
-        run: yarn run test:e2e
-
   build-and-publish-container:
     name: Build and Publish Container
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 15
     permissions:
       contents: read
       packages: write
+    services:
+      # Local OCI registry used to validate push/pull and to source the
+      # image used for the container-based E2E test below.
+      registry:
+        image: registry:2
+        ports:
+          - 5000:5000
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -114,6 +119,55 @@ jobs:
         uses: ./.github/actions/analyze-image
         with:
           image: ghcr.io/radius-project/dashboard:latest
+
+      - name: Push image to local test registry
+        run: |
+          docker tag ghcr.io/radius-project/dashboard:latest localhost:5000/dashboard:test
+          docker push localhost:5000/dashboard:test
+
+      - name: Pull image from local test registry
+        run: |
+          # Remove the local copy to ensure we actually pull from the registry.
+          docker rmi localhost:5000/dashboard:test
+          docker pull localhost:5000/dashboard:test
+
+      - name: Run dashboard container
+        run: |
+          docker run -d --name dashboard-e2e \
+            -p 7007:7007 \
+            localhost:5000/dashboard:test
+
+      - name: Wait for dashboard to be ready
+        run: |
+          for i in {1..60}; do
+            if curl -sf http://localhost:7007/ > /dev/null; then
+              echo "Dashboard is ready"
+              exit 0
+            fi
+            echo "Waiting for dashboard... ($i/60)"
+            sleep 2
+          done
+          echo "Dashboard did not become ready in time"
+          docker logs dashboard-e2e || true
+          exit 1
+
+      - name: Install Playwright browsers
+        if: ${{ env.CI_TEST == 'true' }}
+        run: yarn exec playwright install --with-deps chromium
+
+      - name: Run E2E Tests against container
+        if: ${{ env.CI_TEST == 'true' }}
+        env:
+          PLAYWRIGHT_URL: http://localhost:7007
+        run: yarn run test:e2e
+
+      - name: Dump container logs on failure
+        if: failure()
+        run: docker logs dashboard-e2e || true
+
+      - name: Stop dashboard container
+        if: always()
+        run: docker rm -f dashboard-e2e || true
 
       - name: Login to ghcr.io
         if: ${{ env.CI_PUBLISH_LATEST == 'true' || env.CI_PUBLISH_RELEASE == 'true' }}
