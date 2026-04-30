@@ -19,11 +19,17 @@ import { test, expect } from '@playwright/test';
 test('App should render the home page', async ({ page }) => {
   await page.goto('/');
 
-  // Accept any dialog that appears during the guest sign-in flow.
-  // Backstage may show a confirm dialog: "Failed to sign in as a guest
-  // using the auth backend. Do you want to fallback to the legacy guest token?"
-  // Accepting it allows the test to proceed with the legacy guest token.
-  page.on('dialog', dialog => dialog.accept());
+  // Fail fast if Backstage shows the legacy guest-token fallback dialog.
+  // That dialog only appears when the auth-backend guest provider is
+  // disabled (e.g. when NODE_ENV=production silently disables guest auth
+  // in @backstage/plugin-auth-backend >= 0.26 — see
+  // https://github.com/radius-project/radius/pull/11520). We want CI to
+  // surface that regression instead of routing around it.
+  page.on('dialog', async dialog => {
+    throw new Error(
+      `Unexpected dialog from Backstage auth flow: ${dialog.message()}`,
+    );
+  });
 
   // Click the Enter button on the sign-in page to complete guest authentication.
   const enterButton = page.getByRole('button', { name: 'Enter' });
