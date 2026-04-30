@@ -132,8 +132,14 @@ jobs:
           docker pull localhost:5000/dashboard:test
 
       - name: Run dashboard container
+        # NODE_ENV=development keeps the Backstage guest auth provider
+        # enabled (it is silently disabled in production mode in
+        # @backstage/plugin-auth-backend >= 0.26). Mirrors the workaround
+        # the Helm chart applies via .Values.dashboard.nodeEnv. See
+        # https://github.com/radius-project/radius/pull/11520.
         run: |
           docker run -d --name dashboard-e2e \
+            -e NODE_ENV=development \
             -p 7007:7007 \
             localhost:5000/dashboard:test
 
