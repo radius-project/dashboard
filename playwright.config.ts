@@ -47,7 +47,9 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
 
   reporter: [
+    ['list'],
     ['html', { open: 'never', outputFolder: './logs/e2e-test-report' }],
+    ...(process.env.CI ? [['github'] as [string]] : []),
   ],
 
   use: {
