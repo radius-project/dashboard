@@ -48,8 +48,22 @@ export const ApplicationTab = ({ application }: { application: string }) => {
   const styles = useStyles();
   const kubernetesApi = useApi(kubernetesApiRef);
   const radiusApi = useApi(radiusApiRef);
+
+  // The backend currently only implements the getGraph action for
+  // Applications.Core/applications. Radius.Core/applications resources do not
+  // expose a graph endpoint, so render a clear message rather than a confusing
+  // request failure or an indefinite loading spinner.
+  const typeMatch = application.match(/\/providers\/([^/]+)\/([^/]+)/);
+  const namespace = typeMatch?.[1];
+  const typeName = typeMatch?.[2];
+  const supportsGetGraph = namespace === 'Applications.Core';
+
   const { value, loading, error } =
-    useAsync(async (): Promise<AppGraphData> => {
+    useAsync(async (): Promise<AppGraphData | undefined> => {
+      if (!supportsGetGraph) {
+        return undefined;
+      }
+
       let first = '';
       const clusters = await kubernetesApi.getClusters();
       for (const cluster of clusters) {
@@ -57,11 +71,9 @@ export const ApplicationTab = ({ application }: { application: string }) => {
       }
 
       // Determine the appropriate API version based on the application's
-      // resource type (e.g. Applications.Core/applications vs Radius.Core/applications).
+      // resource type.
       let apiVersionString = '2023-10-01-preview';
-      const typeMatch = application.match(/\/providers\/([^/]+)\/([^/]+)/);
-      if (typeMatch) {
-        const [, namespace, typeName] = typeMatch;
+      if (namespace && typeName) {
         try {
           const typeInfo = await radiusApi.getResourceType({
             namespace,
@@ -92,12 +104,25 @@ export const ApplicationTab = ({ application }: { application: string }) => {
       }
 
       return (await response.json()) as AppGraphData;
-    }, [application]);
+    }, [application, supportsGetGraph]);
 
-  if (loading || !value) {
+  if (!supportsGetGraph) {
+    return (
+      <InfoCard
+        title={`Application Graph: ${parseResourceId(application)?.name}`}
+      >
+        The application graph is not yet available for{' '}
+        <code>{`${namespace}/${typeName}`}</code> resources.
+      </InfoCard>
+    );
+  }
+
+  if (loading) {
     return <Progress />;
   } else if (error) {
     return <ResponseErrorPanel error={error} />;
+  } else if (!value) {
+    return <Progress />;
   }
 
   return (
