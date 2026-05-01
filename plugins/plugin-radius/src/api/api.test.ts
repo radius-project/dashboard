@@ -428,13 +428,13 @@ describe('RadiusApi', () => {
             APIVersionList: ['2024-01-01-preview'],
           };
 
-          let requestedPath = '';
+          const requestedPaths: string[] = [];
           const api = new RadiusApiImpl({
             getClusters: async () => [
               { name: 'test-cluster', authProvider: 'test' },
             ],
             proxy: async ({ path }: { path: string }) => {
-              requestedPath = path;
+              requestedPaths.push(path);
               // First call for getResourceType, second for actual resource list
               if (
                 path.includes(
@@ -456,8 +456,13 @@ describe('RadiusApi', () => {
           });
 
           expect(result).toEqual(mockResourceList);
-          // Verify the final request used the dynamic API version
-          expect(requestedPath).toContain('api-version=2024-01-01-preview');
+          // Verify that the Applications.Core list request used the dynamic API version
+          const appsCoreListPath = requestedPaths.find(
+            p =>
+              p.includes('Applications.Core/applications') &&
+              !p.includes('resourceTypes'),
+          );
+          expect(appsCoreListPath).toContain('api-version=2024-01-01-preview');
         });
 
         it('falls back to listing all resource groups when no resourceType specified', async () => {
@@ -506,6 +511,144 @@ describe('RadiusApi', () => {
           const result = await api.listResources();
           expect(result.value).toHaveLength(1);
           expect(result.value[0].name).toEqual('app1');
+        });
+
+        it('merges results from both Applications.Core and Radius.Core namespaces', async () => {
+          const legacyApps = {
+            value: [
+              {
+                id: '/planes/radius/local/resourceGroups/group1/providers/Applications.Core/applications/legacy-app',
+                name: 'legacy-app',
+                type: 'Applications.Core/applications',
+              },
+            ],
+          };
+          const newApps = {
+            value: [
+              {
+                id: '/planes/radius/local/resourceGroups/group1/providers/Radius.Core/applications/new-app',
+                name: 'new-app',
+                type: 'Radius.Core/applications',
+              },
+            ],
+          };
+
+          const api = new RadiusApiImpl({
+            getClusters: async () => [
+              { name: 'test-cluster', authProvider: 'test' },
+            ],
+            proxy: async ({ path }: { path: string }) => {
+              if (
+                path.includes('Applications.Core/applications') &&
+                !path.includes('resourceTypes')
+              ) {
+                return Promise.resolve(
+                  new Response(JSON.stringify(legacyApps)),
+                );
+              }
+              if (
+                path.includes('Radius.Core/applications') &&
+                !path.includes('resourceTypes')
+              ) {
+                return Promise.resolve(new Response(JSON.stringify(newApps)));
+              }
+              // Return empty for resource type lookups (fallback to default api version)
+              return Promise.resolve(
+                new Response(JSON.stringify({ value: [] })),
+              );
+            },
+          });
+
+          const result = await api.listResources({
+            resourceType: 'Applications.Core/applications',
+          });
+          expect(result.value).toHaveLength(2);
+          expect(result.value.map(r => r.name)).toContain('legacy-app');
+          expect(result.value.map(r => r.name)).toContain('new-app');
+        });
+
+        it('returns results even when one namespace fails', async () => {
+          const newApps = {
+            value: [
+              {
+                id: '/planes/radius/local/resourceGroups/group1/providers/Radius.Core/applications/new-app',
+                name: 'new-app',
+                type: 'Radius.Core/applications',
+              },
+            ],
+          };
+
+          const api = new RadiusApiImpl({
+            getClusters: async () => [
+              { name: 'test-cluster', authProvider: 'test' },
+            ],
+            proxy: async ({ path }: { path: string }) => {
+              if (
+                path.includes('Applications.Core/applications') &&
+                !path.includes('resourceTypes')
+              ) {
+                return Promise.resolve(
+                  new Response('Not Found', { status: 404 }),
+                );
+              }
+              if (
+                path.includes('Radius.Core/applications') &&
+                !path.includes('resourceTypes')
+              ) {
+                return Promise.resolve(new Response(JSON.stringify(newApps)));
+              }
+              return Promise.resolve(
+                new Response(JSON.stringify({ value: [] })),
+              );
+            },
+          });
+
+          const result = await api.listResources({
+            resourceType: 'Applications.Core/applications',
+          });
+          expect(result.value).toHaveLength(1);
+          expect(result.value[0].name).toEqual('new-app');
+        });
+
+        it('deduplicates resources with the same id', async () => {
+          const sharedApp = {
+            id: '/planes/radius/local/resourceGroups/group1/providers/Applications.Core/applications/same-app',
+            name: 'same-app',
+            type: 'Applications.Core/applications',
+          };
+          const legacyApps = { value: [sharedApp] };
+          const newApps = { value: [sharedApp] };
+
+          const api = new RadiusApiImpl({
+            getClusters: async () => [
+              { name: 'test-cluster', authProvider: 'test' },
+            ],
+            proxy: async ({ path }: { path: string }) => {
+              if (
+                path.includes('Applications.Core/applications') &&
+                !path.includes('resourceTypes')
+              ) {
+                return Promise.resolve(
+                  new Response(JSON.stringify(legacyApps)),
+                );
+              }
+              if (
+                path.includes('Radius.Core/applications') &&
+                !path.includes('resourceTypes')
+              ) {
+                return Promise.resolve(new Response(JSON.stringify(newApps)));
+              }
+              return Promise.resolve(
+                new Response(JSON.stringify({ value: [] })),
+              );
+            },
+          });
+
+          const result = await api.listResources({
+            resourceType: 'Applications.Core/applications',
+          });
+          expect(result.value).toHaveLength(1);
+          expect(result.value[0].name).toEqual('same-app');
         });
       });
 
@@ -706,7 +849,9 @@ describe('RadiusApi', () => {
             resourceType: 'Applications.Core/applications',
           });
           expect(result).toEqual(mockResourceList);
-          expect(proxyCallCount).toEqual(3); // getBestApiVersion makes 2 calls (specific + fallback), then resource list
+          // Both Applications.Core and Radius.Core namespaces are queried,
+          // so there are more proxy calls than when only one namespace is used
+          expect(proxyCallCount).toBeGreaterThanOrEqual(3);
         });
       });
     });

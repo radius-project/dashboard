@@ -14,6 +14,7 @@ import { resourcePageRouteRef } from '../../routes';
 import { ApplicationTab } from './ApplicationTab';
 import { ApplicationResourcesTab } from './ApplicationResourcesTab';
 import { radiusApiRef } from '../../plugin';
+import { isApplicationType } from '../../resources';
 
 export const ResourcePage = () => {
   const radiusApi = useApi(radiusApiRef);
@@ -33,7 +34,7 @@ export const ResourcePage = () => {
   }
 
   const hasApplication = value?.properties?.application || false;
-  const isApplication = value?.type === 'Applications.Core/applications';
+  const isApplication = isApplicationType(value?.type);
   let application: string | undefined = undefined;
   if (hasApplication) {
     application = value.properties.application as string;
