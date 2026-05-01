@@ -4,6 +4,7 @@ import {
   EnvironmentProperties,
   Resource,
   ResourceList,
+  getEquivalentTypes,
 } from '../resources';
 
 export interface RadiusApi {
@@ -34,6 +35,7 @@ export interface RadiusApi {
     namespace: string;
     typeName: string;
     planeName?: string;
+    clusterName?: string;
   }): Promise<{
     Name: string;
     Description: string;
@@ -102,8 +104,15 @@ export class RadiusApiImpl implements RadiusApi {
 
     // Fast path for listing resources of a specific type.
     if (opts?.resourceType) {
+      const equivalentTypes = getEquivalentTypes(opts.resourceType);
+      if (equivalentTypes) {
+        // Query all equivalent types and merge results
+        return this.listMultipleTypes<T>(cluster, opts, equivalentTypes);
+      }
+
       const resourceApiVersion = await this.getBestApiVersion(
         opts.resourceType,
+        cluster,
       );
       const path = makePath({
         scopes: this.makeScopes(opts),
@@ -165,7 +174,10 @@ export class RadiusApiImpl implements RadiusApi {
     const resourceType = this.extractResourceTypeFromId(opts.id);
 
     if (resourceType) {
-      const resourceApiVersion = await this.getBestApiVersion(resourceType);
+      const resourceApiVersion = await this.getBestApiVersion(
+        resourceType,
+        cluster,
+      );
       const path = makePathForId(opts.id, resourceApiVersion);
       const resource = await this.makeRequest<Resource<T>>(cluster, path);
       return await this.fixupResource(resource);
@@ -182,11 +194,10 @@ export class RadiusApiImpl implements RadiusApi {
   }): Promise<ResourceList<T>> {
     const cluster = await this.selectCluster();
 
-    const path = makePath({
-      scopes: this.makeScopes(opts),
-      type: 'Applications.Core/applications',
-    });
-    return this.makeRequest<ResourceList<T>>(cluster, path);
+    return this.listMultipleTypes<T>(cluster, opts, [
+      'Applications.Core/applications',
+      'Radius.Core/applications',
+    ]);
   }
 
   async listEnvironments<T = EnvironmentProperties>(opts?: {
@@ -194,17 +205,17 @@ export class RadiusApiImpl implements RadiusApi {
   }): Promise<ResourceList<T>> {
     const cluster = await this.selectCluster();
 
-    const path = makePath({
-      scopes: this.makeScopes(opts),
-      type: 'Applications.Core/environments',
-    });
-    return this.makeRequest<ResourceList<T>>(cluster, path);
+    return this.listMultipleTypes<T>(cluster, opts, [
+      'Applications.Core/environments',
+      'Radius.Core/environments',
+    ]);
   }
 
   async getResourceType(opts: {
     namespace: string;
     typeName: string;
     planeName?: string;
+    clusterName?: string;
   }): Promise<{
     Name: string;
     Description: string;
@@ -212,7 +223,7 @@ export class RadiusApiImpl implements RadiusApi {
     APIVersions: Record<string, { Schema?: unknown }>;
     APIVersionList: string[];
   }> {
-    const cluster = await this.selectCluster();
+    const cluster = opts.clusterName || (await this.selectCluster());
     const plane = opts?.planeName || 'local';
 
     // Try to get specific resource type details from UCP API
@@ -388,6 +399,48 @@ export class RadiusApiImpl implements RadiusApi {
     return { value: items };
   }
 
+  private async listMultipleTypes<T>(
+    cluster: string,
+    opts: { resourceGroup?: string } | undefined,
+    types: string[],
+  ): Promise<ResourceList<T>> {
+    const results = await Promise.allSettled(
+      types.map(async type => {
+        const resourceApiVersion = await this.getBestApiVersion(type, cluster);
+        const path = makePath({
+          scopes: this.makeScopes(opts),
+          type,
+          customApiVersion: resourceApiVersion,
+        });
+        return this.makeRequest<ResourceList<T>>(cluster, path);
+      }),
+    );
+
+    const allResources: Resource<T>[] = [];
+    const seenIds = new Set<string>();
+    for (const result of results) {
+      if (result.status === 'fulfilled' && result.value?.value) {
+        for (const resource of result.value.value) {
+          if (!seenIds.has(resource.id)) {
+            seenIds.add(resource.id);
+            allResources.push(resource);
+          }
+        }
+      }
+    }
+
+    // If all requests failed, throw the first error
+    const hasAnyFulfilledResult = results.some(r => r.status === 'fulfilled');
+    if (!hasAnyFulfilledResult) {
+      const firstError = results.find(r => r.status === 'rejected');
+      if (firstError && firstError.status === 'rejected') {
+        throw firstError.reason;
+      }
+    }
+
+    return { value: allResources };
+  }
+
   private async selectCluster(): Promise<string> {
     const clusters = await this.kubernetesApi.getClusters();
     for (const cluster of clusters) {
@@ -441,10 +494,17 @@ export class RadiusApiImpl implements RadiusApi {
     return resource;
   }
 
-  private async getBestApiVersion(resourceType: string): Promise<string> {
+  private async getBestApiVersion(
+    resourceType: string,
+    clusterName?: string,
+  ): Promise<string> {
     try {
       const [namespace, typeName] = resourceType.split('/');
-      const typeInfo = await this.getResourceType({ namespace, typeName });
+      const typeInfo = await this.getResourceType({
+        namespace,
+        typeName,
+        clusterName,
+      });
 
       // Use first available version (assumes they're ordered sensibly)
       return typeInfo.APIVersionList[0] || '2023-10-01-preview';

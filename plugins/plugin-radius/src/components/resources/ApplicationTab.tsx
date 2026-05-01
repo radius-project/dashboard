@@ -10,6 +10,7 @@ import { useApi } from '@backstage/core-plugin-api';
 import useAsync from 'react-use/lib/useAsync';
 import { AppGraph } from '@radapp.io/rad-components';
 import { makeStyles } from '@material-ui/core';
+import { radiusApiRef } from '../../plugin';
 
 export interface AppGraphData {
   name: string;
@@ -46,37 +47,95 @@ const useStyles = makeStyles({
 export const ApplicationTab = ({ application }: { application: string }) => {
   const styles = useStyles();
   const kubernetesApi = useApi(kubernetesApiRef);
-  const { value, loading, error } =
-    useAsync(async (): Promise<AppGraphData> => {
-      let first = '';
-      const clusters = await kubernetesApi.getClusters();
-      for (const cluster of clusters) {
-        first = cluster.name;
+  const radiusApi = useApi(radiusApiRef);
+
+  // Extract the resource type from the application id so we can pick the
+  // correct api-version and detect whether the backend exposes a getGraph
+  // action for this namespace.
+  const parsedType = parseResourceId(application)?.type;
+  const [namespace, typeName] = parsedType?.split('/') ?? [
+    'unknown',
+    'unknown',
+  ];
+  const displayType = parsedType || 'unknown/unknown';
+
+  // The Radius backend currently only registers the `getGraph` custom action
+  // for `Applications.Core/applications` (see radius/pkg/corerp/setup/setup.go
+  // — `Radius.Core/applications` does not register a `getGraph` controller).
+  // Issuing the request anyway returns a 404 from UCP, so short-circuit and
+  // render a clear message instead of a confusing failure.
+  const supportsGetGraph =
+    namespace?.toLowerCase() === 'applications.core' &&
+    typeName?.toLowerCase() === 'applications';
+
+  const { value, loading, error } = useAsync(async (): Promise<
+    AppGraphData | undefined
+  > => {
+    if (!supportsGetGraph) {
+      return undefined;
+    }
+
+    let first = '';
+    const clusters = await kubernetesApi.getClusters();
+    for (const cluster of clusters) {
+      first = cluster.name;
+    }
+
+    // Resolve the supported api-version dynamically; fall back to the
+    // legacy hardcoded value if the lookup fails.
+    let apiVersionString = '2023-10-01-preview';
+    if (namespace && typeName) {
+      try {
+        const typeInfo = await radiusApi.getResourceType({
+          namespace,
+          typeName,
+        });
+        if (typeInfo.APIVersionList && typeInfo.APIVersionList.length > 0) {
+          apiVersionString = typeInfo.APIVersionList[0];
+        }
+      } catch {
+        // Fall back to the default api-version on lookup failure.
       }
+    }
 
-      const response = await kubernetesApi.proxy({
-        clusterName: first,
-        path: `/apis/api.ucp.dev/v1alpha3/${application}/getGraph?api-version=2023-10-01-preview`,
-        init: {
-          referrerPolicy: 'no-referrer',
-          mode: 'cors',
-          cache: 'no-cache',
-          method: 'POST',
-        },
-      });
+    const response = await kubernetesApi.proxy({
+      clusterName: first,
+      path: `/apis/api.ucp.dev/v1alpha3/${application}/getGraph?api-version=${apiVersionString}`,
+      init: {
+        referrerPolicy: 'no-referrer',
+        mode: 'cors',
+        cache: 'no-cache',
+        method: 'POST',
+      },
+    });
 
-      if (!response.ok) {
-        const text = await response.text();
-        throw new Error(`Request failed: ${response.status}:\n\n ${text}`);
-      }
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Request failed: ${response.status}:\n\n${text}`);
+    }
 
-      return (await response.json()) as AppGraphData;
-    }, [application]);
+    return (await response.json()) as AppGraphData;
+  }, [application, supportsGetGraph]);
 
-  if (loading || !value) {
+  if (!supportsGetGraph) {
+    return (
+      <InfoCard
+        title={`Application Graph: ${parseResourceId(application)?.name}`}
+      >
+        The application graph is not yet available for{' '}
+        <code>{displayType}</code> resources. The Radius backend only exposes
+        the <code>getGraph</code> action for{' '}
+        <code>Applications.Core/applications</code> today.
+      </InfoCard>
+    );
+  }
+
+  if (loading) {
     return <Progress />;
   } else if (error) {
     return <ResponseErrorPanel error={error} />;
+  } else if (!value) {
+    return <Progress />;
   }
 
   return (
