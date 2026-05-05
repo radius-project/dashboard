@@ -33,7 +33,7 @@
     "@types/jest": "^30.0.0",
     "@types/supertest": "^7.2.0",
     "jest": "^30.3.0",
-    "msw": "^2.13.6",
+    "msw": "^2.14.3",
     "supertest": "^7.2.2"
   },
   "files": [
