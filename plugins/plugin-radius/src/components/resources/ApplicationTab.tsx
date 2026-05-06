@@ -104,7 +104,9 @@ export const ApplicationTab = ({ application }: { application: string }) => {
       });
     } catch (e: unknown) {
       if (e instanceof DOMException && e.name === 'AbortError') {
-        throw new Error('The application graph request timed out. The backend may not support getGraph for this resource type.');
+        throw new Error(
+          'The application graph request timed out. The backend may not support getGraph for this resource type.',
+        );
       }
       throw e;
     } finally {
