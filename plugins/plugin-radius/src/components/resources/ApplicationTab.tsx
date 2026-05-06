@@ -83,16 +83,33 @@ export const ApplicationTab = ({ application }: { application: string }) => {
       }
     }
 
-    const response = await kubernetesApi.proxy({
-      clusterName: first,
-      path: `/apis/api.ucp.dev/v1alpha3/${application}/getGraph?api-version=${apiVersionString}`,
-      init: {
-        referrerPolicy: 'no-referrer',
-        mode: 'cors',
-        cache: 'no-cache',
-        method: 'POST',
-      },
-    });
+    // Use an AbortController with a timeout so the request fails
+    // gracefully instead of spinning indefinitely when the backend does
+    // not support getGraph for this resource type.
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+    let response: Response;
+    try {
+      response = await kubernetesApi.proxy({
+        clusterName: first,
+        path: `/apis/api.ucp.dev/v1alpha3/${application}/getGraph?api-version=${apiVersionString}`,
+        init: {
+          referrerPolicy: 'no-referrer',
+          mode: 'cors',
+          cache: 'no-cache',
+          method: 'POST',
+          signal: controller.signal,
+        },
+      });
+    } catch (e: unknown) {
+      if (e instanceof DOMException && e.name === 'AbortError') {
+        throw new Error('The application graph request timed out. The backend may not support getGraph for this resource type.');
+      }
+      throw e;
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     if (!response.ok) {
       const text = await response.text();
