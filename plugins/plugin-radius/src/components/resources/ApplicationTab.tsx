@@ -50,31 +50,16 @@ export const ApplicationTab = ({ application }: { application: string }) => {
   const radiusApi = useApi(radiusApiRef);
 
   // Extract the resource type from the application id so we can pick the
-  // correct api-version and detect whether the backend exposes a getGraph
-  // action for this namespace.
+  // correct api-version for the getGraph call.
   const parsedType = parseResourceId(application)?.type;
   const [namespace, typeName] = parsedType?.split('/') ?? [
     'unknown',
     'unknown',
   ];
-  const displayType = parsedType || 'unknown/unknown';
-
-  // The Radius backend currently only registers the `getGraph` custom action
-  // for `Applications.Core/applications` (see radius/pkg/corerp/setup/setup.go
-  // — `Radius.Core/applications` does not register a `getGraph` controller).
-  // Issuing the request anyway returns a 404 from UCP, so short-circuit and
-  // render a clear message instead of a confusing failure.
-  const supportsGetGraph =
-    namespace?.toLowerCase() === 'applications.core' &&
-    typeName?.toLowerCase() === 'applications';
 
   const { value, loading, error } = useAsync(async (): Promise<
     AppGraphData | undefined
   > => {
-    if (!supportsGetGraph) {
-      return undefined;
-    }
-
     let first = '';
     const clusters = await kubernetesApi.getClusters();
     for (const cluster of clusters) {
@@ -115,20 +100,7 @@ export const ApplicationTab = ({ application }: { application: string }) => {
     }
 
     return (await response.json()) as AppGraphData;
-  }, [application, supportsGetGraph]);
-
-  if (!supportsGetGraph) {
-    return (
-      <InfoCard
-        title={`Application Graph: ${parseResourceId(application)?.name}`}
-      >
-        The application graph is not yet available for{' '}
-        <code>{displayType}</code> resources. The Radius backend only exposes
-        the <code>getGraph</code> action for{' '}
-        <code>Applications.Core/applications</code> today.
-      </InfoCard>
-    );
-  }
+  }, [application]);
 
   if (loading) {
     return <Progress />;
