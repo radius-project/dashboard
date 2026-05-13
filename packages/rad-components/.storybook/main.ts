@@ -8,7 +8,7 @@ const require = createRequire(import.meta.url);
  * Resolve the absolute path of a package. Required in monorepos so Storybook
  * can locate addons that live in the workspace's hoisted node_modules.
  */
-function getAbsolutePath(value: string): any {
+function getAbsolutePath(value: string): string {
   return dirname(require.resolve(join(value, 'package.json')));
 }
 
