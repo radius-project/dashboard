@@ -24,7 +24,7 @@
     "@backstage/plugin-kubernetes-backend": "^0.21.3",
     "@backstage/plugin-proxy-backend": "^0.6.12",
     "@internal/app": "workspace:^",
-    "better-sqlite3": "^12.9.0",
+    "better-sqlite3": "^12.10.0",
     "node-gyp": "^12.3.0",
     "pg": "^8.20.0"
   },
@@ -32,7 +32,7 @@
     "@backstage/cli": "^0.36.1",
     "@backstage/cli-defaults": "^0.1.1",
     "@types/jest": "^30.0.0",
-    "jest": "^30.3.0"
+    "jest": "^30.4.2"
   },
   "files": [
     "dist"
