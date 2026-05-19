@@ -50,20 +50,21 @@ export const EnvironmentOverviewTab = (props: {
     [props.environment, value],
   );
 
+  let recipesContent: JSX.Element;
+  if (needsPacks && loading) {
+    recipesContent = <Progress data-testid="progress" />;
+  } else if (error) {
+    recipesContent = <ResponseErrorPanel error={error} />;
+  } else {
+    recipesContent = <RecipeTable recipes={recipes} title="Recipes" />;
+  }
+
   return (
     <Grid container spacing={3} direction="column">
       <Grid item>
         <EnvironmentDetailsTable environment={props.environment} />
       </Grid>
-      <Grid item>
-        {needsPacks && loading ? (
-          <Progress data-testid="progress" />
-        ) : error ? (
-          <ResponseErrorPanel error={error} />
-        ) : (
-          <RecipeTable recipes={recipes} title="Recipes" />
-        )}
-      </Grid>
+      <Grid item>{recipesContent}</Grid>
     </Grid>
   );
 };
