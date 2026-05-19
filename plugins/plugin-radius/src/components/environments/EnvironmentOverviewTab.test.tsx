@@ -20,14 +20,13 @@ jest.mock('../recipes/RecipeTable', () => ({
 }));
 
 const api: Pick<RadiusApi, 'getResourceById'> = {
-  getResourceById: async <T,>() =>
-    ({
-      id: 'unused',
-      type: 'Radius.Core/recipePacks',
-      name: 'unused',
-      systemData: {} as Record<string, never>,
-      properties: {} as T,
-    }),
+  getResourceById: async <T,>() => ({
+    id: 'unused',
+    type: 'Radius.Core/recipePacks',
+    name: 'unused',
+    systemData: {} as Record<string, never>,
+    properties: {} as T,
+  }),
 };
 
 const renderTab = (environment: Resource<EnvironmentProperties>) =>

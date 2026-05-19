@@ -22,8 +22,7 @@ const pack: Resource<RecipePackProperties> = {
     recipes: {
       'Applications.Dapr/stateStores': {
         recipeKind: 'bicep',
-        recipeLocation:
-          'ghcr.io/willtsai/recipes/aca-dapr-statestores:v0.10',
+        recipeLocation: 'ghcr.io/willtsai/recipes/aca-dapr-statestores:v0.10',
       },
       'Radius.Compute/containers': {
         recipeKind: 'bicep',
@@ -59,8 +58,7 @@ const legacyEnvironment: Resource<EnvironmentProperties> = {
       'Applications.Dapr/stateStores': {
         legacyRecipe: {
           templateKind: 'bicep',
-          templatePath:
-            'ghcr.io/willtsai/recipes/aca-dapr-statestores:v0.10',
+          templatePath: 'ghcr.io/willtsai/recipes/aca-dapr-statestores:v0.10',
         },
       },
       'Radius.Compute/containers': {
@@ -96,8 +94,7 @@ describe('aggregateRecipesFromEnvironment', () => {
           recipePack: '',
           type: 'Applications.Dapr/stateStores',
           recipeKind: 'bicep',
-          recipeLocation:
-            'ghcr.io/willtsai/recipes/aca-dapr-statestores:v0.10',
+          recipeLocation: 'ghcr.io/willtsai/recipes/aca-dapr-statestores:v0.10',
         },
         {
           recipePack: '',
@@ -163,8 +160,7 @@ describe('aggregateRecipesFromPack', () => {
           recipePack: 'aca-recipe-pack',
           type: 'Applications.Dapr/stateStores',
           recipeKind: 'bicep',
-          recipeLocation:
-            'ghcr.io/willtsai/recipes/aca-dapr-statestores:v0.10',
+          recipeLocation: 'ghcr.io/willtsai/recipes/aca-dapr-statestores:v0.10',
         },
       ]),
     );
