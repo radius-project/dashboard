@@ -1,7 +1,10 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { renderInTestApp, TestApiProvider } from '@backstage/test-utils';
+import { screen } from '@testing-library/react';
 import { EnvironmentOverviewTab } from './EnvironmentOverviewTab';
 import { Resource, EnvironmentProperties } from '../../resources';
+import { RadiusApi } from '../../api';
+import { radiusApiRef } from '../../plugin';
 
 // Mock the child components
 jest.mock('./EnvironmentDetailsTable', () => ({
@@ -15,6 +18,23 @@ jest.mock('../recipes/RecipeTable', () => ({
     <div data-testid="recipe-table">RecipeTable - {title}</div>
   ),
 }));
+
+const api: Pick<RadiusApi, 'getResourceById'> = {
+  getResourceById: async <T,>() => ({
+    id: 'unused',
+    type: 'Radius.Core/recipePacks',
+    name: 'unused',
+    systemData: {} as Record<string, never>,
+    properties: {} as T,
+  }),
+};
+
+const renderTab = (environment: Resource<EnvironmentProperties>) =>
+  renderInTestApp(
+    <TestApiProvider apis={[[radiusApiRef, api]]}>
+      <EnvironmentOverviewTab environment={environment} />
+    </TestApiProvider>,
+  );
 
 describe('EnvironmentOverviewTab', () => {
   const mockEnvironment: Resource<EnvironmentProperties> = {
@@ -35,24 +55,22 @@ describe('EnvironmentOverviewTab', () => {
     },
   };
 
-  it('should render EnvironmentDetailsTable component', () => {
-    render(<EnvironmentOverviewTab environment={mockEnvironment} />);
+  it('should render EnvironmentDetailsTable component', async () => {
+    await renderTab(mockEnvironment);
 
     expect(screen.getByTestId('environment-details-table')).toBeInTheDocument();
     expect(screen.getByText('EnvironmentDetailsTable')).toBeInTheDocument();
   });
 
-  it('should render RecipeTable component with title', () => {
-    render(<EnvironmentOverviewTab environment={mockEnvironment} />);
+  it('should render RecipeTable component with title', async () => {
+    await renderTab(mockEnvironment);
 
     expect(screen.getByTestId('recipe-table')).toBeInTheDocument();
     expect(screen.getByText('RecipeTable - Recipes')).toBeInTheDocument();
   });
 
-  it('should render both components in Grid layout', () => {
-    const { container } = render(
-      <EnvironmentOverviewTab environment={mockEnvironment} />,
-    );
+  it('should render both components in Grid layout', async () => {
+    const { container } = await renderTab(mockEnvironment);
 
     // Check that Grid containers are present
     const grids = container.querySelectorAll('.MuiGrid-container');
