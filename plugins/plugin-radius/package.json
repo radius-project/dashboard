@@ -55,9 +55,9 @@
     "@testing-library/user-event": "^14.6.1",
     "@types/jest": "^30.0.0",
     "@types/react": "^18",
-    "jest": "^30.3.0",
+    "jest": "^30.4.2",
     "jest-canvas-mock": "^2.5.2",
-    "msw": "^2.14.3",
+    "msw": "^2.14.6",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.30.2"
