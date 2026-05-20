@@ -4,7 +4,7 @@
   "name": "Dashboard",
   "image": "mcr.microsoft.com/devcontainers/base:ubuntu24.04",
   "features": {
-    "ghcr.io/devcontainers/features/common-utils:2.5.7": {
+    "ghcr.io/devcontainers/features/common-utils:2.5.8": {
       "configureZshAsDefaultShell": false
     },
     "ghcr.io/devcontainers/features/node:2.0.0": {
@@ -19,7 +19,7 @@
     "ghcr.io/rio/features/k3d:1.1.0": {
       "version": "latest"
     },
-    "ghcr.io/devcontainers/features/docker-in-docker:2.16.1": {
+    "ghcr.io/devcontainers/features/docker-in-docker:3.0.0": {
       "version": "latest",
       "moby": true
     },
