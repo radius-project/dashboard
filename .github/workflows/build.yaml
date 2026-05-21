@@ -116,7 +116,7 @@ jobs:
         run: yarn exec playwright install chromium
 
       - name: Start built container
-        run: docker run -d --rm --name dashboard-e2e -p 7007:7007 ${BUILT_IMAGE}
+        run: docker run -d --rm --name dashboard-e2e -p 7007:7007 "${BUILT_IMAGE}"
 
       - name: Wait for container to become ready
         run: |
@@ -153,10 +153,10 @@ jobs:
       - name: Push Image to ghcr.io (push to main)
         if: ${{ env.CI_PUBLISH_LATEST == 'true' }}
         run: |
-          docker push ${BUILT_IMAGE}
+          docker push "${BUILT_IMAGE}"
 
       - name: Push Image to ghcr.io (push to tag)
         if: ${{ env.CI_PUBLISH_RELEASE == 'true' }}
         run: |
-          docker tag ${BUILT_IMAGE} ghcr.io/radius-project/dashboard:${{ env.REL_CHANNEL }}
-          docker push ghcr.io/radius-project/dashboard:${{ env.REL_CHANNEL }}
+          docker tag "${BUILT_IMAGE}" "ghcr.io/radius-project/dashboard:${REL_CHANNEL}"
+          docker push "ghcr.io/radius-project/dashboard:${REL_CHANNEL}"
