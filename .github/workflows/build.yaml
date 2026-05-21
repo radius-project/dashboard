@@ -77,6 +77,8 @@ jobs:
     name: Build and Publish Container
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    env:
+      BUILT_IMAGE: ghcr.io/radius-project/dashboard:latest
     permissions:
       contents: read
       packages: write
@@ -114,7 +116,7 @@ jobs:
         run: yarn exec playwright install chromium
 
       - name: Start built container
-        run: docker run -d --rm --name dashboard-e2e -p 7007:7007 ghcr.io/radius-project/dashboard:latest
+        run: docker run -d --rm --name dashboard-e2e -p 7007:7007 ${{ env.BUILT_IMAGE }}
 
       - name: Wait for container to become ready
         run: |
@@ -133,12 +135,12 @@ jobs:
 
       - name: Stop test container
         if: ${{ always() }}
-        run: docker stop dashboard-e2e
+        run: docker stop dashboard-e2e || true
 
       - name: Analyze Image
         uses: ./.github/actions/analyze-image
         with:
-          image: ghcr.io/radius-project/dashboard:latest
+          image: ${{ env.BUILT_IMAGE }}
 
       - name: Login to ghcr.io
         if: ${{ env.CI_PUBLISH_LATEST == 'true' || env.CI_PUBLISH_RELEASE == 'true' }}
@@ -151,10 +153,10 @@ jobs:
       - name: Push Image to ghcr.io (push to main)
         if: ${{ env.CI_PUBLISH_LATEST == 'true' }}
         run: |
-          docker push ghcr.io/radius-project/dashboard:latest
+          docker push ${{ env.BUILT_IMAGE }}
 
       - name: Push Image to ghcr.io (push to tag)
         if: ${{ env.CI_PUBLISH_RELEASE == 'true' }}
         run: |
-          docker tag ghcr.io/radius-project/dashboard:latest ghcr.io/radius-project/dashboard:${{ env.REL_CHANNEL }}
+          docker tag ${{ env.BUILT_IMAGE }} ghcr.io/radius-project/dashboard:${{ env.REL_CHANNEL }}
           docker push ghcr.io/radius-project/dashboard:${{ env.REL_CHANNEL }}
