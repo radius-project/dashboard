@@ -134,8 +134,13 @@ export const ApplicationTab = ({ application }: { application: string }) => {
             ...resource,
             properties: fullResource.properties as Record<string, unknown>,
           };
-        } catch {
+        } catch (e) {
           // If we can't fetch the resource's properties, just use what we have.
+          // eslint-disable-next-line no-console
+          console.warn(
+            `Failed to fetch properties for resource ${resource.id}:`,
+            e,
+          );
           return resource;
         }
       }),

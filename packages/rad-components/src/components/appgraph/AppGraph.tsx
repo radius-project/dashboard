@@ -87,6 +87,8 @@ const SKIP_PROPERTY_KEYS = new Set([
 
 // Recursively scans a properties object for string values that match the ID
 // or name of another resource in the graph and records the target IDs.
+// The depth limit (5) guards against pathologically deep or circular property
+// structures without needing cycle detection on the property keys.
 function collectPropertyRefs(
   obj: Record<string, unknown>,
   resourceById: Map<string, Resource>,
@@ -97,18 +99,19 @@ function collectPropertyRefs(
   depth: number = 0,
 ): void {
   if (depth > 5) return;
+
+  const addIfMatched = (candidate: Resource | undefined) => {
+    if (candidate && candidate.id !== selfId && !seen.has(candidate.id)) {
+      results.add(candidate.id);
+    }
+  };
+
   for (const [key, value] of Object.entries(obj)) {
     if (SKIP_PROPERTY_KEYS.has(key)) continue;
     if (typeof value === 'string') {
       const lower = value.toLowerCase();
-      const byId = resourceById.get(lower);
-      if (byId && byId.id !== selfId && !seen.has(byId.id)) {
-        results.add(byId.id);
-      }
-      const byName = resourceByName.get(lower);
-      if (byName && byName.id !== selfId && !seen.has(byName.id)) {
-        results.add(byName.id);
-      }
+      addIfMatched(resourceById.get(lower));
+      addIfMatched(resourceByName.get(lower));
     } else if (
       typeof value === 'object' &&
       value !== null &&
