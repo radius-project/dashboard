@@ -11,6 +11,7 @@ export interface Resource {
   provisioningState: string;
   resources?: Resource[];
   connections?: Connection[];
+  properties?: Record<string, unknown>;
 }
 
 export interface Connection {

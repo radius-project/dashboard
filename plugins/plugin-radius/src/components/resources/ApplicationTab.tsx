@@ -25,6 +25,7 @@ export interface ResourceData {
   provisioningState: string;
   resources?: ResourceData[];
   connections?: Connection[];
+  properties?: Record<string, unknown>;
 }
 
 export interface Connection {
@@ -118,7 +119,29 @@ export const ApplicationTab = ({ application }: { application: string }) => {
       throw new Error(`Request failed: ${response.status}:\n\n${text}`);
     }
 
-    return (await response.json()) as AppGraphData;
+    const graphData = (await response.json()) as AppGraphData;
+
+    // Enrich each resource in the graph with its full properties so that the
+    // app graph component can detect connections made via resource properties
+    // (e.g. `secretName: dbsecret.name`) rather than explicit connections.
+    const enrichedResources = await Promise.all(
+      graphData.resources.map(async (resource): Promise<ResourceData> => {
+        try {
+          const fullResource = await radiusApi.getResourceById({
+            id: resource.id,
+          });
+          return {
+            ...resource,
+            properties: fullResource.properties as Record<string, unknown>,
+          };
+        } catch {
+          // If we can't fetch the resource's properties, just use what we have.
+          return resource;
+        }
+      }),
+    );
+
+    return { ...graphData, resources: enrichedResources };
   }, [application]);
 
   if (loading) {

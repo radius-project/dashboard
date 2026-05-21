@@ -14,4 +14,16 @@ describe('AppGraph component', () => {
     const name = screen.getByRole('link', { name: 'React Flow attribution' });
     expect(name).toBeInTheDocument();
   });
+
+  it('AppGraph should render correctly with property-based resource references', () => {
+    const application = sampledata.PropertyRefApplication;
+    render(<AppGraph graph={application} />);
+
+    // Verify the component renders without errors when resources reference
+    // each other via properties rather than explicit connections.
+    const attribution = screen.getByRole('link', {
+      name: 'React Flow attribution',
+    });
+    expect(attribution).toBeInTheDocument();
+  });
 });
