@@ -76,7 +76,7 @@ jobs:
   build-and-publish-container:
     name: Build and Publish Container
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 15
     permissions:
       contents: read
       packages: write
@@ -109,6 +109,30 @@ jobs:
 
       - name: Build Image
         run: yarn run build-image
+
+      - name: Install Playwright browser
+        run: yarn exec playwright install chromium
+
+      - name: Start built container
+        run: docker run -d --rm --name dashboard-e2e -p 7007:7007 ghcr.io/radius-project/dashboard:latest
+
+      - name: Wait for container to become ready
+        run: |
+          for _ in {1..30}; do
+            if curl -fsS http://localhost:7007 > /dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs dashboard-e2e
+          exit 1
+
+      - name: Run E2E Tests Against Built Container
+        run: PLAYWRIGHT_URL=http://localhost:7007 PLAYWRIGHT_DISABLE_WEBSERVER=true yarn run test:e2e
+
+      - name: Stop test container
+        if: ${{ always() }}
+        run: docker stop dashboard-e2e
 
       - name: Analyze Image
         uses: ./.github/actions/analyze-image
