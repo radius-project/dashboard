@@ -17,6 +17,7 @@
 import { defineConfig } from '@playwright/test';
 import { generateProjects } from '@backstage/e2e-test-utils/playwright';
 
+// Set PLAYWRIGHT_DISABLE_WEBSERVER=true when tests should run against an externally managed URL (for example PLAYWRIGHT_URL=http://localhost:7007).
 const disableWebServer = process.env.PLAYWRIGHT_DISABLE_WEBSERVER === 'true';
 
 /**
