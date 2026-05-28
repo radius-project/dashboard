@@ -1,10 +1,12 @@
 import React from 'react';
-import { Resource } from '../../resources';
+import { RecipePackProperties, Resource } from '../../resources';
 import { InfoCard, StructuredMetadataTable } from '@backstage/core-components';
 import { Box } from '@material-ui/core';
 import { ResourceLink } from '../resourcelink/ResourceLink';
 import { ResourceBreadcrumbs } from '../resourcebreadcrumbs';
 import { parseResourceId } from '@radapp.io/rad-components';
+import { RecipeTable } from '../recipes/RecipeTable';
+import { aggregateRecipesFromPack } from '../recipes/recipeAggregation';
 
 export const OverviewTab = (props: { resource: Resource }) => {
   const metadata: { [key: string]: unknown } = {
@@ -24,6 +26,13 @@ export const OverviewTab = (props: { resource: Resource }) => {
     );
   }
 
+  const isRecipePack = props.resource.type === 'Radius.Core/recipePacks';
+  const recipePackRecipes = isRecipePack
+    ? aggregateRecipesFromPack(
+        props.resource as unknown as Resource<RecipePackProperties>,
+      )
+    : [];
+
   return (
     <>
       <Box mb={3}>
@@ -32,6 +41,11 @@ export const OverviewTab = (props: { resource: Resource }) => {
       <InfoCard title="Resource Overview">
         <StructuredMetadataTable metadata={metadata} />
       </InfoCard>
+      {isRecipePack && (
+        <Box mt={3}>
+          <RecipeTable recipes={recipePackRecipes} title="Recipes" />
+        </Box>
+      )}
     </>
   );
 };
