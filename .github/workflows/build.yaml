@@ -76,7 +76,9 @@ jobs:
   build-and-publish-container:
     name: Build and Publish Container
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 15
+    env:
+      BUILT_IMAGE: ghcr.io/radius-project/dashboard:latest
     permissions:
       contents: read
       packages: write
@@ -110,10 +112,35 @@ jobs:
       - name: Build Image
         run: yarn run build-image
 
+      - name: Install Playwright browser
+        run: yarn exec playwright install chromium
+
+      - name: Start built container
+        run: docker run -d --rm --name dashboard-e2e -p 7007:7007 "${BUILT_IMAGE}"
+
+      - name: Wait for container to become ready
+        run: |
+          # Wait up to 60 seconds for the app to start (30 attempts x 2 seconds).
+          for _ in {1..30}; do
+            if curl -fsS http://localhost:7007 > /dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs dashboard-e2e
+          exit 1
+
+      - name: Run E2E Tests Against Built Container
+        run: PLAYWRIGHT_URL=http://localhost:7007 PLAYWRIGHT_DISABLE_WEBSERVER=true yarn run test:e2e
+
+      - name: Stop test container
+        if: ${{ always() }}
+        run: docker stop dashboard-e2e || true
+
       - name: Analyze Image
         uses: ./.github/actions/analyze-image
         with:
-          image: ghcr.io/radius-project/dashboard:latest
+          image: ${{ env.BUILT_IMAGE }}
 
       - name: Login to ghcr.io
         if: ${{ env.CI_PUBLISH_LATEST == 'true' || env.CI_PUBLISH_RELEASE == 'true' }}
@@ -126,10 +153,10 @@ jobs:
       - name: Push Image to ghcr.io (push to main)
         if: ${{ env.CI_PUBLISH_LATEST == 'true' }}
         run: |
-          docker push ghcr.io/radius-project/dashboard:latest
+          docker push "${BUILT_IMAGE}"
 
       - name: Push Image to ghcr.io (push to tag)
         if: ${{ env.CI_PUBLISH_RELEASE == 'true' }}
         run: |
-          docker tag ghcr.io/radius-project/dashboard:latest ghcr.io/radius-project/dashboard:${{ env.REL_CHANNEL }}
-          docker push ghcr.io/radius-project/dashboard:${{ env.REL_CHANNEL }}
+          docker tag "${BUILT_IMAGE}" "ghcr.io/radius-project/dashboard:${REL_CHANNEL}"
+          docker push "ghcr.io/radius-project/dashboard:${REL_CHANNEL}"
