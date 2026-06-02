@@ -30,8 +30,10 @@ USER node
 # If this occurs, then ensure BuildKit is enabled (`DOCKER_BUILDKIT=1`) so the app dir is correctly created as `node`.
 WORKDIR /app
 
-# This switches many Node.js dependencies to production mode.
-ENV NODE_ENV=production
+# Set NODE_ENV to development so that Backstage guest auth provider remains active.
+# Starting in @backstage/plugin-auth-backend 0.26.x, the guest auth provider is
+# silently disabled when NODE_ENV=production.
+ENV NODE_ENV=development
 
 # Copy repo skeleton first, to avoid unnecessary docker cache invalidation.
 # The skeleton contains the package.json of each package in the monorepo,
