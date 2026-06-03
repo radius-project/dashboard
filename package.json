@@ -42,7 +42,7 @@
     "@module-federation/enhanced": "^2.5.0",
     "@playwright/test": "^1.60.0",
     "@spotify/prettier-config": "^15.0.0",
-    "concurrently": "^10.0.0",
+    "concurrently": "^10.0.3",
     "jest": "^30.4.2",
     "jest-environment-jsdom": "^30.4.1",
     "jsdom": "^29.1.1",
