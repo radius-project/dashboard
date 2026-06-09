@@ -1,42 +1,19 @@
 import React from 'react';
 import { Table, TableColumn } from '@backstage/core-components';
-import { EnvironmentProperties, Resource } from '../../resources';
-
-interface DisplayRecipe {
-  type: string;
-  templatePath: string;
-  templateKind: string;
-}
+import { DisplayRecipe } from './recipeAggregation';
 
 export const RecipeTable = ({
-  environment,
+  recipes,
   title,
 }: {
-  environment: Resource<EnvironmentProperties>;
+  recipes: DisplayRecipe[];
   title?: string;
 }) => {
-  const raw = environment.properties?.recipes;
-
-  let recipes: DisplayRecipe[] = [];
-
-  // Recipes are stored two-levels of nested object, so we need to flatten them out.
-  // First level is the recipe type, second level is the recipe name.
-  if (raw) {
-    recipes = Object.keys(raw).flatMap(recipeType =>
-      Object.keys(raw[recipeType]).map(recipeName => {
-        return {
-          type: recipeType,
-          name: recipeName,
-          ...raw[recipeType][recipeName],
-        };
-      }),
-    );
-  }
-
   const columns: TableColumn<DisplayRecipe>[] = [
+    { title: 'Recipe Pack', field: 'recipePack' },
     { title: 'Resource Type', field: 'type' },
-    { title: 'Recipe Kind', field: 'templateKind' },
-    { title: 'Recipe Location', field: 'templatePath' },
+    { title: 'Recipe Kind', field: 'recipeKind' },
+    { title: 'Recipe Location', field: 'recipeLocation' },
   ];
 
   return (

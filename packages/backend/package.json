@@ -16,23 +16,23 @@
     "build-image": "docker build ../.. -f Dockerfile -t ghcr.io/radius-project/dashboard"
   },
   "dependencies": {
-    "@backstage/backend-defaults": "^0.16.0",
-    "@backstage/plugin-app-backend": "^0.5.12",
-    "@backstage/plugin-auth-backend": "^0.27.2",
-    "@backstage/plugin-auth-backend-module-guest-provider": "^0.2.17",
-    "@backstage/plugin-catalog-backend": "^3.5.0",
-    "@backstage/plugin-kubernetes-backend": "^0.21.2",
-    "@backstage/plugin-proxy-backend": "^0.6.11",
+    "@backstage/backend-defaults": "^0.17.2",
+    "@backstage/plugin-app-backend": "^0.5.14",
+    "@backstage/plugin-auth-backend": "^0.29.0",
+    "@backstage/plugin-auth-backend-module-guest-provider": "^0.2.19",
+    "@backstage/plugin-catalog-backend": "^3.7.1",
+    "@backstage/plugin-kubernetes-backend": "^0.21.4",
+    "@backstage/plugin-proxy-backend": "^0.6.13",
     "@internal/app": "workspace:^",
-    "better-sqlite3": "^12.8.0",
-    "node-gyp": "^12.2.0",
-    "pg": "^8.20.0"
+    "better-sqlite3": "^12.10.0",
+    "node-gyp": "^12.4.0",
+    "pg": "^8.21.0"
   },
   "devDependencies": {
-    "@backstage/cli": "^0.36.0",
-    "@backstage/cli-defaults": "^0.1.0",
-    "@types/jest": "^29.5.14",
-    "jest": "^29.7.0"
+    "@backstage/cli": "^0.36.2",
+    "@backstage/cli-defaults": "^0.1.2",
+    "@types/jest": "^30.0.0",
+    "jest": "^30.4.2"
   },
   "files": [
     "dist"

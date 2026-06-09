@@ -1,8 +1,7 @@
-import type { Preview } from '@storybook/react';
+import { definePreview } from '@storybook/react-vite';
 
-const preview: Preview = {
+export default definePreview({
   parameters: {
-    actions: { argTypesRegex: '^on[A-Z].*' },
     controls: {
       matchers: {
         color: /(background|color)$/i,
@@ -10,6 +9,4 @@ const preview: Preview = {
       },
     },
   },
-};
-
-export default preview;
+});

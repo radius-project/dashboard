@@ -17,7 +17,7 @@ permissions: {}
 
 env:
   CI_LINT: ${{ github.event_name == 'pull_request' }}
-  CI_TEST: ${{ github.event_name == 'pull_request' }}
+  CI_TEST: ${{ github.event_name == 'pull_request' || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) }}
   CI_PUBLISH_RELEASE: ${{ github.repository == 'radius-project/dashboard' && startsWith(github.ref, 'refs/tags/v') && github.event_name == 'push' }}
   CI_PUBLISH_LATEST: ${{ github.repository == 'radius-project/dashboard' && github.ref == 'refs/heads/main' && github.event_name == 'push' }}
 
@@ -30,7 +30,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           persist-credentials: false
 
@@ -77,13 +77,15 @@ jobs:
   build-and-publish-container:
     name: Build and Publish Container
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 15
+    env:
+      BUILT_IMAGE: ghcr.io/radius-project/dashboard:latest
     permissions:
       contents: read
       packages: write
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           persist-credentials: false
 
@@ -111,14 +113,39 @@ jobs:
       - name: Build Image
         run: yarn run build-image
 
+      - name: Install Playwright browser
+        run: yarn exec playwright install chromium
+
+      - name: Start built container
+        run: docker run -d --rm --name dashboard-e2e -p 7007:7007 "${BUILT_IMAGE}"
+
+      - name: Wait for container to become ready
+        run: |
+          # Wait up to 60 seconds for the app to start (30 attempts x 2 seconds).
+          for _ in {1..30}; do
+            if curl -fsS http://localhost:7007 > /dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs dashboard-e2e
+          exit 1
+
+      - name: Run E2E Tests Against Built Container
+        run: PLAYWRIGHT_URL=http://localhost:7007 PLAYWRIGHT_DISABLE_WEBSERVER=true yarn run test:e2e
+
+      - name: Stop test container
+        if: ${{ always() }}
+        run: docker stop dashboard-e2e || true
+
       - name: Analyze Image
         uses: ./.github/actions/analyze-image
         with:
-          image: ghcr.io/radius-project/dashboard:latest
+          image: ${{ env.BUILT_IMAGE }}
 
       - name: Login to ghcr.io
         if: ${{ env.CI_PUBLISH_LATEST == 'true' || env.CI_PUBLISH_RELEASE == 'true' }}
-        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -127,10 +154,10 @@ jobs:
       - name: Push Image to ghcr.io (push to main)
         if: ${{ env.CI_PUBLISH_LATEST == 'true' }}
         run: |
-          docker push ghcr.io/radius-project/dashboard:latest
+          docker push "${BUILT_IMAGE}"
 
       - name: Push Image to ghcr.io (push to tag)
         if: ${{ env.CI_PUBLISH_RELEASE == 'true' }}
         run: |
-          docker tag ghcr.io/radius-project/dashboard:latest ghcr.io/radius-project/dashboard:${{ env.REL_CHANNEL }}
-          docker push ghcr.io/radius-project/dashboard:${{ env.REL_CHANNEL }}
+          docker tag "${BUILT_IMAGE}" "ghcr.io/radius-project/dashboard:${REL_CHANNEL}"
+          docker push "ghcr.io/radius-project/dashboard:${REL_CHANNEL}"
