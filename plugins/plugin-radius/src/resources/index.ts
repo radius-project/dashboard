@@ -3,6 +3,9 @@ export type {
   ResourceList,
   ApplicationProperties,
   EnvironmentProperties,
+  Recipe,
+  RecipeDefinition,
+  RecipePackProperties,
 } from './resource';
 
 export {

@@ -17,6 +17,9 @@
 import { defineConfig } from '@playwright/test';
 import { generateProjects } from '@backstage/e2e-test-utils/playwright';
 
+// Set PLAYWRIGHT_DISABLE_WEBSERVER=true when tests should run against an externally managed URL (for example PLAYWRIGHT_URL=http://localhost:7007).
+const disableWebServer = process.env.PLAYWRIGHT_DISABLE_WEBSERVER === 'true';
+
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
@@ -28,12 +31,14 @@ export default defineConfig({
   },
 
   // Run your local dev server before starting the tests
-  webServer: {
-    command: 'yarn start',
-    port: 3000,
-    reuseExistingServer: true,
-    timeout: 60_000,
-  },
+  webServer: disableWebServer
+    ? undefined
+    : {
+        command: 'yarn start',
+        port: 3000,
+        reuseExistingServer: true,
+        timeout: 60_000,
+      },
 
   forbidOnly: !!process.env.CI,
 
