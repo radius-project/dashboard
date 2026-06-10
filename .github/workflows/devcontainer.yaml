@@ -15,6 +15,7 @@ on:
     paths:
       - ".devcontainer/**"
       - ".github/workflows/devcontainer.yaml"
+  workflow_dispatch:
 
 permissions: {}
 
