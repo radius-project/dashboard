@@ -75,12 +75,75 @@ function AppGraph(props: AppGraphProps) {
   );
 }
 
+// Properties to skip when scanning for property-based resource references,
+// since they either reference the containing application/environment (which
+// adds no useful graph information) or are not resource identifiers.
+const SKIP_PROPERTY_KEYS = new Set([
+  'application',
+  'environment',
+  'provisioningState',
+  'status',
+]);
+
+// Recursively scans a properties object for string values that match the ID
+// or name of another resource in the graph and records the target IDs.
+// The depth limit (5) guards against pathologically deep or circular property
+// structures without needing cycle detection on the property keys.
+function collectPropertyRefs(
+  obj: Record<string, unknown>,
+  resourceById: Map<string, Resource>,
+  resourceByName: Map<string, Resource>,
+  selfId: string,
+  seen: Set<string>,
+  results: Set<string>,
+  depth: number = 0,
+): void {
+  if (depth > 5) return;
+
+  const addIfMatched = (candidate: Resource | undefined) => {
+    if (candidate && candidate.id !== selfId && !seen.has(candidate.id)) {
+      results.add(candidate.id);
+    }
+  };
+
+  for (const [key, value] of Object.entries(obj)) {
+    if (SKIP_PROPERTY_KEYS.has(key)) continue;
+    if (typeof value === 'string') {
+      const lower = value.toLowerCase();
+      addIfMatched(resourceById.get(lower));
+      addIfMatched(resourceByName.get(lower));
+    } else if (
+      typeof value === 'object' &&
+      value !== null &&
+      !Array.isArray(value)
+    ) {
+      collectPropertyRefs(
+        value as Record<string, unknown>,
+        resourceById,
+        resourceByName,
+        selfId,
+        seen,
+        results,
+        depth + 1,
+      );
+    }
+  }
+}
+
 function initialNodes(graph: AppGraphData): {
   nodes: Node<Resource>[];
   edges: Edge[];
 } {
   const nodes: Node<Resource>[] = [];
   const edges: Edge[] = [];
+
+  // Build lookup maps for all resources so we can detect property-based references.
+  const resourceById = new Map<string, Resource>();
+  const resourceByName = new Map<string, Resource>();
+  for (const resource of graph.resources) {
+    resourceById.set(resource.id.toLowerCase(), resource);
+    resourceByName.set(resource.name.toLowerCase(), resource);
+  }
 
   // Very simple layout scheme here for nodes.
   const orderData: { [order: number]: number } = {};
@@ -139,6 +202,32 @@ function initialNodes(graph: AppGraphData): {
             target: resource.id,
           });
         }
+      }
+    }
+
+    // Also create edges for resources referenced via properties (not explicit
+    // connections). These are shown with a dashed line to distinguish them from
+    // proper connections.
+    if (resource.properties) {
+      const existingConnectionIds = new Set(
+        (resource.connections || []).map(c => c.id.toLowerCase()),
+      );
+      const propertyRefs = new Set<string>();
+      collectPropertyRefs(
+        resource.properties,
+        resourceById,
+        resourceByName,
+        resource.id,
+        existingConnectionIds,
+        propertyRefs,
+      );
+      for (const targetId of propertyRefs) {
+        edges.push({
+          id: `${resource.id}-prop-${targetId}`,
+          source: resource.id,
+          target: targetId,
+          style: { strokeDasharray: '5,5' },
+        });
       }
     }
   }

@@ -17,7 +17,7 @@ import { ApplicationTab } from './ApplicationTab';
 
 // Minimal mock implementations ------------------------------------------------
 
-const mockRadiusApi: Pick<RadiusApi, 'getResourceType'> = {
+const mockRadiusApi: Pick<RadiusApi, 'getResourceType' | 'getResourceById'> = {
   getResourceType: jest.fn().mockResolvedValue({
     Name: 'applications',
     Description: '',
@@ -25,6 +25,7 @@ const mockRadiusApi: Pick<RadiusApi, 'getResourceType'> = {
     APIVersions: {},
     APIVersionList: ['2023-10-01-preview'],
   }),
+  getResourceById: jest.fn().mockRejectedValue(new Error('not found')),
 };
 
 function createMockKubernetesApi(
@@ -68,7 +69,10 @@ const radiusCoreGraphResponse = {
   ],
 };
 
-const radiusCoreRadiusApi: Pick<RadiusApi, 'getResourceType'> = {
+const radiusCoreRadiusApi: Pick<
+  RadiusApi,
+  'getResourceType' | 'getResourceById'
+> = {
   getResourceType: jest.fn().mockResolvedValue({
     Name: 'applications',
     Description: '',
@@ -76,6 +80,7 @@ const radiusCoreRadiusApi: Pick<RadiusApi, 'getResourceType'> = {
     APIVersions: {},
     APIVersionList: ['2025-01-01'],
   }),
+  getResourceById: jest.fn().mockRejectedValue(new Error('not found')),
 };
 
 const radiusCoreApplication =
@@ -314,6 +319,115 @@ describe('ApplicationTab', () => {
       const alert = screen.getByRole('alert');
       expect(alert).toBeInTheDocument();
       expect(alert).toHaveTextContent('Network failure');
+    });
+  });
+
+  // Property enrichment tests ---------------------------------------------------
+
+  it('should call getResourceById for each resource to enrich properties', async () => {
+    const graphWithTwoResources = {
+      name: 'test-app',
+      resources: [
+        {
+          id: '/planes/radius/local/resourceGroups/test-group/providers/Radius.Data/postgreSqlDatabases/postgresql',
+          name: 'postgresql',
+          type: 'Radius.Data/postgreSqlDatabases',
+          provider: 'radius',
+          provisioningState: 'Succeeded',
+        },
+        {
+          id: '/planes/radius/local/resourceGroups/test-group/providers/Radius.Security/secrets/dbsecret',
+          name: 'dbsecret',
+          type: 'Radius.Security/secrets',
+          provider: 'radius',
+          provisioningState: 'Succeeded',
+        },
+      ],
+    };
+
+    const mockProxy = jest
+      .fn()
+      .mockResolvedValue(
+        new Response(JSON.stringify(graphWithTwoResources), { status: 200 }),
+      );
+    const kubeApi = createMockKubernetesApi(mockProxy);
+
+    const mockGetResourceById = jest.fn().mockImplementation(
+      (opts: { id: string }) =>
+        Promise.resolve({
+          id: opts.id,
+          name: 'test',
+          type: 'test',
+          systemData: {},
+          properties: { secretName: 'dbsecret' },
+        }),
+    );
+
+    const enrichingApi: Pick<RadiusApi, 'getResourceType' | 'getResourceById'> =
+      {
+        getResourceType: mockRadiusApi.getResourceType,
+        getResourceById: mockGetResourceById,
+      };
+
+    await renderInTestApp(
+      <TestApiProvider
+        apis={[
+          [kubernetesApiRef, kubeApi],
+          [radiusApiRef, enrichingApi],
+        ]}
+      >
+        <ApplicationTab application="/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/applications/test-app" />
+      </TestApiProvider>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Application Graph: test-app'),
+      ).toBeInTheDocument();
+    });
+
+    // Verify getResourceById was called for each resource in the graph.
+    expect(mockGetResourceById).toHaveBeenCalledTimes(2);
+    expect(mockGetResourceById).toHaveBeenCalledWith({
+      id: '/planes/radius/local/resourceGroups/test-group/providers/Radius.Data/postgreSqlDatabases/postgresql',
+    });
+    expect(mockGetResourceById).toHaveBeenCalledWith({
+      id: '/planes/radius/local/resourceGroups/test-group/providers/Radius.Security/secrets/dbsecret',
+    });
+  });
+
+  it('should still render the graph when getResourceById fails for some resources', async () => {
+    const mockProxy = jest
+      .fn()
+      .mockResolvedValue(
+        new Response(JSON.stringify(graphResponse), { status: 200 }),
+      );
+    const kubeApi = createMockKubernetesApi(mockProxy);
+
+    // getResourceById always rejects – the graph should still render.
+    const failingApi: Pick<RadiusApi, 'getResourceType' | 'getResourceById'> =
+      {
+        getResourceType: mockRadiusApi.getResourceType,
+        getResourceById: jest
+          .fn()
+          .mockRejectedValue(new Error('resource fetch failed')),
+      };
+
+    await renderInTestApp(
+      <TestApiProvider
+        apis={[
+          [kubernetesApiRef, kubeApi],
+          [radiusApiRef, failingApi],
+        ]}
+      >
+        <ApplicationTab application="/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/applications/test-app" />
+      </TestApiProvider>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Application Graph: test-app'),
+      ).toBeInTheDocument();
     });
   });
 });
