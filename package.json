@@ -1,0 +1,71 @@
+{
+  "name": "root",
+  "version": "0.0.1",
+  "repository": "git@github.com/radius-project/dashboard.git",
+  "author": "The Radius Authors",
+  "private": true,
+  "packageManager": "yarn@4.13.0",
+  "engines": {
+    "node": "24"
+  },
+  "scripts": {
+    "dev": "concurrently \"yarn start\" \"yarn start-backend\"",
+    "start": "yarn workspace @internal/app start",
+    "start-backend": "yarn workspace @internal/backend start",
+    "build:backend": "yarn workspace @internal/backend build",
+    "build:all": "yarn tsc && backstage-cli repo build --all",
+    "build-image": "yarn workspace @internal/backend build-image",
+    "bundle:analyze": "yarn dlx source-map-explorer packages/app/dist/static/*.js",
+    "tsc": "tsc",
+    "tsc:full": "tsc --skipLibCheck false --incremental false",
+    "clean": "backstage-cli repo clean",
+    "test": "backstage-cli repo test",
+    "test:all": "backstage-cli repo test --coverage",
+    "test:e2e": "playwright test",
+    "fix": "backstage-cli repo fix",
+    "lint": "backstage-cli repo lint --since origin/main",
+    "lint:all": "backstage-cli repo lint",
+    "format:check": "prettier --check \"**/*.{js,jsx,ts,tsx,mjs,cjs}\"",
+    "format:write": "prettier --write \"**/*.{js,jsx,ts,tsx,mjs,cjs}\"",
+    "new": "backstage-cli new --scope internal"
+  },
+  "workspaces": [
+    "packages/*",
+    "plugins/*"
+  ],
+  "devDependencies": {
+    "@backstage/cli": "^0.36.2",
+    "@backstage/cli-defaults": "^0.1.2",
+    "@backstage/e2e-test-utils": "^0.1.2",
+    "@internal/app": "workspace:^",
+    "@jest/environment-jsdom-abstract": "^30.4.1",
+    "@module-federation/enhanced": "^2.5.1",
+    "@playwright/test": "^1.60.0",
+    "@spotify/prettier-config": "^15.0.0",
+    "concurrently": "^10.0.3",
+    "jest": "^30.4.2",
+    "jest-environment-jsdom": "^30.4.1",
+    "jsdom": "^29.1.1",
+    "node-gyp": "^12.4.0",
+    "prettier": "^3.8.3",
+    "typescript": "~6.0.3"
+  },
+  "resolutions": {
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "@backstage/backend-common": "^0.25.0",
+    "esbuild": "^0.27.4",
+    "jsonpath-plus": "^10.3.0",
+    "mysql2": "^3"
+  },
+  "prettier": "@spotify/prettier-config",
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx,mjs,cjs}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md}": [
+      "prettier --write"
+    ]
+  }
+}

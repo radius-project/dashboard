@@ -1,0 +1,47 @@
+{
+  "features": {
+    "ghcr.io/devcontainers-extra/features/corepack:1": {
+      "version": "1.0.2",
+      "resolved": "ghcr.io/devcontainers-extra/features/corepack@sha256:5142e3f736841bf4cd1b9d8e6a2e51885cab510d5f014eac10be9b0627a9bf97",
+      "integrity": "sha256:5142e3f736841bf4cd1b9d8e6a2e51885cab510d5f014eac10be9b0627a9bf97"
+    },
+    "ghcr.io/devcontainers/features/common-utils:2.5.9": {
+      "version": "2.5.9",
+      "resolved": "ghcr.io/devcontainers/features/common-utils@sha256:cb0c4d3c276f157eed17935747e364178d75fee17f55c4e129966f64633deb3a",
+      "integrity": "sha256:cb0c4d3c276f157eed17935747e364178d75fee17f55c4e129966f64633deb3a"
+    },
+    "ghcr.io/devcontainers/features/docker-in-docker:3.0.1": {
+      "version": "3.0.1",
+      "resolved": "ghcr.io/devcontainers/features/docker-in-docker@sha256:ca2508495b01ba29eba93e8153772a2daa65eaa86471cc6863fe2a3d21933df9",
+      "integrity": "sha256:ca2508495b01ba29eba93e8153772a2daa65eaa86471cc6863fe2a3d21933df9"
+    },
+    "ghcr.io/devcontainers/features/kubectl-helm-minikube:1.3.1": {
+      "version": "1.3.1",
+      "resolved": "ghcr.io/devcontainers/features/kubectl-helm-minikube@sha256:bbe8adf6b37fff8c67412ab0a4579f4c2f30bbaba1d9a5cebd9e38bade54025b",
+      "integrity": "sha256:bbe8adf6b37fff8c67412ab0a4579f4c2f30bbaba1d9a5cebd9e38bade54025b"
+    },
+    "ghcr.io/devcontainers/features/node:2.0.0": {
+      "version": "2.0.0",
+      "resolved": "ghcr.io/devcontainers/features/node@sha256:fedd4c11f7adfb64283b578dddc7da906728daa25fa293351c9d913231acf12f",
+      "integrity": "sha256:fedd4c11f7adfb64283b578dddc7da906728daa25fa293351c9d913231acf12f"
+    },
+    "ghcr.io/dhoeric/features/oras:1": {
+      "version": "1.0.0",
+      "resolved": "ghcr.io/dhoeric/features/oras@sha256:d08787b42a60d49b001260e00967fd2206326f552e5f7f09ce2535de2f351d8d",
+      "integrity": "sha256:d08787b42a60d49b001260e00967fd2206326f552e5f7f09ce2535de2f351d8d"
+    },
+    "ghcr.io/radius-project/devcontainer-features/radcli:0": {
+      "version": "0.1.0",
+      "resolved": "ghcr.io/radius-project/devcontainer-features/radcli@sha256:3d43cbe806dfb608f3aacee83f2a6e60e21fac3275748aa9fdb1c4fd2595b5fd",
+      "integrity": "sha256:3d43cbe806dfb608f3aacee83f2a6e60e21fac3275748aa9fdb1c4fd2595b5fd",
+      "dependsOn": [
+        "ghcr.io/dhoeric/features/oras:1"
+      ]
+    },
+    "ghcr.io/rio/features/k3d:1.1.0": {
+      "version": "1.1.0",
+      "resolved": "ghcr.io/rio/features/k3d@sha256:0ada2620215533142ee90ac19e5903c345418a51d23457cd0b3da142013a8464",
+      "integrity": "sha256:0ada2620215533142ee90ac19e5903c345418a51d23457cd0b3da142013a8464"
+    }
+  }
+}

@@ -1,0 +1,162 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - v*
+  pull_request:
+    branches:
+      - main
+
+permissions: {}
+
+env:
+  CI_LINT: ${{ github.event_name == 'pull_request' }}
+  CI_TEST: ${{ github.event_name == 'pull_request' || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) }}
+  CI_PUBLISH_RELEASE: ${{ github.repository == 'radius-project/dashboard' && startsWith(github.ref, 'refs/tags/v') && github.event_name == 'push' }}
+  CI_PUBLISH_LATEST: ${{ github.repository == 'radius-project/dashboard' && github.ref == 'refs/heads/main' && github.event_name == 'push' }}
+
+jobs:
+  build:
+    name: Build Packages
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+
+      - name: Parse release version and set environment variables
+        run: python ./.github/scripts/get_release_version.py
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Setup Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version-file: .node-version
+          cache: yarn
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Lint
+        if: ${{ env.CI_LINT == 'true' }}
+        run: yarn run lint:all
+
+      - name: Format
+        if: ${{ env.CI_LINT == 'true' }}
+        run: yarn run format:check
+
+      - name: Build TypeScript
+        run: yarn run tsc
+
+      - name: Build
+        run: yarn workspaces foreach -A run build:all
+
+      - name: Build Storybook
+        run: yarn workspace @radapp.io/rad-components run build-storybook
+
+      - name: Run Tests
+        if: ${{ env.CI_TEST == 'true' }}
+        run: yarn run test:all
+
+      - name: Run E2E Tests
+        if: ${{ env.CI_TEST == 'true' }}
+        run: yarn run test:e2e
+
+  build-and-publish-container:
+    name: Build and Publish Container
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      BUILT_IMAGE: ghcr.io/radius-project/dashboard:latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+
+      - name: Parse release version and set environment variables
+        run: python ./.github/scripts/get_release_version.py
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Setup Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version-file: .node-version
+          cache: yarn
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Build TypeScript
+        run: yarn run tsc
+
+      - name: Build Backend
+        run: yarn run build:backend
+
+      - name: Build Image
+        run: yarn run build-image
+
+      - name: Install Playwright browser
+        run: yarn exec playwright install chromium
+
+      - name: Start built container
+        run: docker run -d --rm --name dashboard-e2e -p 7007:7007 "${BUILT_IMAGE}"
+
+      - name: Wait for container to become ready
+        run: |
+          # Wait up to 60 seconds for the app to start (30 attempts x 2 seconds).
+          for _ in {1..30}; do
+            if curl -fsS http://localhost:7007 > /dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs dashboard-e2e
+          exit 1
+
+      - name: Run E2E Tests Against Built Container
+        run: PLAYWRIGHT_URL=http://localhost:7007 PLAYWRIGHT_DISABLE_WEBSERVER=true yarn run test:e2e
+
+      - name: Stop test container
+        if: ${{ always() }}
+        run: docker stop dashboard-e2e || true
+
+      - name: Analyze Image
+        uses: ./.github/actions/analyze-image
+        with:
+          image: ${{ env.BUILT_IMAGE }}
+
+      - name: Login to ghcr.io
+        if: ${{ env.CI_PUBLISH_LATEST == 'true' || env.CI_PUBLISH_RELEASE == 'true' }}
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push Image to ghcr.io (push to main)
+        if: ${{ env.CI_PUBLISH_LATEST == 'true' }}
+        run: |
+          docker push "${BUILT_IMAGE}"
+
+      - name: Push Image to ghcr.io (push to tag)
+        if: ${{ env.CI_PUBLISH_RELEASE == 'true' }}
+        run: |
+          docker tag "${BUILT_IMAGE}" "ghcr.io/radius-project/dashboard:${REL_CHANNEL}"
+          docker push "ghcr.io/radius-project/dashboard:${REL_CHANNEL}"

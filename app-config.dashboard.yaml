@@ -1,0 +1,34 @@
+app:
+  # Should be the same as backend.baseUrl when using the `app-backend` plugin.
+  baseUrl: http://localhost:7007
+
+backend:
+  # Note that the baseUrl should be the URL that the browser and other clients
+  # should use when communicating with the backend, i.e. it needs to be
+  # reachable not just from within the backend host, but from all of your
+  # callers. When its value is "http://localhost:7007", it's strictly private
+  # and can't be reached by others.
+  baseUrl: http://localhost:7007
+  # The listener can also be expressed as a single <host>:<port> string. In this case we bind to
+  # all interfaces, the most permissive setting. The right value depends on your specific deployment.
+  listen: ':7007'
+
+kubernetes:
+  serviceLocatorMethod:
+    type: singleTenant
+  # Use the local proxy on localhost:8001 to talk to the local Kubernetes cluster.
+  clusterLocatorMethods:
+    - type: config
+      clusters:
+        - name: self
+          # The URL to the in-cluster Kubernetes API server.
+          # Backstage docs state it should be ignored when in-cluster, but it appears to be used.
+          url: https://kubernetes.default.svc.cluster.local
+          authProvider: serviceAccount
+          skipTLSVerify: true
+          skipMetricsLookup: true
+catalog:
+  # Overrides the default list locations from app-config.yaml as these contain example data.
+  # See https://backstage.io/docs/features/software-catalog/#adding-components-to-the-catalog for more details
+  # on how to get entities into the catalog.
+  locations: []

@@ -1,0 +1,16 @@
+{
+  // Global settings for the project go here.
+  "extends": "./node_modules/@backstage/cli/config/tsconfig.json",
+  "include": ["packages/*/src", "plugins/*/src"],
+  "exclude": [
+    "dist/",
+    "dist-types/",
+    "node_modules/",
+    "packages/*/**/__docs__/"
+  ],
+  "compilerOptions": {
+    "outDir": "dist-types",
+    "rootDir": ".",
+    "skipLibCheck": true
+  }
+}

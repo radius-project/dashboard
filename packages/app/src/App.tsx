@@ -1,0 +1,146 @@
+import React from 'react';
+import { Route } from 'react-router-dom';
+import { catalogPlugin, CatalogEntityPage } from '@backstage/plugin-catalog';
+import { UserSettingsPage } from '@backstage/plugin-user-settings';
+import { apis } from './apis';
+import { HomepageCompositionRoot } from '@backstage/plugin-home';
+import { Root } from './components/Root';
+import { HomePage } from './components/home/HomePage';
+
+import {
+  AlertDisplay,
+  OAuthRequestDialog,
+  SignInPage,
+} from '@backstage/core-components';
+import CssBaseline from '@material-ui/core/CssBaseline';
+import { createApp } from '@backstage/app-defaults';
+import { AppRouter, FlatRoutes } from '@backstage/core-app-api';
+import { CatalogGraphPage } from '@backstage/plugin-catalog-graph';
+import {
+  ApplicationListPage,
+  EnvironmentListPage,
+  EnvironmentPage,
+  RecipeListPage,
+  ResourceListPage,
+  ResourceTypesListPage,
+  ResourceTypeDetailPage,
+  ResourcePage,
+  radiusPlugin,
+} from '@internal/plugin-radius';
+import { kubernetesPlugin } from '@backstage/plugin-kubernetes';
+import {
+  UnifiedThemeProvider,
+  createBaseThemeOptions,
+  createUnifiedTheme,
+  genPageTheme,
+  palettes,
+  shapes,
+} from '@backstage/theme';
+
+const lightTheme = createUnifiedTheme({
+  ...createBaseThemeOptions({
+    palette: {
+      ...palettes.light,
+      primary: {
+        main: '#db4c24',
+      },
+    },
+  }),
+  defaultPageTheme: 'other',
+  pageTheme: {
+    other: genPageTheme({ colors: ['#db4c24', '#db4c24'], shape: shapes.wave }),
+  },
+});
+
+const darkTheme = createUnifiedTheme({
+  ...createBaseThemeOptions({
+    // https://m2.material.io/inline-tools/color/
+    palette: {
+      ...palettes.dark,
+      primary: {
+        main: '#db4c24',
+      },
+    },
+  }),
+  defaultPageTheme: 'other',
+  pageTheme: {
+    other: genPageTheme({ colors: ['#db4c24', '#db4c24'], shape: shapes.wave }),
+  },
+});
+
+const app = createApp({
+  apis,
+  components: {
+    // SignInPage with auto prop automatically signs in using the guest provider
+    // without showing a login page to the user
+    SignInPage: props => <SignInPage {...props} auto providers={['guest']} />,
+  },
+  themes: [
+    {
+      id: 'light',
+      title: 'Light',
+      variant: 'light',
+      Provider: ({ children }) => (
+        <UnifiedThemeProvider theme={lightTheme} children={children} />
+      ),
+    },
+    {
+      id: 'dark',
+      title: 'Dark',
+      variant: 'dark',
+      Provider: ({ children }) => (
+        <UnifiedThemeProvider theme={darkTheme} children={children} />
+      ),
+    },
+  ],
+  plugins: [
+    // Called for side-effect since we're not using their UI.
+    kubernetesPlugin,
+  ],
+  bindRoutes({ bind }) {
+    bind(radiusPlugin.externalRoutes, {});
+    bind(catalogPlugin.externalRoutes, {});
+  },
+});
+
+const routes = (
+  <FlatRoutes>
+    <Route path="/" element={<HomepageCompositionRoot />}>
+      <HomePage />
+    </Route>
+    <Route path="/settings" element={<UserSettingsPage />} />
+    <Route
+      path="/catalog/:namespace/:kind/:name"
+      element={<CatalogEntityPage />}
+    />
+    <Route path="/catalog-graph" element={<CatalogGraphPage />} />
+    <Route path="/applications" element={<ApplicationListPage />} />
+    <Route path="/environments" element={<EnvironmentListPage />} />
+    <Route path="/recipes" element={<RecipeListPage />} />
+    <Route path="/resource-types" element={<ResourceTypesListPage />} />
+    <Route
+      path="/resource-types/:namespace/:typeName"
+      element={<ResourceTypeDetailPage />}
+    />
+    <Route path="/resources" element={<ResourceListPage />} />
+    <Route
+      path="/resources/:group/:namespace/:type/:name"
+      element={<ResourcePage />}
+    />
+    <Route
+      path="/environments/:group/:namespace/:type/:name"
+      element={<EnvironmentPage />}
+    />
+  </FlatRoutes>
+);
+
+export default app.createRoot(
+  <>
+    <CssBaseline />
+    <AlertDisplay />
+    <OAuthRequestDialog />
+    <AppRouter>
+      <Root>{routes}</Root>
+    </AppRouter>
+  </>,
+);

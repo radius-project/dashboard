@@ -1,0 +1,26 @@
+{
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "[json]": {
+    "editor.tabSize": 2
+  },
+  "[jsonc]": {
+    "editor.tabSize": 2
+  },
+  "[javascript]": {
+    "editor.tabSize": 2
+  },
+  "[javascriptreact]": {
+    "editor.tabSize": 2
+  },
+  "[typescript]": {
+    "editor.tabSize": 2
+  },
+  "[typescriptreact]": {
+    "editor.tabSize": 2
+  },
+  "jest.jestCommandLine": "yarn run test:all",
+  "jest.virtualFolders": [
+    { "name": "unit-tests", "jestCommandLine": "yarn run test:all" },
+    { "name": "e2e-tests", "jestCommandLine": "yarn run test:e2e" }
+  ]
+}
