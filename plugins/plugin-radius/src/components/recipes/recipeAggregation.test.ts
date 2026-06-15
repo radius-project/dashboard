@@ -21,12 +21,12 @@ const pack: Resource<RecipePackProperties> = {
   properties: {
     recipes: {
       'Applications.Dapr/stateStores': {
-        recipeKind: 'bicep',
-        recipeLocation: 'ghcr.io/willtsai/recipes/aca-dapr-statestores:v0.10',
+        kind: 'bicep',
+        source: 'ghcr.io/willtsai/recipes/aca-dapr-statestores:v0.10',
       },
       'Radius.Compute/containers': {
-        recipeKind: 'bicep',
-        recipeLocation: 'ghcr.io/willtsai/recipes/aca-containers:v0.10',
+        kind: 'bicep',
+        source: 'ghcr.io/willtsai/recipes/aca-containers:v0.10',
       },
     },
   },
@@ -40,8 +40,8 @@ const otherPack: Resource<RecipePackProperties> = {
   properties: {
     recipes: {
       'Applications.Datastores/redisCaches': {
-        recipeKind: 'terraform',
-        recipeLocation: 'ghcr.io/willtsai/recipes/redis:v0.1',
+        kind: 'terraform',
+        source: 'ghcr.io/willtsai/recipes/redis:v0.1',
       },
     },
   },

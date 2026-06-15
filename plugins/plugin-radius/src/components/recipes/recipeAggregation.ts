@@ -79,8 +79,8 @@ export function aggregateRecipesFromPack(
     return {
       recipePack: packName,
       type: resourceType,
-      recipeKind: definition.recipeKind,
-      recipeLocation: definition.recipeLocation,
+      recipeKind: definition.kind,
+      recipeLocation: definition.source,
     };
   });
 }

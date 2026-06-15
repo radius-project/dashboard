@@ -22,8 +22,8 @@ export interface Recipe {
 }
 
 export interface RecipeDefinition {
-  recipeKind: string;
-  recipeLocation: string;
+  kind: string;
+  source: string;
   plainHttp?: boolean;
   parameters?: Record<string, unknown>;
 }
