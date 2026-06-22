@@ -7,7 +7,7 @@
     "ghcr.io/devcontainers/features/common-utils:2.5.9": {
       "configureZshAsDefaultShell": false
     },
-    "ghcr.io/devcontainers/features/node:2.0.0": {
+    "ghcr.io/devcontainers/features/node:2.1.0": {
       "installYarnUsingApt": false
     },
     "ghcr.io/devcontainers-extra/features/corepack:1": {},
@@ -19,7 +19,7 @@
     "ghcr.io/rio/features/k3d:1.1.0": {
       "version": "latest"
     },
-    "ghcr.io/devcontainers/features/docker-in-docker:3.0.1": {
+    "ghcr.io/devcontainers/features/docker-in-docker:3.1.0": {
       "version": "latest",
       "moby": true
     },
