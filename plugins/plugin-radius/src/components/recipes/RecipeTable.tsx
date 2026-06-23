@@ -12,8 +12,8 @@ export const RecipeTable = ({
   const columns: TableColumn<DisplayRecipe>[] = [
     { title: 'Recipe Pack', field: 'recipePack' },
     { title: 'Resource Type', field: 'type' },
-    { title: 'Recipe Kind', field: 'recipeKind' },
-    { title: 'Recipe Location', field: 'recipeLocation' },
+    { title: 'Kind', field: 'kind' },
+    { title: 'Source', field: 'source' },
   ];
 
   return (

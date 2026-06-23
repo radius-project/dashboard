@@ -93,14 +93,14 @@ describe('aggregateRecipesFromEnvironment', () => {
         {
           recipePack: '',
           type: 'Applications.Dapr/stateStores',
-          recipeKind: 'bicep',
-          recipeLocation: 'ghcr.io/willtsai/recipes/aca-dapr-statestores:v0.10',
+          kind: 'bicep',
+          source: 'ghcr.io/willtsai/recipes/aca-dapr-statestores:v0.10',
         },
         {
           recipePack: '',
           type: 'Radius.Compute/containers',
-          recipeKind: 'bicep',
-          recipeLocation: 'ghcr.io/willtsai/recipes/aca-containers:v0.10',
+          kind: 'bicep',
+          source: 'ghcr.io/willtsai/recipes/aca-containers:v0.10',
         },
       ]),
     );
@@ -159,8 +159,8 @@ describe('aggregateRecipesFromPack', () => {
         {
           recipePack: 'aca-recipe-pack',
           type: 'Applications.Dapr/stateStores',
-          recipeKind: 'bicep',
-          recipeLocation: 'ghcr.io/willtsai/recipes/aca-dapr-statestores:v0.10',
+          kind: 'bicep',
+          source: 'ghcr.io/willtsai/recipes/aca-dapr-statestores:v0.10',
         },
       ]),
     );
