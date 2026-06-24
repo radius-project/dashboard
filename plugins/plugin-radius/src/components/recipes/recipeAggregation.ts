@@ -8,8 +8,8 @@ import {
 export interface DisplayRecipe {
   recipePack: string;
   type: string;
-  recipeKind: string;
-  recipeLocation: string;
+  kind: string;
+  source: string;
 }
 
 /**
@@ -37,8 +37,8 @@ export function aggregateRecipesFromEnvironment(
         result.push({
           recipePack: '',
           type: resourceType,
-          recipeKind: recipe.templateKind,
-          recipeLocation: recipe.templatePath,
+          kind: recipe.templateKind,
+          source: recipe.templatePath,
         });
       }
     }
@@ -79,8 +79,8 @@ export function aggregateRecipesFromPack(
     return {
       recipePack: packName,
       type: resourceType,
-      recipeKind: definition.recipeKind,
-      recipeLocation: definition.recipeLocation,
+      kind: definition.kind,
+      source: definition.source,
     };
   });
 }
