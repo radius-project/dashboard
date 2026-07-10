@@ -4,7 +4,7 @@
   "repository": "git@github.com/radius-project/dashboard.git",
   "author": "The Radius Authors",
   "private": true,
-  "packageManager": "yarn@4.13.0",
+  "packageManager": "yarn@4.17.1",
   "engines": {
     "node": "24"
   },
