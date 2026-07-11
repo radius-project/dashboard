@@ -11,8 +11,7 @@ interface ResourceWithEnvApp {
 
 export const ResourceBreadcrumbs = (props: { resource: Resource }) => {
   const properties = props.resource.properties as
-    | ResourceWithEnvApp
-    | undefined;
+    ResourceWithEnvApp | undefined;
   return (
     <Breadcrumbs>
       {properties?.environment && <ResourceLink id={properties.environment} />}

@@ -4,7 +4,7 @@
   "repository": "git@github.com/radius-project/dashboard.git",
   "author": "The Radius Authors",
   "private": true,
-  "packageManager": "yarn@4.13.0",
+  "packageManager": "yarn@4.17.1",
   "engines": {
     "node": "24"
   },
@@ -47,7 +47,7 @@
     "jest-environment-jsdom": "^30.4.1",
     "jsdom": "^29.1.1",
     "node-gyp": "^13.0.0",
-    "prettier": "^3.8.4",
+    "prettier": "^3.9.4",
     "typescript": "~6.0.3"
   },
   "resolutions": {

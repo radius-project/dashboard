@@ -16,7 +16,7 @@
     "build-image": "docker build ../.. -f Dockerfile -t ghcr.io/radius-project/dashboard"
   },
   "dependencies": {
-    "@backstage/backend-defaults": "^0.17.3",
+    "@backstage/backend-defaults": "^0.17.4",
     "@backstage/plugin-app-backend": "^0.5.15",
     "@backstage/plugin-auth-backend": "^0.29.1",
     "@backstage/plugin-auth-backend-module-guest-provider": "^0.2.20",
