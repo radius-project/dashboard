@@ -39,7 +39,7 @@
     "@backstage/e2e-test-utils": "^0.1.2",
     "@internal/app": "workspace:^",
     "@jest/environment-jsdom-abstract": "^30.4.1",
-    "@module-federation/enhanced": "^2.6.0",
+    "@module-federation/enhanced": "^2.7.0",
     "@playwright/test": "^1.61.1",
     "@spotify/prettier-config": "^15.0.0",
     "concurrently": "^10.0.3",
@@ -47,8 +47,8 @@
     "jest-environment-jsdom": "^30.4.1",
     "jsdom": "^29.1.1",
     "node-gyp": "^13.0.1",
-    "prettier": "^3.9.4",
-    "typescript": "~6.0.3"
+    "prettier": "^3.9.5",
+    "typescript": "~7.0.2"
   },
   "resolutions": {
     "@types/react": "^18",
