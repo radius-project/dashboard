@@ -193,6 +193,18 @@ describe('ResourceTypesTable', () => {
               },
             },
             {
+              id: '/planes/radius/local/providers/System.Resources/resourceproviders/Radius.Core',
+              name: 'Radius.Core',
+              type: 'System.Resources/resourceproviders',
+              systemData: {},
+              properties: {
+                namespace: 'Radius.Core',
+                type: 'environments',
+                apiVersion: '2023-10-01-preview',
+                apiVersions: ['2023-10-01-preview'],
+              },
+            },
+            {
               id: '/planes/radius/local/providers/System.Resources/resourceproviders/Applications.Core',
               name: 'Applications.Core',
               type: 'System.Resources/resourceproviders',
@@ -200,6 +212,18 @@ describe('ResourceTypesTable', () => {
               properties: {
                 namespace: 'Applications.Core',
                 type: 'containers',
+                apiVersion: '2021-04-01',
+                apiVersions: ['2021-04-01'],
+              },
+            },
+            {
+              id: '/planes/radius/local/providers/System.Resources/resourceproviders/Microsoft.Resources',
+              name: 'Microsoft.Resources',
+              type: 'System.Resources/resourceproviders',
+              systemData: {},
+              properties: {
+                namespace: 'Microsoft.Resources',
+                type: 'deployments',
                 apiVersion: '2021-04-01',
                 apiVersions: ['2021-04-01'],
               },
@@ -227,13 +251,18 @@ describe('ResourceTypesTable', () => {
     const table = screen.getByRole('table');
     const rows = table.querySelectorAll('tbody > tr');
 
-    // Should only show 1 row (Custom.Database), Applications.Core should be filtered
-    expect(rows).toHaveLength(1);
-    const row1 = rows[0];
+    // Should show Custom.Database and Radius.Core; Applications.* and
+    // Microsoft.* should be filtered out by default.
+    expect(rows).toHaveLength(2);
 
-    const row1Cells = row1.querySelectorAll('td');
-    expect(row1Cells[0]).toHaveTextContent('mongoDatabases');
-    expect(row1Cells[1]).toHaveTextContent('Custom.Database');
+    const namespaces = Array.from(rows).map(
+      row => row.querySelectorAll('td')[1].textContent,
+    );
+    expect(namespaces).toEqual(
+      expect.arrayContaining(['Custom.Database', 'Radius.Core']),
+    );
+    expect(namespaces).not.toContain('Applications.Core');
+    expect(namespaces).not.toContain('Microsoft.Resources');
 
     // Verify that the checkbox exists
     const checkbox = screen.getByRole('checkbox');
