@@ -21,11 +21,11 @@
     "@backstage/plugin-auth-backend": "^0.30.0",
     "@backstage/plugin-auth-backend-module-guest-provider": "^0.2.22",
     "@backstage/plugin-catalog-backend": "^3.9.0",
-    "@backstage/plugin-kubernetes-backend": "^0.21.8",
+    "@backstage/plugin-kubernetes-backend": "^0.21.9",
     "@backstage/plugin-proxy-backend": "^0.6.16",
     "@internal/app": "workspace:^",
     "better-sqlite3": "^12.11.1",
-    "node-gyp": "^13.0.1",
+    "node-gyp": "^13.0.2",
     "pg": "^8.23.0"
   },
   "devDependencies": {
