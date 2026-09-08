@@ -16,23 +16,23 @@
     "build-image": "docker build ../.. -f Dockerfile -t ghcr.io/radius-project/dashboard"
   },
   "dependencies": {
-    "@backstage/backend-defaults": "^0.17.7",
+    "@backstage/backend-defaults": "^0.17.8",
     "@backstage/plugin-app-backend": "^0.5.17",
     "@backstage/plugin-auth-backend": "^0.30.0",
     "@backstage/plugin-auth-backend-module-guest-provider": "^0.2.22",
-    "@backstage/plugin-catalog-backend": "^3.9.0",
-    "@backstage/plugin-kubernetes-backend": "^0.21.8",
-    "@backstage/plugin-proxy-backend": "^0.6.16",
+    "@backstage/plugin-catalog-backend": "^3.9.1",
+    "@backstage/plugin-kubernetes-backend": "^0.21.10",
+    "@backstage/plugin-proxy-backend": "^0.6.17",
     "@internal/app": "workspace:^",
     "better-sqlite3": "^12.11.1",
-    "node-gyp": "^13.0.1",
+    "node-gyp": "^13.0.2",
     "pg": "^8.23.0"
   },
   "devDependencies": {
     "@backstage/cli": "^0.36.5",
     "@backstage/cli-defaults": "^0.1.5",
     "@types/jest": "^30.0.0",
-    "jest": "^30.4.2"
+    "jest": "^30.5.1"
   },
   "files": [
     "dist"
