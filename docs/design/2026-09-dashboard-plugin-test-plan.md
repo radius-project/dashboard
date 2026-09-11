@@ -76,20 +76,36 @@ coverage can fall to zero without failing a build.
 
 ## Current status
 
-| Phase | Name                                | Status      | Outcome                                                                                        |
-| ----- | ----------------------------------- | ----------- | ---------------------------------------------------------------------------------------------- |
-| 0     | Record the behavior                 | Not started | Public exports, route table, request table, page inventory, and a coverage floor are written down |
-| 1     | Harden existing behavior            | Not started | Every shipped page, table, tab, and domain rule has a real test before it is rearchitected       |
-| 2     | Freeze the pre-extraction baseline  | Not started | Real-renderer graph journeys and graph records pass and are frozen at a reviewed baseline        |
-| 3     | Plugin contract and packaging       | Not started | The published package surface is pinned and breaking it fails a pull request                     |
-| 4     | Consume shared packages             | Not started | The plugin uses `core` and `graph-react`; no parallel implementation remains                     |
-| 5     | Host integration and installed artifact | Not started | Both hosts mount the plugin from packed tarballs with no source aliases                      |
-| 6     | Permanent CI gates                  | Not started | Coverage floors, contract, packaging, and the consumer pin are required for merge and publish    |
-| 7     | Accessibility, visual, reliability  | Not started | Keyboard and axe coverage, reviewed screenshots, and scheduled failure-mode checks               |
-| 8     | Release qualification               | Not started | The published plugin loads in the control-plane image and in an external Backstage host          |
+| Phase | Name                                | Repository | Status      | Outcome                                                                       |
+| ----- | ----------------------------------- | ---------- | ----------- | ------------------------------------------------------------------------------ |
+| 0     | Record the behavior                 | dashboard  | Not started | Public exports, route table, request table, page inventory, and a coverage floor are written down |
+| 1     | Harden existing behavior            | dashboard  | Not started | Every shipped page, table, tab, and domain rule has a real test before it is rearchitected       |
+| 2     | Freeze the pre-extraction baseline  | dashboard  | Not started | Real-renderer graph journeys and graph records pass and are frozen at a reviewed baseline        |
+| 3     | Plugin contract and packaging       | dashboard  | Not started | The published package surface is pinned and breaking it fails a pull request                     |
+| 4     | Consume shared packages             | dashboard, needs `ai-extensions` releases | Not started | The plugin uses `core` and `graph-react`; no parallel implementation remains |
+| 5     | Host integration and installed artifact | dashboard | Not started | Both hosts mount the plugin from packed tarballs with no source aliases                      |
+| 6     | Permanent CI gates                  | both       | Not started | Coverage floors, contract, packaging, and the consumer pin are required for merge and publish    |
+| 7     | Accessibility, visual, reliability  | dashboard  | Not started | Keyboard and axe coverage, reviewed screenshots, and scheduled failure-mode checks               |
+| 8     | Release qualification               | both       | Not started | The published plugin loads in the control-plane image and in an external Backstage host          |
+
+Every phase is executed in `radius-project/dashboard`. The repository column records what each phase
+depends on, not where the work happens.
+
+Only Phase 4 is blocked on `ai-extensions`, because that is where dashboard replaces its own
+implementations with the published `core` and `graph-react` packages. Phases 6 and 8 span both
+repositories because the consumer-pin gate is defined in `ai-extensions` CI while the pin, the
+journey implementation it invokes, and the release checks live here.
+
+Phase 3 in particular is **not** developed in `ai-extensions`. The design assigns the Backstage
+product to dashboard: `ai-extensions` owns and publishes `@radius-project/core` and
+`@radius-project/graph-react`, while dashboard owns and publishes
+`@radius-project/backstage-plugin-radius`. Phase 3 hardens `plugins/plugin-radius` in this
+repository into that published package, so it touches no shared code and waits on no upstream
+release.
 
 Phases 0–2 must complete **before** any extraction begins; the design makes a frozen, reviewed
-real-renderer baseline a prerequisite, not a follow-up. Phase 3 may run in parallel with Phase 2.
+real-renderer baseline a prerequisite, not a follow-up. Phase 3 may run in parallel with Phase 2,
+and is the only pre-extraction stream that is not gated on the graph consolidation landing upstream.
 Phase 4 is the extraction itself and is gated on Phase 2's records. Phases 5–8 follow it.
 
 ## Rules for every change
@@ -412,7 +428,8 @@ records are committed; GU-20 demonstrates the suite cannot pass against a stub.
 
 ### Phase 3: plugin contract and packaging
 
-Make the published package a tested contract before anything consumes it as one.
+Make the published package a tested contract before anything consumes it as one. This phase is
+dashboard-owned and independent of `ai-extensions`; it can start before any shared package exists.
 
 - Assert the exact public export list, and that it is sorted and free of accidental additions.
 - Assert every route ref id and path, every extension's name and mount point, the `radiusApiRef`
@@ -569,6 +586,11 @@ are recorded here because they changed what this plan tests.
    Deciding it requires knowing whether the Backstage CLI has gained supported Vitest support by
    then, and the decision should be made against a frozen baseline so the migration itself can be
    verified. It must not be taken while extraction is in flight.
+6. **The published package names.** The design marks `@radius-project/core`,
+   `@radius-project/graph-react`, and `@radius-project/backstage-plugin-radius` as subject to npm
+   scope confirmation. Phase 3 asserts the plugin's name in package metadata, and the
+   installed-artifact and consumer-pin requirements reference all three, so confirm the scope before
+   those assertions are written rather than renaming them afterward.
 
 ## Appendices
 
