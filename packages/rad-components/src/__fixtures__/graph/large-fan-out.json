@@ -1,0 +1,182 @@
+{
+  "name": "large-fan-out",
+  "resources": [
+    {
+      "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Core/containers/hub",
+      "name": "hub",
+      "type": "Applications.Core/containers",
+      "provider": "radius",
+      "provisioningState": "Succeeded",
+      "connections": [
+        {
+          "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Datastores/redisCaches/cache-a",
+          "name": "cache-a",
+          "type": "Applications.Datastores/redisCaches",
+          "provider": "radius",
+          "direction": "Outbound"
+        },
+        {
+          "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Datastores/redisCaches/cache-b",
+          "name": "cache-b",
+          "type": "Applications.Datastores/redisCaches",
+          "provider": "radius",
+          "direction": "Outbound"
+        },
+        {
+          "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Datastores/redisCaches/cache-c",
+          "name": "cache-c",
+          "type": "Applications.Datastores/redisCaches",
+          "provider": "radius",
+          "direction": "Outbound"
+        },
+        {
+          "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Datastores/redisCaches/cache-d",
+          "name": "cache-d",
+          "type": "Applications.Datastores/redisCaches",
+          "provider": "radius",
+          "direction": "Outbound"
+        },
+        {
+          "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Datastores/redisCaches/cache-e",
+          "name": "cache-e",
+          "type": "Applications.Datastores/redisCaches",
+          "provider": "radius",
+          "direction": "Outbound"
+        },
+        {
+          "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Datastores/redisCaches/cache-f",
+          "name": "cache-f",
+          "type": "Applications.Datastores/redisCaches",
+          "provider": "radius",
+          "direction": "Outbound"
+        },
+        {
+          "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Datastores/redisCaches/cache-g",
+          "name": "cache-g",
+          "type": "Applications.Datastores/redisCaches",
+          "provider": "radius",
+          "direction": "Outbound"
+        },
+        {
+          "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Datastores/redisCaches/cache-h",
+          "name": "cache-h",
+          "type": "Applications.Datastores/redisCaches",
+          "provider": "radius",
+          "direction": "Outbound"
+        },
+        {
+          "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Datastores/redisCaches/cache-i",
+          "name": "cache-i",
+          "type": "Applications.Datastores/redisCaches",
+          "provider": "radius",
+          "direction": "Outbound"
+        },
+        {
+          "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Datastores/redisCaches/cache-j",
+          "name": "cache-j",
+          "type": "Applications.Datastores/redisCaches",
+          "provider": "radius",
+          "direction": "Outbound"
+        },
+        {
+          "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Datastores/redisCaches/cache-k",
+          "name": "cache-k",
+          "type": "Applications.Datastores/redisCaches",
+          "provider": "radius",
+          "direction": "Outbound"
+        },
+        {
+          "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Datastores/redisCaches/cache-l",
+          "name": "cache-l",
+          "type": "Applications.Datastores/redisCaches",
+          "provider": "radius",
+          "direction": "Outbound"
+        }
+      ]
+    },
+    {
+      "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Datastores/redisCaches/cache-a",
+      "name": "cache-a",
+      "type": "Applications.Datastores/redisCaches",
+      "provider": "radius",
+      "provisioningState": "Succeeded"
+    },
+    {
+      "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Datastores/redisCaches/cache-b",
+      "name": "cache-b",
+      "type": "Applications.Datastores/redisCaches",
+      "provider": "radius",
+      "provisioningState": "Succeeded"
+    },
+    {
+      "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Datastores/redisCaches/cache-c",
+      "name": "cache-c",
+      "type": "Applications.Datastores/redisCaches",
+      "provider": "radius",
+      "provisioningState": "Succeeded"
+    },
+    {
+      "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Datastores/redisCaches/cache-d",
+      "name": "cache-d",
+      "type": "Applications.Datastores/redisCaches",
+      "provider": "radius",
+      "provisioningState": "Succeeded"
+    },
+    {
+      "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Datastores/redisCaches/cache-e",
+      "name": "cache-e",
+      "type": "Applications.Datastores/redisCaches",
+      "provider": "radius",
+      "provisioningState": "Succeeded"
+    },
+    {
+      "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Datastores/redisCaches/cache-f",
+      "name": "cache-f",
+      "type": "Applications.Datastores/redisCaches",
+      "provider": "radius",
+      "provisioningState": "Succeeded"
+    },
+    {
+      "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Datastores/redisCaches/cache-g",
+      "name": "cache-g",
+      "type": "Applications.Datastores/redisCaches",
+      "provider": "radius",
+      "provisioningState": "Succeeded"
+    },
+    {
+      "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Datastores/redisCaches/cache-h",
+      "name": "cache-h",
+      "type": "Applications.Datastores/redisCaches",
+      "provider": "radius",
+      "provisioningState": "Succeeded"
+    },
+    {
+      "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Datastores/redisCaches/cache-i",
+      "name": "cache-i",
+      "type": "Applications.Datastores/redisCaches",
+      "provider": "radius",
+      "provisioningState": "Succeeded"
+    },
+    {
+      "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Datastores/redisCaches/cache-j",
+      "name": "cache-j",
+      "type": "Applications.Datastores/redisCaches",
+      "provider": "radius",
+      "provisioningState": "Succeeded"
+    },
+    {
+      "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Datastores/redisCaches/cache-k",
+      "name": "cache-k",
+      "type": "Applications.Datastores/redisCaches",
+      "provider": "radius",
+      "provisioningState": "Succeeded"
+    },
+    {
+      "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Datastores/redisCaches/cache-l",
+      "name": "cache-l",
+      "type": "Applications.Datastores/redisCaches",
+      "provider": "radius",
+      "provisioningState": "Succeeded"
+    }
+  ]
+}

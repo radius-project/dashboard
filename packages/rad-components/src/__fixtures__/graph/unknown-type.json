@@ -1,0 +1,12 @@
+{
+  "name": "unknown-type",
+  "resources": [
+    {
+      "id": "/planes/radius/local/resourceGroups/demo/providers/Custom.Provider/widgets/widget",
+      "name": "widget",
+      "type": "Custom.Provider/widgets",
+      "provider": "custom",
+      "provisioningState": "Succeeded"
+    }
+  ]
+}

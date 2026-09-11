@@ -99,7 +99,7 @@ coverage could fall to zero without failing a build. Phase 0 closed this; see
 | ----- | ----------------------------------- | ---------- | ----------- | ------------------------------------------------------------------------------ |
 | 0     | Record the behavior                 | dashboard  | Done        | Public exports, route table, request table, page inventory, and a coverage floor are written down |
 | 1     | Harden existing behavior            | dashboard  | In progress | Every shipped page, table, tab, and domain rule has a real test before it is rearchitected       |
-| 2     | Freeze the pre-extraction baseline  | dashboard  | Not started | Real-renderer graph journeys and graph records pass and are frozen at a reviewed baseline        |
+| 2     | Freeze the pre-extraction baseline  | dashboard  | In progress | Real-renderer graph journeys and graph records pass and are frozen at a reviewed baseline        |
 | 3     | Plugin contract and packaging       | dashboard  | Done        | The published package surface is pinned and breaking it fails a pull request                     |
 | 4     | Consume shared packages             | dashboard, needs `ai-extensions` releases | Not started | The plugin uses `core` and `graph-react`; no parallel implementation remains |
 | 5     | Host integration and installed artifact | dashboard | Not started | Both hosts mount the plugin from packed tarballs with no source aliases                      |
@@ -505,19 +505,8 @@ Kubernetes proxy returns a non-OK response, yet `makeRequest` throws on every su
 
 Completion evidence: RU-01–RU-14, CU-01–CU-26, and BE-01–BE-05 pass; every substantive file
 in Appendix F has a direct test; coverage floors are raised to the new measured values.
-3. `RecipeListPage`, `RecipeTable` — untested rendering over already-tested aggregation.
-4. `ApplicationListInfoCard`, `EnvironmentListInfoCard` — the two exported cards a consumer can
-   embed without a route.
-5. `packages/app` `Root`, `HomePage`, `LearnCard`, `CommunityCard`, `SupportCard`.
-6. `plugin-radius-backend/src/index.ts` registration.
 
-Every page test must assert the error path. Today no page test asserts what a user sees when the
-Kubernetes proxy returns a non-OK response, yet `makeRequest` throws on every such response.
-
-Completion evidence: RU-01–RU-14, CU-01–CU-26, and BE-01–BE-05 pass; every substantive file
-in Appendix F has a direct test; coverage floors are raised to the new measured values.
-
-### Phase 2: freeze the pre-extraction baseline
+### Phase 2: freeze the pre-extraction baseline — **in progress**
 
 The design requires real-renderer journeys before any graph or domain implementation moves. This
 phase is the reason the extraction can be reviewed at all, and it is the phase most likely to be
@@ -535,6 +524,38 @@ skipped under schedule pressure. Nothing in Phase 4 may start until this is froz
 - Triage the baseline. Tag each `KNOWN-DEFECT` with a linked issue rather than blessing it.
 - Prove the suite is real: GU-20 requires that removing the renderer or the stylesheet makes the
   journeys fail.
+
+**Done so far.** The Appendix E fixtures exist at
+`packages/rad-components/src/__fixtures__/graph/`, and the Tier A invariants GU-01–GU-10 are
+implemented against them. They run under Jest rather than Chromium because Tier A asserts
+structural properties of the model, which a stubbed canvas cannot falsify; Tier B and Tier C still
+require the real renderer and remain outstanding.
+
+They are written against `buildGraphModel` in `packages/rad-components/src/graphModel.ts` rather
+than against `initialNodes` directly. That indirection is the point: Tier A must survive extraction
+unchanged, so it must not name the implementation being extracted. Phase 4 repoints that one
+adapter at the shared package and the invariants keep running.
+
+**Outstanding:** the record normalizer and committed records (GU-21–GU-24), every Tier B journey,
+the connection regression cases, and GU-20.
+
+Writing the invariants immediately found four defects that no existing test could have caught,
+which is the argument for doing this before the extraction rather than after:
+
+- `initialNodes` **mutates its input**, rewriting `connection.direction` in place. A caller that
+  renders the same graph object twice gets different input the second time (GU-05b).
+- An **unparseable connection id is not skipped**. The parse result only gates the direction
+  rewrite; the edge-building loop that follows runs over every connection regardless, so the
+  connection becomes an edge to a node that does not exist and the dependency vanishes from the
+  diagram silently (GU-05a).
+- A **connection to a resource absent from the graph** produces the same dangling edge (GU-04).
+- A **self-referential connection** produces a self-loop (GU-06a), and **duplicate resource ids**
+  produce duplicate node ids, one of which React Flow silently discards.
+
+The module-level Dagre graph is now pinned too (GU-08). Detecting it required `jest.isolateModules`:
+the leaked state lives in a module-level binding, so the first layout in a test file pollutes every
+later one and there is no clean measurement left to compare against. A naive version of this test
+passes while the defect is present.
 
 Completion evidence: GU-01–GU-21, CN-01–CN-08, and ER-01–ER-10 pass and are reviewed;
 records are committed; GU-20 demonstrates the suite cannot pass against a stub.
@@ -928,16 +949,17 @@ change during extraction. Tier C changes only through the expected-change manife
 
 | ID    | Tier | Requirement                                                                                        |
 | ----- | ---- | -------------------------------------------------------------------------------------------------- |
-| GU-01 | A    | Every resource in the input yields exactly one node, and node ids are unique                        |
-| GU-02 | A    | Every retained connection yields exactly one edge                                                   |
-| GU-03 | A    | Every edge endpoint resolves to a node present in the same graph                                    |
-| GU-04 | A    | A connection to a resource absent from the graph is dropped or stubbed, never left dangling         |
-| GU-05 | A    | A connection with an unparseable id is skipped without dropping its node or other edges             |
-| GU-06 | A    | A self-referential connection produces no duplicate node and no self-loop                           |
-| GU-07 | A    | Rendering is deterministic: the same fixture rendered twice produces the same record                |
-| GU-08 | A    | Rendering graph A then graph B produces the same result as rendering graph B alone                  |
-| GU-09 | A    | Every node receives a finite position and no two node bounding boxes overlap                        |
-| GU-10 | A    | Node count and edge count are preserved from model through layout to render                         |
+| GU-01 | A    | Every resource in the input yields exactly one node, and node ids are unique — **done**             |
+| GU-02 | A    | Every retained connection yields exactly one edge — **done**                                        |
+| GU-03 | A    | Every edge endpoint resolves to a node present in the same graph — **done**                         |
+| GU-04 | A    | A connection to a resource absent from the graph is dropped or stubbed, never left dangling — **done, KNOWN-DEFECT** |
+| GU-05 | A    | A connection with an unparseable id is skipped without dropping its node or other edges — **done, KNOWN-DEFECT** |
+| GU-05b| A    | Building the model does not mutate the caller's graph — **done, KNOWN-DEFECT**                      |
+| GU-06 | A    | A self-referential connection produces no duplicate node and no self-loop — **done, KNOWN-DEFECT**  |
+| GU-07 | A    | Rendering is deterministic: the same fixture rendered twice produces the same record — **done**      |
+| GU-08 | A    | Rendering graph A then graph B produces the same result as rendering graph B alone — **done, KNOWN-DEFECT** |
+| GU-09 | A    | Every node receives a finite position and no two node bounding boxes overlap — **partly done** (finite positions; overlap needs the real renderer) |
+| GU-10 | A    | Node count and edge count are preserved from model through layout to render — **done**               |
 | GU-11 | A    | Unmounting and remounting with the same data produces the same record and leaks no timers           |
 | GU-12 | B    | A node is findable by its resource name through its accessible name                                 |
 | GU-13 | B    | A connection between two named resources is represented in the rendered output                      |
@@ -1056,14 +1078,15 @@ measured value so that any regression fails immediately. The **target** floors a
 ratchet. See "Where coverage floors must live" for why these are root path groups rather than
 per-workspace config.
 
-Enforced today (measured after Phase 0 and 3; `n/a` means the metric has no data in that workspace,
-and an omitted value means a floor would be zero and therefore meaningless):
+Enforced today (measured after Phases 0, 3, and the Tier A graph invariants; `n/a` means the metric
+has no data in that workspace, and an omitted value means a floor would be zero and therefore
+meaningless):
 
 | Workspace                       | Statements | Branches | Functions | Lines |
 | ------------------------------- | ---------: | -------: | --------: | ----: |
 | `plugins/plugin-radius`         |        58% |      31% |       41% |   57% |
 | `plugins/plugin-radius-backend` |        62% |      n/a |       50% |   71% |
-| `packages/rad-components`       |        81% |      63% |       73% |   78% |
+| `packages/rad-components`       |        86% |      81% |       80% |   85% |
 | `packages/app`                  |        75% |        — |         — |   78% |
 | `packages/backend`              |   exempt   |  exempt  |   exempt  | exempt |
 

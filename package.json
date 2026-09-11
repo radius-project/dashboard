@@ -82,10 +82,10 @@
         "lines": 71
       },
       "./packages/rad-components/src/": {
-        "statements": 81,
-        "branches": 63,
-        "functions": 73,
-        "lines": 78
+        "statements": 86,
+        "branches": 81,
+        "functions": 80,
+        "lines": 85
       },
       "./packages/app/src/": {
         "statements": 75,

@@ -1,0 +1,21 @@
+{
+  "name": "unparseable-connection",
+  "resources": [
+    {
+      "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Core/containers/webapp",
+      "name": "webapp",
+      "type": "Applications.Core/containers",
+      "provider": "radius",
+      "provisioningState": "Succeeded",
+      "connections": [
+        {
+          "id": "not-a-resource-id",
+          "name": "mystery",
+          "type": "Unknown",
+          "provider": "radius",
+          "direction": "Outbound"
+        }
+      ]
+    }
+  ]
+}

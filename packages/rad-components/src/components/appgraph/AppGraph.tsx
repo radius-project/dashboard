@@ -75,7 +75,7 @@ function AppGraph(props: AppGraphProps) {
   );
 }
 
-function initialNodes(graph: AppGraphData): {
+export function initialNodes(graph: AppGraphData): {
   nodes: Node<Resource>[];
   edges: Edge[];
 } {
@@ -148,11 +148,11 @@ function initialNodes(graph: AppGraphData): {
 
 const g = new Dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
 
-function getLayoutedElements(
+export function getLayoutedElements(
   nodes: Node[],
   edges: Edge[],
   options: { direction: string },
-) {
+): { nodes: Node[]; edges: Edge[] } {
   g.setGraph({ rankdir: options.direction });
 
   edges.forEach(edge => g.setEdge(edge.source, edge.target));

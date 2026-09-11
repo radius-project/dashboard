@@ -1,0 +1,12 @@
+{
+  "name": "single-node",
+  "resources": [
+    {
+      "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Core/containers/solo",
+      "name": "solo",
+      "type": "Applications.Core/containers",
+      "provider": "radius",
+      "provisioningState": "Succeeded"
+    }
+  ]
+}

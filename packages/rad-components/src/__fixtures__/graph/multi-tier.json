@@ -1,0 +1,58 @@
+{
+  "name": "multi-tier",
+  "resources": [
+    {
+      "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Core/gateways/edge",
+      "name": "edge",
+      "type": "Applications.Core/gateways",
+      "provider": "radius",
+      "provisioningState": "Succeeded"
+    },
+    {
+      "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Core/containers/frontend",
+      "name": "frontend",
+      "type": "Applications.Core/containers",
+      "provider": "radius",
+      "provisioningState": "Succeeded",
+      "connections": [
+        {
+          "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Core/gateways/edge",
+          "name": "edge",
+          "type": "Applications.Core/gateways",
+          "provider": "radius",
+          "direction": "Inbound"
+        },
+        {
+          "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Core/containers/backend",
+          "name": "backend",
+          "type": "Applications.Core/containers",
+          "provider": "radius",
+          "direction": "Outbound"
+        }
+      ]
+    },
+    {
+      "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Core/containers/backend",
+      "name": "backend",
+      "type": "Applications.Core/containers",
+      "provider": "radius",
+      "provisioningState": "Succeeded",
+      "connections": [
+        {
+          "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Datastores/redisCaches/cache",
+          "name": "cache",
+          "type": "Applications.Datastores/redisCaches",
+          "provider": "radius",
+          "direction": "Outbound"
+        }
+      ]
+    },
+    {
+      "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Datastores/redisCaches/cache",
+      "name": "cache",
+      "type": "Applications.Datastores/redisCaches",
+      "provider": "radius",
+      "provisioningState": "Succeeded"
+    }
+  ]
+}

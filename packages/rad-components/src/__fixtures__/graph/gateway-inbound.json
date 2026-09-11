@@ -1,0 +1,28 @@
+{
+  "name": "gateway-inbound",
+  "resources": [
+    {
+      "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Core/containers/webapp",
+      "name": "webapp",
+      "type": "Applications.Core/containers",
+      "provider": "radius",
+      "provisioningState": "Succeeded",
+      "connections": [
+        {
+          "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Core/gateways/edge",
+          "name": "edge",
+          "type": "Applications.Core/gateways",
+          "provider": "radius",
+          "direction": "Inbound"
+        }
+      ]
+    },
+    {
+      "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Core/gateways/edge",
+      "name": "edge",
+      "type": "Applications.Core/gateways",
+      "provider": "radius",
+      "provisioningState": "Succeeded"
+    }
+  ]
+}
