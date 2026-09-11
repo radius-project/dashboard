@@ -1,26 +1,14 @@
 import React from 'react';
+import { Link, Route } from 'react-router-dom';
+import { FlatRoutes } from '@backstage/core-app-api';
 import { renderInTestApp, TestApiProvider } from '@backstage/test-utils';
-import { screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { RadiusApi } from '../../api';
 import { radiusApiRef } from '../../plugin';
 import { ResourceTypeDetailPage } from './ResourceTypeDetailPage';
 
-jest.mock('react-router-dom', () => {
-  return {
-    ...jest.requireActual('react-router-dom'),
-    useParams: () => ({
-      namespace: 'Applications.Core',
-      typeName: 'containers',
-    }),
-  };
-});
-
 type ResourceTypeDetail = Awaited<ReturnType<RadiusApi['getResourceType']>>;
 
-/**
- * The page reads only four fields off the fetched resource type, so every case
- * below varies `APIVersions` and keeps the rest constant.
- */
 const makeResourceType = (
   overrides: Partial<ResourceTypeDetail> = {},
 ): ResourceTypeDetail => ({
@@ -45,48 +33,105 @@ const withProperties = (
   APIVersionList: ['2023-10-01-preview'],
 });
 
-const renderPage = async (
-  resourceType: ResourceTypeDetail,
-  route: string = '/overview',
-) => {
-  const api: Pick<RadiusApi, 'getResourceType'> = {
-    getResourceType: async () => resourceType,
-  };
+const defaultParams = {
+  namespace: 'Applications.Core',
+  typeName: 'containers',
+};
 
-  await renderInTestApp(
-    <TestApiProvider apis={[[radiusApiRef, api]]}>
-      <ResourceTypeDetailPage />
+const resourceTypePath = (
+  { namespace, typeName } = defaultParams,
+  tab = '/overview',
+) => `/resource-types/${namespace}/${typeName}${tab}`;
+
+const requestStub = (
+  response: RadiusApi['getResourceType'],
+  expectedParams = defaultParams,
+) =>
+  jest.fn<
+    ReturnType<RadiusApi['getResourceType']>,
+    Parameters<RadiusApi['getResourceType']>
+  >(async params => {
+    expect(params).toEqual(expectedParams);
+    return response(params);
+  });
+
+const renderWithApi = (
+  getResourceType: RadiusApi['getResourceType'],
+  route = resourceTypePath(),
+  navigation?: React.ReactNode,
+) =>
+  renderInTestApp(
+    <TestApiProvider apis={[[radiusApiRef, { getResourceType }]]}>
+      {navigation}
+      <FlatRoutes>
+        <Route
+          path="/resource-types/:namespace/:typeName"
+          element={<ResourceTypeDetailPage />}
+        />
+      </FlatRoutes>
     </TestApiProvider>,
     { routeEntries: [route] },
   );
 
+const renderPage = async (
+  resourceType: ResourceTypeDetail,
+  tab: string = '/overview',
+) => {
+  const params = {
+    namespace: resourceType.ResourceProviderNamespace,
+    typeName: resourceType.Name,
+  };
+  const getResourceType = requestStub(async () => resourceType, params);
+  await renderWithApi(getResourceType, resourceTypePath(params, tab));
+
   await waitFor(() => {
     expect(
-      screen.getByRole('heading', { name: 'containers' }),
+      screen.getByRole('heading', { name: resourceType.Name }),
     ).toBeInTheDocument();
   });
+  expect(getResourceType).toHaveBeenCalledTimes(1);
+  expect(getResourceType).toHaveBeenCalledWith(params);
 };
 
 /**
- * Reads the rendered property table as `name -> { type, required }`. The table
- * is assembled inline in the page's JSX rather than by a shared component, so
- * asserting on the parsed rows keeps these tests describing the schema
- * interpretation rather than the markup that happens to express it.
+ * Keep every row, scoped by API version and the containing object's path.
+ * The page's section anchors encode these identities for nested tables.
  */
 const readPropertyRows = () => {
-  const rows: Record<string, { type: string; required: string }> = {};
+  const rows: Array<{
+    version: string;
+    path: string;
+    type: string;
+    required: string;
+  }> = [];
 
-  for (const row of screen.getAllByRole('row')) {
-    const cells = row.querySelectorAll('td');
-    if (cells.length < 3) continue;
+  for (const table of screen.getAllByRole('table')) {
+    const section = table.closest('[id]');
+    const versionSection = table.closest(
+      '[id^="version-"], [id^="output-version-"]',
+    );
+    expect(section).not.toBeNull();
+    expect(versionSection).not.toBeNull();
+    const version = versionSection!.id.replace(/^(output-)?version-/, '');
+    const parentPath =
+      section === versionSection
+        ? ''
+        : section!.id.replace(new RegExp(`^(output-)?${version}-`), '');
 
-    const name = cells[0].textContent?.trim() ?? '';
-    if (!name) continue;
+    for (const row of within(table).getAllByRole('row')) {
+      const cells = row.querySelectorAll('td');
+      if (cells.length < 3) continue;
 
-    rows[name] = {
-      type: cells[1].textContent?.trim() ?? '',
-      required: cells[2].textContent?.trim() ?? '',
-    };
+      const name = cells[0].textContent?.trim() ?? '';
+      if (!name) continue;
+
+      rows.push({
+        version,
+        path: parentPath ? `${parentPath}.${name}` : name,
+        type: cells[1].textContent?.trim() ?? '',
+        required: cells[2].textContent?.trim() ?? '',
+      });
+    }
   }
 
   return rows;
@@ -96,19 +141,13 @@ describe('ResourceTypeDetailPage', () => {
   describe('load states', () => {
     it('RT-01: shows progress until the resource type resolves', async () => {
       const deferred: ((value: ResourceTypeDetail) => void)[] = [];
-      const api: Pick<RadiusApi, 'getResourceType'> = {
-        getResourceType: async () =>
-          new Promise<ResourceTypeDetail>(resolve => {
-            deferred.push(resolve);
-          }),
-      };
-
-      await renderInTestApp(
-        <TestApiProvider apis={[[radiusApiRef, api]]}>
-          <ResourceTypeDetailPage />
-        </TestApiProvider>,
+      const getResourceType = requestStub(
+        async () =>
+          new Promise<ResourceTypeDetail>(resolve => deferred.push(resolve)),
       );
 
+      await renderWithApi(getResourceType);
+      expect(getResourceType).toHaveBeenCalledWith(defaultParams);
       await waitFor(() => {
         expect(screen.getByTestId('progress')).toBeInTheDocument();
       });
@@ -128,15 +167,12 @@ describe('ResourceTypeDetailPage', () => {
     });
 
     it('RT-02: surfaces a failed fetch as an error panel', async () => {
-      const api: Pick<RadiusApi, 'getResourceType'> = {
-        getResourceType: async () => Promise.reject(new Error('Oh noes!')),
-      };
-
-      await renderInTestApp(
-        <TestApiProvider apis={[[radiusApiRef, api]]}>
-          <ResourceTypeDetailPage />
-        </TestApiProvider>,
+      const getResourceType = requestStub(async () =>
+        Promise.reject(new Error('Oh noes!')),
       );
+
+      await renderWithApi(getResourceType);
+      expect(getResourceType).toHaveBeenCalledWith(defaultParams);
 
       const alert = screen.getByRole('alert');
       expect(alert).toBeInTheDocument();
@@ -144,15 +180,12 @@ describe('ResourceTypeDetailPage', () => {
     });
 
     it('RT-03: reports a resolved-but-absent resource type as an error', async () => {
-      const api: Pick<RadiusApi, 'getResourceType'> = {
-        getResourceType: async () => undefined as unknown as ResourceTypeDetail,
-      };
-
-      await renderInTestApp(
-        <TestApiProvider apis={[[radiusApiRef, api]]}>
-          <ResourceTypeDetailPage />
-        </TestApiProvider>,
+      const getResourceType = requestStub(
+        async () => undefined as unknown as ResourceTypeDetail,
       );
+
+      await renderWithApi(getResourceType);
+      expect(getResourceType).toHaveBeenCalledWith(defaultParams);
 
       await waitFor(() => {
         expect(screen.getByRole('alert')).toHaveTextContent(
@@ -247,7 +280,9 @@ describe('ResourceTypeDetailPage', () => {
         '/properties',
       );
 
-      expect(readPropertyRows()).toHaveProperty('image');
+      expect(readPropertyRows()).toContainEqual(
+        expect.objectContaining({ path: 'image' }),
+      );
     });
 
     it('RT-10: reads properties from a lower-case schema', async () => {
@@ -263,7 +298,9 @@ describe('ResourceTypeDetailPage', () => {
         '/properties',
       );
 
-      expect(readPropertyRows()).toHaveProperty('image');
+      expect(readPropertyRows()).toContainEqual(
+        expect.objectContaining({ path: 'image' }),
+      );
     });
 
     it('RT-11: finds properties nested under definitions when the top level has none', async () => {
@@ -286,7 +323,9 @@ describe('ResourceTypeDetailPage', () => {
         '/properties',
       );
 
-      expect(readPropertyRows()).toHaveProperty('image');
+      expect(readPropertyRows()).toContainEqual(
+        expect.objectContaining({ path: 'image' }),
+      );
     });
 
     it('RT-12: reports an empty schema rather than an empty table', async () => {
@@ -307,7 +346,9 @@ describe('ResourceTypeDetailPage', () => {
         '/properties',
       );
 
-      expect(readPropertyRows().conn.type).toBe('ConnectionSpec');
+      expect(readPropertyRows()).toContainEqual(
+        expect.objectContaining({ path: 'conn', type: 'ConnectionSpec' }),
+      );
     });
 
     it('RT-14: renders an array of primitives as an element-typed array', async () => {
@@ -320,7 +361,9 @@ describe('ResourceTypeDetailPage', () => {
         '/properties',
       );
 
-      expect(readPropertyRows().args.type).toBe('string[]');
+      expect(readPropertyRows()).toContainEqual(
+        expect.objectContaining({ path: 'args', type: 'string[]' }),
+      );
     });
 
     it('RT-15: renders an array of referenced types as an element-typed array', async () => {
@@ -333,7 +376,9 @@ describe('ResourceTypeDetailPage', () => {
         '/properties',
       );
 
-      expect(readPropertyRows().ports.type).toBe('PortSpec[]');
+      expect(readPropertyRows()).toContainEqual(
+        expect.objectContaining({ path: 'ports', type: 'PortSpec[]' }),
+      );
     });
 
     it('RT-16: falls back to a bare array when the element type is unknown', async () => {
@@ -342,7 +387,9 @@ describe('ResourceTypeDetailPage', () => {
         '/properties',
       );
 
-      expect(readPropertyRows().tags.type).toBe('array');
+      expect(readPropertyRows()).toContainEqual(
+        expect.objectContaining({ path: 'tags', type: 'array' }),
+      );
     });
 
     it('RT-17: renders a schema with additionalProperties as a map', async () => {
@@ -355,7 +402,9 @@ describe('ResourceTypeDetailPage', () => {
         '/properties',
       );
 
-      expect(readPropertyRows().env.type).toBe('map');
+      expect(readPropertyRows()).toContainEqual(
+        expect.objectContaining({ path: 'env', type: 'map' }),
+      );
     });
 
     it('RT-18: defaults an untyped property to object', async () => {
@@ -364,7 +413,9 @@ describe('ResourceTypeDetailPage', () => {
         '/properties',
       );
 
-      expect(readPropertyRows().mystery.type).toBe('object');
+      expect(readPropertyRows()).toContainEqual(
+        expect.objectContaining({ path: 'mystery', type: 'object' }),
+      );
     });
   });
 
@@ -381,8 +432,12 @@ describe('ResourceTypeDetailPage', () => {
       );
 
       const rows = readPropertyRows();
-      expect(rows.image.required).toBe('Yes');
-      expect(rows.restartPolicy.required).toBe('No');
+      expect(rows).toContainEqual(
+        expect.objectContaining({ path: 'image', required: 'Yes' }),
+      );
+      expect(rows).toContainEqual(
+        expect.objectContaining({ path: 'restartPolicy', required: 'No' }),
+      );
     });
 
     it('RT-20: hides read-only properties, which belong to the output tab', async () => {
@@ -397,8 +452,10 @@ describe('ResourceTypeDetailPage', () => {
       );
 
       const rows = readPropertyRows();
-      expect(rows).toHaveProperty('image');
-      expect(rows).not.toHaveProperty('provisioningState');
+      expect(rows).toContainEqual(expect.objectContaining({ path: 'image' }));
+      expect(rows).not.toContainEqual(
+        expect.objectContaining({ path: 'provisioningState' }),
+      );
     });
 
     it('RT-21: treats a false readOnly as writable rather than as read-only', async () => {
@@ -409,7 +466,9 @@ describe('ResourceTypeDetailPage', () => {
         '/properties',
       );
 
-      expect(readPropertyRows()).toHaveProperty('image');
+      expect(readPropertyRows()).toContainEqual(
+        expect.objectContaining({ path: 'image' }),
+      );
     });
   });
 
@@ -426,8 +485,12 @@ describe('ResourceTypeDetailPage', () => {
       );
 
       const rows = readPropertyRows();
-      expect(rows).toHaveProperty('provisioningState');
-      expect(rows).not.toHaveProperty('image');
+      expect(rows).toContainEqual(
+        expect.objectContaining({ path: 'provisioningState' }),
+      );
+      expect(rows).not.toContainEqual(
+        expect.objectContaining({ path: 'image' }),
+      );
     });
 
     it('RT-23: reports a schema with no read-only properties', async () => {
@@ -513,16 +576,218 @@ describe('ResourceTypeDetailPage', () => {
       const rows = readPropertyRows();
 
       // The parent is correctly selected as an output property.
-      expect(rows).toHaveProperty('status');
+      expect(rows).toContainEqual(expect.objectContaining({ path: 'status' }));
 
       // But its read-only child is filtered out by the writable-property
       // predicate, so `phase` is reachable from neither tab: the properties tab
       // drops the parent, and the output tab drops the child.
-      expect(rows).not.toHaveProperty('phase');
+      expect(rows).not.toContainEqual(
+        expect.objectContaining({ path: 'status.phase' }),
+      );
 
       // And the writable child is shown here, in the tab that exists to show
       // only read-only values.
-      expect(rows).toHaveProperty('note');
+      expect(rows).toContainEqual(
+        expect.objectContaining({ path: 'status.note' }),
+      );
     });
+  });
+
+  describe('route parameters', () => {
+    it('RT-28: loads a different namespace and type from the real route', async () => {
+      await renderPage(
+        makeResourceType({
+          Name: 'databases',
+          ResourceProviderNamespace: 'Applications.Datastores',
+          Description: 'Database resources',
+        }),
+      );
+
+      expect(
+        screen.getByRole('heading', { name: 'databases' }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText('Resource Type in Applications.Datastores'),
+      ).toBeInTheDocument();
+      expect(screen.getByText('Database resources')).toBeInTheDocument();
+      expect(screen.queryByRole('heading', { name: 'containers' })).toBeNull();
+    });
+
+    it('RT-29: refetches on namespace-only and type-only route changes without remounting', async () => {
+      const resources = [
+        makeResourceType(),
+        makeResourceType({
+          ResourceProviderNamespace: 'Custom.Compute',
+          Description: 'Custom container resources',
+        }),
+        makeResourceType({
+          Name: 'workers',
+          ResourceProviderNamespace: 'Custom.Compute',
+          Description: 'Custom worker resources',
+        }),
+      ];
+      const getResourceType = jest.fn<
+        ReturnType<RadiusApi['getResourceType']>,
+        Parameters<RadiusApi['getResourceType']>
+      >(async params => {
+        const resource = resources.find(
+          candidate =>
+            candidate.Name === params.typeName &&
+            candidate.ResourceProviderNamespace === params.namespace,
+        );
+        if (!resource)
+          throw new Error(
+            `Unexpected resource type request: ${JSON.stringify(params)}`,
+          );
+        expect(params).toEqual({
+          namespace: resource.ResourceProviderNamespace,
+          typeName: resource.Name,
+        });
+        return resource;
+      });
+
+      await renderWithApi(
+        getResourceType,
+        resourceTypePath(),
+        <>
+          <Link
+            to={resourceTypePath({
+              namespace: 'Custom.Compute',
+              typeName: 'containers',
+            })}
+          >
+            Change namespace
+          </Link>
+          <Link
+            to={resourceTypePath({
+              namespace: 'Custom.Compute',
+              typeName: 'workers',
+            })}
+          >
+            Change type
+          </Link>
+        </>,
+      );
+      expect(
+        await screen.findByText('Container resources'),
+      ).toBeInTheDocument();
+      expect(getResourceType).toHaveBeenNthCalledWith(1, defaultParams);
+
+      fireEvent.click(screen.getByRole('link', { name: 'Change namespace' }));
+      expect(
+        await screen.findByText('Custom container resources'),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText('Resource Type in Custom.Compute'),
+      ).toBeInTheDocument();
+      expect(screen.queryByText('Container resources')).toBeNull();
+      expect(getResourceType).toHaveBeenNthCalledWith(2, {
+        namespace: 'Custom.Compute',
+        typeName: 'containers',
+      });
+
+      fireEvent.click(screen.getByRole('link', { name: 'Change type' }));
+      expect(
+        await screen.findByRole('heading', { name: 'workers' }),
+      ).toBeInTheDocument();
+      expect(screen.getByText('Custom worker resources')).toBeInTheDocument();
+      expect(screen.queryByText('Custom container resources')).toBeNull();
+      expect(screen.queryByRole('heading', { name: 'containers' })).toBeNull();
+      expect(getResourceType).toHaveBeenNthCalledWith(3, {
+        namespace: 'Custom.Compute',
+        typeName: 'workers',
+      });
+      expect(getResourceType).toHaveBeenCalledTimes(3);
+    });
+  });
+
+  it('RT-30: preserves repeated property names across parent paths and API versions', async () => {
+    await renderPage(
+      makeResourceType({
+        APIVersions: {
+          '2025-08-01-preview': {
+            Schema: {
+              properties: {
+                name: { type: 'string' },
+                source: {
+                  type: 'object',
+                  properties: { name: { type: 'integer' } },
+                  required: ['name'],
+                },
+                target: {
+                  type: 'object',
+                  properties: { name: { type: 'boolean' } },
+                },
+              },
+              required: ['name'],
+            },
+          },
+          '2023-10-01-preview': {
+            Schema: {
+              properties: {
+                name: { type: 'number' },
+                source: {
+                  type: 'object',
+                  properties: { name: { type: 'string' } },
+                },
+              },
+            },
+          },
+        },
+        APIVersionList: ['2025-08-01-preview', '2023-10-01-preview'],
+      }),
+      '/properties',
+    );
+
+    expect(readPropertyRows()).toEqual([
+      {
+        version: '2025-08-01-preview',
+        path: 'name',
+        type: 'string',
+        required: 'Yes',
+      },
+      {
+        version: '2025-08-01-preview',
+        path: 'source',
+        type: 'object',
+        required: 'No',
+      },
+      {
+        version: '2025-08-01-preview',
+        path: 'target',
+        type: 'object',
+        required: 'No',
+      },
+      {
+        version: '2025-08-01-preview',
+        path: 'source.name',
+        type: 'integer',
+        required: 'Yes',
+      },
+      {
+        version: '2025-08-01-preview',
+        path: 'target.name',
+        type: 'boolean',
+        required: 'No',
+      },
+      {
+        version: '2023-10-01-preview',
+        path: 'name',
+        type: 'number',
+        required: 'No',
+      },
+      {
+        version: '2023-10-01-preview',
+        path: 'source',
+        type: 'object',
+        required: 'No',
+      },
+      {
+        version: '2023-10-01-preview',
+        path: 'source.name',
+        type: 'string',
+        required: 'No',
+      },
+    ]);
   });
 });

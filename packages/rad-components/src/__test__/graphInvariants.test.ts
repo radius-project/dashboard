@@ -1,5 +1,9 @@
 import { AppGraph } from '../graph';
-import { buildGraphModel, buildLayoutedGraphModel } from '../graphModel';
+import {
+  buildGraphModel,
+  buildLayoutedGraphModel,
+  GraphModel,
+} from '../graphModel';
 
 import empty from '../__fixtures__/graph/empty.json';
 import singleNode from '../__fixtures__/graph/single-node.json';
@@ -19,19 +23,21 @@ import largeFanOut from '../__fixtures__/graph/large-fan-out.json';
 /**
  * Tier A graph invariants.
  *
- * These assert properties that must hold no matter how nodes and edges are
+ * The correctness cases assert properties that must hold no matter how nodes and edges are
  * represented, so they are the only graph tests allowed to survive the move to
  * the shared graph package unchanged. They deliberately say nothing about
  * object shape, class names, coordinates, or colours: all of that is being
  * replaced, and asserting it would produce failures that mean nothing.
  *
  * They go through `buildGraphModel` rather than the renderer's internals for
- * the same reason.
+ * the same reason. Cases labelled KNOWN-DEFECT are characterization pins, not
+ * migration invariants: replace them with the desired assertion when the linked
+ * defect is deliberately fixed.
  */
 
 /**
  * Fixtures are JSON modules, so every test would otherwise share one object
- * graph. `initialNodes` mutates the connections it is given (see GU-05a), which
+ * graph. `initialNodes` mutates the connections it is given (see GU-05b), which
  * would leak across tests and make results depend on execution order. Cloning
  * per use is what keeps these tests independent.
  */
@@ -55,6 +61,74 @@ const allFixtures: [string, unknown][] = [
   ['large-fan-out', largeFanOut],
 ];
 
+type Relationship = [source: string, target: string];
+
+// Fixture-owned expectations, independent of the connection parser and builder.
+// The common prefix is just fixture data; no relationship is inferred from output.
+const fixtureId = (suffix: string) =>
+  `/planes/radius/local/resourceGroups/demo/providers/${suffix}`;
+const relationships = (...pairs: Relationship[]): Relationship[] =>
+  pairs.map(([source, target]) => [fixtureId(source), fixtureId(target)]);
+
+const expectedRelationships: Record<string, Relationship[]> = {
+  empty: [],
+  'single-node': [],
+  'container-to-database': relationships([
+    'Applications.Datastores/redisCaches/cache',
+    'Applications.Core/containers/webapp',
+  ]),
+  'gateway-inbound': relationships([
+    'Applications.Core/gateways/edge',
+    'Applications.Core/containers/webapp',
+  ]),
+  'multi-tier': relationships(
+    [
+      'Applications.Core/gateways/edge',
+      'Applications.Core/containers/frontend',
+    ],
+    [
+      'Applications.Core/containers/backend',
+      'Applications.Core/containers/frontend',
+    ],
+    [
+      'Applications.Datastores/redisCaches/cache',
+      'Applications.Core/containers/backend',
+    ],
+  ),
+  'managed-cluster': [],
+  'deploy-status-matrix': [],
+  'unknown-type': [],
+  'duplicate-ids': [],
+  'both-namespaces': [],
+  'large-fan-out': relationships(
+    ...['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l'].map(
+      (suffix): Relationship => [
+        `Applications.Datastores/redisCaches/cache-${suffix}`,
+        'Applications.Core/containers/hub',
+      ],
+    ),
+  ),
+};
+
+const defectConnectionFixtures = [
+  'missing-target',
+  'unparseable-connection',
+  'self-reference',
+];
+const retainedConnectionFixtures = allFixtures.filter(
+  ([name]) => !defectConnectionFixtures.includes(name),
+);
+
+const assertRelationships = (model: GraphModel, expected: Relationship[]) => {
+  expect(model.edges).toHaveLength(expected.length);
+  // Sorting retains multiplicity: replacing distinct edges with duplicates fails.
+  expect(
+    model.edges
+      .map(({ source, target }) => JSON.stringify([source, target]))
+      .sort(),
+  ).toEqual(expected.map(pair => JSON.stringify(pair)).sort());
+};
+
 describe('graph invariants', () => {
   describe('GU-01: every resource yields exactly one node', () => {
     it.each(allFixtures)('%s', (_name, fixture) => {
@@ -66,20 +140,44 @@ describe('graph invariants', () => {
   });
 
   describe('GU-02: every retained connection yields exactly one edge', () => {
-    it.each(allFixtures)('%s', (_name, fixture) => {
-      const graph = load(fixture);
-      const model = buildGraphModel(graph);
-
-      // A connection is retained unless its id cannot be parsed; the parser is
-      // what decides, so count the ones that survive rather than re-implementing
-      // the rule here.
-      const declared = graph.resources.reduce(
-        (total, resource) => total + (resource.connections?.length ?? 0),
-        0,
+    // Invalid/self connections are defect pins below, not desired topology.
+    it.each(retainedConnectionFixtures)('%s', (name, fixture) => {
+      expect(expectedRelationships).toHaveProperty(name);
+      assertRelationships(
+        buildGraphModel(load(fixture)),
+        expectedRelationships[name],
       );
-
-      expect(model.edges.length).toBeLessThanOrEqual(declared);
     });
+  });
+
+  describe('GU-02a: topology assertions reject relationship corruption', () => {
+    it.each(['redirected', 'reversed', 'missing', 'extra'] as const)(
+      '%s edges',
+      mutation => {
+        const model = buildGraphModel(load(multiTier));
+        const expected = expectedRelationships['multi-tier'];
+        assertRelationships(model, expected);
+        const first = model.edges[0];
+        const edges = {
+          redirected: model.edges.map(edge => ({
+            ...edge,
+            source: first.source,
+            target: first.target,
+          })),
+          reversed: model.edges.map(edge => ({
+            ...edge,
+            source: edge.target,
+            target: edge.source,
+          })),
+          missing: model.edges.slice(1),
+          extra: [...model.edges, first],
+        }[mutation];
+
+        expect(() =>
+          assertRelationships({ ...model, edges }, expected),
+        ).toThrow();
+      },
+    );
   });
 
   describe('GU-03: every edge endpoint resolves to a node in the same graph', () => {
@@ -117,7 +215,7 @@ describe('graph invariants', () => {
     expect(ids.has(model.edges[0].source)).toBe(false);
   });
 
-  it('GU-05: an unparseable connection id is skipped without dropping its node', () => {
+  it('GU-05: an unparseable connection id does not drop its owning node', () => {
     const model = buildGraphModel(load(unparseableConnection));
 
     expect(model.nodes).toHaveLength(1);
@@ -129,8 +227,8 @@ describe('graph invariants', () => {
    * direction; the edge-building loop that follows runs over every connection
    * regardless. So an unparseable connection id is *not* skipped — it produces
    * an edge to a node that does not exist, and the dependency disappears from
-   * the diagram with no error. GU-05's "without dropping its node" holds; the
-   * "skipped" half does not.
+   * the diagram with no error. GU-05 protects the owning node; this test separately
+   * pins the incorrect connection handling until it is fixed.
    */
   it('GU-05a: KNOWN-DEFECT an unparseable connection still produces a dangling edge', () => {
     const model = buildGraphModel(load(unparseableConnection));
@@ -235,6 +333,13 @@ describe('graph invariants', () => {
 
       expect(layouted.nodes).toHaveLength(model.nodes.length);
       expect(layouted.edges).toHaveLength(model.edges.length);
+      expect(layouted.nodes.map(node => node.id).sort()).toEqual(
+        model.nodes.map(node => node.id).sort(),
+      );
+      assertRelationships(
+        layouted,
+        model.edges.map(({ source, target }) => [source, target]),
+      );
     });
   });
 
@@ -323,14 +428,14 @@ describe('graph invariants', () => {
       const model = buildGraphModel(load(multiTier));
 
       expect(model.nodes).toHaveLength(4);
-      expect(model.edges).toHaveLength(3);
+      assertRelationships(model, expectedRelationships['multi-tier']);
     });
 
     it('keeps every edge in a large fan-out', () => {
       const model = buildGraphModel(load(largeFanOut));
 
       expect(model.nodes).toHaveLength(13);
-      expect(model.edges).toHaveLength(12);
+      assertRelationships(model, expectedRelationships['large-fan-out']);
     });
   });
 

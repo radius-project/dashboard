@@ -34,8 +34,8 @@ const repo = readJson('../../../package.json');
  * Phase 3 packaging contract.
  *
  * The plugin is intended to be published and consumed by an external Backstage
- * host. These tests pin the metadata that determines whether the published
- * artifact is usable, and record the conditions that currently prevent
+ * host. These tests inspect source metadata, not a packed artifact or an
+ * installation. They record the conditions that currently prevent
  * publication so they cannot be forgotten or silently "fixed" by an unrelated
  * change.
  */
@@ -86,12 +86,11 @@ describe('package contract', () => {
   });
 
   /**
-   * KNOWN-DEFECT: a `workspace:` range cannot resolve for an external consumer.
-   * Publishing today would emit a manifest whose dependency is uninstallable.
-   * Phase 4 removes this by consuming the shared graph package instead; until
-   * then this test states the blocker explicitly.
+   * Yarn rewrites `workspace:^` to a semver range when packing. This assertion
+   * records the current source dependency, not a publication defect. Only an
+   * installed-artifact test can establish whether consumers can resolve it.
    */
-  it('PU-17: KNOWN-DEFECT depends on a workspace-only package', () => {
+  it('PU-17: records the graph workspace dependency before extraction', () => {
     expect(pkg.dependencies?.['@radapp.io/rad-components']).toBe('workspace:^');
 
     const workspaceRanges = Object.entries(pkg.dependencies ?? {})

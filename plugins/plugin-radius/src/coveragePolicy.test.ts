@@ -42,6 +42,32 @@ const workspaceDirs = ['packages', 'plugins'].flatMap(group =>
     .filter(dir => fs.existsSync(path.join(repoRoot, dir, 'package.json'))),
 );
 
+const unguardedWorkspaces = (
+  candidate: typeof thresholds,
+  exemptions = EXEMPT,
+) =>
+  workspaceDirs.filter(dir => {
+    if (Object.hasOwn(candidate, `./${dir}/src/`)) return false;
+    const name = readJson(path.join(repoRoot, dir, 'package.json')).name;
+    return !(name && name in exemptions);
+  });
+
+const invalidFloors = (candidate: typeof thresholds) =>
+  Object.entries(candidate).flatMap(([group, floors]) => {
+    const metrics = new Set(['statements', 'lines', ...Object.keys(floors)]);
+    return [...metrics]
+      .filter(metric => {
+        const value = floors[metric];
+        return (
+          !['statements', 'branches', 'functions', 'lines'].includes(metric) ||
+          !Number.isFinite(value) ||
+          value <= 0 ||
+          value > 100
+        );
+      })
+      .map(metric => `${group}:${metric}`);
+  });
+
 /**
  * Coverage policy.
  *
@@ -73,21 +99,15 @@ describe('coverage policy', () => {
     expect(thresholds).not.toHaveProperty('global');
   });
 
-  it('PU-23: gives every workspace either a floor or a recorded exemption', () => {
-    const unguarded = workspaceDirs.filter(dir => {
-      const guarded = Object.keys(thresholds).some(group =>
-        group.replace(/^\.\//, '').startsWith(`${dir}/`),
-      );
-      if (guarded) return false;
-
-      const name = readJson(path.join(repoRoot, dir, 'package.json')).name;
-      return !(name && name in EXEMPT);
-    });
-
-    expect(unguarded).toEqual([]);
+  it('PU-23: guards every complete source directory or records an exemption', () => {
+    expect(unguardedWorkspaces(thresholds)).toEqual([]);
   });
 
   it('PU-24: points every floor at a directory that exists', () => {
+    const allowedGroups = workspaceDirs.map(dir => `./${dir}/src/`);
+    expect(
+      Object.keys(thresholds).filter(group => !allowedGroups.includes(group)),
+    ).toEqual([]);
     const missing = Object.keys(thresholds).filter(
       group => !fs.existsSync(path.join(repoRoot, group.replace(/^\.\//, ''))),
     );
@@ -95,12 +115,41 @@ describe('coverage policy', () => {
     expect(missing).toEqual([]);
   });
 
-  it('PU-25: states a floor for statements and lines in every group', () => {
+  it('PU-25: requires positive percentage floors, including statements and lines', () => {
     // Branch and function floors are omitted where the measured value is zero;
     // statements and lines are always meaningful, so they are always required.
-    for (const [group, floors] of Object.entries(thresholds)) {
-      expect([group, typeof floors.statements]).toEqual([group, 'number']);
-      expect([group, typeof floors.lines]).toEqual([group, 'number']);
-    }
+    expect(invalidFloors(thresholds)).toEqual([]);
+  });
+
+  it('PU-32: rejects a threshold narrowed to only part of a workspace', () => {
+    const { ['./plugins/plugin-radius/src/']: floors, ...rest } = thresholds;
+    expect(
+      unguardedWorkspaces({
+        ...rest,
+        './plugins/plugin-radius/src/components/applications/': floors,
+      }),
+    ).toContain('plugins/plugin-radius');
+  });
+
+  it.each([0, -1, 101, NaN, Infinity])(
+    'PU-33: rejects an invalid percentage floor (%s)',
+    value => {
+      expect(
+        invalidFloors({
+          './example/src/': { statements: value, lines: value },
+        }),
+      ).toEqual(['./example/src/:statements', './example/src/:lines']);
+    },
+  );
+
+  it('PU-34: rejects missing mandatory floors and zero optional floors', () => {
+    expect(
+      invalidFloors({ './example/src/': { branches: 0, functions: 0 } }),
+    ).toEqual([
+      './example/src/:statements',
+      './example/src/:lines',
+      './example/src/:branches',
+      './example/src/:functions',
+    ]);
   });
 });

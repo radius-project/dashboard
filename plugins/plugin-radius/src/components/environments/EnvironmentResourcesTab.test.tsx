@@ -90,7 +90,8 @@ describe('EnvironmentResourcesTab', () => {
   it('EV-03: does not list the environment itself among its resources', async () => {
     await renderTab([
       makeResource('frontend', environmentId),
-      { ...environment },
+      // Membership alone includes this row; only the self-ID guard excludes it.
+      { ...environment, properties: { environment: environmentId } },
     ]);
 
     await waitFor(() => {
@@ -98,5 +99,6 @@ describe('EnvironmentResourcesTab', () => {
     });
 
     expect(listedResourceNames()).toEqual(['frontend']);
+    expect(listedResourceNames()).not.toContain(environment.name);
   });
 });

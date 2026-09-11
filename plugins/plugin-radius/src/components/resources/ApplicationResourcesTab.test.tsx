@@ -97,7 +97,8 @@ describe('ApplicationResourcesTab', () => {
   it('AR-03: does not list the application itself among its resources', async () => {
     await renderTab([
       makeResource('frontend', applicationId),
-      { ...application },
+      // Membership alone includes this row; only the self-ID guard excludes it.
+      { ...application, properties: { application: applicationId } },
     ]);
 
     await waitFor(() => {
@@ -105,5 +106,6 @@ describe('ApplicationResourcesTab', () => {
     });
 
     expect(listedResourceNames()).toEqual(['frontend']);
+    expect(listedResourceNames()).not.toContain(application.name);
   });
 });

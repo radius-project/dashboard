@@ -115,7 +115,7 @@ coverage could fall to zero without failing a build. Phase 0 closed this; see
 | 0     | Record the behavior                 | dashboard  | Done        | Public exports, route table, request table, page inventory, and a coverage floor are written down |
 | 1     | Harden existing behavior            | dashboard  | In progress | Every shipped page, table, tab, and domain rule has a real test before it is rearchitected. Ten of the thirteen untested `plugin-radius` components now have one; `packages/app` and `packages/backend` remain |
 | 2     | Freeze the pre-extraction baseline  | dashboard  | In progress | Real-renderer graph journeys and graph records pass and are frozen at a reviewed baseline        |
-| 3     | Plugin contract and packaging       | dashboard  | Done        | The published package surface is pinned and breaking it fails a pull request                     |
+| 3     | Plugin contract and packaging       | dashboard  | In progress | Source exports, registration metadata, manifests, and coverage-policy shape are pinned; runtime wiring and built/packed consumer evidence remain |
 | 4     | Consume shared packages             | dashboard, needs `ai-extensions` releases | Not started | The plugin uses `core` and `graph-react`; no parallel implementation remains |
 | 5     | Host integration and installed artifact | dashboard | Not started | Both hosts mount the plugin from packed tarballs with no source aliases                      |
 | 6     | Permanent CI gates                  | both       | Not started | Coverage floors, contract, packaging, and the consumer pin are required for merge and publish    |
@@ -294,7 +294,8 @@ Two consequences follow from Jest's semantics:
   directory has a group, `global` measures nothing, reports 0%, and fails the build for a reason
   unrelated to coverage. There is deliberately no `global` entry.
 - Because `global` is gone, a newly added workspace would be unguarded by default. `PU-23` closes
-  that hole by failing when a workspace has neither a floor nor a recorded exemption.
+  that hole by requiring an exact `./<workspace>/src/` group or a recorded exemption. A threshold
+  on one component subdirectory does not protect the rest of the workspace.
 
 An exemption is used where a floor would be zero — `packages/backend` is 0% covered, and a floor of
 zero is not a floor. The exemption carries the reason and is removed when Phase 1 adds the first
@@ -302,7 +303,13 @@ real test.
 
 The enforcement mechanism is itself verified by a negative test rather than assumed: raising one
 group's floor to 99 must fail the run naming that exact group. `PU-20`–`PU-25` then keep the
-configuration in the shape that works, so the failure mode above cannot be reintroduced.
+configuration in the shape that works. PU-32–PU-34 reject partial-directory groups, zero,
+negative, non-finite, out-of-range, and missing required percentages. Optional branch/function
+floors, when present, must also be positive.
+
+These are configuration-shape guards, not a historical ratchet: lowering a positive threshold
+to another positive value does not fail them. Review must reject unjustified decreases; automated
+comparison against the base revision is still a Phase 6 deliverable.
 
 Jest is kept for the duration of this plan, and that is a deliberate choice rather than inertia.
 Backstage does not offer a supported Vitest path, so adopting Vitest means leaving the Backstage
@@ -468,6 +475,13 @@ and the divergence where resource reads select the first cluster while the graph
 the last. A `KNOWN-DEFECT` field that does **not** change during extraction is also reported, so a
 defect cannot be silently carried forward.
 
+`KNOWN-DEFECT` tests are characterization pins, not correctness invariants, even when colocated
+with Tier A tests. Fixing a linked defect must replace its pin with the desired-behavior regression
+test in the same reviewed change. For example, fixing #355 replaces GU-08's inequality with
+equality between isolated and sequential layouts. Record the issue, old/new behavior, and affected
+fixture fields in the expected-change manifest when graph records are available. This narrow
+exception never permits weakening unrelated topology, rendering, or interaction assertions.
+
 ## Phases
 
 ### Phase 0: record the behavior — **done**
@@ -534,13 +548,16 @@ now have suites, all of which assert the error path:
   `ResourceTable` renders **without** a resource type, which selects the
   Type/Application/Environment/Status column set rather than the environment one. That column set
   had no test.
-- `ResourceTypeDetailPage` (RT-01–RT-27). This was the single largest gap in the repository: 2,693
+- `ResourceTypeDetailPage` (RT-01–RT-30). This was the single largest gap in the repository: 2,693
   lines at roughly 20% statements. The existing three tests never left the Overview tab, so the
   entire schema interpretation was unexercised. The new cases walk the Properties and Output
   Properties tabs and pin the type formatting (`$ref` to last segment, `items.type` to `T[]`,
   `items.$ref` to `Ref[]`, bare `array`, `additionalProperties` to `map`, untyped to `object`),
   requiredness, read-only filtering in both directions, the upper/lower-case `Schema` fallbacks, the
-  recursive `definitions` discovery, and the descending version ordering.
+  recursive `definitions` discovery, and the descending version ordering. RT-28–RT-29 use real
+  route parameters and request-sensitive stubs to cover different namespaces/types and refetching
+  after navigation. RT-30 preserves repeated property names by API version and parent path rather
+  than overwriting them in a name-keyed map.
 - `ApplicationListInfoCard` (AC-01–AC-08) and `EnvironmentListInfoCard` (EC-01–EC-08). Priority 4
   above: the two components a host can embed **without** a route, so they are published surface
   rather than internal detail, and neither had any test.
@@ -565,7 +582,9 @@ application's own name is in the breadcrumbs *and* in the Application column of 
 an environment's name is in the Environment column of each of its resources. Whole-page and even
 whole-table queries therefore cannot distinguish "the parent is wrongly listed as its own child"
 from "the rows correctly say which parent they belong to". AR-03 and EV-03 read the Name column
-specifically. Both originally passed against the wrong evidence.
+specifically. Both originally passed against the wrong evidence. Their parent fixtures must also
+have matching membership properties: with empty properties, the ordinary membership predicate
+already excludes the parent and a missing explicit self-ID filter remains invisible.
 
 This moved `plugins/plugin-radius` from 61.22% to **69.19%** statements, 46.23% to **58.79%**
 functions, and 33% to **46.74%** branches, and the floors are raised accordingly.
@@ -597,15 +616,20 @@ skipped under schedule pressure. Nothing in Phase 4 may start until this is froz
   journeys fail.
 
 **Done so far.** The Appendix E fixtures exist at
-`packages/rad-components/src/__fixtures__/graph/`, and the Tier A invariants GU-01–GU-10 are
-implemented against them. They run under Jest rather than Chromium because Tier A asserts
-structural properties of the model, which a stubbed canvas cannot falsify; Tier B and Tier C still
-require the real renderer and remain outstanding.
+`packages/rad-components/src/__fixtures__/graph/`, and the model-level portions of GU-01–GU-10
+are implemented against them; Appendix B distinguishes correctness assertions, defect pins, and
+remaining renderer evidence. They run under Jest rather than Chromium and cannot establish that
+the host actually renders the model. Tier B and Tier C still require the real renderer.
+
+GU-02 compares exact source/target multisets against fixture-owned expectations, not a count
+derived from the builder or its parser. GU-02a demonstrates that redirected, reversed, missing,
+and extra edges fail those assertions, including count-preserving duplicates in the multi-tier
+graph. This is model-level assertion sensitivity, not the pending GU-20 real-renderer/CSS check.
 
 They are written against `buildGraphModel` in `packages/rad-components/src/graphModel.ts` rather
 than against `initialNodes` directly. That indirection is the point: Tier A must survive extraction
-unchanged, so it must not name the implementation being extracted. Phase 4 repoints that one
-adapter at the shared package and the invariants keep running.
+unchanged (apart from reviewed linked-defect replacements), so it must not name the implementation
+being extracted. Phase 4 repoints that one adapter at the shared package and the invariants keep running.
 
 **Outstanding:** the record normalizer and committed records (GU-21–GU-24), every Tier B journey,
 the connection regression cases, and GU-20.
@@ -631,21 +655,35 @@ passes while the defect is present.
 Completion evidence: GU-01–GU-21, CN-01–CN-08, and ER-01–ER-10 pass and are reviewed;
 records are committed; GU-20 demonstrates the suite cannot pass against a stub.
 
-### Phase 3: plugin contract and packaging — **done**
+### Phase 3: plugin contract and packaging — **in progress**
 
 Make the published package a tested contract before anything consumes it as one. This phase is
 dashboard-owned and independent of `ai-extensions`; it can start before any shared package exists.
 
-- Assert the exact public export list, and that it is sorted and free of accidental additions.
-- Assert every route ref id and path, every extension's name and mount point, the `radiusApiRef`
-  id, and the feature flag name.
-- Assert the plugin's api factory builds a working `RadiusApi` from a mock `kubernetesApiRef`.
-- Assert package metadata under the public name `@radius-project/backstage-plugin-radius`:
+Implemented source-level evidence:
+
+- PU-01–PU-10 pin current public exports, route-ref ids and parameter names, the root route map,
+  extension display names, the `radiusApiRef` id, factory registration, and the feature flag.
+  They do not execute the factory, resolve lazy components, or exercise extension mount points.
+- PU-11–PU-19 inspect source manifests: package role, declared built entry points, file allowlist,
+  side-effects declaration, peer dependencies, current name, and publication/license decisions.
+  PU-17 records `workspace:^` as source wiring, not as a defect: Yarn rewrites it during packing.
+  These assertions do not establish that files exist in a tarball or dependencies can be installed.
+- PU-20–PU-25 and PU-32–PU-34 enforce coverage configuration shape, complete source-directory
+  groups, and positive percentage floors. They do not enforce a historical no-decrease ratchet.
+
+Remaining evidence required to complete the contract and publication work:
+
+- Assert route paths and extension mount points through host routing, and lazy component resolution
+  (PU-28 and Phase 5 host journeys).
+- Invoke the registered factory with a mock `kubernetesApiRef` and exercise the resulting
+  `RadiusApi`, including its request contract.
+- Assert packed metadata under the approved public name `@radius-project/backstage-plugin-radius`:
   `backstage.role`, entry points, `files`, `sideEffects`, that React and `react-router-dom` stay
   peer dependencies, and that no `@internal/*` or `workspace:` dependency survives packing.
-- Assert the built artifact: build the package and check the emitted `dist` exports match the
-  source entry point and that type declarations resolve from a consumer fixture.
-- Assert the package-boundary rules: the plugin may import `core` and `graph-react`; nothing in
+- Assert the built artifact (PU-26/PU-27): build the package and check the emitted `dist` exports
+  match the source entry point and that declarations resolve from a consumer fixture.
+- Implement PB-01–PB-05. The plugin may import `core` and `graph-react`; nothing in
   the plugin may import Canvas or another adapter's private source; browser code imports
   browser-safe subpaths rather than a root barrel.
 - Resolve the license discrepancy before publishing. The repository root declares **no** license at
@@ -653,11 +691,12 @@ dashboard-owned and independent of `ai-extensions`; it can start before any shar
   Apache-2.0, and `rad-components` declares **ISC** and is **not** private — making it the one
   package in the repository that is currently publishable and the one that disagrees with the
   repository license. `PU-18` records this state so it is resolved deliberately rather than
-  discovered at publish time, and asserts that notices for moved code are preserved.
+  discovered at publish time. Preservation of moved-code notices remains PU-30 work.
 
-Completion evidence: PU-01–PU-25 and PB-01–PB-05 pass; renaming an export, changing a route
-path, moving a peer dependency into `dependencies`, or weakening a coverage floor fails a pull
-request.
+Completion requires the runtime-wiring checks above plus PU-26–PU-28, PU-30, and PB-01–PB-05.
+Boundary checks involving shared packages land with Phase 4; clean installed-consumer evidence
+lands in Phase 5. Neither is complete today. Existing checks detect changed source exports,
+route-ref ids/parameters, and peer-dependency placement, but are not published-plugin qualification.
 
 ### Phase 4: consume shared packages and remove duplicates
 
@@ -666,8 +705,10 @@ This is the extraction. The plugin switches to `@radius-project/core` and
 
 - Regenerate the graph records and diff them against the Phase 2 baseline. Every difference must
   map to an entry in `graph-expected-changes.md`; an unexplained difference fails the check.
-- Tier A and Tier B requirements must pass **unchanged**. They are the evidence that the switch
-  preserved behavior; editing them in the same pull request is not permitted.
+- Tier A and Tier B correctness requirements must pass **unchanged** unless a separately approved
+  behavior change explicitly revises the requirement. `KNOWN-DEFECT` characterization pins are
+  the narrow exception described above: replace a pin with a desired-behavior test when fixing
+  its linked issue, with reviewed expected-change evidence. Never preserve a defect to keep a pin green.
 - Delete, do not migrate, the Tier E implementation unit tests for code that moved. Each deletion
   cites the Tier A, B, or C requirement that now covers the behavior.
 - Assert zero remaining parallel implementations of the resource-ID parser, the graph request
@@ -889,7 +930,7 @@ its issue is fixed, and that failure is the signal the fix landed, not a regress
 | #355  | Graph layout state leaks between applications via a module-level Dagre graph | GU-08                |
 | #356  | Cluster selection disagrees between `RadiusApi` and the graph request        | Phase 2, not yet written |
 | #357  | Graph builder does not validate resources: self-loops and duplicate node ids | GU-06a               |
-| #358  | The plugin cannot be published: private, placeholder name, workspace dep, `radiusApiRef` unexported | PU-10, PU-16, PU-17, PU-19 |
+| #358  | Publication/consumer blockers: private package, placeholder name, `radiusApiRef` unexported; source `workspace:^` alone is not a blocker | PU-10, PU-16, PU-19 |
 | #359  | `rad-components` declares ISC while the repository is Apache-2.0             | PU-18                |
 | #360  | Five page suites time out under parallel load and misreport as coverage failures | open decision 7 |
 | #361  | A resource type with no description shows placeholder container documentation | RT-07                |
@@ -1152,7 +1193,7 @@ its heading and primary controls.
 | ------ | ------------------------------------------------------- | ----------- |
 | RE     | `components/recipes/RecipeListPage.tsx`                  | RE-01–RE-06 |
 | RL     | `components/resources/ResourceListPage.tsx`              | RL-01–RL-07 |
-| RT     | `components/resourcetypes/ResourceTypeDetailPage.tsx`    | RT-01–RT-27 |
+| RT     | `components/resourcetypes/ResourceTypeDetailPage.tsx`    | RT-01–RT-30 |
 | AC     | `components/applications/ApplicationListInfoCard.tsx`    | AC-01–AC-08 |
 | EC     | `components/environments/EnvironmentListInfoCard.tsx`    | EC-01–EC-08 |
 | EV     | `components/environments/EnvironmentResourcesTab.tsx`    | EV-01–EV-03 |
@@ -1165,10 +1206,11 @@ its heading and primary controls.
 for cross-cutting error states. New component suites take the next free two-letter prefix and must
 not reuse one listed in this appendix.
 
-#### Plugin contract: PU-01–PU-25
+#### Plugin contract and coverage policy
 
 PU-01–PU-25 are implemented (`plugin.test.ts`, `packaging.test.ts`, `coveragePolicy.test.ts`).
-PU-26 onward are Phase 4/5 requirements that depend on a built or installed artifact.
+PU-26–PU-30 are outstanding Phase 4/5 requirements. PU-31 is reserved for the Phase 1 completion
+layer's empty-exemption guard. PU-32–PU-34 are implemented policy-sensitivity cases.
 
 | ID    | Requirement                                                                                   |
 | ----- | --------------------------------------------------------------------------------------------- |
@@ -1188,20 +1230,23 @@ PU-26 onward are Phase 4/5 requirements that depend on a built or installed arti
 | PU-14 | React, React DOM, and `react-router-dom` are peer dependencies, not dependencies               |
 | PU-15 | The declared React peer range covers React 18, which both hosts run                            |
 | PU-16 | KNOWN-DEFECT: the package is `private` and cannot be published                                 |
-| PU-17 | KNOWN-DEFECT: it depends on a `workspace:` range that no external consumer can resolve         |
+| PU-17 | The source manifest declares the graph workspace dependency; packing/installability is not inferred |
 | PU-18 | KNOWN-DEFECT: the repository, plugin, and graph package disagree on license                    |
 | PU-19 | The package name is pinned pending npm-scope confirmation                                      |
 | PU-20 | Coverage floors are defined in the root config, where the repo-wide run honors them            |
 | PU-21 | No workspace declares a floor the repo-wide run would silently ignore                          |
 | PU-22 | No `global` group exists, which would measure the files no path group claims                   |
-| PU-23 | Every workspace has either a floor or a recorded exemption                                     |
-| PU-24 | Every floor points at a directory that exists                                                  |
-| PU-25 | Every floor states at least a statement and a line threshold                                   |
+| PU-23 | Every workspace has an exact complete source-directory group or a recorded exemption           |
+| PU-24 | Every floor points at an existing workspace source directory, not a narrower path               |
+| PU-25 | Statements and lines are required; every declared floor is a finite percentage greater than zero and at most 100 |
 | PU-26 | A built `dist` exposes the same named exports as the source entry point                        |
 | PU-27 | Emitted type declarations resolve with `tsc --noEmit` from a consumer fixture                   |
 | PU-28 | Each lazily imported extension component resolves without throwing                             |
 | PU-29 | If `rad-components` retains exports, it forwards only: no layout, renderer, or domain logic    |
 | PU-30 | The published manifest declares the agreed license and preserves notices for moved code        |
+| PU-32 | Narrowing a group to one component directory is detected as an unguarded workspace              |
+| PU-33 | Zero, negative, non-finite, and greater-than-100 percentages are rejected                        |
+| PU-34 | Missing mandatory floors and zero optional floors are rejected                                 |
 
 #### Backend plugin: BE-01–BE-05
 
@@ -1215,22 +1260,26 @@ PU-26 onward are Phase 4/5 requirements that depend on a built or installed arti
 
 #### Graph: GU-01–GU-24
 
-Each requirement is tagged with its tier from the graph test taxonomy. Tier A and B must not
-change during extraction. Tier C changes only through the expected-change manifest.
+Each requirement is tagged with its tier from the graph test taxonomy. Tier A and B correctness
+requirements remain stable during extraction; the linked-defect replacement exception above
+applies to characterization pins, not unrelated invariants. Tier C changes only through the
+expected-change manifest.
 
 | ID    | Tier | Requirement                                                                                        |
 | ----- | ---- | -------------------------------------------------------------------------------------------------- |
-| GU-01 | A    | Every resource in the input yields exactly one node, and node ids are unique — **done**             |
-| GU-02 | A    | Every retained connection yields exactly one edge — **done**                                        |
+| GU-01 | A    | Every resource yields one node — **done**; unique ids remain a separate duplicate-id defect pin     |
+| GU-02 | A    | Retained connections exactly match fixture-owned source/target multisets — **done**; invalid/self connections are separate defect pins |
+| GU-02a | A   | Redirected, reversed, missing, and extra edges fail the topology assertions — **done**              |
 | GU-03 | A    | Every edge endpoint resolves to a node present in the same graph — **done**                         |
 | GU-04 | A    | A connection to a resource absent from the graph is dropped or stubbed, never left dangling — **done, KNOWN-DEFECT** |
-| GU-05 | A    | A connection with an unparseable id is skipped without dropping its node or other edges — **done, KNOWN-DEFECT** |
+| GU-05 | A    | An unparseable connection does not drop its owning node — **done**                                |
+| GU-05a | A   | Unparseable connections should be skipped; today's dangling edge is a **KNOWN-DEFECT pin**, not desired behavior |
 | GU-05b| A    | Building the model does not mutate the caller's graph — **done, KNOWN-DEFECT**                      |
 | GU-06 | A    | A self-referential connection produces no duplicate node and no self-loop — **done, KNOWN-DEFECT**  |
-| GU-07 | A    | Rendering is deterministic: the same fixture rendered twice produces the same record — **done**      |
+| GU-07 | A    | Building the same fixture twice yields the same model — **done**; rendered-record determinism remains pending |
 | GU-08 | A    | Rendering graph A then graph B produces the same result as rendering graph B alone — **done, KNOWN-DEFECT** |
 | GU-09 | A    | Every node receives a finite position and no two node bounding boxes overlap — **partly done** (finite positions; overlap needs the real renderer) |
-| GU-10 | A    | Node count and edge count are preserved from model through layout to render — **done**               |
+| GU-10 | A    | Node identities and edge relationships survive layout — **done**; preservation through rendering remains pending |
 | GU-11 | A    | Unmounting and remounting with the same data produces the same record and leaks no timers           |
 | GU-12 | B    | A node is findable by its resource name through its accessible name                                 |
 | GU-13 | B    | A connection between two named resources is represented in the rendered output                      |
@@ -1348,12 +1397,13 @@ RU-02 now target the live implementation.
 
 ### Appendix G: coverage floors
 
-Two sets of numbers. The **enforced** floors are live in the root `package.json` today, set to the
-measured value so that any regression fails immediately. The **target** floors are the Phase 6
-ratchet. See "Where coverage floors must live" for why these are root path groups rather than
-per-workspace config.
+Two sets of numbers. The **enforced** floors are live in the root `package.json` today, rounded
+down from measured coverage. A result below a configured floor fails; a smaller regression within
+that rounding margin may pass. The **target** floors and automated no-decrease ratchet are Phase 6
+work. See "Where coverage floors must live" for why these are root path groups rather than
+per-workspace config and why the current shape guard is not a historical ratchet.
 
-Enforced today (measured after Phases 0 and 3, the Tier A graph invariants, and the Phase 1 page,
+Enforced today (measured after Phase 0, Phase 3 source checks, Tier A model assertions, and Phase 1 page,
 tab, and card suites; `n/a` means the metric has no data in that workspace, and an omitted value
 means a floor would be zero and therefore meaningless):
 
