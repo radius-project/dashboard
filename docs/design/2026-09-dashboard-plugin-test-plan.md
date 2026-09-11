@@ -119,6 +119,7 @@ coverage could fall to zero without failing a build. Phase 0 closed this; see
 | 6     | Permanent CI gates                  | both       | Not started | Coverage floors, contract, packaging, and the consumer pin are required for merge and publish    |
 | 7     | Accessibility, visual, reliability  | dashboard  | Not started | Keyboard and axe coverage, reviewed screenshots, and scheduled failure-mode checks               |
 | 8     | Release qualification               | both       | Not started | The published plugin loads in the control-plane image and in an external Backstage host          |
+| 9     | Migrate the test corpus to `Radius.*` | dashboard, tracks `radius` releases | Not started | Tests and fixtures describe the resource-type model the product is moving to, not the legacy one |
 
 Every phase is executed in `radius-project/dashboard`. The repository column records what each phase
 depends on, not where the work happens.
@@ -139,6 +140,9 @@ Phases 0–2 must complete **before** any extraction begins; the design makes a 
 real-renderer baseline a prerequisite, not a follow-up. Phase 3 may run in parallel with Phase 2,
 and is the only pre-extraction stream that is not gated on the graph consolidation landing upstream.
 Phase 4 is the extraction itself and is gated on Phase 2's records. Phases 5–8 follow it.
+
+Phase 9 is sequenced separately and deliberately: it is the only phase whose timing is an open
+question rather than a dependency. See open decision 8.
 
 ## Rules for every change
 
@@ -712,6 +716,135 @@ distinguish a test-system failure from a product failure and must prove cleanup.
 
 Complete when every host case passes before release. Skipped or simulated runs do not count.
 
+### Phase 9: migrate the test corpus from `Applications.Core` to `Radius.*`
+
+Almost the entire test corpus is written against the legacy `Applications.Core` namespace. That was
+correct when it was written and is becoming wrong. This phase moves it.
+
+Scope of the problem, measured by `git grep -c`: `Applications.` appears in **40 files** across
+`plugins/plugin-radius` and `packages/rad-components`, including every graph fixture added in
+Phase 2, `sampledata.ts`, and 57 occurrences in `api.test.ts` alone. `Radius.` appears in 15. The
+dashboard's own UI already leans the other way — `ResourceTypesTable.tsx` sets
+`EXCLUDED_NAMESPACES = ['Applications.', 'Microsoft.']`, so the resource types page deliberately
+hides the namespace nearly all of our tests are written in.
+
+**One correction to the premise, which changes the urgency but not the direction.** As of the
+research done for this plan, `Applications.Core` is **not formally deprecated**. There is no
+announcement, issue, or release note declaring it deprecated and no stated removal release; the
+`Applications.*` providers are still registered out of the box in
+`deploy/manifest/built-in-providers/self-hosted/`; the Dapr integration documentation states the
+legacy types "remain supported" for that integration and there is no `Radius.Dapr` namespace at all;
+and the `Radius.*` types are still **preview-gated** behind `--preview` / `RADIUS_PREVIEW=true`. The
+v0.59 release notes say only that `Radius.Core` "will eventually replace the existing
+`Applications.Core` types". There is also **no migration guide** in the docs.
+
+So this is not a deadline-driven migration. It is driven by the fact that we are about to freeze a
+behavioral baseline and then rearchitect against it, and freezing a baseline that describes only the
+legacy model bakes legacy assumptions into the thing that is supposed to detect regressions.
+
+**It is not a namespace rename, and planning it as one will fail.** `Radius.Core` contains only five
+first-class types — `applications`, `environments`, `recipePacks`, `terraformSettings`,
+`bicepSettings`. Everything else became a **user-defined resource type** registered from a YAML
+manifest, spread across `Radius.Compute`, `Radius.Data`, `Radius.Security`, `Radius.Messaging`,
+`Radius.Storage`, and `Radius.AI`. Some legacy types have no successor at all.
+
+| Legacy type                                | New type                        | Notes                                                          |
+| ------------------------------------------ | ------------------------------- | -------------------------------------------------------------- |
+| `Applications.Core/applications`           | `Radius.Core/applications`      | Clean rename; `properties.extensions` removed                    |
+| `Applications.Core/environments`           | `Radius.Core/environments`      | Properties differ substantially, see below                       |
+| `Applications.Core/containers`             | `Radius.Compute/containers`     | `properties.container` (single) becomes `properties.containers` (map) |
+| `Applications.Core/gateways`               | `Radius.Compute/routes`         | Renamed **and** re-modeled                                       |
+| `Applications.Core/httpRoutes`             | **removed, no successor**       | Removed in v0.28; services are part of container rendering       |
+| `Applications.Core/secretStores`           | `Radius.Security/secrets`       | Name-level match only; different shape                           |
+| `Applications.Core/volumes`                | `Radius.Compute/persistentVolumes` | Name-level match only; legacy was Azure-KeyVault-oriented     |
+| `Applications.Core/extenders`              | **no successor identified**     | Superseded by user-defined types; unverified                     |
+| `Applications.Datastores/redisCaches`      | `Radius.Data/redisCaches`       | Clean rename                                                     |
+| `Applications.Datastores/mongoDatabases`   | `Radius.Data/mongoDatabases`    | Clean rename                                                     |
+| `Applications.Datastores/sqlDatabases`     | `Radius.Data/sqlServerDatabases` | Inferred, and contradicted by a stale in-repo example           |
+| `Applications.Messaging/rabbitMQQueues`    | `Radius.Messaging/rabbitMQ`     | Note the dropped `Queues` suffix                                 |
+| `Applications.Dapr/*`                      | **no successor**                | Dapr still requires the legacy types; keep this fixture coverage  |
+
+The last row matters for scope: this phase is not "delete every `Applications.*` fixture". Dapr
+coverage must stay on the legacy types, so the corpus ends up deliberately mixed, and the tests need
+to say which namespace they are exercising and why.
+
+What actually differs, and therefore what the fixtures must change:
+
+- **Resource ids.** The overall shape is unchanged, but three real forms break the current parser.
+  Type names may contain **digits** (`Radius.Data/neo4jDatabases`); the normative rule is
+  `^[a-z][A-Za-z0-9]+$`, against our `[a-zA-Z]+`. Namespaces may contain digits too, normatively
+  `^[A-Z][A-Za-z0-9]+\.[A-Z][A-Za-z0-9]+$`. And globally-scoped recipe packs produce ids with **no
+  `resourceGroups` segment at all** — `/planes/radius/local/providers/Radius.Core/recipePacks/kubernetes-pack`
+  — which our regex requires unconditionally. This is the same parser as the one already failing on
+  `.` and `_`; the two should be fixed together, and the character classes should be taken from
+  `pkg/cli/manifest/validation.go` rather than guessed again.
+- **API versions are per-type, not per-namespace.** `Applications.*` is uniformly
+  `2023-10-01-preview`; most `Radius.*` types are `2025-08-01-preview`, but
+  `Radius.Data/neo4jDatabases` is `2025-09-11-preview`, and a user-defined type may carry any
+  `^\d{4}-\d{2}-\d{2}(-preview)?$` value. No fixture or test may hardcode a single global
+  api-version, and `ApplicationTab`'s `2023-10-01-preview` fallback needs a test for what happens
+  when the dynamic lookup fails against a `Radius.*` type.
+- **Environments.** `properties.compute` is gone; the Kubernetes namespace moved to
+  `properties.providers.kubernetes.namespace`. `properties.recipes` is gone, replaced by
+  `properties.recipePacks`. `properties.providers` changed shape, not just contents — legacy
+  `azure: { scope }` became `azure: { subscriptionId, resourceGroupName?, identity? }`, and
+  `kubernetes` is a new key. `recipeConfig` split into separate `terraformSettings` and
+  `bicepSettings` resources referenced by id, and `extensions` is gone. Our
+  `EnvironmentProperties` interface models the union of both and should be split.
+- **Connections.** The legacy `iam` field is gone. Every `Radius.*` type inherits a frozen base
+  schema carrying `application`, `environment`, `connections`, and `codeReference`.
+- **The graph response gained a required field.** `Radius.Core/applications/getGraph` returns
+  `connections[].kind`, a required enum of `Connection` or `Dependency`, plus optional `icons` and
+  `resources[].iconHash`. The request body is no longer empty — it accepts `includeIcons` and
+  `dependsOnEdges`. The upstream wire-change note calls out consumers keying off the enum shape and
+  **names the dashboard**. Our graph model has no concept of edge kind today, so this is a real
+  feature gap, not just a fixture rename.
+
+Work items:
+
+- **NS-01** Every fixture and test declares the namespace it exercises. No test silently assumes one.
+- **NS-02** The Appendix E graph fixtures gain `Radius.*` counterparts. `both-namespaces.json`
+  already covers the mixed case and stays.
+- **NS-03** `sampledata.ts` is corrected and re-namespaced. It currently declares
+  `type: 'Applications.Core/container'` — **singular** — while its own id says `containers`. Nothing
+  caught that, and it means the container branch in `initialNodes` has never been exercised by the
+  sample data, because that branch compares against the plural string.
+- **NS-04** The two hardcoded namespace couplings in `AppGraph.tsx` are made namespace-aware: the
+  layout `order` check against `Applications.Core/containers`, and the gateway direction correction
+  against `Applications.Core/gateways`. Under the new model these are `Radius.Compute/containers`
+  and `Radius.Compute/routes`, so both silently stop applying — a container is laid out as if it
+  were a leaf, and the gateway direction workaround stops firing. Whether the workaround is even
+  still needed against the new graph API must be checked, not assumed.
+- **NS-05** `getEquivalentTypes` covers only applications and environments. Extend it, or replace it,
+  using the mapping above — and record the types that deliberately have no equivalent.
+- **NS-06** `parseResourceId` accepts digits in type and namespace segments and ids with no
+  resource group. Shares a fix with the existing parser defect.
+- **NS-07** The graph model carries `connections[].kind`, and a fixture covers a `Dependency` edge.
+- **NS-08** `EnvironmentProperties` is split into legacy and current shapes rather than a union, so
+  a test cannot accidentally assert against a field combination that no real payload produces.
+- **NS-09** At least one fixture uses a **user-defined** resource type in a non-`Radius.` namespace,
+  since that is the central case of the new model and nothing in our corpus exercises it.
+- **NS-10** Dapr fixtures stay on `Applications.*` with a comment explaining why.
+
+**Sequencing.** This phase must not run during Phases 1 and 2. Those phases freeze current behavior,
+and re-namespacing the corpus mid-freeze would change the fixtures and the expected records at the
+same time as the implementation changes underneath them, which is exactly the ambiguity the
+baseline exists to prevent. It also should not be folded into Phase 4, for the same reason in
+reverse: extraction and re-namespacing would land together and no diff would be attributable.
+
+The natural slot is **after Phase 4's record diff is green**, as a deliberate Tier C
+expected-change event with its own `graph-expected-changes.md` entry. Alternatively it runs before
+Phase 1 if the team decides the legacy baseline is not worth freezing at all — but that decision has
+to be made now, not discovered later, because every fixture added in the meantime increases the
+cost.
+
+**Prerequisite:** confirm with maintainers whether the dashboard is expected to support the
+`Radius.*` types before they leave preview. If yes, this moves ahead of Phase 7. See open decision 8.
+
+Completion evidence: NS-01–NS-10 pass; the record diff for the re-namespaced corpus is reviewed and
+its expected-change manifest is emptied afterwards; no test outside the Dapr fixtures asserts
+against an `Applications.*` type without a stated reason.
+
 ## Test data and safety
 
 - Test data is small, readable, fixed, and uses obvious placeholder names (`demo-app`, `demo-env`,
@@ -776,6 +909,13 @@ are recorded here because they changed what this plan tests.
    takes seconds, which is worth understanding before it is masked. The recommendation is to leave
    it until Phase 1 rewrites those suites, and to treat any CI occurrence before then as a
    fix-immediately signal.
+8. **When the corpus moves to `Radius.*`, and whether the dashboard must support those types while
+   they are still preview-gated.** Phase 9 argues the slot is after Phase 4's record diff is green,
+   but the alternative — moving before Phase 1 and never freezing a legacy baseline at all — is
+   cheaper if maintainers expect `Applications.*` to be unsupported sooner than the plan assumes.
+   The research behind Phase 9 found no formal deprecation, no removal release, and no migration
+   guide, so this cannot be resolved from the public record and needs a maintainer answer. Deciding
+   late is the expensive option, because every fixture added in the meantime is written twice.
 
 ## Appendices
 
