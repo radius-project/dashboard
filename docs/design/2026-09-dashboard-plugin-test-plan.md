@@ -179,8 +179,19 @@ Two properties of this setup shape the plan.
 **The Backstage CLI owns the Jest configuration.** There is no `jest.config.js` and no `jest` key in
 any workspace `package.json` today; `backstage-cli repo test` supplies the config, transform, and
 environment. Coverage floors are therefore added as per-workspace `jest` overrides that the CLI
-merges, not as a hand-written config that would fight it. Any proposal to replace the runner is out
-of scope for this plan.
+merges, not as a hand-written config that would fight it.
+
+Jest is kept for the duration of this plan, and that is a deliberate choice rather than inertia.
+Backstage does not offer a supported Vitest path, so adopting Vitest means leaving the Backstage
+build system for tests and maintaining per-workspace configuration that has to be re-aligned on
+every CLI upgrade. More importantly, a runner migration is incompatible with the mechanism this plan
+depends on: Phases 0–2 freeze current behavior so that the extraction can be diffed against it, and
+changing the runner inside that window makes every failure ambiguous between an extraction fault and
+a migration artifact. The migration also does not address the risk that motivates this work, because
+the tests that cover the graph run in Playwright, which is runner-agnostic. Revisit it as a separate
+change once the baseline is frozen and Phase 4 is complete, or sooner if the Backstage CLI gains
+supported Vitest support. Nothing here depends on Jest specifically; it depends on not changing
+runners mid-extraction.
 
 **`jest-canvas-mock` is present because React Flow calls canvas APIs that jsdom does not implement.**
 A stubbed canvas can satisfy a render assertion without laying anything out, which is why the graph
@@ -192,7 +203,9 @@ jsdom stays useful for the request boundary and for states that contain no graph
 here, so its published artifact crosses a runner, module-format, and transform boundary on the way
 in. That seam is what the installed-artifact requirements (IA-01–IA-08) and the consumer pin
 (CP-01–CP-05) exist to cover; passing tests upstream are not evidence that the package works in this
-host.
+host. The boundary follows from ownership, not from tooling preference, so converting dashboard to
+Vitest would not remove it — and testing a dependency with the same runner its author used is weaker
+evidence, not stronger, because it can hide packaging and interop faults.
 
 ### Layers
 
@@ -552,6 +565,10 @@ are recorded here because they changed what this plan tests.
 4. **Quantization bucket size for graph record positions.** Too coarse hides a real layout
    regression; too fine produces churn on every harmless change. Calibrate in Phase 2 against the
    Appendix E fixtures.
+5. **Whether to move dashboard from Jest to Vitest, after Phase 4.** Deferred rather than rejected.
+   Deciding it requires knowing whether the Backstage CLI has gained supported Vitest support by
+   then, and the decision should be made against a frozen baseline so the migration itself can be
+   verified. It must not be taken while extraction is in flight.
 
 ## Appendices
 
