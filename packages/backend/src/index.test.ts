@@ -22,28 +22,16 @@ jest.mock('@backstage/backend-defaults', () => ({
 
 // Each installed module is replaced with an identifiable stub so that importing
 // the entry point does not boot six real Backstage backend plugins.
-jest.mock('@backstage/plugin-app-backend', () => ({ __stub: 'app' }), {
-  virtual: true,
-});
-jest.mock('@backstage/plugin-proxy-backend', () => ({ __stub: 'proxy' }), {
-  virtual: true,
-});
-jest.mock('@backstage/plugin-auth-backend', () => ({ __stub: 'auth' }), {
-  virtual: true,
-});
-jest.mock(
-  '@backstage/plugin-auth-backend-module-guest-provider',
-  () => ({ __stub: 'auth-guest' }),
-  { virtual: true },
-);
-jest.mock('@backstage/plugin-catalog-backend', () => ({ __stub: 'catalog' }), {
-  virtual: true,
-});
-jest.mock(
-  '@backstage/plugin-kubernetes-backend',
-  () => ({ __stub: 'kubernetes' }),
-  { virtual: true },
-);
+jest.mock('@backstage/plugin-app-backend', () => ({ __stub: 'app' }));
+jest.mock('@backstage/plugin-proxy-backend', () => ({ __stub: 'proxy' }));
+jest.mock('@backstage/plugin-auth-backend', () => ({ __stub: 'auth' }));
+jest.mock('@backstage/plugin-auth-backend-module-guest-provider', () => ({
+  __stub: 'auth-guest',
+}));
+jest.mock('@backstage/plugin-catalog-backend', () => ({ __stub: 'catalog' }));
+jest.mock('@backstage/plugin-kubernetes-backend', () => ({
+  __stub: 'kubernetes',
+}));
 
 const installedModules = async (): Promise<string[]> => {
   const resolved = await Promise.all(

@@ -75,12 +75,12 @@ Progression as the plan is executed, re-measured after each phase increment:
 
 | Workspace                       | Baseline | After 0 and 3 | After Tier A | After first Phase 1 pages | After Phase 1 components | After Phase 1 complete |
 | ------------------------------- | -------: | ------------: | -----------: | ------------------------: | -----------------------: | ---------------------: |
-| `plugins/plugin-radius`         |   54.77% |        58.42% |       58.42% |                    61.22% |                   69.19% |             **70.90%** |
-| `plugins/plugin-radius-backend` |   62.50% |        62.50% |       62.50% |                    62.50% |                   62.50% |                 62.50% |
+| `plugins/plugin-radius`         |   54.77% |        58.42% |       58.42% |                    61.22% |                   69.19% |             **72.70%** |
+| `plugins/plugin-radius-backend` |   62.50% |        62.50% |       62.50% |                    62.50% |                   62.50% |             **93.75%** |
 | `packages/rad-components`       |   80.00% |        81.33% |   **86.52%** |                    86.52% |                   86.52% |                 86.52% |
 | `packages/app`                  |   75.00% |        75.00% |       75.00% |                    75.00% |                   75.00% |             **93.51%** |
 | `packages/backend`              |    0.00% |         0.00% |        0.00% |                     0.00% |                    0.00% |            **100.00%** |
-| Suites / cases                  |   31/127 |        33/159 |       34/260 |                    36/272 |                   43/331 |            **53/411** |
+| Suites / cases                  |   31/127 |        33/159 |       34/260 |                    36/272 |                   43/331 |            **53/427** |
 
 Statement coverage only; the enforced floors in Appendix G carry all four metrics.
 
@@ -103,7 +103,7 @@ The raw counts understate the gap. Three findings matter more:
   `ResourceListPage`, `ResourceLayout`, `OverviewTab`, `DetailsTab`, `RecipeListPage`,
   `RecipeTable`, and the `resources/resource.ts` domain model. Phase 1 has now closed every one of
   them that ships behavior; only `packages/app/src/index.tsx`, the barrels, and `setupTests.ts`
-  remain deliberately uncovered. See Appendix F.
+  remain deliberately without direct tests. See Appendix F.
 
 There was no coverage threshold in CI: `yarn test:all` ran with `--coverage` but no floor, so
 coverage could fall to zero without failing a build. Phase 0 closed this; see
@@ -114,7 +114,7 @@ coverage could fall to zero without failing a build. Phase 0 closed this; see
 | Phase | Name                                | Repository | Status      | Outcome                                                                       |
 | ----- | ----------------------------------- | ---------- | ----------- | ------------------------------------------------------------------------------ |
 | 0     | Record the behavior                 | dashboard  | Done        | Public exports, route table, request table, page inventory, and a coverage floor are written down |
-| 1     | Harden existing behavior            | dashboard  | Done        | Every shipped page, table, tab, card, host component, and domain rule has a real test before it is rearchitected. All thirteen `plugin-radius` components, both host workspaces, and the declaration modules are covered; `packages/backend` no longer carries a coverage exemption |
+| 1     | Harden existing behavior            | dashboard  | Done        | Every shipped page, table, tab, card, host component, backend-plugin lifecycle, and domain rule has a real test before it is rearchitected. All thirteen `plugin-radius` components, both host workspaces, the backend plugin, and the declaration modules are covered; `packages/backend` no longer carries a coverage exemption |
 | 2     | Freeze the pre-extraction baseline  | dashboard  | In progress | Real-renderer graph journeys and graph records pass and are frozen at a reviewed baseline        |
 | 3     | Plugin contract and packaging       | dashboard  | In progress | Source exports, registration metadata, manifests, and coverage-policy shape are pinned; runtime wiring and built/packed consumer evidence remain |
 | 4     | Consume shared packages             | dashboard, needs `ai-extensions` releases | Not started | The plugin uses `core` and `graph-react`; no parallel implementation remains |
@@ -226,16 +226,18 @@ suite executes less code, so the run can fail on a threshold rather than on the 
 the reader at the wrong cause. That was observed during Phase 0 — branches reported 30.72% against a
 31% floor purely because seven suites had timed out.
 
-It is recorded rather than fixed. Raising `testTimeout` during the window in which Phases 0–2 freeze
-behavior would change the harness while it is being used as a reference, which is the specific thing
-this plan forbids elsewhere. It is carried as open decision 7 and re-examined in Phase 1, when those
-same page suites are rewritten anyway. If it is seen in CI before then, it should be fixed
-immediately — a gate that fails for an unrelated reason trains reviewers to ignore it.
+It was recorded rather than fixed while Phases 0–2 froze behavior, because raising `testTimeout`
+during the reference window would change the harness being used as evidence. Phase 1 re-examined it
+after the page suites were rewritten: the actual CI command, `yarn test:all` at the default worker
+count, passed all **53 suites / 427 cases** in **38.257 seconds** on the completed Phase 1 tree. That
+downgrades open decision 7 from an active blocker to an environment-specific guardrail; #360 stays
+open because the original failure occurred only under loaded parallel execution and one clean run
+does not prove the contention mode is gone.
 
-The workaround while it stands is `yarn test:all --maxWorkers=2`, which passes consistently on a
-machine where the default worker count does not. That is also the cheapest confirmation that a
-failure is this problem and not a real one: if the suite passes at reduced parallelism and fails at
-full, it is contention.
+The diagnostic remains `yarn test:all --maxWorkers=2`. If a future default-worker run fails while
+the reduced-parallelism run passes, the difference identifies contention rather than a product or
+coverage regression. The repository's standard local coverage command keeps `--maxWorkers=2` for
+reproducibility, while CI continues to exercise its configured default.
 
 ## Test architecture
 
@@ -511,8 +513,8 @@ What executing this phase changed beyond the deliverables:
   exposed the project-config trap.
 
 Completion evidence: `yarn test:all` fails if coverage drops, demonstrated by raising one group's
-floor and observing the named failure; Appendix A matches the tree; PU-20–PU-25 keep the
-configuration in the only shape that enforces anything.
+floor and observing the named failure; Appendix A matches the tree; PU-20–PU-25 and PU-31–PU-35
+keep the configuration in the only shape that enforces anything.
 
 ### Phase 1: harden existing behavior — **done**
 
@@ -525,14 +527,16 @@ Priority order, highest regression risk first:
    `resourceId.ts` is **done**: the existing suite is now tagged RU-01 (well-formed ids) and RU-02
    (rejected ids) against the live `rad-components` implementation, including two `KNOWN-DEFECT`
    cases recording inputs it wrongly rejects (names containing `.` or `_`, and resource types
-   containing a digit). Both are legal Radius names. `resource.ts` and `resourceTypes.ts` remain.
+   containing a digit). Both are legal Radius names. `resource.ts` (RS-01–RS-14) and
+   `resourceTypes.ts` are also covered.
 2. `ResourceListPage`, `ResourceLayout`, `OverviewTab`, `DetailsTab`, `ApplicationResourcesTab`,
    `EnvironmentResourcesTab` — the untested spine of resource navigation.
 3. `RecipeListPage`, `RecipeTable` — untested rendering over already-tested aggregation.
 4. `ApplicationListInfoCard`, `EnvironmentListInfoCard` — the two exported cards a consumer can
    embed without a route.
 5. `packages/app` `Root`, `HomePage`, `LearnCard`, `CommunityCard`, `SupportCard`.
-6. `plugin-radius-backend/src/index.ts` registration.
+6. `plugin-radius-backend/src/service/router.ts` registration and router behavior. Its `index.ts`
+   is a barrel, not the registration itself.
 
 Every page test must assert the error path. Today no page test asserts what a user sees when the
 Kubernetes proxy returns a non-OK response, yet `makeRequest` throws on every such response.
@@ -595,14 +599,19 @@ functions, and 33% to **46.74%** branches, and the floors are raised accordingly
 recipe-name-to-source mapping), `routes.ts` (RO-01–RO-07), `features.ts` (FF-01–FF-05), and
 `resources/resource.ts` (RS-01–RS-14). In the hosts: `packages/app`'s `Root`, `HomePage`, the three
 home cards, and `apis.ts` (RR, HP, LC, CC, SC, AP), and `packages/backend`'s entry point
-(BK-01–BK-06). That took `plugin-radius` to **70.90%** statements, `packages/app` from
+(BK-01–BK-06). Together with the lower layer's RT-28–RT-30 and stricter page assertions, that took
+`plugin-radius` to **72.70%** statements, `packages/app` from
 75.00/0.00/0.00/78.79 to **93.51/100.00/83.33/92.86**, and `packages/backend` from 0% to **100%**,
 which let its coverage exemption be deleted and replaced by a measured floor (PU-31).
+The backend plugin registration and lifecycle are now pinned by BE-01–BE-05, taking
+`plugin-radius-backend` from 62.50/n/a/50.00/71.43 to **93.75/n/a/100/100**.
 
 Three things the closing increment had to work around, none of them defects in the code under test.
 `resources/resource.ts` emits no JavaScript, so RS is written as compile-time characterization:
-each `@ts-expect-error` asserts a shape the model must reject, and fails `yarn tsc` if the model is
-widened. `packages/backend`'s entry point is nothing but `backend.add(import(…))`, which the CLI's
+exact-type and optional-key helpers assert the intended model property rather than accepting any
+unrelated TypeScript error. When #365 is fixed, RS-14 is deleted and replaced with assertions for
+the corrected model rather than inverted into a permanent defect assertion. `packages/backend`'s
+entry point is nothing but `backend.add(import(…))`, which the CLI's
 default SWC options leave as a native dynamic import that Jest's CJS runtime refuses to execute;
 the workspace therefore carries a documented `jest.transform` override. And Backstage appends a
 visually hidden `", Opens in a new window"` to the accessible name of every external link, so the
@@ -612,8 +621,8 @@ home-card href assertions match on a prefix rather than an exact string.
 regression cases rather than a colocated unit test.
 
 Completion evidence: RU-01–RU-14, every component prefix listed in Appendix B, and BE-01–BE-05
-pass; every substantive file in Appendix F has a direct test; coverage floors are raised to the new
-measured values.
+pass; every substantive file in Appendix F has a direct test or is a barrel/infrastructure file
+covered indirectly; coverage floors are raised to the new measured values.
 
 ### Phase 2: freeze the pre-extraction baseline — **in progress**
 
@@ -715,7 +724,8 @@ Remaining evidence required to complete the contract and publication work:
 Completion requires the runtime-wiring checks above plus PU-26–PU-28, PU-30, and PB-01–PB-05.
 Boundary checks involving shared packages land with Phase 4; clean installed-consumer evidence
 lands in Phase 5. Neither is complete today. Existing checks detect changed source exports,
-route-ref ids/parameters, and peer-dependency placement, but are not published-plugin qualification.
+route-ref ids/parameters, peer-dependency placement, coverage-policy weakening, and selection of the
+Sucrase Jest transform, but are not published-plugin qualification.
 
 ### Phase 4: consume shared packages and remove duplicates
 
@@ -951,13 +961,13 @@ its issue is fixed, and that failure is the signal the fix landed, not a regress
 | #357  | Graph builder does not validate resources: self-loops and duplicate node ids | GU-06a               |
 | #358  | Publication/consumer blockers: private package, placeholder name, `radiusApiRef` unexported; source `workspace:^` alone is not a blocker | PU-10, PU-16, PU-19 |
 | #359  | `rad-components` declares ISC while the repository is Apache-2.0             | PU-18                |
-| #360  | Five page suites time out under parallel load and misreport as coverage failures | open decision 7 |
+| #360  | Five page suites can time out under loaded parallel execution and misreport as coverage failures | Phase 1 default-worker recheck; open guardrail |
 | #361  | A resource type with no description shows placeholder container documentation | RT-07                |
 | #362  | `ResourceLayout` renders literal `undefined/undefined: undefined` off-route  | LY-04                |
 | #363  | The output-properties tab hides read-only nested properties and shows writable ones | RT-27         |
 | #364  | "Join us on Discord" navigates to the dashboard home page instead of Discord | CC-05, CC-06        |
 | #365  | `Resource.systemData` is required and typed `Record<string, never>`, so every fixture must be cast | RS-14 |
-| #366  | The Sucrase Jest transform's cache key ignores `instrument`, so an override that selects it reports 0% while its tests pass | Nothing; guardrail, fix is upstream |
+| #366  | The Sucrase Jest transform's cache key ignores `instrument`, so an override that selects it reports 0% while its tests pass | PU-35 guardrail; fix is upstream |
 
 Six notes on reading this table.
 
@@ -987,8 +997,10 @@ characterization is done before rearchitecture rather than after. `#364` is a on
 it survives visual review; CC-05 pins the wrong href and CC-06 pins the missing "opens in a new
 window" hint that the two working cards have. `#365` is a type defect: `systemData` is declared
 required and `Record<string, never>`, meaning "an object with no properties", so no honest value
-satisfies it and every fixture in the repository casts around it. RS-14's two `@ts-expect-error`s
-fail the moment the declaration is corrected, which is how the fix announces itself.
+satisfies it and every fixture in the repository casts around it. RS-14 now asserts the exact
+property type and requiredness, so it fails for the intended model change rather than for any
+unrelated TypeScript error. When #365 is fixed, the defect assertion is deleted and replaced with
+coverage of the corrected optional, open-valued field.
 
 `#366` is recorded the way `#360` is: a harness defect with no `KNOWN-DEFECT` assertion pinning it,
 because there is no product behavior to characterize. It differs from every other row in two ways
@@ -1036,8 +1048,8 @@ are recorded here because they changed what this plan tests.
 5. **Frontend system.** Both the legacy and the approved new frontend entry points are in scope,
    so contract and host tests cover both surfaces.
 6. **The Radius backend plugin is out of the initial distribution.** It is a health-only scaffold
-   and is not registered in the running backend. BE-01–BE-05 stay as maintenance coverage but are
-   explicitly not release gates.
+   and is not registered in the running backend. BE-01–BE-05 now provide maintenance coverage for
+   its router and lifecycle, but remain explicitly outside the release gates.
 
 ## Open decisions
 
@@ -1279,7 +1291,7 @@ and optional-key assertions fail `yarn tsc` when a declared contract changes.
 
 #### Plugin contract and coverage policy
 
-PU-01–PU-25 and PU-31–PU-34 are implemented (`plugin.test.ts`, `packaging.test.ts`,
+PU-01–PU-25 and PU-31–PU-35 are implemented (`plugin.test.ts`, `packaging.test.ts`,
 `coveragePolicy.test.ts`). PU-26–PU-30 are outstanding Phase 4/5 requirements that depend on a
 built or installed artifact.
 
@@ -1319,6 +1331,7 @@ built or installed artifact.
 | PU-32 | Narrowing a group to one component directory is detected as an unguarded workspace              |
 | PU-33 | Zero, negative, non-finite, and greater-than-100 percentages are rejected                        |
 | PU-34 | Missing mandatory floors and zero optional floors are rejected                                 |
+| PU-35 | No workspace selects the Sucrase Jest transform whose cache key ignores instrumentation          |
 
 #### Backend plugin: BE-01–BE-05
 
@@ -1433,7 +1446,7 @@ Records are generated and frozen in Phase 2 and diffed in Phase 4 against the
 
 At the start of Phase 1, forty of seventy-one source files. Sixteen are barrel `index.ts` files,
 covered indirectly by PU-01 and CU-00. Twenty-four needed a direct test; the Phase 1 increments have
-since closed most of them.
+since closed all of them.
 
 `packages/app` — all closed: `apis.ts` (AP), `components/Root/Root.tsx` (RR),
 `components/home/HomePage.tsx` (HP), `components/home/LearnCard.tsx` (LC),
@@ -1455,7 +1468,9 @@ fixture and Tier A invariant suites rather than by a colocated file.
 `resources/resource.ts` (RS). `setupTests.ts` is test infrastructure, not shipped code: it is
 executed by every suite in the workspace and has no behavior of its own to assert.
 
-`plugins/plugin-radius-backend` — `index.ts` (the plugin registration, not a barrel).
+`plugins/plugin-radius-backend` — closed: `service/router.ts` (BE-01–BE-05) covers health, 404,
+plugin registration and dependencies, router mounting and logging, and startup failure
+propagation. `index.ts` is a barrel and is covered indirectly through the package contract.
 
 `packages/backend` — closed: `src/index.ts` (BK). Covering it required a per-workspace
 `jest.transform` override, recorded in `packages/backend/package.json`: the CLI compiles
@@ -1473,7 +1488,8 @@ defective `getCacheKey` lives in `@backstage/cli-module-test-jest`.
 Barrels with no direct test: `packages/app/src/components/Root/index.ts`;
 `rad-components` `index.ts`, `components/index.ts`, `components/appgraph/index.ts`,
 `components/resourcenode/index.ts`; `plugin-radius` `index.ts`, `api/index.ts`,
-`resources/index.ts`, and the six `components/*/index.ts` files.
+`resources/index.ts`, and the six `components/*/index.ts` files; and
+`plugin-radius-backend/src/index.ts`.
 
 Resolved in Phase 0. The duplication was the inverse of what was first recorded here: all eleven
 consumers import `parseResourceId` from `@radapp.io/rad-components`, while the plugin's
@@ -1497,23 +1513,30 @@ workspace, and an omitted value means a floor would be zero and therefore meanin
 
 | Workspace                       | Statements | Branches | Functions | Lines |
 | ------------------------------- | ---------: | -------: | --------: | ----: |
-| `plugins/plugin-radius`         |        70% |      50% |       61% |   70% |
-| `plugins/plugin-radius-backend` |        62% |      n/a |       50% |   71% |
+| `plugins/plugin-radius`         |        72% |      54% |       64% |   72% |
+| `plugins/plugin-radius-backend` |        93% |      n/a |      100% |  100% |
 | `packages/rad-components`       |        86% |      81% |       80% |   85% |
 | `packages/app`                  |        93% |     100% |       83% |   92% |
 | `packages/backend`              |       100% |      n/a |      100% |  100% |
 
-The `plugin-radius` floors moved from 61/33/46/60 to 69/46/58/68 and then to 70/50/61/70 as the
-Phase 1 suites landed. Each raise is committed alongside the tests that earned it, so a floor is
-never aspirational.
+The `plugin-radius` floors moved from 61/33/46/60 to 69/46/58/68, then to 70/50/61/70, and finally
+to 72/54/64/72 as the Phase 1 suites and lower-layer review corrections landed. Each raise is
+committed alongside the tests that earned it, so a floor is never aspirational.
+
+The backend plugin floor moved from 62/n/a/50/71 to 93/n/a/100/100 when BE-01–BE-05 replaced the
+single health-check smoke test with router, registration, lifecycle, and failure-path coverage.
 
 `packages/app` previously carried no branch or function floor because both measured 0%: its
 statement coverage came from module loading, not from tests. Phase 1 closed that — the workspace is
 now 93.51/100/83.33/92.86, and the 0%-branch-and-function signature of load-only coverage is gone.
-The 100% branch floor is honest but narrow: the workspace contains exactly one branch point today,
-so the floor says "the one branch stays covered", not "all future branches will be". It is set at
-the measured value like every other floor, and the first uncovered branch someone adds will fail the
-run — which is the intended behavior, not a trap to relax.
+The 100% branch floor is honest but narrow: the workspace contains exactly one branch counter
+across the source set Backstage supplies through `collectCoverageFrom`, so the floor says "the one
+branch stays covered", not "all future branches will be". It is set at the measured value like every
+other floor, and the first uncovered branch someone adds will fail the run — which is the intended
+behavior, not a trap to relax. The deliberately untested `packages/app/src/index.tsx` is already in
+the statement and line denominator at 0/3, but contains no branch counters; it cannot make the
+branch floor impossible to satisfy unless its implementation itself gains a branch, at which point
+that new behavior needs a test or an explicit coverage-boundary decision.
 
 `packages/backend` was previously **exempt**, recorded in `coveragePolicy.test.ts` with its
 justification. Phase 1 gave it a test (BK-01–BK-06) and a measured floor, so the exemption was

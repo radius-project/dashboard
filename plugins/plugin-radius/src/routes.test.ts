@@ -70,7 +70,7 @@ describe('routes', () => {
     expect(published).toEqual(internal);
   });
 
-  it('RO-07: declares parameters only on the two detail routes and the two entity routes', () => {
+  it('RO-07: declares parameters only on the three detail and entity routes', () => {
     const parameterised = refs
       .filter(([, ref]) => ((ref as { params?: string[] }).params ?? []).length)
       .map(([name]) => name)

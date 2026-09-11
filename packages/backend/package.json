@@ -23,6 +23,22 @@
           }
         }
       ],
+      "\\.jsx$": [
+        "@backstage/cli/config/jestSwcTransform.js",
+        {
+          "jsc": {
+            "parser": {
+              "syntax": "ecmascript",
+              "jsx": true
+            },
+            "transform": {
+              "react": {
+                "runtime": "automatic"
+              }
+            }
+          }
+        }
+      ],
       "\\.(mts|cts|ts)$": [
         "@backstage/cli/config/jestSwcTransform.js",
         {
@@ -32,6 +48,22 @@
           "jsc": {
             "parser": {
               "syntax": "typescript"
+            }
+          }
+        }
+      ],
+      "\\.tsx$": [
+        "@backstage/cli/config/jestSwcTransform.js",
+        {
+          "jsc": {
+            "parser": {
+              "syntax": "typescript",
+              "tsx": true
+            },
+            "transform": {
+              "react": {
+                "runtime": "automatic"
+              }
             }
           }
         }

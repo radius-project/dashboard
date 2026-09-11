@@ -10,7 +10,10 @@ import path from 'path';
 
 interface PackageJson {
   name?: string;
-  jest?: { coverageThreshold?: Record<string, Record<string, number>> };
+  jest?: {
+    coverageThreshold?: Record<string, Record<string, number>>;
+    transform?: Record<string, string | [string, ...unknown[]]>;
+  };
 }
 
 const repoRoot = path.resolve(__dirname, '../../..');
@@ -162,5 +165,40 @@ describe('coverage policy', () => {
     // has to be added here, with a reason, and this assertion has to be changed
     // in the same pull request. The exemption cannot be reintroduced quietly.
     expect(EXEMPT).toEqual({});
+  });
+
+  it('PU-35: forbids workspace overrides that select the Sucrase Jest transform', () => {
+    // `jestSucraseTransform` lowers dynamic imports, which makes it tempting
+    // for backend entry-point tests, but its cache key ignores Jest's
+    // `instrument` flag. A no-coverage compile can therefore be reused by a
+    // coverage run and report 0% while the tests pass (dashboard#366).
+    const offenders = workspaceDirs.filter(dir => {
+      const configFiles = ['jest.config.js', 'jest.config.ts'];
+      if (
+        configFiles.some(file => {
+          const configPath = path.join(repoRoot, dir, file);
+          return (
+            fs.existsSync(configPath) &&
+            fs
+              .readFileSync(configPath, 'utf8')
+              .toLowerCase()
+              .includes('sucrase')
+          );
+        })
+      ) {
+        return true;
+      }
+
+      const transforms =
+        readJson(path.join(repoRoot, dir, 'package.json')).jest?.transform ??
+        {};
+
+      return Object.values(transforms).some(value => {
+        const transformer = Array.isArray(value) ? value[0] : value;
+        return transformer.toLowerCase().includes('sucrase');
+      });
+    });
+
+    expect(offenders).toEqual([]);
   });
 });

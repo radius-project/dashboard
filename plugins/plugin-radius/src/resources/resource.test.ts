@@ -8,6 +8,19 @@ import {
   ResourceList,
 } from './resource';
 
+type IsExact<Left, Right> =
+  (<Value>() => Value extends Left ? 1 : 2) extends <
+    Value,
+  >() => Value extends Right ? 1 : 2
+    ? true
+    : false;
+
+type IsOptional<Type, Key extends keyof Type> =
+  object extends Pick<Type, Key> ? true : false;
+
+const assertType = <Condition extends true>(condition: Condition): Condition =>
+  condition;
+
 /**
  * `resource.ts` is the domain model every page reads, and it is the one file in
  * Appendix F with no runtime code at all: it declares interfaces and nothing
@@ -15,11 +28,10 @@ import {
  * so the model could be reshaped without a single assertion failing even though
  * every page depends on the shape.
  *
- * These are therefore compile-time characterization tests. Each `@ts-expect-error`
- * asserts that a shape the model must reject *is* rejected, and fails `yarn tsc`
- * if the model is widened; the runtime assertions keep the cases executable and
- * readable. Both halves matter: dropping a required field makes an
- * `@ts-expect-error` stop erroring, which is itself a compile failure.
+ * These are therefore compile-time characterization tests. `assertType` checks
+ * the exact property type and whether a key is optional, so the suite fails for
+ * the intended model change rather than merely because an invalid literal
+ * happens to produce some TypeScript error.
  */
 describe('resource model', () => {
   it('RS-01: requires id, type, name, systemData, and properties on every resource', () => {
@@ -41,15 +53,9 @@ describe('resource model', () => {
   });
 
   it('RS-02: rejects a resource that omits its id', () => {
-    // @ts-expect-error `id` is required; widening the model breaks every link.
-    const resource: Resource = {
-      type: 'Applications.Core/applications',
-      name: 'demo-app',
-      systemData: {},
-      properties: {},
-    };
-
-    expect(resource.id).toBeUndefined();
+    expect(assertType<IsExact<IsOptional<Resource, 'id'>, false>>(true)).toBe(
+      true,
+    );
   });
 
   it('RS-03: treats tags as optional and string-valued', () => {
@@ -98,17 +104,15 @@ describe('resource model', () => {
       },
     };
 
-    const incomplete: Resource<ApplicationProperties> = {
-      id: '/id',
-      type: 'Applications.Core/applications',
-      name: 'demo-app',
-      systemData: {},
-      // @ts-expect-error `environment` is required on ApplicationProperties.
-      properties: { provisioningState: 'Succeeded' },
-    };
-
+    expect(
+      assertType<
+        IsExact<IsOptional<ApplicationProperties, 'environment'>, false>
+      >(true),
+    ).toBe(true);
+    expect(
+      assertType<IsExact<ApplicationProperties['environment'], string>>(true),
+    ).toBe(true);
     expect(application.properties.environment).toBe('/environment/default');
-    expect(incomplete.properties.environment).toBeUndefined();
   });
 
   it('RS-06: wraps list responses in a single value array, matching the UCP envelope', () => {
@@ -204,10 +208,19 @@ describe('resource model', () => {
   });
 
   it('RS-10: requires recipes on a pack, so an empty pack is an explicit empty map', () => {
-    // @ts-expect-error `recipes` is required even when a pack carries none.
-    const pack: RecipePackProperties = { provisioningState: 'Succeeded' };
-
-    expect(pack.recipes).toBeUndefined();
+    expect(
+      assertType<IsExact<IsOptional<RecipePackProperties, 'recipes'>, false>>(
+        true,
+      ),
+    ).toBe(true);
+    expect(
+      assertType<
+        IsExact<
+          RecipePackProperties['recipes'],
+          Record<string, RecipeDefinition>
+        >
+      >(true),
+    ).toBe(true);
   });
 
   it('RS-11: makes recipePacks optional, because only Radius.Core environments carry it', () => {
@@ -269,7 +282,9 @@ describe('resource model', () => {
    * ended up being the reason the fixtures are untyped.
    *
    * Correct behavior is an optional field with an open value type. This test
-   * records what the model does today.
+   * records what the model does today. Delete and replace the defect assertion
+   * when #365 is fixed; do not invert it into a permanent assertion for the
+   * corrected model.
    */
   it('RS-14: KNOWN-DEFECT systemData is required and can only ever be empty', () => {
     const resource: Resource = {
@@ -280,21 +295,12 @@ describe('resource model', () => {
       properties: {},
     };
 
-    // @ts-expect-error a populated systemData -- what UCP actually returns --
-    // does not satisfy Record<string, never>.
-    resource.systemData = { createdAt: '2026-09-01T00:00:00Z' };
-
-    // @ts-expect-error and the field cannot be omitted either.
-    const withoutSystemData: Resource = {
-      id: '/id',
-      type: 'Applications.Core/applications',
-      name: 'demo-app',
-      properties: {},
-    };
-
-    expect(resource.systemData).toEqual({
-      createdAt: '2026-09-01T00:00:00Z',
-    });
-    expect(withoutSystemData.systemData).toBeUndefined();
+    expect(
+      assertType<IsExact<IsOptional<Resource, 'systemData'>, false>>(true),
+    ).toBe(true);
+    expect(
+      assertType<IsExact<Resource['systemData'], Record<string, never>>>(true),
+    ).toBe(true);
+    expect(resource.systemData).toEqual({});
   });
 });
