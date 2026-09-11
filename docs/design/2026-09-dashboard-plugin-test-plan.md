@@ -957,8 +957,9 @@ its issue is fixed, and that failure is the signal the fix landed, not a regress
 | #363  | The output-properties tab hides read-only nested properties and shows writable ones | RT-27         |
 | #364  | "Join us on Discord" navigates to the dashboard home page instead of Discord | CC-05, CC-06        |
 | #365  | `Resource.systemData` is required and typed `Record<string, never>`, so every fixture must be cast | RS-14 |
+| #366  | The Sucrase Jest transform's cache key ignores `instrument`, so an override that selects it reports 0% while its tests pass | Nothing; guardrail, fix is upstream |
 
-Five notes on reading this table.
+Six notes on reading this table.
 
 `#356` is now the only entry with **no test pinning it**, and it is the one that cannot wait. It
 must be pinned during Phase 2, while the old behavior still exists to be recorded — the divergence
@@ -988,6 +989,22 @@ window" hint that the two working cards have. `#365` is a type defect: `systemDa
 required and `Record<string, never>`, meaning "an object with no properties", so no honest value
 satisfies it and every fixture in the repository casts around it. RS-14's two `@ts-expect-error`s
 fail the moment the declaration is corrected, which is how the fix announces itself.
+
+`#366` is recorded the way `#360` is: a harness defect with no `KNOWN-DEFECT` assertion pinning it,
+because there is no product behavior to characterize. It differs from every other row in two ways
+that the row itself has to state, or it misleads. **It cannot be fixed in this repository** — the
+defective `getCacheKey` is in the published `@backstage/cli-module-test-jest`, and
+`@backstage/cli/config/jestSucraseTransform.js` is a 27-line re-export shim, so the fix has to land
+in `backstage/backstage`. And **this repository's exposure is currently zero** — the CLI builds its
+transform map entirely from `jestSwcTransform`, nothing here selects Sucrase, and the
+`packages/backend` override uses SWC.
+
+It is tracked anyway because it is armed by a plausible future edit rather than by existing code,
+and the edit is one a maintainer is actively likely to make: Sucrase lowers `import()` to `require`
+unconditionally, which is exactly what a Backstage backend entry point needs to be testable, so it
+is the first override that appears to work. It then reports 0% on a file whose tests pass — which
+under the Phase 6 merge gate surfaces as a threshold failure naming a path group that is green,
+where the obvious response of lowering the floor is precisely wrong.
 
 ## Test data and safety
 
@@ -1445,9 +1462,13 @@ executed by every suite in the workspace and has no behavior of its own to asser
 `backend-plugin` packages with SWC `module.ignoreDynamic`, which leaves `import()` native, and Jest's
 CJS runtime then throws `A dynamic import callback was invoked without --experimental-vm-modules`
 the moment the entry point is loaded. Dropping `ignoreDynamic` lowers the six `backend.add(import(…))`
-calls to `require`, which the runtime can service. The Sucrase transform also works, but its
-`getCacheKey` ignores Jest's `instrument` flag, so a cached uninstrumented compile from an earlier
-`--coverage=false` run is reused and the file silently reports 0% — use SWC.
+calls to `require`, which the runtime can service. The Sucrase transform also works, and is the more
+obvious choice because it lowers `import()` unconditionally — but its `getCacheKey` ignores Jest's
+`instrument` flag, so a cached uninstrumented compile from an earlier `--coverage=false` run is
+reused and the file silently reports 0% while its tests pass. Use SWC. Nothing in this repository
+selects Sucrase today, so the exposure is zero until someone writes an override that reaches for it;
+the trap is recorded as #366, and the fix belongs upstream in `backstage/backstage` because the
+defective `getCacheKey` lives in `@backstage/cli-module-test-jest`.
 
 Barrels with no direct test: `packages/app/src/components/Root/index.ts`;
 `rad-components` `index.ts`, `components/index.ts`, `components/appgraph/index.ts`,
