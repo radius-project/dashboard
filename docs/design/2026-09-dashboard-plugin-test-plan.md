@@ -70,6 +70,19 @@ signature of coverage produced by module loading rather than by testing: the fil
 their top level is recorded, but nothing inside them is ever called. Statement coverage is not
 evidence of tested behavior here.
 
+Progression as the plan is executed, re-measured after each phase increment:
+
+| Workspace                       | Baseline | After 0 and 3 | After Tier A | After first Phase 1 pages |
+| ------------------------------- | -------: | ------------: | -----------: | ------------------------: |
+| `plugins/plugin-radius`         |   54.77% |        58.42% |       58.42% |                **61.22%** |
+| `plugins/plugin-radius-backend` |   62.50% |        62.50% |       62.50% |                    62.50% |
+| `packages/rad-components`       |   80.00% |        81.33% |   **86.52%** |                    86.52% |
+| `packages/app`                  |   75.00% |        75.00% |       75.00% |                    75.00% |
+| `packages/backend`              |    0.00% |         0.00% |        0.00% |                     0.00% |
+| Suites / cases                  |   31/127 |        33/159 |       34/260 |                 **36/272** |
+
+Statement coverage only; the enforced floors in Appendix G carry all four metrics.
+
 Plus one Playwright spec with one case, which loads the home page and asserts three strings.
 
 The raw counts understate the gap. Three findings matter more:
@@ -502,6 +515,31 @@ Priority order, highest regression risk first:
 
 Every page test must assert the error path. Today no page test asserts what a user sees when the
 Kubernetes proxy returns a non-OK response, yet `makeRequest` throws on every such response.
+
+**Done so far.** Beyond `resourceId.ts` above, the two pages that were at 0% statement coverage now
+have suites, both of which assert the error path:
+
+- `RecipeListPage` (RE-01–RE-08). The aggregation already had unit tests, but nothing exercised the
+  asynchronous half of the feature: the pack ids live on the environment and each pack is fetched
+  separately, so the fan-out, the `Promise.allSettled` tolerance of an unreachable pack, the
+  de-duplication of a pack referenced by two environments, and the environment selector were all
+  uncovered.
+- `ResourceListPage` (RL-01–RL-04). The page is a thin shell, but it is the only place
+  `ResourceTable` renders **without** a resource type, which selects the
+  Type/Application/Environment/Status column set rather than the environment one. That column set
+  had no test.
+
+Both error-path cases had to assert on *all* matches rather than a single one: `ResponseErrorPanel`
+renders the message twice, in the summary heading and again in the expanded detail list. A
+`getByText` there fails with "found multiple elements", which is a trap worth recording because the
+obvious assertion looks correct and fails for a reason unrelated to the behavior under test.
+
+This moved `plugins/plugin-radius` from 58.42% to **61.22%** statements and 40.80% to **46.23%**
+functions, and the floors are raised accordingly.
+
+**Outstanding:** `ResourceTypeDetailPage` at 20% is now the single largest gap in the repository,
+followed by `EnvironmentResourcesTab`, `packages/backend` at 0%, and the cluster-selection
+divergence.
 
 Completion evidence: RU-01–RU-14, CU-01–CU-26, and BE-01–BE-05 pass; every substantive file
 in Appendix F has a direct test; coverage floors are raised to the new measured values.
@@ -1078,13 +1116,13 @@ measured value so that any regression fails immediately. The **target** floors a
 ratchet. See "Where coverage floors must live" for why these are root path groups rather than
 per-workspace config.
 
-Enforced today (measured after Phases 0, 3, and the Tier A graph invariants; `n/a` means the metric
-has no data in that workspace, and an omitted value means a floor would be zero and therefore
-meaningless):
+Enforced today (measured after Phases 0 and 3, the Tier A graph invariants, and the first Phase 1
+page suites; `n/a` means the metric has no data in that workspace, and an omitted value means a
+floor would be zero and therefore meaningless):
 
 | Workspace                       | Statements | Branches | Functions | Lines |
 | ------------------------------- | ---------: | -------: | --------: | ----: |
-| `plugins/plugin-radius`         |        58% |      31% |       41% |   57% |
+| `plugins/plugin-radius`         |        61% |      33% |       46% |   60% |
 | `plugins/plugin-radius-backend` |        62% |      n/a |       50% |   71% |
 | `packages/rad-components`       |        86% |      81% |       80% |   85% |
 | `packages/app`                  |        75% |        — |         — |   78% |
