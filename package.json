@@ -71,10 +71,10 @@
   "jest": {
     "coverageThreshold": {
       "./plugins/plugin-radius/src/": {
-        "statements": 69,
-        "branches": 46,
-        "functions": 58,
-        "lines": 68
+        "statements": 70,
+        "branches": 50,
+        "functions": 61,
+        "lines": 70
       },
       "./plugins/plugin-radius-backend/src/": {
         "statements": 62,
@@ -88,8 +88,15 @@
         "lines": 85
       },
       "./packages/app/src/": {
-        "statements": 75,
-        "lines": 78
+        "statements": 93,
+        "branches": 100,
+        "functions": 83,
+        "lines": 92
+      },
+      "./packages/backend/src/": {
+        "statements": 100,
+        "functions": 100,
+        "lines": 100
       }
     }
   }

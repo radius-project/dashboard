@@ -7,6 +7,39 @@
   "backstage": {
     "role": "backend"
   },
+  "jest": {
+    "//": "The Backstage CLI transpiles backend TypeScript with SWC and `module.ignoreDynamic: true`, which leaves `import()` as a native dynamic import. Jest's CommonJS runtime cannot invoke one without --experimental-vm-modules, so `src/index.ts` -- which is nothing but six `backend.add(import(...))` calls -- could not be executed by a test at all. This repeats the CLI's own transform for this workspace with that one flag dropped, so `import()` is lowered to `require`. It is scoped to the workspace that needs it, which holds one source file and its test. Remove it if the entry point stops using dynamic imports. Note that `transform` is merged shallowly, so the file and YAML entries have to be restated rather than inherited.",
+    "transform": {
+      "\\.(mjs|cjs|js)$": [
+        "@backstage/cli/config/jestSwcTransform.js",
+        {
+          "module": {
+            "exportInteropAnnotation": true
+          },
+          "jsc": {
+            "parser": {
+              "syntax": "ecmascript"
+            }
+          }
+        }
+      ],
+      "\\.(mts|cts|ts)$": [
+        "@backstage/cli/config/jestSwcTransform.js",
+        {
+          "module": {
+            "exportInteropAnnotation": true
+          },
+          "jsc": {
+            "parser": {
+              "syntax": "typescript"
+            }
+          }
+        }
+      ],
+      "\\.(bmp|gif|jpg|jpeg|png|ico|webp|frag|xml|svg|eot|woff|woff2|ttf)$": "@backstage/cli/config/jestFileTransform.js",
+      "\\.(yaml)$": "@backstage/cli/config/jestYamlTransform.js"
+    }
+  },
   "scripts": {
     "start": "backstage-cli package start",
     "build": "backstage-cli package build",

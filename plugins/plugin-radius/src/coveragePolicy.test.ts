@@ -28,11 +28,14 @@ const thresholds: Record<string, Record<string, number>> = repo.jest
  * floor of zero is not a floor, so an untested workspace is listed here instead
  * of being given a meaningless threshold. Removing an entry is the signal that
  * the workspace has earned a real floor.
+ *
+ * The list is currently empty: `@internal/backend` was the only entry, and
+ * Phase 1 gave it a test (BK-01--BK-06) and a measured floor. It is kept rather
+ * than deleted because PU-23 needs a mechanism for the next unguarded
+ * workspace, and an empty list is the correct state for that mechanism to be
+ * in -- PU-31 asserts it stays empty unless a new exemption is argued for.
  */
-const EXEMPT: Record<string, string> = {
-  '@internal/backend':
-    'Backstage backend entry point only; 0% covered, so any floor would be zero. Phase 1 adds the first test and the floor with it.',
-};
+const EXEMPT: Record<string, string> = {};
 
 const workspaceDirs = ['packages', 'plugins'].flatMap(group =>
   fs
@@ -151,5 +154,13 @@ describe('coverage policy', () => {
       './example/src/:branches',
       './example/src/:functions',
     ]);
+  });
+
+  it('PU-31: records no coverage exemptions, so every workspace has a measured floor', () => {
+    // Phase 1 removed the last one (`@internal/backend`). PU-23 still consults
+    // this list, so a future workspace can be exempted deliberately -- but it
+    // has to be added here, with a reason, and this assertion has to be changed
+    // in the same pull request. The exemption cannot be reintroduced quietly.
+    expect(EXEMPT).toEqual({});
   });
 });
