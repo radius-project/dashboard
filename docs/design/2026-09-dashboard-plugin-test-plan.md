@@ -160,6 +160,40 @@ CI is authoritative for packaging, container, and control-plane checks.
 
 ## Test architecture
 
+### Tooling
+
+No new test framework is introduced. The existing runners are:
+
+| Concern                | Tool                                                          |
+| ---------------------- | ------------------------------------------------------------- |
+| Unit and component     | Jest 30 with the jsdom environment                            |
+| Rendering and queries  | React Testing Library, `@testing-library/jest-dom`, `user-event` |
+| Backstage harnesses    | `@backstage/test-utils`                                       |
+| HTTP boundary          | `msw`                                                         |
+| Canvas APIs under jsdom | `jest-canvas-mock`                                           |
+| Browser                | Playwright 1.62, Chromium                                     |
+| Visual                 | Storybook, screenshotted through Playwright                   |
+
+Two properties of this setup shape the plan.
+
+**The Backstage CLI owns the Jest configuration.** There is no `jest.config.js` and no `jest` key in
+any workspace `package.json` today; `backstage-cli repo test` supplies the config, transform, and
+environment. Coverage floors are therefore added as per-workspace `jest` overrides that the CLI
+merges, not as a hand-written config that would fight it. Any proposal to replace the runner is out
+of scope for this plan.
+
+**`jest-canvas-mock` is present because React Flow calls canvas APIs that jsdom does not implement.**
+A stubbed canvas can satisfy a render assertion without laying anything out, which is why the graph
+tiers that must not be fooled — Tier B and Tier C — run in real Chromium rather than under Jest.
+jsdom stays useful for the request boundary and for states that contain no graph.
+
+**The two repositories do not share a runner.** `ai-extensions` uses Vitest; dashboard uses Jest.
+`graph-react` will therefore be authored and tested under Vitest upstream and consumed under Jest
+here, so its published artifact crosses a runner, module-format, and transform boundary on the way
+in. That seam is what the installed-artifact requirements (IA-01–IA-08) and the consumer pin
+(CP-01–CP-05) exist to cover; passing tests upstream are not evidence that the package works in this
+host.
+
 ### Layers
 
 | Layer | Name              | Runner                      | Scope                                                                     |
@@ -311,7 +345,8 @@ Deliverables:
   points, `radiusApiRef` id, feature flag names, the Kubernetes proxy request table, and the page
   inventory.
 - A committed coverage baseline and a `jest.coverageThreshold` per workspace set **at the measured
-  baseline**, so coverage can only go up.
+  baseline**, so coverage can only go up. These are added as `jest` keys in each workspace
+  `package.json` for `backstage-cli repo test` to merge; no standalone Jest config is introduced.
 - Graph fixtures extracted from `sampledata.ts` into named JSON fixtures (Appendix E) covering the
   shapes the graph must handle.
 
