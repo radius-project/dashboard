@@ -67,5 +67,30 @@
     "*.{json,md}": [
       "prettier --write"
     ]
+  },
+  "jest": {
+    "coverageThreshold": {
+      "./plugins/plugin-radius/src/": {
+        "statements": 58,
+        "branches": 31,
+        "functions": 41,
+        "lines": 57
+      },
+      "./plugins/plugin-radius-backend/src/": {
+        "statements": 62,
+        "functions": 50,
+        "lines": 71
+      },
+      "./packages/rad-components/src/": {
+        "statements": 81,
+        "branches": 63,
+        "functions": 73,
+        "lines": 78
+      },
+      "./packages/app/src/": {
+        "statements": 75,
+        "lines": 78
+      }
+    }
   }
 }

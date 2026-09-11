@@ -41,7 +41,9 @@ this plan is corrected.
 
 ## Current state
 
-Measured on the `main` tree at the time of writing.
+Measured by running the suite, not estimated: `yarn test:all --coverageReporters=json-summary`
+against the tree at the time of writing. Test-case counts are pre-Phase-0 (31 suites, 127 cases);
+coverage percentages are the Phase 0 baseline.
 
 | Workspace                       | Source files | With a colocated test | Test cases |
 | ------------------------------- | -----------: | --------------------: | ---------: |
@@ -51,6 +53,22 @@ Measured on the `main` tree at the time of writing.
 | `packages/app`                  |            9 |                     1 |          1 |
 | `packages/backend`              |            1 |                     1 |          1 |
 | **Total**                       |       **71** |                **31** |    **127** |
+
+Measured coverage at that same point, which is what the Phase 0 floors are derived from:
+
+| Workspace                       | Statements | Branches | Functions |  Lines |
+| ------------------------------- | ---------: | -------: | --------: | -----: |
+| `plugins/plugin-radius`         |     54.77% |   31.09% |    40.80% | 55.16% |
+| `plugins/plugin-radius-backend` |     62.50% |      n/a |    50.00% | 71.43% |
+| `packages/rad-components`       |     80.00% |   59.09% |    73.33% | 77.27% |
+| `packages/app`                  |     75.00% |    0.00% |     0.00% | 78.79% |
+| `packages/backend`              |      0.00% |      n/a |       n/a |  0.00% |
+| **Total**                       | **56.95%** |**31.82%**|**42.03%** |**57.35%**|
+
+`packages/app` reports 75% of statements with 0% of branches and 0% of functions. That is the
+signature of coverage produced by module loading rather than by testing: the files are imported, so
+their top level is recorded, but nothing inside them is ever called. Statement coverage is not
+evidence of tested behavior here.
 
 Plus one Playwright spec with one case, which loads the home page and asserts three strings.
 
@@ -71,17 +89,18 @@ The raw counts understate the gap. Three findings matter more:
   `ResourceListPage`, `ResourceLayout`, `OverviewTab`, `DetailsTab`, `RecipeListPage`,
   `RecipeTable`, and the `resources/resource.ts` domain model. See Appendix F.
 
-There is no coverage threshold in CI. `yarn test:all` runs with `--coverage` but no floor, so
-coverage can fall to zero without failing a build.
+There was no coverage threshold in CI: `yarn test:all` ran with `--coverage` but no floor, so
+coverage could fall to zero without failing a build. Phase 0 closed this; see
+"Where coverage floors must live" for why the obvious placement does not work.
 
 ## Current status
 
 | Phase | Name                                | Repository | Status      | Outcome                                                                       |
 | ----- | ----------------------------------- | ---------- | ----------- | ------------------------------------------------------------------------------ |
-| 0     | Record the behavior                 | dashboard  | Not started | Public exports, route table, request table, page inventory, and a coverage floor are written down |
-| 1     | Harden existing behavior            | dashboard  | Not started | Every shipped page, table, tab, and domain rule has a real test before it is rearchitected       |
+| 0     | Record the behavior                 | dashboard  | Done        | Public exports, route table, request table, page inventory, and a coverage floor are written down |
+| 1     | Harden existing behavior            | dashboard  | In progress | Every shipped page, table, tab, and domain rule has a real test before it is rearchitected       |
 | 2     | Freeze the pre-extraction baseline  | dashboard  | Not started | Real-renderer graph journeys and graph records pass and are frozen at a reviewed baseline        |
-| 3     | Plugin contract and packaging       | dashboard  | Not started | The published package surface is pinned and breaking it fails a pull request                     |
+| 3     | Plugin contract and packaging       | dashboard  | Done        | The published package surface is pinned and breaking it fails a pull request                     |
 | 4     | Consume shared packages             | dashboard, needs `ai-extensions` releases | Not started | The plugin uses `core` and `graph-react`; no parallel implementation remains |
 | 5     | Host integration and installed artifact | dashboard | Not started | Both hosts mount the plugin from packed tarballs with no source aliases                      |
 | 6     | Permanent CI gates                  | both       | Not started | Coverage floors, contract, packaging, and the consumer pin are required for merge and publish    |
@@ -174,6 +193,30 @@ yarn test:e2e
 
 CI is authoritative for packaging, container, and control-plane checks.
 
+### Known flakiness in the existing suite
+
+Five `plugin-radius` page suites — `EnvironmentListPage`, `ApplicationListPage`,
+`ResourceTypesListPage`, `ResourceTypeDetailPage`, and `ResourcePage` — exceed Jest's default 5000 ms
+per-test timeout when the repo-wide run executes workspaces in parallel on a loaded machine. Each
+passes reliably in isolation, so this is a timing property of the harness, not a defect in the code
+under test.
+
+This matters more than a normal flake because it interacts with the coverage floors: a timed-out
+suite executes less code, so the run can fail on a threshold rather than on the timeout, pointing
+the reader at the wrong cause. That was observed during Phase 0 — branches reported 30.72% against a
+31% floor purely because seven suites had timed out.
+
+It is recorded rather than fixed. Raising `testTimeout` during the window in which Phases 0–2 freeze
+behavior would change the harness while it is being used as a reference, which is the specific thing
+this plan forbids elsewhere. It is carried as open decision 7 and re-examined in Phase 1, when those
+same page suites are rewritten anyway. If it is seen in CI before then, it should be fixed
+immediately — a gate that fails for an unrelated reason trains reviewers to ignore it.
+
+The workaround while it stands is `yarn test:all --maxWorkers=2`, which passes consistently on a
+machine where the default worker count does not. That is also the cheapest confirmation that a
+failure is this problem and not a real one: if the suite passes at reduced parallelism and fails at
+full, it is contention.
+
 ## Test architecture
 
 ### Tooling
@@ -194,8 +237,53 @@ Two properties of this setup shape the plan.
 
 **The Backstage CLI owns the Jest configuration.** There is no `jest.config.js` and no `jest` key in
 any workspace `package.json` today; `backstage-cli repo test` supplies the config, transform, and
-environment. Coverage floors are therefore added as per-workspace `jest` overrides that the CLI
-merges, not as a hand-written config that would fight it.
+environment. Coverage floors are therefore expressed as a `jest` key the CLI merges, not as a
+hand-written config that would fight it.
+
+#### Where coverage floors must live
+
+This is the one non-obvious result of Phase 0, and getting it wrong produces a gate that silently
+enforces nothing.
+
+CI runs `yarn test:all`, which is `backstage-cli repo test --coverage`. That command runs each
+workspace as a Jest **project**, and Jest rejects `coverageThreshold` inside a project config:
+
+```
+Option "coverageThreshold" is not supported in an individual project configuration.
+```
+
+It prints that as a warning and continues, so a per-workspace floor looks correct in review, passes
+CI, and never fails a build. Confusingly, the same per-workspace floor *does* work when a single
+workspace is run on its own, which makes a local spot-check agree with an expectation that CI does
+not share.
+
+Floors therefore live in the **root** `package.json`, as `coverageThreshold` path groups:
+
+```jsonc
+"jest": {
+  "coverageThreshold": {
+    "./plugins/plugin-radius/src/": { "statements": 58, "branches": 31, "functions": 41, "lines": 57 },
+    "./packages/rad-components/src/": { "statements": 81, "branches": 63, "functions": 73, "lines": 78 }
+    // ...
+  }
+}
+```
+
+Two consequences follow from Jest's semantics:
+
+- A file matched by a path group is **removed** from the `global` group. Once every source
+  directory has a group, `global` measures nothing, reports 0%, and fails the build for a reason
+  unrelated to coverage. There is deliberately no `global` entry.
+- Because `global` is gone, a newly added workspace would be unguarded by default. `PU-23` closes
+  that hole by failing when a workspace has neither a floor nor a recorded exemption.
+
+An exemption is used where a floor would be zero — `packages/backend` is 0% covered, and a floor of
+zero is not a floor. The exemption carries the reason and is removed when Phase 1 adds the first
+real test.
+
+The enforcement mechanism is itself verified by a negative test rather than assumed: raising one
+group's floor to 99 must fail the run naming that exact group. `PU-20`–`PU-25` then keep the
+configuration in the shape that works, so the failure mode above cannot be reintroduced.
 
 Jest is kept for the duration of this plan, and that is a deliberate choice rather than inertia.
 Backstage does not offer a supported Vitest path, so adopting Vitest means leaving the Backstage
@@ -363,7 +451,7 @@ defect cannot be silently carried forward.
 
 ## Phases
 
-### Phase 0: record the behavior
+### Phase 0: record the behavior — **done**
 
 Write down what ships today, then make it enforceable. No production behavior changes in this
 phase.
@@ -373,16 +461,26 @@ Deliverables:
 - Appendix A filled in from the real tree: public exports, route refs and paths, extension mount
   points, `radiusApiRef` id, feature flag names, the Kubernetes proxy request table, and the page
   inventory.
-- A committed coverage baseline and a `jest.coverageThreshold` per workspace set **at the measured
-  baseline**, so coverage can only go up. These are added as `jest` keys in each workspace
-  `package.json` for `backstage-cli repo test` to merge; no standalone Jest config is introduced.
+- A committed coverage baseline and a `coverageThreshold` set **at the measured baseline**, so
+  coverage can only go up. These live in the **root** `package.json` as path groups; per-workspace
+  floors are silently ignored by the repo-wide run CI executes. No standalone Jest config is
+  introduced. See "Where coverage floors must live".
 - Graph fixtures extracted from `sampledata.ts` into named JSON fixtures (Appendix E) covering the
-  shapes the graph must handle.
+  shapes the graph must handle. **Deferred to Phase 2**, where the records that consume them are
+  built; extracting fixtures with no consumer would freeze a shape nothing reads.
 
-Completion evidence: `yarn test:all` fails if coverage drops; Appendix A matches the tree; CU-00
-and PU-00 snapshot the current surface.
+What executing this phase changed beyond the deliverables:
 
-### Phase 1: harden existing behavior
+- The plugin's dead duplicate of `resourceId.ts` was deleted and its test moved to the package it
+  actually imported from. Recording behavior surfaced a file that no longer had any.
+- Threshold enforcement was verified with a negative test rather than assumed, which is what
+  exposed the project-config trap.
+
+Completion evidence: `yarn test:all` fails if coverage drops, demonstrated by raising one group's
+floor and observing the named failure; Appendix A matches the tree; PU-20–PU-25 keep the
+configuration in the only shape that enforces anything.
+
+### Phase 1: harden existing behavior — **in progress**
 
 Close the twenty-four substantive gaps in Appendix F and deepen the fifteen one-case smoke tests.
 Cover the domain logic and every shipped page in loading, empty, populated, and error states.
@@ -390,8 +488,23 @@ Cover the domain logic and every shipped page in loading, empty, populated, and 
 Priority order, highest regression risk first:
 
 1. `resources/resource.ts`, `resourceId.ts`, `resourceTypes.ts` — the domain model every page reads.
+   `resourceId.ts` is **done**: RU-01 and RU-02 are implemented against the live `rad-components`
+   implementation, including two `KNOWN-DEFECT` cases recording inputs it wrongly rejects (names
+   containing `.` or `_`, and resource types containing a digit). Both are legal Radius names that
+   currently lose their link, breadcrumb, and graph label silently.
 2. `ResourceListPage`, `ResourceLayout`, `OverviewTab`, `DetailsTab`, `ApplicationResourcesTab`,
    `EnvironmentResourcesTab` — the untested spine of resource navigation.
+3. `RecipeListPage`, `RecipeTable` — untested rendering over already-tested aggregation.
+4. `ApplicationListInfoCard`, `EnvironmentListInfoCard` — the two exported cards a consumer can
+   embed without a route.
+5. `packages/app` `Root`, `HomePage`, `LearnCard`, `CommunityCard`, `SupportCard`.
+6. `plugin-radius-backend/src/index.ts` registration.
+
+Every page test must assert the error path. Today no page test asserts what a user sees when the
+Kubernetes proxy returns a non-OK response, yet `makeRequest` throws on every such response.
+
+Completion evidence: RU-01–RU-14, CU-01–CU-26, and BE-01–BE-05 pass; every substantive file
+in Appendix F has a direct test; coverage floors are raised to the new measured values.
 3. `RecipeListPage`, `RecipeTable` — untested rendering over already-tested aggregation.
 4. `ApplicationListInfoCard`, `EnvironmentListInfoCard` — the two exported cards a consumer can
    embed without a route.
@@ -426,7 +539,7 @@ skipped under schedule pressure. Nothing in Phase 4 may start until this is froz
 Completion evidence: GU-01–GU-21, CN-01–CN-08, and ER-01–ER-10 pass and are reviewed;
 records are committed; GU-20 demonstrates the suite cannot pass against a stub.
 
-### Phase 3: plugin contract and packaging
+### Phase 3: plugin contract and packaging — **done**
 
 Make the published package a tested contract before anything consumes it as one. This phase is
 dashboard-owned and independent of `ai-extensions`; it can start before any shared package exists.
@@ -443,12 +556,16 @@ dashboard-owned and independent of `ai-extensions`; it can start before any shar
 - Assert the package-boundary rules: the plugin may import `core` and `graph-react`; nothing in
   the plugin may import Canvas or another adapter's private source; browser code imports
   browser-safe subpaths rather than a root barrel.
-- Resolve the license discrepancy before publishing: the plugin and repository declare Apache-2.0
-  while `rad-components` declares ISC. A test asserts the published manifest's license and that
-  notices for moved code are preserved.
+- Resolve the license discrepancy before publishing. The repository root declares **no** license at
+  all, the `LICENSE` file is Apache-2.0, `plugin-radius` and `plugin-radius-backend` declare
+  Apache-2.0, and `rad-components` declares **ISC** and is **not** private — making it the one
+  package in the repository that is currently publishable and the one that disagrees with the
+  repository license. `PU-18` records this state so it is resolved deliberately rather than
+  discovered at publish time, and asserts that notices for moved code are preserved.
 
-Completion evidence: PU-01–PU-16 and PB-01–PB-05 pass; renaming an export, changing a route
-path, or moving a peer dependency into `dependencies` fails a pull request.
+Completion evidence: PU-01–PU-25 and PB-01–PB-05 pass; renaming an export, changing a route
+path, moving a peer dependency into `dependencies`, or weakening a coverage floor fails a pull
+request.
 
 ### Phase 4: consume shared packages and remove duplicates
 
@@ -462,7 +579,8 @@ This is the extraction. The plugin switches to `@radius-project/core` and
 - Delete, do not migrate, the Tier E implementation unit tests for code that moved. Each deletion
   cites the Tier A, B, or C requirement that now covers the behavior.
 - Assert zero remaining parallel implementations of the resource-ID parser, the graph request
-  policy, the layout, and the renderer. Both dashboard copies of `resourceId.ts` collapse to one
+  policy, the layout, and the renderer. Phase 0 already removed the plugin's dead copy of
+  `resourceId.ts`, so one implementation remains in `rad-components`; Phase 4 collapses that to an
   import of `core`.
 - If `rad-components` keeps its exports for compatibility, assert it is a pure forwarding wrapper:
   no layout, no renderer, no domain logic, and no independent React Flow or Dagre dependency.
@@ -554,12 +672,12 @@ are recorded here because they changed what this plan tests.
 1. **Ownership.** Shared domain logic and graph rendering are owned and published by
    `ai-extensions` as `@radius-project/core` and `@radius-project/graph-react`. The Backstage plugin
    is published from this repository as `@radius-project/backstage-plugin-radius`. All three names
-   are subject to npm scope confirmation, so PU-07 pins whatever name ships.
+   are subject to npm scope confirmation, so PU-19 pins whatever name ships.
 2. **No duplicate graph model.** The design rejects duplicated implementations as a compatibility
    mechanism. This plan therefore tests a frozen baseline and a reviewed record diff instead of
    cross-repository parity fixtures.
 3. **`rad-components` is retired** as an implementation owner. At most it survives as a forwarding
-   wrapper with no layout, renderer, or domain logic, which PU-15 and Phase 4 assert.
+   wrapper with no layout, renderer, or domain logic, which PU-29 and Phase 4 assert.
 4. **React.** The dashboard stays on React 18. `graph-react` is qualified independently on 18 and
    19, so this plan carries a React matrix requirement (RX-01–RX-03) but no host upgrade.
 5. **Frontend system.** Both the legacy and the approved new frontend entry points are in scope,
@@ -573,9 +691,11 @@ are recorded here because they changed what this plan tests.
 1. **Coverage floor targets.** This plan ratchets from the measured baseline. The absolute targets
    in Appendix G are proposed, not agreed. The design's stronger rule — meaningful coverage of
    changed code, never lowering an existing baseline — governs where the two differ.
-2. **License.** The plugin and repository declare Apache-2.0; `rad-components` declares ISC. The
-   moved code's license must be confirmed by maintainers before publication, and PU-16 asserts
-   whatever is decided.
+2. **License.** Verified during Phase 0 and worse than first described: the repository root declares
+   no license, the `LICENSE` file is Apache-2.0, the two plugins declare Apache-2.0, and
+   `rad-components` declares ISC while not being private — so the only currently publishable
+   package is the one that disagrees with the repository. Maintainers must confirm the license for
+   the moved code before publication; `PU-18` records the present state and fails if it drifts.
 3. **Where the shared journey implementation lives** so that `ai-extensions`'s mandatory consumer
    CI can run it against the supported consumer pin without copying test code. CP-03 assumes it is
    invoked from the dashboard commit itself.
@@ -591,12 +711,18 @@ are recorded here because they changed what this plan tests.
    scope confirmation. Phase 3 asserts the plugin's name in package metadata, and the
    installed-artifact and consumer-pin requirements reference all three, so confirm the scope before
    those assertions are written rather than renaming them afterward.
+7. **Whether to raise `testTimeout` for the five slow page suites.** They exceed Jest's 5000 ms
+   default under parallel load while passing in isolation (see "Known flakiness in the existing
+   suite"). Raising the timeout makes the gate trustworthy; it also hides that a single page render
+   takes seconds, which is worth understanding before it is masked. The recommendation is to leave
+   it until Phase 1 rewrites those suites, and to treat any CI occurrence before then as a
+   fix-immediately signal.
 
 ## Appendices
 
 ### Appendix A: compatibility inventory
 
-Filled in during Phase 0 and asserted by PU-01–PU-06. The lists below are the current tree and
+Filled in during Phase 0 and asserted by PU-01–PU-09. The lists below are the current tree and
 are the values the contract tests must pin unless an approved change updates them.
 
 #### Public exports of `plugins/plugin-radius`
@@ -657,8 +783,8 @@ Resource type detail, Recipes list.
 
 | ID    | Requirement                                                                                  |
 | ----- | -------------------------------------------------------------------------------------------- |
-| RU-01 | `parseResourceId` returns plane, group, type, and name for well-formed ids                    |
-| RU-02 | `parseResourceId` returns null for malformed, empty, and partially formed ids                 |
+| RU-01 | `parseResourceId` returns plane, group, type, and name for well-formed ids — **done**         |
+| RU-02 | `parseResourceId` returns `undefined` for malformed, empty, and partially formed ids — **done** |
 | RU-03 | Resource type equivalence maps `Applications.Core/*` and `Radius.Core/*` in both directions   |
 | RU-04 | An unknown resource type yields no equivalents and takes the single-type path                 |
 | RU-05 | `resource.ts` accessors handle a resource with absent, empty, and partial `properties`        |
@@ -747,26 +873,43 @@ One requirement per shipped page, tab, table, and card, each covering loading, e
 and error states, and the accessible name of its heading and primary controls. CU-00 records the
 current rendered output of every page as a baseline before Phase 1 changes anything.
 
-#### Plugin contract: PU-01–PU-16
+#### Plugin contract: PU-01–PU-25
+
+PU-01–PU-25 are implemented (`plugin.test.ts`, `packaging.test.ts`, `coveragePolicy.test.ts`).
+PU-26 onward are Phase 4/5 requirements that depend on a built or installed artifact.
 
 | ID    | Requirement                                                                                   |
 | ----- | --------------------------------------------------------------------------------------------- |
-| PU-01 | The public export list matches Appendix A exactly; extra or missing exports fail               |
-| PU-02 | Every route ref has the declared id and path                                                   |
-| PU-03 | Every routable extension has the declared name and mount point                                 |
-| PU-04 | `radiusApiRef` has id `radius-api` and its factory depends only on `kubernetesApiRef`          |
-| PU-05 | The api factory returns a `RadiusApi` that issues a declared request against a mock            |
-| PU-06 | The feature flag list is exactly `radius-catalog`                                              |
-| PU-07 | `package.json` declares `backstage.role: frontend-plugin` and the expected entry points        |
-| PU-08 | React, React DOM, and `react-router-dom` are peer dependencies, not dependencies               |
-| PU-09 | No `@internal/*` or workspace-only package appears in `dependencies` of the published package  |
-| PU-10 | `files` includes everything the entry point resolves at runtime                                |
-| PU-11 | `sideEffects: false` holds — importing the entry point performs no observable side effect      |
-| PU-12 | A built `dist` exposes the same named exports as the source entry point                        |
-| PU-13 | Emitted type declarations resolve with `tsc --noEmit` from a consumer fixture                  |
-| PU-14 | Each lazily imported extension component resolves without throwing                             |
-| PU-15 | If `rad-components` retains exports, it forwards only: no layout, renderer, or domain logic    |
-| PU-16 | The published manifest declares the agreed license and preserves notices for moved code        |
+| PU-01 | The plugin exposes the id consumers register against (`radius`)                                |
+| PU-02 | The public export list matches Appendix A exactly; extra or missing exports fail               |
+| PU-03 | Every route ref has the declared id                                                            |
+| PU-04 | Every route ref declares the parameters callers must supply                                    |
+| PU-05 | The root route ref is bound into the plugin route map                                          |
+| PU-06 | `radiusApiRef` has id `radius-api`                                                             |
+| PU-07 | Exactly one api factory is registered, bound to `radiusApiRef`                                 |
+| PU-08 | The feature flag list is exactly `radius-catalog`                                              |
+| PU-09 | Every routable page is exposed as a named extension                                            |
+| PU-10 | KNOWN-DEFECT: `radiusApiRef` is not reachable from the entry point, so hosts cannot override it |
+| PU-11 | `package.json` declares `backstage.role: frontend-plugin`                                      |
+| PU-12 | `files` is `dist` only, and `publishConfig` points at built entry points                       |
+| PU-13 | `sideEffects: false` holds, so hosts can tree-shake the package                                |
+| PU-14 | React, React DOM, and `react-router-dom` are peer dependencies, not dependencies               |
+| PU-15 | The declared React peer range covers React 18, which both hosts run                            |
+| PU-16 | KNOWN-DEFECT: the package is `private` and cannot be published                                 |
+| PU-17 | KNOWN-DEFECT: it depends on a `workspace:` range that no external consumer can resolve         |
+| PU-18 | KNOWN-DEFECT: the repository, plugin, and graph package disagree on license                    |
+| PU-19 | The package name is pinned pending npm-scope confirmation                                      |
+| PU-20 | Coverage floors are defined in the root config, where the repo-wide run honors them            |
+| PU-21 | No workspace declares a floor the repo-wide run would silently ignore                          |
+| PU-22 | No `global` group exists, which would measure the files no path group claims                   |
+| PU-23 | Every workspace has either a floor or a recorded exemption                                     |
+| PU-24 | Every floor points at a directory that exists                                                  |
+| PU-25 | Every floor states at least a statement and a line threshold                                   |
+| PU-26 | A built `dist` exposes the same named exports as the source entry point                        |
+| PU-27 | Emitted type declarations resolve with `tsc --noEmit` from a consumer fixture                   |
+| PU-28 | Each lazily imported extension component resolves without throwing                             |
+| PU-29 | If `rad-components` retains exports, it forwards only: no layout, renderer, or domain logic    |
+| PU-30 | The published manifest declares the agreed license and preserves notices for moved code        |
 
 #### Backend plugin: BE-01–BE-05
 
@@ -881,7 +1024,7 @@ PU-01 and CU-00. The remaining twenty-four need a direct test.
 `components/home/HomePage.tsx`, `components/home/LearnCard.tsx`,
 `components/home/CommunityCard.tsx`, `components/home/SupportCard.tsx`.
 
-`packages/rad-components` — `graph.ts`, `resourceId.ts`, `sampledata.ts`.
+`packages/rad-components` — `graph.ts`, `sampledata.ts`.
 
 `plugins/plugin-radius` — `routes.ts`, `features.ts`, `resources/resource.ts`,
 `components/applications/ApplicationListInfoCard.tsx`,
@@ -898,15 +1041,39 @@ Barrels with no direct test: `packages/app/src/components/Root/index.ts`;
 `components/resourcenode/index.ts`; `plugin-radius` `index.ts`, `api/index.ts`,
 `resources/index.ts`, and the six `components/*/index.ts` files.
 
-Note that `rad-components/src/resourceId.ts` is untested: the existing `resourceId.test.ts` covers
-the separate copy in `plugin-radius/src/resources/`. The graph consumes the `rad-components` copy,
-so RU-01 and RU-02 must target that one.
+Resolved in Phase 0. The duplication was the inverse of what was first recorded here: all eleven
+consumers import `parseResourceId` from `@radapp.io/rad-components`, while the plugin's
+`resources/resourceId.ts` had **no** importers, was not re-exported by `resources/index.ts`, showed
+0% coverage, and was byte-identical to the `rad-components` copy — dead code. It was deleted, and
+`resourceId.test.ts` was moved to `rad-components`, which is where it always pointed: it imported
+from the package, not from the file beside it, so it never tested the copy it sat next to. RU-01 and
+RU-02 now target the live implementation.
 
-### Appendix G: proposed coverage floors
+### Appendix G: coverage floors
 
-Ratcheted from the Phase 0 baseline; the values below are the Phase 6 targets, not day-one gates.
-The design's rule takes precedence where they differ: meaningful coverage of changed code, and
-never lowering an existing baseline in either repository.
+Two sets of numbers. The **enforced** floors are live in the root `package.json` today, set to the
+measured value so that any regression fails immediately. The **target** floors are the Phase 6
+ratchet. See "Where coverage floors must live" for why these are root path groups rather than
+per-workspace config.
+
+Enforced today (measured after Phase 0 and 3; `n/a` means the metric has no data in that workspace,
+and an omitted value means a floor would be zero and therefore meaningless):
+
+| Workspace                       | Statements | Branches | Functions | Lines |
+| ------------------------------- | ---------: | -------: | --------: | ----: |
+| `plugins/plugin-radius`         |        58% |      31% |       41% |   57% |
+| `plugins/plugin-radius-backend` |        62% |      n/a |       50% |   71% |
+| `packages/rad-components`       |        81% |      63% |       73% |   78% |
+| `packages/app`                  |        75% |        — |         — |   78% |
+| `packages/backend`              |   exempt   |  exempt  |   exempt  | exempt |
+
+`packages/app` carries no branch or function floor because both measure 0%: the workspace's
+statement coverage comes from module loading, not from tests. `packages/backend` is exempt for the
+same reason at the workspace level, recorded in `coveragePolicy.test.ts` with its justification.
+Both entries are removed as Phase 1 adds real tests.
+
+Phase 6 targets, not day-one gates. The design's rule takes precedence where they differ:
+meaningful coverage of changed code, and never lowering an existing baseline in either repository.
 
 | Workspace                       | Statements | Branches | Functions | Lines |
 | ------------------------------- | ---------: | -------: | --------: | ----: |
@@ -914,8 +1081,8 @@ never lowering an existing baseline in either repository.
 | `plugins/plugin-radius-backend` |        95% |      85% |       95% |   95% |
 | `packages/app`                  |        80% |      70% |       80% |   80% |
 
-`packages/rad-components` is deliberately absent: it is retired in Phase 4, and a forwarding
-wrapper with no logic is covered by PU-15 rather than by a coverage floor. Graph coverage moves to
+`packages/rad-components` has no target: it is retired in Phase 4, and a forwarding
+wrapper with no logic is covered by PU-29 rather than by a coverage floor. Graph coverage moves to
 `graph-react` in `ai-extensions` and is governed by that repository's floors; the dashboard's
 remaining graph evidence is the L5 journeys and the L6 record diff, which are pass/fail rather than
 percentage gates.
