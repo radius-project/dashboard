@@ -845,6 +845,40 @@ Completion evidence: NS-01–NS-10 pass; the record diff for the re-namespaced c
 its expected-change manifest is emptied afterwards; no test outside the Dapr fixtures asserts
 against an `Applications.*` type without a stated reason.
 
+## Tracked defects
+
+Every `KNOWN-DEFECT` assertion in this repository is recorded here with the issue that owns it, so a
+frozen baseline never silently blesses a defect. A characterization test tagged `KNOWN-DEFECT`
+asserts what the code does **today**, not what it should do — so each one is expected to fail when
+its issue is fixed, and that failure is the signal the fix landed, not a regression.
+
+| Issue | Defect                                                                    | Pinned by            |
+| ----- | ------------------------------------------------------------------------- | -------------------- |
+| #352  | `parseResourceId` rejects legal names and types; `ResourceLink` then throws | Phase 1, not yet written |
+| #353  | Graph silently drops connections whose target cannot be resolved            | GU-04, GU-05a        |
+| #354  | `initialNodes` mutates the graph payload it is given                        | GU-05b               |
+| #355  | Graph layout state leaks between applications via a module-level Dagre graph | GU-08                |
+| #356  | Cluster selection disagrees between `RadiusApi` and the graph request        | Phase 2, not yet written |
+| #357  | Graph builder does not validate resources: self-loops and duplicate node ids | GU-06a               |
+| #358  | The plugin cannot be published: private, placeholder name, workspace dep, `radiusApiRef` unexported | PU-10, PU-16, PU-17, PU-19 |
+| #359  | `rad-components` declares ISC while the repository is Apache-2.0             | PU-18                |
+| #360  | Five page suites time out under parallel load and misreport as coverage failures | open decision 7 |
+
+Three notes on reading this table.
+
+`#352` and `#356` are the entries with **no test pinning them yet**, and they are not equally urgent.
+`#352` is pinnable at any time, because `parseResourceId` is not going anywhere. `#356` must be
+pinned during Phase 2, while the old behavior still exists to be recorded — the divergence is
+observable today and stops being observable once the graph request moves. A defect that becomes
+unobservable before it is characterized cannot be shown to have been preserved or fixed.
+
+`packages/rad-components/src/__test__/resourceId.test.ts` already exists but predates this plan and
+carries no ids, so it is not counted as pinning `#352`; Phase 1 replaces it.
+
+`#360` is a harness defect rather than a product defect, which is why it is carried as an open
+decision rather than as a `KNOWN-DEFECT` assertion. It is listed here anyway because its failure
+mode is misattribution: it surfaces as a coverage-threshold failure naming an unrelated path group.
+
 ## Test data and safety
 
 - Test data is small, readable, fixed, and uses obvious placeholder names (`demo-app`, `demo-env`,
