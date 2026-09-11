@@ -7,7 +7,7 @@ import { parseResourceId } from '../resourceId';
  * keep doing, including the inputs it currently rejects.
  */
 describe('parseResourceId', () => {
-  it('parses an environment resource ID', () => {
+  it('RU-01: parses an environment resource ID', () => {
     const parsed = parseResourceId(
       '/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/test-environment',
     );
@@ -20,7 +20,7 @@ describe('parseResourceId', () => {
     });
   });
 
-  it('joins the provider namespace and type into a single type', () => {
+  it('RU-01: joins the provider namespace and type into a single type', () => {
     const parsed = parseResourceId(
       '/planes/radius/local/resourceGroups/g/providers/Applications.Datastores/redisCaches/cache',
     );
@@ -28,7 +28,7 @@ describe('parseResourceId', () => {
     expect(parsed?.type).toBe('Applications.Datastores/redisCaches');
   });
 
-  it('accepts hyphenated planes, groups, and names', () => {
+  it('RU-01: accepts hyphenated planes, groups, and names', () => {
     const parsed = parseResourceId(
       '/planes/radius/my-plane/resourceGroups/my-group/providers/Applications.Core/containers/my-container',
     );
@@ -41,7 +41,7 @@ describe('parseResourceId', () => {
     });
   });
 
-  it('is case insensitive on the path segments', () => {
+  it('RU-01: is case insensitive on the path segments', () => {
     const parsed = parseResourceId(
       '/Planes/Radius/local/ResourceGroups/g/Providers/Applications.Core/Environments/e',
     );
@@ -49,7 +49,7 @@ describe('parseResourceId', () => {
     expect(parsed?.name).toBe('e');
   });
 
-  it('returns undefined for a malformed id', () => {
+  it('RU-02: returns undefined for a malformed id', () => {
     expect(
       parseResourceId(
         '/planes/radius/local/resourceGroups/test-group/providers/Applications.Cor12323231e-----/environments',
@@ -57,13 +57,13 @@ describe('parseResourceId', () => {
     ).toBeUndefined();
   });
 
-  it('returns undefined rather than throwing on empty or junk input', () => {
+  it('RU-02: returns undefined rather than throwing on empty or junk input', () => {
     expect(parseResourceId('')).toBeUndefined();
     expect(parseResourceId('not-an-id')).toBeUndefined();
     expect(parseResourceId('/planes/radius/local')).toBeUndefined();
   });
 
-  it('requires the full scope, rejecting an id with no resource group', () => {
+  it('RU-02: requires the full scope, rejecting an id with no resource group', () => {
     expect(
       parseResourceId(
         '/planes/radius/local/providers/Applications.Core/environments/e',
@@ -71,7 +71,7 @@ describe('parseResourceId', () => {
     ).toBeUndefined();
   });
 
-  it('rejects a trailing child resource segment', () => {
+  it('RU-02: rejects a trailing child resource segment', () => {
     // A nested id is not a resource id this parser understands, so callers must
     // get `undefined` rather than a truncated parse.
     expect(
@@ -87,7 +87,7 @@ describe('parseResourceId', () => {
    * breadcrumb, and graph label rather than reporting an error. Recorded so the
    * shared parser is not rewritten with the same limitation by accident.
    */
-  it('KNOWN-DEFECT: rejects names containing a dot or underscore', () => {
+  it('RU-02: KNOWN-DEFECT rejects names containing a dot or underscore', () => {
     expect(
       parseResourceId(
         '/planes/radius/local/resourceGroups/g/providers/Applications.Core/environments/my.env',
@@ -104,7 +104,7 @@ describe('parseResourceId', () => {
    * KNOWN-DEFECT: the type segment pattern is letters only, so a resource type
    * containing a digit does not parse.
    */
-  it('KNOWN-DEFECT: rejects a resource type containing a digit', () => {
+  it('RU-02: KNOWN-DEFECT rejects a resource type containing a digit', () => {
     expect(
       parseResourceId(
         '/planes/radius/local/resourceGroups/g/providers/Applications.Core/gateways2/g',

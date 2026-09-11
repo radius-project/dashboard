@@ -72,14 +72,14 @@ evidence of tested behavior here.
 
 Progression as the plan is executed, re-measured after each phase increment:
 
-| Workspace                       | Baseline | After 0 and 3 | After Tier A | After first Phase 1 pages |
-| ------------------------------- | -------: | ------------: | -----------: | ------------------------: |
-| `plugins/plugin-radius`         |   54.77% |        58.42% |       58.42% |                **61.22%** |
-| `plugins/plugin-radius-backend` |   62.50% |        62.50% |       62.50% |                    62.50% |
-| `packages/rad-components`       |   80.00% |        81.33% |   **86.52%** |                    86.52% |
-| `packages/app`                  |   75.00% |        75.00% |       75.00% |                    75.00% |
-| `packages/backend`              |    0.00% |         0.00% |        0.00% |                     0.00% |
-| Suites / cases                  |   31/127 |        33/159 |       34/260 |                 **36/272** |
+| Workspace                       | Baseline | After 0 and 3 | After Tier A | After first Phase 1 pages | After Phase 1 components |
+| ------------------------------- | -------: | ------------: | -----------: | ------------------------: | -----------------------: |
+| `plugins/plugin-radius`         |   54.77% |        58.42% |       58.42% |                    61.22% |               **69.19%** |
+| `plugins/plugin-radius-backend` |   62.50% |        62.50% |       62.50% |                    62.50% |                   62.50% |
+| `packages/rad-components`       |   80.00% |        81.33% |   **86.52%** |                    86.52% |                   86.52% |
+| `packages/app`                  |   75.00% |        75.00% |       75.00% |                    75.00% |                   75.00% |
+| `packages/backend`              |    0.00% |         0.00% |        0.00% |                     0.00% |                    0.00% |
+| Suites / cases                  |   31/127 |        33/159 |       34/260 |                    36/272 |              **43/331** |
 
 Statement coverage only; the enforced floors in Appendix G carry all four metrics.
 
@@ -98,9 +98,11 @@ The raw counts understate the gap. Three findings matter more:
   defined. Nothing pins the public export surface, the route refs, the extension mount points, the
   `radiusApiRef` id, or the feature-flag name — exactly the things an external consumer depends on
   and that a rearchitecture silently breaks.
-- **Forty source files have no colocated test,** including every `packages/app` component,
+- **Forty source files had no colocated test,** including every `packages/app` component,
   `ResourceListPage`, `ResourceLayout`, `OverviewTab`, `DetailsTab`, `RecipeListPage`,
-  `RecipeTable`, and the `resources/resource.ts` domain model. See Appendix F.
+  `RecipeTable`, and the `resources/resource.ts` domain model. Phase 1 has closed ten of the
+  thirteen `plugin-radius` components; `packages/app`, `packages/backend`, `RecipeTable`, and
+  `resource.ts` remain. See Appendix F.
 
 There was no coverage threshold in CI: `yarn test:all` ran with `--coverage` but no floor, so
 coverage could fall to zero without failing a build. Phase 0 closed this; see
@@ -111,7 +113,7 @@ coverage could fall to zero without failing a build. Phase 0 closed this; see
 | Phase | Name                                | Repository | Status      | Outcome                                                                       |
 | ----- | ----------------------------------- | ---------- | ----------- | ------------------------------------------------------------------------------ |
 | 0     | Record the behavior                 | dashboard  | Done        | Public exports, route table, request table, page inventory, and a coverage floor are written down |
-| 1     | Harden existing behavior            | dashboard  | In progress | Every shipped page, table, tab, and domain rule has a real test before it is rearchitected       |
+| 1     | Harden existing behavior            | dashboard  | In progress | Every shipped page, table, tab, and domain rule has a real test before it is rearchitected. Ten of the thirteen untested `plugin-radius` components now have one; `packages/app` and `packages/backend` remain |
 | 2     | Freeze the pre-extraction baseline  | dashboard  | In progress | Real-renderer graph journeys and graph records pass and are frozen at a reviewed baseline        |
 | 3     | Plugin contract and packaging       | dashboard  | Done        | The published package surface is pinned and breaking it fails a pull request                     |
 | 4     | Consume shared packages             | dashboard, needs `ai-extensions` releases | Not started | The plugin uses `core` and `graph-react`; no parallel implementation remains |
@@ -505,10 +507,10 @@ Cover the domain logic and every shipped page in loading, empty, populated, and 
 Priority order, highest regression risk first:
 
 1. `resources/resource.ts`, `resourceId.ts`, `resourceTypes.ts` — the domain model every page reads.
-   `resourceId.ts` is **done**: RU-01 and RU-02 are implemented against the live `rad-components`
-   implementation, including two `KNOWN-DEFECT` cases recording inputs it wrongly rejects (names
-   containing `.` or `_`, and resource types containing a digit). Both are legal Radius names that
-   currently lose their link, breadcrumb, and graph label silently.
+   `resourceId.ts` is **done**: the existing suite is now tagged RU-01 (well-formed ids) and RU-02
+   (rejected ids) against the live `rad-components` implementation, including two `KNOWN-DEFECT`
+   cases recording inputs it wrongly rejects (names containing `.` or `_`, and resource types
+   containing a digit). Both are legal Radius names. `resource.ts` and `resourceTypes.ts` remain.
 2. `ResourceListPage`, `ResourceLayout`, `OverviewTab`, `DetailsTab`, `ApplicationResourcesTab`,
    `EnvironmentResourcesTab` — the untested spine of resource navigation.
 3. `RecipeListPage`, `RecipeTable` — untested rendering over already-tested aggregation.
@@ -520,8 +522,8 @@ Priority order, highest regression risk first:
 Every page test must assert the error path. Today no page test asserts what a user sees when the
 Kubernetes proxy returns a non-OK response, yet `makeRequest` throws on every such response.
 
-**Done so far.** Beyond `resourceId.ts` above, the two pages that were at 0% statement coverage now
-have suites, both of which assert the error path:
+**Done so far.** Beyond `resourceId.ts` above, the pages that were at or near 0% statement coverage
+now have suites, all of which assert the error path:
 
 - `RecipeListPage` (RE-01–RE-08). The aggregation already had unit tests, but nothing exercised the
   asynchronous half of the feature: the pack ids live on the environment and each pack is fetched
@@ -532,21 +534,48 @@ have suites, both of which assert the error path:
   `ResourceTable` renders **without** a resource type, which selects the
   Type/Application/Environment/Status column set rather than the environment one. That column set
   had no test.
+- `ResourceTypeDetailPage` (RT-01–RT-27). This was the single largest gap in the repository: 2,693
+  lines at roughly 20% statements. The existing three tests never left the Overview tab, so the
+  entire schema interpretation was unexercised. The new cases walk the Properties and Output
+  Properties tabs and pin the type formatting (`$ref` to last segment, `items.type` to `T[]`,
+  `items.$ref` to `Ref[]`, bare `array`, `additionalProperties` to `map`, untyped to `object`),
+  requiredness, read-only filtering in both directions, the upper/lower-case `Schema` fallbacks, the
+  recursive `definitions` discovery, and the descending version ordering.
+- `ApplicationListInfoCard` (AC-01–AC-08) and `EnvironmentListInfoCard` (EC-01–EC-08). Priority 4
+  above: the two components a host can embed **without** a route, so they are published surface
+  rather than internal detail, and neither had any test.
+- The resource-navigation spine from priority 2: `OverviewTab` (OT-01–OT-07), `DetailsTab`
+  (DT-01–DT-03), `ApplicationResourcesTab` (AR-01–AR-03), `EnvironmentResourcesTab` (EV-01–EV-03),
+  and `ResourceLayout` (LY-01–LY-04).
 
-Both error-path cases had to assert on *all* matches rather than a single one: `ResponseErrorPanel`
-renders the message twice, in the summary heading and again in the expanded detail list. A
-`getByText` there fails with "found multiple elements", which is a trap worth recording because the
-obvious assertion looks correct and fails for a reason unrelated to the behavior under test.
+**Four defects surfaced while writing these**, all filed and pinned: #361, #362, #363, and the
+wider blast radius of #352. See "Tracked defects".
 
-This moved `plugins/plugin-radius` from 58.42% to **61.22%** statements and 40.80% to **46.23%**
-functions, and the floors are raised accordingly.
+Three traps are worth recording, because in each case the obvious assertion passes or fails for a
+reason unrelated to the behavior under test.
 
-**Outstanding:** `ResourceTypeDetailPage` at 20% is now the single largest gap in the repository,
-followed by `EnvironmentResourcesTab`, `packages/backend` at 0%, and the cluster-selection
-divergence.
+`ResponseErrorPanel` renders its message twice, in the summary heading and again in the expanded
+detail list, so `getByText` fails there with "found multiple elements". Assert on all matches.
 
-Completion evidence: RU-01–RU-14, CU-01–CU-26, and BE-01–BE-05 pass; every substantive file
-in Appendix F has a direct test; coverage floors are raised to the new measured values.
+`LinkButton` renders an anchor with `role="button"`, not `role="link"`, so a `getByRole('link')`
+query for an action button finds nothing while the correct href is sitting in the DOM.
+
+Most importantly: a name appearing on the page is not evidence it appears in the list. The
+application's own name is in the breadcrumbs *and* in the Application column of every row it owns;
+an environment's name is in the Environment column of each of its resources. Whole-page and even
+whole-table queries therefore cannot distinguish "the parent is wrongly listed as its own child"
+from "the rows correctly say which parent they belong to". AR-03 and EV-03 read the Name column
+specifically. Both originally passed against the wrong evidence.
+
+This moved `plugins/plugin-radius` from 61.22% to **69.19%** statements, 46.23% to **58.79%**
+functions, and 33% to **46.74%** branches, and the floors are raised accordingly.
+
+**Outstanding:** `packages/backend` at 0%, `packages/app` at 0% branches and functions, the
+`RecipeTable` and `resource.ts` domain accessors, and the cluster-selection divergence (#356).
+
+Completion evidence: RU-01–RU-14, every component prefix listed in Appendix B, and BE-01–BE-05
+pass; every substantive file in Appendix F has a direct test; coverage floors are raised to the new
+measured values.
 
 ### Phase 2: freeze the pre-extraction baseline — **in progress**
 
@@ -854,7 +883,7 @@ its issue is fixed, and that failure is the signal the fix landed, not a regress
 
 | Issue | Defect                                                                    | Pinned by            |
 | ----- | ------------------------------------------------------------------------- | -------------------- |
-| #352  | `parseResourceId` rejects legal names and types; `ResourceLink` then throws | Phase 1, not yet written |
+| #352  | `parseResourceId` rejects legal names and types; `ResourceLink` then throws | RU-02, AC-08, EC-08  |
 | #353  | Graph silently drops connections whose target cannot be resolved            | GU-04, GU-05a        |
 | #354  | `initialNodes` mutates the graph payload it is given                        | GU-05b               |
 | #355  | Graph layout state leaks between applications via a module-level Dagre graph | GU-08                |
@@ -863,17 +892,27 @@ its issue is fixed, and that failure is the signal the fix landed, not a regress
 | #358  | The plugin cannot be published: private, placeholder name, workspace dep, `radiusApiRef` unexported | PU-10, PU-16, PU-17, PU-19 |
 | #359  | `rad-components` declares ISC while the repository is Apache-2.0             | PU-18                |
 | #360  | Five page suites time out under parallel load and misreport as coverage failures | open decision 7 |
+| #361  | A resource type with no description shows placeholder container documentation | RT-07                |
+| #362  | `ResourceLayout` renders literal `undefined/undefined: undefined` off-route  | LY-04                |
+| #363  | The output-properties tab hides read-only nested properties and shows writable ones | RT-27         |
 
-Three notes on reading this table.
+Four notes on reading this table.
 
-`#352` and `#356` are the entries with **no test pinning them yet**, and they are not equally urgent.
-`#352` is pinnable at any time, because `parseResourceId` is not going anywhere. `#356` must be
-pinned during Phase 2, while the old behavior still exists to be recorded — the divergence is
-observable today and stops being observable once the graph request moves. A defect that becomes
+`#356` is now the only entry with **no test pinning it**, and it is the one that cannot wait. It
+must be pinned during Phase 2, while the old behavior still exists to be recorded — the divergence
+is observable today and stops being observable once the graph request moves. A defect that becomes
 unobservable before it is characterized cannot be shown to have been preserved or fixed.
 
-`packages/rad-components/src/__test__/resourceId.test.ts` already exists but predates this plan and
-carries no ids, so it is not counted as pinning `#352`; Phase 1 replaces it.
+`#352` is pinned in three places because it fails at three depths. `RU-02` records the inputs the
+parser rejects; `AC-08` and `EC-08` record what a user actually sees, which is neither a bad link
+nor a bad row but a blank card reporting `Cannot read properties of null (reading 'scrollWidth')`.
+The parse failure never reaches the surface, so a test that only covered the parser would leave the
+real symptom unrecorded.
+
+`#361` and `#363` are both consequences of the same structure: `ResourceTypeDetailPage` is 2,693
+lines containing two near-duplicate eleven-hundred-line tab bodies that are meant to differ by one
+boolean. Pinning them individually is worth doing, but the duplication is the defect that generates
+defects.
 
 `#360` is a harness defect rather than a product defect, which is why it is carried as an open
 decision rather than as a `KNOWN-DEFECT` assertion. It is listed here anyway because its failure
@@ -1100,11 +1139,31 @@ and never trigger an automatic cluster switch.
 | CP-04 | Updating the pin requires the new commit to pass the same gate                                     |
 | CP-05 | A stale pin older than the agreed window fails a scheduled check                                   |
 
-#### Components: CU-01–CU-26
+#### Components: per-file prefixes
 
-One requirement per shipped page, tab, table, and card, each covering loading, empty, populated,
-and error states, and the accessible name of its heading and primary controls. CU-00 records the
-current rendered output of every page as a baseline before Phase 1 changes anything.
+Originally scoped as a single `CU-01–CU-26` block. In implementation that proved unreadable: a flat
+range gives no hint which file a failing id belongs to, and renumbering one component shifts every
+later id. Component requirements therefore use a **two-letter prefix per source file**, numbered
+from 01 within that file. The requirement itself is unchanged — one case per shipped page, tab,
+table, and card, covering loading, empty, populated, and error states, plus the accessible name of
+its heading and primary controls.
+
+| Prefix | Source file under test                                  | Implemented |
+| ------ | ------------------------------------------------------- | ----------- |
+| RE     | `components/recipes/RecipeListPage.tsx`                  | RE-01–RE-06 |
+| RL     | `components/resources/ResourceListPage.tsx`              | RL-01–RL-07 |
+| RT     | `components/resourcetypes/ResourceTypeDetailPage.tsx`    | RT-01–RT-27 |
+| AC     | `components/applications/ApplicationListInfoCard.tsx`    | AC-01–AC-08 |
+| EC     | `components/environments/EnvironmentListInfoCard.tsx`    | EC-01–EC-08 |
+| EV     | `components/environments/EnvironmentResourcesTab.tsx`    | EV-01–EV-03 |
+| OT     | `components/resources/OverviewTab.tsx`                   | OT-01–OT-07 |
+| DT     | `components/resources/DetailsTab.tsx`                    | DT-01–DT-03 |
+| AR     | `components/resources/ApplicationResourcesTab.tsx`       | AR-01–AR-03 |
+| LY     | `components/resources/ResourceLayout.tsx`                | LY-01–LY-04 |
+
+`EV` rather than `ER` for `EnvironmentResourcesTab`, because `ER-01–ER-10` is already reserved above
+for cross-cutting error states. New component suites take the next free two-letter prefix and must
+not reuse one listed in this appendix.
 
 #### Plugin contract: PU-01–PU-25
 
@@ -1251,22 +1310,26 @@ Records are generated and frozen in Phase 2 and diffed in Phase 4 against the
 
 ### Appendix F: source files with no colocated test
 
-Forty of seventy-one source files. Sixteen are barrel `index.ts` files, covered indirectly by
-PU-01 and CU-00. The remaining twenty-four need a direct test.
+At the start of Phase 1, forty of seventy-one source files. Sixteen are barrel `index.ts` files,
+covered indirectly by PU-01 and CU-00. Twenty-four needed a direct test; the Phase 1 increments have
+since closed most of them.
 
 `packages/app` — `apis.ts`, `index.tsx`, `components/Root/Root.tsx`,
 `components/home/HomePage.tsx`, `components/home/LearnCard.tsx`,
-`components/home/CommunityCard.tsx`, `components/home/SupportCard.tsx`.
+`components/home/CommunityCard.tsx`, `components/home/SupportCard.tsx`. **Still open.**
 
-`packages/rad-components` — `graph.ts`, `sampledata.ts`.
+`packages/rad-components` — `graph.ts`, `sampledata.ts`. Both are now exercised by the Phase 2
+fixture and Tier A invariant suites rather than by a colocated file.
 
-`plugins/plugin-radius` — `routes.ts`, `features.ts`, `resources/resource.ts`,
-`components/applications/ApplicationListInfoCard.tsx`,
-`components/environments/EnvironmentListInfoCard.tsx`,
-`components/environments/EnvironmentResourcesTab.tsx`, `components/recipes/RecipeListPage.tsx`,
-`components/recipes/RecipeTable.tsx`, `components/resources/ApplicationResourcesTab.tsx`,
-`components/resources/DetailsTab.tsx`, `components/resources/OverviewTab.tsx`,
-`components/resources/ResourceLayout.tsx`, `components/resources/ResourceListPage.tsx`.
+`plugins/plugin-radius` — closed so far: `components/recipes/RecipeListPage.tsx` (RE),
+`components/resources/ResourceListPage.tsx` (RL),
+`components/applications/ApplicationListInfoCard.tsx` (AC),
+`components/environments/EnvironmentListInfoCard.tsx` (EC),
+`components/environments/EnvironmentResourcesTab.tsx` (EV),
+`components/resources/OverviewTab.tsx` (OT), `components/resources/DetailsTab.tsx` (DT),
+`components/resources/ApplicationResourcesTab.tsx` (AR),
+`components/resources/ResourceLayout.tsx` (LY). Still open: `routes.ts`, `features.ts`,
+`resources/resource.ts`, `components/recipes/RecipeTable.tsx`, and `setupTests.ts`.
 
 `plugins/plugin-radius-backend` — `index.ts` (the plugin registration, not a barrel).
 
@@ -1290,17 +1353,20 @@ measured value so that any regression fails immediately. The **target** floors a
 ratchet. See "Where coverage floors must live" for why these are root path groups rather than
 per-workspace config.
 
-Enforced today (measured after Phases 0 and 3, the Tier A graph invariants, and the first Phase 1
-page suites; `n/a` means the metric has no data in that workspace, and an omitted value means a
-floor would be zero and therefore meaningless):
+Enforced today (measured after Phases 0 and 3, the Tier A graph invariants, and the Phase 1 page,
+tab, and card suites; `n/a` means the metric has no data in that workspace, and an omitted value
+means a floor would be zero and therefore meaningless):
 
 | Workspace                       | Statements | Branches | Functions | Lines |
 | ------------------------------- | ---------: | -------: | --------: | ----: |
-| `plugins/plugin-radius`         |        61% |      33% |       46% |   60% |
+| `plugins/plugin-radius`         |        69% |      46% |       58% |   68% |
 | `plugins/plugin-radius-backend` |        62% |      n/a |       50% |   71% |
 | `packages/rad-components`       |        86% |      81% |       80% |   85% |
 | `packages/app`                  |        75% |        — |         — |   78% |
 | `packages/backend`              |   exempt   |  exempt  |   exempt  | exempt |
+
+The `plugin-radius` floors moved from 61/33/46/60 to 69/46/58/68 as the Phase 1 suites landed. Each
+raise is committed alongside the tests that earned it, so a floor is never aspirational.
 
 `packages/app` carries no branch or function floor because both measure 0%: the workspace's
 statement coverage comes from module loading, not from tests. `packages/backend` is exempt for the
