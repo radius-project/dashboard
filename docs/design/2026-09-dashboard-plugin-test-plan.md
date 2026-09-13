@@ -73,18 +73,19 @@ evidence of tested behavior there. Phase 1 closed it: the workspace now measures
 
 Progression as the plan is executed, re-measured after each phase increment:
 
-| Workspace                       | Baseline | After 0 and 3 | After Tier A | After first Phase 1 pages | After Phase 1 components | After Phase 1 complete |
-| ------------------------------- | -------: | ------------: | -----------: | ------------------------: | -----------------------: | ---------------------: |
-| `plugins/plugin-radius`         |   54.77% |        58.42% |       58.42% |                    61.22% |                   69.19% |             **72.70%** |
-| `plugins/plugin-radius-backend` |   62.50% |        62.50% |       62.50% |                    62.50% |                   62.50% |             **93.75%** |
-| `packages/rad-components`       |   80.00% |        81.33% |   **86.52%** |                    86.52% |                   86.52% |                 86.52% |
-| `packages/app`                  |   75.00% |        75.00% |       75.00% |                    75.00% |                   75.00% |             **93.51%** |
-| `packages/backend`              |    0.00% |         0.00% |        0.00% |                     0.00% |                    0.00% |            **100.00%** |
-| Suites / cases                  |   31/127 |        33/159 |       34/260 |                    36/272 |                   43/331 |            **53/427** |
+| Workspace                       | Baseline | After 0 and 3 | After Tier A | After first Phase 1 pages | After Phase 1 components | After Phase 1 complete | After Phase 2 |
+| ------------------------------- | -------: | ------------: | -----------: | ------------------------: | -----------------------: | ---------------------: | ------------: |
+| `plugins/plugin-radius`         |   54.77% |        58.42% |       58.42% |                    61.22% |                   69.19% |                 72.70% |    **73.79%** |
+| `plugins/plugin-radius-backend` |   62.50% |        62.50% |       62.50% |                    62.50% |                   62.50% |                 93.75% |        93.75% |
+| `packages/rad-components`       |   80.00% |        81.33% |       86.52% |                    86.52% |                   86.52% |                 86.52% |    **95.08%** |
+| `packages/app`                  |   75.00% |        75.00% |       75.00% |                    75.00% |                   75.00% |                 93.51% |        93.51% |
+| `packages/backend`              |    0.00% |         0.00% |        0.00% |                     0.00% |                    0.00% |                100.00% |       100.00% |
+| Suites / cases                  |   31/127 |        33/159 |       34/260 |                    36/272 |                   43/331 |                 53/427 |    **54/460** |
 
 Statement coverage only; the enforced floors in Appendix G carry all four metrics.
 
-Plus one Playwright spec with one case, which loads the home page and asserts three strings.
+Plus two Playwright specs with thirteen cases: the home-page smoke case, eight direct real-renderer
+cases, and four dashboard-host journeys using deterministic Kubernetes/UCP interception.
 
 The raw counts understate the gap. Three findings matter more:
 
@@ -115,7 +116,7 @@ coverage could fall to zero without failing a build. Phase 0 closed this; see
 | ----- | ----------------------------------- | ---------- | ----------- | ------------------------------------------------------------------------------ |
 | 0     | Record the behavior                 | dashboard  | Done        | Public exports, route table, request table, page inventory, and a coverage floor are written down |
 | 1     | Harden existing behavior            | dashboard  | Done        | Every shipped page, table, tab, card, host component, backend-plugin lifecycle, and domain rule has a real test before it is rearchitected. All thirteen `plugin-radius` components, both host workspaces, the backend plugin, and the declaration modules are covered; `packages/backend` no longer carries a coverage exemption |
-| 2     | Freeze the pre-extraction baseline  | dashboard  | In progress | Real-renderer graph journeys and graph records pass and are frozen at a reviewed baseline        |
+| 2     | Freeze the pre-extraction baseline  | dashboard  | Done        | Real-renderer graph journeys, deterministic host journeys, connection/error characterization, and all fourteen graph records are frozen |
 | 3     | Plugin contract and packaging       | dashboard  | In progress | Source exports, registration metadata, manifests, and coverage-policy shape are pinned; runtime wiring and built/packed consumer evidence remain |
 | 4     | Consume shared packages             | dashboard, needs `ai-extensions` releases | Not started | The plugin uses `core` and `graph-react`; no parallel implementation remains |
 | 5     | Host integration and installed artifact | dashboard | Not started | Both hosts mount the plugin from packed tarballs with no source aliases                      |
@@ -624,7 +625,7 @@ Completion evidence: RU-01–RU-14, every component prefix listed in Appendix B,
 pass; every substantive file in Appendix F has a direct test or is a barrel/infrastructure file
 covered indirectly; coverage floors are raised to the new measured values.
 
-### Phase 2: freeze the pre-extraction baseline — **in progress**
+### Phase 2: freeze the pre-extraction baseline — **done**
 
 The design requires real-renderer journeys before any graph or domain implementation moves. This
 phase is the reason the extraction can be reviewed at all, and it is the phase most likely to be
@@ -643,11 +644,11 @@ skipped under schedule pressure. Nothing in Phase 4 may start until this is froz
 - Prove the suite is real: GU-20 requires that removing the renderer or the stylesheet makes the
   journeys fail.
 
-**Done so far.** The Appendix E fixtures exist at
-`packages/rad-components/src/__fixtures__/graph/`, and the model-level portions of GU-01–GU-10
-are implemented against them; Appendix B distinguishes correctness assertions, defect pins, and
-remaining renderer evidence. They run under Jest rather than Chromium and cannot establish that
-the host actually renders the model. Tier B and Tier C still require the real renderer.
+The Appendix E fixtures live at `packages/rad-components/src/__fixtures__/graph/`. The model-level
+portions of GU-01–GU-10 run against them through `buildGraphModel`; the browser-level portions run
+the real `AppGraph` and React Flow stylesheet from Storybook, and the host journeys mount that same
+renderer through the real application list, resource detail route, and App Graph tab. No graph test
+replaces `AppGraph` with a test double.
 
 GU-02 compares exact source/target multisets against fixture-owned expectations, not a count
 derived from the builder or its parser. GU-02a demonstrates that redirected, reversed, missing,
@@ -659,8 +660,30 @@ than against `initialNodes` directly. That indirection is the point: Tier A must
 unchanged (apart from reviewed linked-defect replacements), so it must not name the implementation
 being extracted. Phase 4 repoints that one adapter at the shared package and the invariants keep running.
 
-**Outstanding:** the record normalizer and committed records (GU-21–GU-24), every Tier B journey,
-the connection regression cases, and GU-20.
+The semantic normalizer is `packages/rad-components/src/graphRecord.ts`. It emits only sorted node
+and edge meaning: ids, labels, types, the currently absent icon/status semantics, quantized
+positions, resolved endpoints, and direction. All fourteen records are committed under
+`src/__fixtures__/graph-records/`; `graph-expected-changes.md` is empty. GU-22 rejects undeclared
+record changes, GU-23 reports unchanged known-defect fields as carried forward, and GU-24 keeps the
+manifest empty between extraction phases.
+
+The direct renderer spec at `packages/rad-components/e2e-tests/appGraph.test.ts` covers true
+component unmount/remount determinism and scheduled-work cleanup, the renderer's existing
+accessible node text and endpoint-derived edge names, non-overlap, mouse and keyboard controls,
+both application namespaces, light and dark hosts, the current blank empty state, the current
+missing details interaction, and GU-20 sensitivity against both a stub and removed stylesheet.
+`packages/app/e2e-tests/radiusGraph.test.ts` drives list-to-detail navigation for
+`Applications.Core` and `Radius.Core`, direct-link refresh, unavailable upstream, and timeout
+through deterministic intercepted Kubernetes proxy responses. GU-17 injects a Dagre failure at
+the real component boundary under Jest; using a browser-only product hook solely to force an
+otherwise unreachable layout exception would change the product being characterized.
+
+CN-01–CN-08 and ER-01–ER-10 now pin the current connection and failure behavior. In particular,
+CN-03/CN-04 preserve #356's first-cluster/last-cluster disagreement, CN-05 pins the absence of any
+selected-connection input through which cancellation could occur, CN-06 records the global filter
+key, and ER-08 records the silent partial-inventory result. A separate application-navigation case
+proves late results are ignored but the superseded network request is not cancelled. Each incorrect
+behavior is linked below rather than being normalized into the baseline.
 
 Writing the invariants immediately found four defects that no existing test could have caught,
 which is the argument for doing this before the extraction rather than after:
@@ -680,8 +703,9 @@ the leaked state lives in a module-level binding, so the first layout in a test 
 later one and there is no clean measurement left to compare against. A naive version of this test
 passes while the defect is present.
 
-Completion evidence: GU-01–GU-21, CN-01–CN-08, and ER-01–ER-10 pass and are reviewed;
-records are committed; GU-20 demonstrates the suite cannot pass against a stub.
+Completion evidence: GU-01–GU-24, CN-01–CN-08, and ER-01–ER-10 pass; all records are
+committed; GU-20 demonstrates the suite cannot pass against a stub or without the stylesheet.
+The repository run is 54 suites / 460 cases, and the Playwright run is 2 specs / 13 cases.
 
 ### Phase 3: plugin contract and packaging — **in progress**
 
@@ -953,11 +977,14 @@ its issue is fixed, and that failure is the signal the fix landed, not a regress
 
 | Issue | Defect                                                                    | Pinned by            |
 | ----- | ------------------------------------------------------------------------- | -------------------- |
+| #35   | Graph nodes do not expose resource-type icon identity                     | GU-21, GU-23         |
+| #41   | Selecting a graph node does not reveal dismissible resource details       | GU-18                |
+| #89   | Graph nodes do not expose deployment status                               | GU-21, GU-23         |
 | #352  | `parseResourceId` rejects legal names and types; `ResourceLink` then throws | RU-02, AC-08, EC-08  |
 | #353  | Graph silently drops connections whose target cannot be resolved            | GU-04, GU-05a        |
 | #354  | `initialNodes` mutates the graph payload it is given                        | GU-05b               |
 | #355  | Graph layout state leaks between applications via a module-level Dagre graph | GU-08                |
-| #356  | Cluster selection disagrees between `RadiusApi` and the graph request        | Phase 2, not yet written |
+| #356  | Cluster selection disagrees between `RadiusApi` and the graph request        | CN-03, CN-04         |
 | #357  | Graph builder does not validate resources: self-loops and duplicate node ids | GU-06a               |
 | #358  | Publication/consumer blockers: private package, placeholder name, `radiusApiRef` unexported; source `workspace:^` alone is not a blocker | PU-10, PU-16, PU-19 |
 | #359  | `rad-components` declares ISC while the repository is Apache-2.0             | PU-18                |
@@ -968,13 +995,17 @@ its issue is fixed, and that failure is the signal the fix landed, not a regress
 | #364  | "Join us on Discord" navigates to the dashboard home page instead of Discord | CC-05, CC-06        |
 | #365  | `Resource.systemData` is required and typed `Record<string, never>`, so every fixture must be cast | RS-14 |
 | #366  | The Sucrase Jest transform's cache key ignores `instrument`, so an override that selects it reports 0% while its tests pass | PU-35 guardrail; fix is upstream |
+| #367  | Partial namespace failures are silently presented as complete inventory      | ER-08                |
+| #368  | Connection context is implicit, unscoped, and not consistently cancellable   | CN-02, CN-05–CN-08, ER-01, ER-02 |
+| #369  | The graph has no explicit empty state or degraded layout-failure state        | GU-15, GU-17         |
+| #370  | The graph request error state has no retry action                             | GU-16                |
 
 Six notes on reading this table.
 
-`#356` is now the only entry with **no test pinning it**, and it is the one that cannot wait. It
-must be pinned during Phase 2, while the old behavior still exists to be recorded — the divergence
-is observable today and stops being observable once the graph request moves. A defect that becomes
-unobservable before it is characterized cannot be shown to have been preserved or fixed.
+`#356` is pinned before the graph request moves: the same two-cluster list is passed to both paths,
+and the test proves `RadiusApi` chooses the first while `ApplicationTab` chooses the last. The
+divergence can therefore be shown to have been preserved or deliberately fixed during extraction
+rather than disappearing with the old call site.
 
 `#352` is pinned in three places because it fails at three depths. `RU-02` records the inputs the
 parser rejects; `AC-08` and `EC-08` record what a user actually sees, which is neither a bad link
@@ -1178,14 +1209,14 @@ divergence and Phase 2 adds CN-01–CN-08 as the regression cases that make the 
 
 | ID    | Requirement                                                                                   |
 | ----- | --------------------------------------------------------------------------------------------- |
-| CN-01 | A single configured connection is selected automatically                                       |
-| CN-02 | Multiple configured connections require an explicit selection; none is auto-picked             |
-| CN-03 | Two clusters whose first and last ordering disagree resolve to the same connection everywhere  |
-| CN-04 | Resource reads and the graph request use the same selected connection                          |
-| CN-05 | Changing connection cancels in-flight work and rejects late responses from the superseded one  |
-| CN-06 | Cache keys, filter persistence, and links are connection-scoped; same-named apps do not collide |
-| CN-07 | Plane selection is explicit rather than assuming `radius/local`                                 |
-| CN-08 | An invalid or removed connection selection produces an actionable error, not a blank page       |
+| CN-01 | A single configured connection is selected automatically — **done**                            |
+| CN-02 | Multiple configured connections require an explicit selection; none is auto-picked — **done, KNOWN-DEFECT** |
+| CN-03 | Two clusters whose first and last ordering disagree resolve to the same connection everywhere — **done, KNOWN-DEFECT** |
+| CN-04 | Resource reads and the graph request use the same selected connection — **done, KNOWN-DEFECT** |
+| CN-05 | Changing connection cancels in-flight work and rejects late responses from the superseded one — **done, KNOWN-DEFECT** |
+| CN-06 | Cache keys, filter persistence, and links are connection-scoped; same-named apps do not collide — **done, KNOWN-DEFECT** |
+| CN-07 | Plane selection is explicit rather than assuming `radius/local` — **done, KNOWN-DEFECT**        |
+| CN-08 | An invalid or removed connection selection produces an actionable error, not a blank page — **done, KNOWN-DEFECT** |
 
 #### Error states: ER-01–ER-10
 
@@ -1361,24 +1392,24 @@ expected-change manifest.
 | GU-05a | A   | Unparseable connections should be skipped; today's dangling edge is a **KNOWN-DEFECT pin**, not desired behavior |
 | GU-05b| A    | Building the model does not mutate the caller's graph — **done, KNOWN-DEFECT**                      |
 | GU-06 | A    | A self-referential connection produces no duplicate node and no self-loop — **done, KNOWN-DEFECT**  |
-| GU-07 | A    | Building the same fixture twice yields the same model — **done**; rendered-record determinism remains pending |
+| GU-07 | A    | Building the same fixture twice yields the same model — **done**, including rendered remount determinism |
 | GU-08 | A    | Rendering graph A then graph B produces the same result as rendering graph B alone — **done, KNOWN-DEFECT** |
-| GU-09 | A    | Every node receives a finite position and no two node bounding boxes overlap — **partly done** (finite positions; overlap needs the real renderer) |
-| GU-10 | A    | Node identities and edge relationships survive layout — **done**; preservation through rendering remains pending |
-| GU-11 | A    | Unmounting and remounting with the same data produces the same record and leaks no timers           |
-| GU-12 | B    | A node is findable by its resource name through its accessible name                                 |
-| GU-13 | B    | A connection between two named resources is represented in the rendered output                      |
-| GU-14 | B    | Zoom, fit, and the graph controls are operable by mouse and by keyboard                             |
-| GU-15 | B    | An empty application renders an explicit empty state with an accessible message, not a blank canvas |
-| GU-16 | B    | A graph request failure renders a retryable error state, not an empty successful graph              |
-| GU-17 | B    | A layout failure renders an explicitly degraded but usable presentation, not overlapping nodes      |
-| GU-18 | B    | Selecting a node reveals its details, and focus is restored when the details close                  |
-| GU-19 | B    | The graph renders correctly in light and dark themes with the shared stylesheet loaded              |
-| GU-20 | B    | Removing the real renderer or its stylesheet makes GU-12, GU-13, and GU-19 fail                     |
-| GU-21 | C    | Each Appendix E fixture produces its committed graph record                                         |
-| GU-22 | C    | Every record difference in an extraction pull request maps to an expected-change manifest entry     |
-| GU-23 | C    | A `KNOWN-DEFECT` record field that does not change during extraction is reported as carried forward |
-| GU-24 | C    | The manifest is empty at the end of each extraction phase                                           |
+| GU-09 | A    | Every node receives a finite position and no two node bounding boxes overlap — **done**                  |
+| GU-10 | A    | Node identities and edge relationships survive layout and rendering — **done**                        |
+| GU-11 | A    | Unmounting and remounting with the same data produces the same record and leaks no timers — **done** |
+| GU-12 | B    | A node is findable by its resource name through its accessible name — **done**                       |
+| GU-13 | B    | A connection between two named resources is represented in the rendered output — **done**            |
+| GU-14 | B    | Zoom, fit, and the graph controls are operable by mouse and by keyboard — **done**                   |
+| GU-15 | B    | An empty application renders an explicit empty state with an accessible message, not a blank canvas — **done, KNOWN-DEFECT** |
+| GU-16 | B    | A graph request failure renders a retryable error state, not an empty successful graph — **done, KNOWN-DEFECT** |
+| GU-17 | B    | A layout failure renders an explicitly degraded but usable presentation, not overlapping nodes — **done, KNOWN-DEFECT** |
+| GU-18 | B    | Selecting a node reveals its details, and focus is restored when the details close — **done, KNOWN-DEFECT** |
+| GU-19 | B    | The graph renders correctly in light and dark themes with the shared stylesheet loaded — **done**    |
+| GU-20 | B    | Removing the real renderer or its stylesheet makes GU-12, GU-13, and GU-19 fail — **done**           |
+| GU-21 | C    | Each Appendix E fixture produces its committed graph record — **done**                               |
+| GU-22 | C    | Every record difference in an extraction pull request maps to an expected-change manifest entry — **done** |
+| GU-23 | C    | A `KNOWN-DEFECT` record field that does not change during extraction is reported as carried forward — **done** |
+| GU-24 | C    | The manifest is empty at the end of each extraction phase — **done**                                 |
 
 GU-20 is the meta-test. Without it, a graph suite can pass against a stub and prove nothing, which
 is the exact failure mode the current `ApplicationTab.test.tsx` has today.
@@ -1438,9 +1469,11 @@ identity, status badge kind and accessible name, and a quantized position bucket
 resolved source id, resolved target id, and direction. It holds nothing else — no colours, class
 names, element nesting, or raw coordinates.
 
-Records are generated and frozen in Phase 2 and diffed in Phase 4 against the
-`graph-expected-changes.md` manifest described in the graph test taxonomy. Fixtures tagged
-`KNOWN-DEFECT` declare the record fields expected to change.
+The records are frozen under `packages/rad-components/src/__fixtures__/graph-records/` and diffed
+in Phase 4 against `packages/rad-components/src/__fixtures__/graph-expected-changes.md`. The
+manifest is currently empty. Fixtures tagged `KNOWN-DEFECT` declare the record fields expected to
+change through `knownGraphDefects` in `graphRecord.ts`; GU-23 reports any such field carried forward
+unchanged.
 
 ### Appendix F: source files with no colocated test
 
@@ -1507,21 +1540,31 @@ that rounding margin may pass. The **target** floors and automated no-decrease r
 work. See "Where coverage floors must live" for why these are root path groups rather than
 per-workspace config and why the current shape guard is not a historical ratchet.
 
-Enforced today (measured after Phase 0, Phase 3 source checks, Tier A model assertions, and the full
-Phase 1 page, tab, card, host, and declaration suites; `n/a` means the metric has no data in that
-workspace, and an omitted value means a floor would be zero and therefore meaningless):
+Enforced today (measured after Phase 0, Phase 3 source checks, the full Phase 1 suites, and the
+Phase 2 graph-record and connection/error characterization suites; `n/a` means the metric has no
+data in that workspace, and an omitted value means a floor would be zero and therefore
+meaningless):
 
 | Workspace                       | Statements | Branches | Functions | Lines |
 | ------------------------------- | ---------: | -------: | --------: | ----: |
-| `plugins/plugin-radius`         |        72% |      54% |       64% |   72% |
+| `plugins/plugin-radius`         |        73% |      55% |       67% |   73% |
 | `plugins/plugin-radius-backend` |        93% |      n/a |      100% |  100% |
-| `packages/rad-components`       |        86% |      81% |       80% |   85% |
+| `packages/rad-components`       |        95% |      93% |       94% |   94% |
 | `packages/app`                  |        93% |     100% |       83% |   92% |
 | `packages/backend`              |       100% |      n/a |      100% |  100% |
 
-The `plugin-radius` floors moved from 61/33/46/60 to 69/46/58/68, then to 70/50/61/70, and finally
-to 72/54/64/72 as the Phase 1 suites and lower-layer review corrections landed. Each raise is
-committed alongside the tests that earned it, so a floor is never aspirational.
+The `plugin-radius` floors moved from 61/33/46/60 to 69/46/58/68, then to 70/50/61/70, then to
+72/54/64/72 for Phase 1, and now to 73/55/67/73 for the connection and error-state
+characterization. Each raise is committed alongside the tests that earned it, so a floor is never
+aspirational.
+
+`packages/rad-components` now measures 95.08/93.75/94.59/94.59 after the record normalizer,
+manifest validation, layout-failure characterization, and real-renderer accessibility semantics.
+Its intended Storybook documentation boundary is enforced at the root: Jest treats
+`coveragePathIgnorePatterns` as regular expressions, so the old workspace entry
+`<rootDir>/**/__docs__/*` did not exclude anything during the repository run. The corrected root
+`/__docs__/` boundary excludes stories and examples, not shipped graph code, and the floor is
+raised to the measured result.
 
 The backend plugin floor moved from 62/n/a/50/71 to 93/n/a/100/100 when BE-01–BE-05 replaced the
 single health-check smoke test with router, registration, lifecycle, and failure-path coverage.

@@ -69,12 +69,15 @@
     ]
   },
   "jest": {
+    "coveragePathIgnorePatterns": [
+      "/__docs__/"
+    ],
     "coverageThreshold": {
       "./plugins/plugin-radius/src/": {
-        "statements": 72,
-        "branches": 54,
-        "functions": 64,
-        "lines": 72
+        "statements": 73,
+        "branches": 55,
+        "functions": 67,
+        "lines": 73
       },
       "./plugins/plugin-radius-backend/src/": {
         "statements": 93,
@@ -82,10 +85,10 @@
         "lines": 100
       },
       "./packages/rad-components/src/": {
-        "statements": 86,
-        "branches": 81,
-        "functions": 80,
-        "lines": 85
+        "statements": 95,
+        "branches": 93,
+        "functions": 94,
+        "lines": 94
       },
       "./packages/app/src/": {
         "statements": 93,

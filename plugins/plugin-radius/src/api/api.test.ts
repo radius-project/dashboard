@@ -144,7 +144,22 @@ describe('makePathForId', () => {
 });
 
 describe('RadiusApi', () => {
-  it('selectCluster returns first cluster', async () => {
+  it('CN-01: selects the only configured connection automatically', async () => {
+    const api = new RadiusApiImpl({
+      getClusters: async () => [{ name: 'test-cluster', authProvider: 'test' }],
+      proxy: async () => {
+        throw new Error('not implemented');
+      },
+    });
+    // eslint-disable-next-line dot-notation
+    expect(await api['selectCluster']()).toEqual('test-cluster');
+  });
+
+  /**
+   * KNOWN-DEFECT: multiple connections should require an explicit selection,
+   * but the API silently chooses the first one. Tracked by #368.
+   */
+  it('CN-02 / ER-02: KNOWN-DEFECT selects the first connection without an explicit valid selection', async () => {
     const api = new RadiusApiImpl({
       getClusters: async () => [
         { name: 'test-cluster1', authProvider: 'test' },
@@ -160,19 +175,64 @@ describe('RadiusApi', () => {
     // eslint-disable-next-line dot-notation
     expect(await api['selectCluster']()).toEqual('test-cluster1');
   });
-  it('makeRequest handles errors', async () => {
+
+  it('CN-08 / ER-01: reports when no connection is configured', async () => {
+    const api = new RadiusApiImpl({
+      getClusters: async () => [],
+      proxy: async () => {
+        throw new Error('not implemented');
+      },
+    });
+
+    await expect(api.listApplications()).rejects.toThrow(
+      'No kubernetes clusters found',
+    );
+  });
+
+  /**
+   * KNOWN-DEFECT: callers cannot supply a selected plane consistently, so
+   * resource operations default to radius/local. Tracked by #368.
+   */
+  it('CN-07: KNOWN-DEFECT defaults resource reads to the local Radius plane', async () => {
+    const requestedPaths: string[] = [];
+    const api = new RadiusApiImpl({
+      getClusters: async () => [{ name: 'test-cluster', authProvider: 'test' }],
+      proxy: async ({ path }: { path: string }) => {
+        requestedPaths.push(path);
+        return Promise.resolve(
+          new Response(JSON.stringify({ value: [] }), { status: 200 }),
+        );
+      },
+    });
+
+    await api.listApplications();
+
+    expect(requestedPaths).not.toHaveLength(0);
+    expect(
+      requestedPaths.every(path => path.includes('/planes/radius/local/')),
+    ).toBe(true);
+  });
+
+  it.each([
+    ['ER-03', 401, 'Unauthenticated'],
+    ['ER-04', 403, 'Forbidden'],
+    ['ER-05', 404, 'Not Found'],
+    ['ER-06', 400, 'Unsupported API version'],
+    ['ER-10', 503, 'Service Unavailable'],
+  ])('%s: preserves the %i upstream failure', async (_id, status, body) => {
     const api = new RadiusApiImpl({
       getClusters: async () => {
         throw new Error('not implemented');
       },
-      proxy: async () => Promise.resolve(new Response('test', { status: 404 })),
+      proxy: async () => Promise.resolve(new Response(body, { status })),
     });
     // eslint-disable-next-line dot-notation
     await expect(api['makeRequest']('cluster', 'path')).rejects.toThrow(
-      'Request failed: 404:\n\ntest',
+      `Request failed: ${status}:\n\n${body}`,
     );
   });
-  it('makeRequest expects JSON', async () => {
+
+  it('ER-07: rejects a malformed JSON payload', async () => {
     const api = new RadiusApiImpl({
       getClusters: async () => {
         throw new Error('not implemented');
@@ -567,7 +627,11 @@ describe('RadiusApi', () => {
           expect(result.value.map(r => r.name)).toContain('new-app');
         });
 
-        it('returns results even when one namespace fails', async () => {
+        /**
+         * KNOWN-DEFECT: callers receive an ordinary successful result with no
+         * indication that half of discovery failed. Tracked by #367.
+         */
+        it('ER-08: KNOWN-DEFECT presents a partial namespace result as complete', async () => {
           const newApps = {
             value: [
               {

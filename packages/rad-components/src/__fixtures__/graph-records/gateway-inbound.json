@@ -1,0 +1,33 @@
+{
+  "nodes": [
+    {
+      "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Core/containers/webapp",
+      "label": "webapp",
+      "type": "Applications.Core/containers",
+      "icon": null,
+      "statusBadge": null,
+      "position": {
+        "x": 100,
+        "y": 400
+      }
+    },
+    {
+      "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Core/gateways/edge",
+      "label": "edge",
+      "type": "Applications.Core/gateways",
+      "icon": null,
+      "statusBadge": null,
+      "position": {
+        "x": 100,
+        "y": 100
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source": "/planes/radius/local/resourceGroups/demo/providers/Applications.Core/gateways/edge",
+      "target": "/planes/radius/local/resourceGroups/demo/providers/Applications.Core/containers/webapp",
+      "direction": "source-to-target"
+    }
+  ]
+}

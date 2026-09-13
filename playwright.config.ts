@@ -19,6 +19,7 @@ import { generateProjects } from '@backstage/e2e-test-utils/playwright';
 
 // Set PLAYWRIGHT_DISABLE_WEBSERVER=true when tests should run against an externally managed URL (for example PLAYWRIGHT_URL=http://localhost:7007).
 const disableWebServer = process.env.PLAYWRIGHT_DISABLE_WEBSERVER === 'true';
+const browserChannel = process.env.PLAYWRIGHT_BROWSER_CHANNEL;
 
 /**
  * See https://playwright.dev/docs/test-configuration.
@@ -31,14 +32,25 @@ export default defineConfig({
   },
 
   // Run your local dev server before starting the tests
-  webServer: disableWebServer
-    ? undefined
-    : {
-        command: 'yarn start',
-        port: 3000,
-        reuseExistingServer: true,
-        timeout: 60_000,
-      },
+  webServer: [
+    ...(!disableWebServer
+      ? [
+          {
+            command: 'yarn start',
+            port: 3000,
+            reuseExistingServer: true,
+            timeout: 180_000,
+          },
+        ]
+      : []),
+    {
+      command:
+        'yarn workspace @radapp.io/rad-components storybook --ci --no-open',
+      port: 6006,
+      reuseExistingServer: true,
+      timeout: 120_000,
+    },
+  ],
 
   forbidOnly: !!process.env.CI,
 
@@ -57,5 +69,11 @@ export default defineConfig({
 
   outputDir: './logs/e2e-test-results',
 
-  projects: generateProjects(), // Find all packages with e2e-test folders
+  projects: generateProjects().map(project => ({
+    ...project,
+    use: {
+      ...project.use,
+      ...(browserChannel ? { channel: browserChannel } : {}),
+    },
+  })), // Find all packages with e2e-test folders
 });

@@ -1,0 +1,27 @@
+{
+  "nodes": [
+    {
+      "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Core/containers/core-app",
+      "label": "core-app",
+      "type": "Applications.Core/containers",
+      "icon": null,
+      "statusBadge": null,
+      "position": {
+        "x": 100,
+        "y": 100
+      }
+    },
+    {
+      "id": "/planes/radius/local/resourceGroups/demo/providers/Radius.Core/containers/radius-app",
+      "label": "radius-app",
+      "type": "Radius.Core/containers",
+      "icon": null,
+      "statusBadge": null,
+      "position": {
+        "x": 300,
+        "y": 100
+      }
+    }
+  ],
+  "edges": []
+}
