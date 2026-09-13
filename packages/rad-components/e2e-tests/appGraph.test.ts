@@ -163,7 +163,7 @@ test.describe('real AppGraph renderer', () => {
     await expect.poll(() => viewport.getAttribute('style')).not.toBe(zoomed);
   });
 
-  // KNOWN-DEFECT (#369): the correct behavior is an explicit accessible empty state.
+  // KNOWN-DEFECT (#368): the correct behavior is an explicit accessible empty state.
   test('GU-15: KNOWN-DEFECT an empty graph is a blank canvas without an empty-state message', async ({
     page,
   }) => {

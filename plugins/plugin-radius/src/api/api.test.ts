@@ -157,7 +157,7 @@ describe('RadiusApi', () => {
 
   /**
    * KNOWN-DEFECT: multiple connections should require an explicit selection,
-   * but the API silently chooses the first one. Tracked by #368.
+   * but the API silently chooses the first one. Tracked by #367.
    */
   it('CN-02 / ER-02: KNOWN-DEFECT selects the first connection without an explicit valid selection', async () => {
     const api = new RadiusApiImpl({
@@ -191,7 +191,7 @@ describe('RadiusApi', () => {
 
   /**
    * KNOWN-DEFECT: callers cannot supply a selected plane consistently, so
-   * resource operations default to radius/local. Tracked by #368.
+   * resource operations default to radius/local. Tracked by #367.
    */
   it('CN-07: KNOWN-DEFECT defaults resource reads to the local Radius plane', async () => {
     const requestedPaths: string[] = [];
@@ -629,7 +629,7 @@ describe('RadiusApi', () => {
 
         /**
          * KNOWN-DEFECT: callers receive an ordinary successful result with no
-         * indication that half of discovery failed. Tracked by #367.
+         * indication that half of discovery failed. Tracked by #369.
          */
         it('ER-08: KNOWN-DEFECT presents a partial namespace result as complete', async () => {
           const newApps = {

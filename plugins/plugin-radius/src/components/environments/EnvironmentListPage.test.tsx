@@ -58,7 +58,7 @@ describe('EnvironmentListPage', () => {
 
   /**
    * KNOWN-DEFECT: the persisted filter key has no connection identity, so two
-   * clusters with the same resource-group name share state. Tracked by #368.
+   * clusters with the same resource-group name share state. Tracked by #367.
    */
   it('CN-06: KNOWN-DEFECT restores the resource-group filter from one global storage key', async () => {
     localStorage.setItem('radius-environment-filter-resource-group', 'group-b');

@@ -247,7 +247,7 @@ describe('ApplicationTab', () => {
   /**
    * KNOWN-DEFECT: there is no selected-connection input or context to change,
    * so the component cannot cancel work when the connection changes. Tracked
-   * by #368.
+   * by #367.
    */
   it('CN-05: KNOWN-DEFECT exposes no connection input for cancellation', () => {
     type Props = React.ComponentProps<typeof ApplicationTab>;

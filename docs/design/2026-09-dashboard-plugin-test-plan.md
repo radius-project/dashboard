@@ -995,9 +995,9 @@ its issue is fixed, and that failure is the signal the fix landed, not a regress
 | #364  | "Join us on Discord" navigates to the dashboard home page instead of Discord | CC-05, CC-06        |
 | #365  | `Resource.systemData` is required and typed `Record<string, never>`, so every fixture must be cast | RS-14 |
 | #366  | The Sucrase Jest transform's cache key ignores `instrument`, so an override that selects it reports 0% while its tests pass | PU-35 guardrail; fix is upstream |
-| #367  | Partial namespace failures are silently presented as complete inventory      | ER-08                |
-| #368  | Connection context is implicit, unscoped, and not consistently cancellable   | CN-02, CN-05–CN-08, ER-01, ER-02 |
-| #369  | The graph has no explicit empty state or degraded layout-failure state        | GU-15, GU-17         |
+| #367  | Connection context is implicit, unscoped, and not consistently cancellable   | CN-02, CN-05–CN-08, ER-01, ER-02 |
+| #368  | The graph has no explicit empty state or degraded layout-failure state        | GU-15, GU-17         |
+| #369  | Partial namespace failures are silently presented as complete inventory      | ER-08                |
 | #370  | The graph request error state has no retry action                             | GU-16                |
 
 Six notes on reading this table.

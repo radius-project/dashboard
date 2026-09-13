@@ -18,7 +18,7 @@ describe('AppGraph component', () => {
 
   /**
    * KNOWN-DEFECT: layout failures escape the renderer rather than producing a
-   * degraded graph with an explanation. Tracked by #369.
+   * degraded graph with an explanation. Tracked by #368.
    */
   it('GU-17: KNOWN-DEFECT propagates a graph layout failure', () => {
     jest.spyOn(Dagre, 'layout').mockImplementation(() => {
