@@ -80,7 +80,7 @@ Progression as the plan is executed, re-measured after each phase increment:
 | `packages/rad-components`       |   80.00% |        81.33% |       86.52% |                    86.52% |                   86.52% |                 86.52% |        95.08% |        95.08% |
 | `packages/app`                  |   75.00% |        75.00% |       75.00% |                    75.00% |                   75.00% |                 93.51% |        93.51% |        93.51% |
 | `packages/backend`              |    0.00% |         0.00% |        0.00% |                     0.00% |                    0.00% |                100.00% |       100.00% |       100.00% |
-| Suites / cases                  |   31/127 |        33/159 |       34/260 |                    36/272 |                   43/331 |                 53/427 |        54/460 |    **56/468** |
+| Suites / cases                  |   31/127 |        33/159 |       34/260 |                    36/272 |                   43/331 |                 53/427 |        54/460 |    **56/469** |
 
 Statement coverage only; the enforced floors in Appendix G carry all four metrics.
 
@@ -732,8 +732,9 @@ The source contract is now the intended consumer contract:
   source entry point.
 - PU-27 packs both the plugin and its current graph dependency, extracts them into an isolated
   `node_modules` tree, and compiles a consumer against the emitted `dist/index.d.ts`. PU-27a proves
-  package resolution points at those extracted candidate tarballs rather than workspace source.
-- PU-27b inspects the packed manifest and archive: the current internal/private identity,
+  package resolution points at those extracted candidate tarballs rather than workspace source,
+  and PU-27b proves the prepack/postpack lifecycle restores the source manifest.
+- PU-27c inspects the packed manifest and archive: the current internal/private identity,
   Backstage metadata, built entry points, `files`, `sideEffects`, peer React placement, rewritten
   workspace ranges, and absence of shipped `src` content are enforced.
 

@@ -44,6 +44,14 @@ const graphInstall = path.join(
   '@radapp.io',
   'rad-components',
 );
+const pluginManifestPath = path.join(
+  repoRoot,
+  'plugins',
+  'plugin-radius',
+  'package.json',
+);
+let sourcePluginManifestBeforePack: string;
+let sourcePluginManifestAfterPack: string;
 
 const run = (command: string, args: string[]) =>
   execFileSync(command, args, {
@@ -98,8 +106,10 @@ beforeAll(() => {
   fs.rmSync(artifactRoot, { recursive: true, force: true });
   fs.mkdirSync(artifactRoot, { recursive: true });
 
+  sourcePluginManifestBeforePack = fs.readFileSync(pluginManifestPath, 'utf8');
   packWorkspace('@radapp.io/rad-components', graphArchive);
   packWorkspace('@internal/plugin-radius', pluginArchive);
+  sourcePluginManifestAfterPack = fs.readFileSync(pluginManifestPath, 'utf8');
   extractArchive(pluginArchive, pluginInstall);
   extractArchive(graphArchive, graphInstall);
 
@@ -166,7 +176,16 @@ describe('built plugin artifact', () => {
     ).toBe(path.join(graphInstall, 'package.json'));
   });
 
-  it('PU-27b: packs current metadata and built files without workspace ranges', () => {
+  it('PU-27b: restores the source manifest after prepack and postpack', () => {
+    expect(sourcePluginManifestAfterPack).toBe(sourcePluginManifestBeforePack);
+    expect(readJson<PackedPackageJson>(pluginManifestPath)).toMatchObject({
+      main: 'src/index.ts',
+      types: 'src/index.ts',
+      private: true,
+    });
+  });
+
+  it('PU-27c: packs current metadata and built files without workspace ranges', () => {
     const manifest = readJson<PackedPackageJson>(
       path.join(pluginInstall, 'package.json'),
     );
