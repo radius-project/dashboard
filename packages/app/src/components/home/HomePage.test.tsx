@@ -6,18 +6,9 @@ import {
   environmentListPageRouteRef,
   resourcePageRouteRef,
   environmentPageRouteRef,
-} from '@internal/plugin-radius';
-// `radiusApiRef` and `RadiusApi` are not part of the plugin's public export
-// list, which is radius-project/dashboard#358 and is pinned by PU-19. A host
-// cannot supply the API the plugin requires without reaching inside the
-// package, and this test has to do the same thing a host would. The rule is
-// disabled rather than worked around precisely because the reach-in is the
-// defect: when #358 is fixed these two lines become barrel imports and the
-// disable comment goes with them.
-/* eslint-disable @backstage/no-forbidden-package-imports */
-import { radiusApiRef } from '@internal/plugin-radius/src/plugin';
-import { RadiusApi } from '@internal/plugin-radius/src/api';
-/* eslint-enable @backstage/no-forbidden-package-imports */
+  radiusApiRef,
+} from '@radius-project/backstage-plugin-radius';
+import type { RadiusApi } from '@radius-project/backstage-plugin-radius';
 import { HomePage } from './HomePage';
 
 /**

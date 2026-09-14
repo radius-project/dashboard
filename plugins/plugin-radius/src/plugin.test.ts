@@ -1,4 +1,4 @@
-import { radiusPlugin, radiusApiRef } from './plugin';
+import { radiusPlugin, radiusApiRef, RadiusApi } from './plugin';
 import * as publicApi from './index';
 import {
   applicationListPageRouteRef,
@@ -12,6 +12,7 @@ import {
   rootRouteRef,
 } from './routes';
 import { featureRadiusCatalog } from './features';
+import { kubernetesApiRef } from '@backstage/plugin-kubernetes';
 
 /**
  * Phase 3 contract tests.
@@ -48,6 +49,7 @@ describe('plugin contract', () => {
       'environmentListPageRouteRef',
       'environmentPageRouteRef',
       'featureRadiusCatalog',
+      'radiusApiRef',
       'radiusPlugin',
       'recipeListPageRouteRef',
       'resourceListPageRouteRef',
@@ -124,6 +126,51 @@ describe('plugin contract', () => {
     expect(factories[0].api.id).toBe('radius-api');
   });
 
+  it('PU-07a: executes the registered factory against the Kubernetes request contract', async () => {
+    const factory = [...radiusPlugin.getApis()][0];
+    const getClusters = jest
+      .fn()
+      .mockResolvedValue([
+        { name: 'phase3-cluster', authProvider: 'serviceAccount' },
+      ]);
+    const proxy = jest.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          Name: 'applications',
+          Description: 'Application resource type',
+          ResourceProviderNamespace: 'Radius.Core',
+          APIVersions: { '2025-01-01': {} },
+          APIVersionList: ['2025-01-01'],
+        }),
+        { status: 200 },
+      ),
+    );
+
+    expect(factory.deps).toEqual({ kubernetesApi: kubernetesApiRef });
+    const api = factory.factory({
+      kubernetesApi: { getClusters, proxy },
+    }) as RadiusApi;
+
+    await expect(
+      api.getResourceType({
+        namespace: 'Radius.Core',
+        typeName: 'applications',
+        clusterName: 'phase3-cluster',
+      }),
+    ).resolves.toMatchObject({
+      Name: 'applications',
+      ResourceProviderNamespace: 'Radius.Core',
+    });
+    expect(proxy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        clusterName: 'phase3-cluster',
+        path: expect.stringContaining(
+          '/providers/Radius.Core/resourceTypes/applications',
+        ),
+      }),
+    );
+  });
+
   it('PU-08: declares the radius catalog feature flag', () => {
     expect(featureRadiusCatalog).toBe('radius-catalog');
     expect([...radiusPlugin.getFeatureFlags()]).toEqual([
@@ -151,14 +198,7 @@ describe('plugin contract', () => {
     });
   });
 
-  /**
-   * KNOWN-DEFECT: `radiusApiRef` and the `RadiusApi` type are exported from
-   * `./plugin` but not from the package entry point, so an external host cannot
-   * reference the api it is expected to supply or override. This records the
-   * current gap. When the export is added, invert this assertion and update
-   * PU-02 in the same change.
-   */
-  it('PU-10: KNOWN-DEFECT the api ref is not reachable from the entry point', () => {
-    expect(publicApi).not.toHaveProperty('radiusApiRef');
+  it('PU-10: exposes the api ref from the package entry point', () => {
+    expect(publicApi.radiusApiRef).toBe(radiusApiRef);
   });
 });

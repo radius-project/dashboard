@@ -7,7 +7,7 @@ import {
   recipeListPageRouteRef,
   resourceListPageRouteRef,
   resourceTypesListPageRouteRef,
-} from '@internal/plugin-radius';
+} from '@radius-project/backstage-plugin-radius';
 import { userSettingsPlugin } from '@backstage/plugin-user-settings';
 import { Root } from './Root';
 

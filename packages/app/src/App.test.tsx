@@ -37,7 +37,7 @@ jest.mock('./apis', () => ({
   apis: [],
 }));
 
-jest.mock('@internal/plugin-radius', () => ({
+jest.mock('@radius-project/backstage-plugin-radius', () => ({
   radiusPlugin: { externalRoutes: {} },
   ApplicationListPage: () => <div>Applications</div>,
   EnvironmentListPage: () => <div>Environments</div>,

@@ -26,7 +26,7 @@ import {
   ResourceTypeDetailPage,
   ResourcePage,
   radiusPlugin,
-} from '@internal/plugin-radius';
+} from '@radius-project/backstage-plugin-radius';
 import { kubernetesPlugin } from '@backstage/plugin-kubernetes';
 import {
   UnifiedThemeProvider,

@@ -73,19 +73,19 @@ evidence of tested behavior there. Phase 1 closed it: the workspace now measures
 
 Progression as the plan is executed, re-measured after each phase increment:
 
-| Workspace                       | Baseline | After 0 and 3 | After Tier A | After first Phase 1 pages | After Phase 1 components | After Phase 1 complete | After Phase 2 |
-| ------------------------------- | -------: | ------------: | -----------: | ------------------------: | -----------------------: | ---------------------: | ------------: |
-| `plugins/plugin-radius`         |   54.77% |        58.42% |       58.42% |                    61.22% |                   69.19% |                 72.70% |    **73.79%** |
-| `plugins/plugin-radius-backend` |   62.50% |        62.50% |       62.50% |                    62.50% |                   62.50% |                 93.75% |        93.75% |
-| `packages/rad-components`       |   80.00% |        81.33% |       86.52% |                    86.52% |                   86.52% |                 86.52% |    **95.08%** |
-| `packages/app`                  |   75.00% |        75.00% |       75.00% |                    75.00% |                   75.00% |                 93.51% |        93.51% |
-| `packages/backend`              |    0.00% |         0.00% |        0.00% |                     0.00% |                    0.00% |                100.00% |       100.00% |
-| Suites / cases                  |   31/127 |        33/159 |       34/260 |                    36/272 |                   43/331 |                 53/427 |    **54/460** |
+| Workspace                       | Baseline | After 0 and 3 | After Tier A | After first Phase 1 pages | After Phase 1 components | After Phase 1 complete | After Phase 2 | After Phase 3 |
+| ------------------------------- | -------: | ------------: | -----------: | ------------------------: | -----------------------: | ---------------------: | ------------: | ------------: |
+| `plugins/plugin-radius`         |   54.77% |        58.42% |       58.42% |                    61.22% |                   69.19% |                 72.70% |        73.79% |    **73.89%** |
+| `plugins/plugin-radius-backend` |   62.50% |        62.50% |       62.50% |                    62.50% |                   62.50% |                 93.75% |        93.75% |        93.75% |
+| `packages/rad-components`       |   80.00% |        81.33% |       86.52% |                    86.52% |                   86.52% |                 86.52% |        95.08% |        95.08% |
+| `packages/app`                  |   75.00% |        75.00% |       75.00% |                    75.00% |                   75.00% |                 93.51% |        93.51% |        93.51% |
+| `packages/backend`              |    0.00% |         0.00% |        0.00% |                     0.00% |                    0.00% |                100.00% |       100.00% |       100.00% |
+| Suites / cases                  |   31/127 |        33/159 |       34/260 |                    36/272 |                   43/331 |                 53/427 |        54/460 |    **56/468** |
 
 Statement coverage only; the enforced floors in Appendix G carry all four metrics.
 
-Plus two Playwright specs with thirteen cases: the home-page smoke case, eight direct real-renderer
-cases, and four dashboard-host journeys using deterministic Kubernetes/UCP interception.
+Plus two Playwright specs with fourteen cases: the home-page smoke case, eight direct real-renderer
+cases, and five dashboard-host journeys using deterministic Kubernetes/UCP interception.
 
 The raw counts understate the gap. Three findings matter more:
 
@@ -117,7 +117,7 @@ coverage could fall to zero without failing a build. Phase 0 closed this; see
 | 0     | Record the behavior                 | dashboard  | Done        | Public exports, route table, request table, page inventory, and a coverage floor are written down |
 | 1     | Harden existing behavior            | dashboard  | Done        | Every shipped page, table, tab, card, host component, backend-plugin lifecycle, and domain rule has a real test before it is rearchitected. All thirteen `plugin-radius` components, both host workspaces, the backend plugin, and the declaration modules are covered; `packages/backend` no longer carries a coverage exemption |
 | 2     | Freeze the pre-extraction baseline  | dashboard  | Done        | Real-renderer graph journeys, deterministic host journeys, connection/error characterization, and all fourteen graph records are frozen |
-| 3     | Plugin contract and packaging       | dashboard  | In progress | Source exports, registration metadata, manifests, and coverage-policy shape are pinned; runtime wiring and built/packed consumer evidence remain |
+| 3     | Plugin contract and packaging       | dashboard  | Done        | The approved public package name, API factory, exports, lazy host routes, packed metadata, local tarball resolution, declarations, and current import boundaries are verified |
 | 4     | Consume shared packages             | dashboard, needs `ai-extensions` releases | Not started | The plugin uses `core` and `graph-react`; no parallel implementation remains |
 | 5     | Host integration and installed artifact | dashboard | Not started | Both hosts mount the plugin from packed tarballs with no source aliases                      |
 | 6     | Permanent CI gates                  | both       | Not started | Coverage floors, contract, packaging, and the consumer pin are required for merge and publish    |
@@ -157,8 +157,8 @@ question rather than a dependency. See open decision 8.
   not a refactor; split it.
 - Keep tests local and repeatable. No live clusters, no personal kubeconfig, no real Radius control
   plane, no network fetches, no public CDN assets.
-- Test the plugin through its **public entry point** (today `@internal/plugin-radius`, after Phase 3
-  `@radius-project/backstage-plugin-radius`), not through deep relative paths, wherever the test is
+- Test the plugin through its **public entry point** (`@radius-project/backstage-plugin-radius`),
+  not through deep relative paths, wherever the test is
   asserting consumer-visible behavior. Deep imports are allowed only for genuinely internal helpers.
 - Assert on accessible roles and names, not on CSS classes, Material-UI internals, or React Flow
   internals. The graph rework replaces all of those internals; it must not change what a user can
@@ -707,49 +707,44 @@ Completion evidence: GU-01–GU-24, CN-01–CN-08, and ER-01–ER-10 pass; all r
 committed; GU-20 demonstrates the suite cannot pass against a stub or without the stylesheet.
 The repository run is 54 suites / 460 cases, and the Playwright run is 2 specs / 13 cases.
 
-### Phase 3: plugin contract and packaging — **in progress**
+### Phase 3: plugin contract and packaging — **done**
 
 Make the published package a tested contract before anything consumes it as one. This phase is
 dashboard-owned and independent of `ai-extensions`; it can start before any shared package exists.
 
-Implemented source-level evidence:
+The source contract is now the intended consumer contract:
 
-- PU-01–PU-10 pin current public exports, route-ref ids and parameter names, the root route map,
-  extension display names, the `radiusApiRef` id, factory registration, and the feature flag.
-  They do not execute the factory, resolve lazy components, or exercise extension mount points.
-- PU-11–PU-19 inspect source manifests: package role, declared built entry points, file allowlist,
-  side-effects declaration, peer dependencies, current name, and publication/license decisions.
-  PU-17 records `workspace:^` as source wiring, not as a defect: Yarn rewrites it during packing.
-  These assertions do not establish that files exist in a tarball or dependencies can be installed.
-- PU-20–PU-25 and PU-32–PU-34 enforce coverage configuration shape, complete source-directory
-  groups, and positive percentage floors. They do not enforce a historical no-decrease ratchet.
+- The workspace and host use the approved `@radius-project/backstage-plugin-radius` name; the
+  package is publishable, declares `backstage.pluginId` and `pluginPackages`, and exports both
+  `radiusApiRef` and the `RadiusApi` type from its public entry point.
+- PU-07a invokes the registered API factory with a mock `kubernetesApiRef`, calls the resulting
+  `RadiusApi`, and asserts the Kubernetes proxy request contract rather than merely inspecting
+  registration metadata.
+- PU-28 navigates every one of the eight real lazy extensions through its dashboard host route.
+  The test uses the production plugin and route table with deterministic Kubernetes/UCP responses,
+  so a wrong import, missing component export, or unresolved route fails in the browser.
 
-Remaining evidence required to complete the contract and publication work:
+`packagingArtifact.test.ts` supplies the built and local-artifact evidence:
 
-- Assert route paths and extension mount points through host routing, and lazy component resolution
-  (PU-28 and Phase 5 host journeys).
-- Invoke the registered factory with a mock `kubernetesApiRef` and exercise the resulting
-  `RadiusApi`, including its request contract.
-- Assert packed metadata under the approved public name `@radius-project/backstage-plugin-radius`:
-  `backstage.role`, entry points, `files`, `sideEffects`, that React and `react-router-dom` stay
-  peer dependencies, and that no `@internal/*` or `workspace:` dependency survives packing.
-- Assert the built artifact (PU-26/PU-27): build the package and check the emitted `dist` exports
-  match the source entry point and that declarations resolve from a consumer fixture.
-- Implement PB-01–PB-05. The plugin may import `core` and `graph-react`; nothing in
-  the plugin may import Canvas or another adapter's private source; browser code imports
-  browser-safe subpaths rather than a root barrel.
-- Resolve the license discrepancy before publishing. The repository root declares **no** license at
-  all, the `LICENSE` file is Apache-2.0, `plugin-radius` and `plugin-radius-backend` declare
-  Apache-2.0, and `rad-components` declares **ISC** and is **not** private — making it the one
-  package in the repository that is currently publishable and the one that disagrees with the
-  repository license. `PU-18` records this state so it is resolved deliberately rather than
-  discovered at publish time. Preservation of moved-code notices remains PU-30 work.
+- PU-26 builds the plugin and compares the named runtime exports in `dist/index.esm.js` with the
+  source entry point.
+- PU-27 packs both the plugin and its current graph dependency, extracts them into an isolated
+  `node_modules` tree, and compiles a consumer against the emitted `dist/index.d.ts`. PU-27a proves
+  package resolution points at those extracted candidate tarballs rather than workspace source.
+- PU-30 inspects the packed manifest and archive: the public name, Backstage metadata, built entry
+  points, `files`, `sideEffects`, peer React placement, Apache license, and absence of
+  `@internal/*`, `workspace:`, and shipped `src` content are enforced.
 
-Completion requires the runtime-wiring checks above plus PU-26–PU-28, PU-30, and PB-01–PB-05.
-Boundary checks involving shared packages land with Phase 4; clean installed-consumer evidence
-lands in Phase 5. Neither is complete today. Existing checks detect changed source exports,
-route-ref ids/parameters, peer-dependency placement, coverage-policy weakening, and selection of the
-Sucrase Jest transform, but are not published-plugin qualification.
+The current import boundary is non-vacuous: PB-04 finds the host's real plugin imports and requires
+every one to use the public entry point. PB-01a and PB-02a do the equivalent for the current
+`rad-components` dependency and reject private source reach-ins.
+
+This does **not** claim the final shared-package or installed-host qualification early. PB-01–PB-03
+and PB-05 name `core` and `graph-react` contracts that do not exist in this repository until
+Phase 4; PU-29 is also a Phase 4 forwarding/deletion check. Phase 5 owns the fully clean package
+manager installation, transitive candidate proof, CSS/build output, peer-React tree, nested/base-path
+host mounting, and IA-01–IA-08. Phase 3's extracted local-tarball consumer deliberately proves the
+plugin artifact without representing that later external-host gate.
 
 ### Phase 4: consume shared packages and remove duplicates
 
@@ -986,7 +981,7 @@ its issue is fixed, and that failure is the signal the fix landed, not a regress
 | #355  | Graph layout state leaks between applications via a module-level Dagre graph | GU-08                |
 | #356  | Cluster selection disagrees between `RadiusApi` and the graph request        | CN-03, CN-04         |
 | #357  | Graph builder does not validate resources: self-loops and duplicate node ids | GU-06a               |
-| #358  | Publication/consumer blockers: private package, placeholder name, `radiusApiRef` unexported; source `workspace:^` alone is not a blocker | PU-10, PU-16, PU-19 |
+| #358  | Publication/consumer blockers resolved in Phase 3: public package name, publishable manifest, and exported API contract; source `workspace:^` alone was not a blocker | PU-10, PU-16, PU-19, PU-26–PU-28, PU-30 |
 | #359  | `rad-components` declares ISC while the repository is Apache-2.0             | PU-18                |
 | #360  | Five page suites can time out under loaded parallel execution and misreport as coverage failures | Phase 1 default-worker recheck; open guardrail |
 | #361  | A resource type with no description shows placeholder container documentation | RT-07                |
@@ -1067,8 +1062,9 @@ are recorded here because they changed what this plan tests.
 
 1. **Ownership.** Shared domain logic and graph rendering are owned and published by
    `ai-extensions` as `@radius-project/core` and `@radius-project/graph-react`. The Backstage plugin
-   is published from this repository as `@radius-project/backstage-plugin-radius`. All three names
-   are subject to npm scope confirmation, so PU-19 pins whatever name ships.
+   is published from this repository as `@radius-project/backstage-plugin-radius`. The plugin name
+   is confirmed and enforced by PU-19; the two shared-package names remain subject to npm scope
+   confirmation in `ai-extensions`.
 2. **No duplicate graph model.** The design rejects duplicated implementations as a compatibility
    mechanism. This plan therefore tests a frozen baseline and a reviewed record diff instead of
    cross-repository parity fixtures.
@@ -1102,11 +1098,10 @@ are recorded here because they changed what this plan tests.
    Deciding it requires knowing whether the Backstage CLI has gained supported Vitest support by
    then, and the decision should be made against a frozen baseline so the migration itself can be
    verified. It must not be taken while extraction is in flight.
-6. **The published package names.** The design marks `@radius-project/core`,
-   `@radius-project/graph-react`, and `@radius-project/backstage-plugin-radius` as subject to npm
-   scope confirmation. Phase 3 asserts the plugin's name in package metadata, and the
-   installed-artifact and consumer-pin requirements reference all three, so confirm the scope before
-   those assertions are written rather than renaming them afterward.
+6. **The shared package names.** Phase 3 confirmed
+   `@radius-project/backstage-plugin-radius`. The design still marks `@radius-project/core` and
+   `@radius-project/graph-react` as subject to npm scope confirmation in `ai-extensions`; Phase 4
+   must resolve those names before adding their final import-boundary assertions.
 7. **Whether to raise `testTimeout` for the five slow page suites.** They exceed Jest's 5000 ms
    default under parallel load while passing in isolation (see "Known flakiness in the existing
    suite"). Raising the timeout makes the gate trustworthy; it also hides that a single page render
@@ -1239,6 +1234,12 @@ and never trigger an automatic cluster switch.
 | PB-04 | No file under `packages/app/src` imports a path inside the plugin beyond its entry    |
 | PB-05 | No dashboard package re-declares a contract that `core` owns                          |
 
+PB-04 is implemented against the renamed public package. PB-01a and PB-02a provide non-vacuous
+predecessor checks for the current `rad-components` dependency: the scanner must find real imports,
+all must use its public entry point, and none may reach into another package's `src` or `private`
+paths. PB-01–PB-03 and PB-05 receive their final namesake assertions in Phase 4, when `core` and
+`graph-react` exist as dependencies and duplicated dashboard contracts can actually be detected.
+
 #### Installed artifact: IA-01–IA-08
 
 | ID    | Requirement                                                                                      |
@@ -1322,9 +1323,10 @@ and optional-key assertions fail `yarn tsc` when a declared contract changes.
 
 #### Plugin contract and coverage policy
 
-PU-01–PU-25 and PU-31–PU-35 are implemented (`plugin.test.ts`, `packaging.test.ts`,
-`coveragePolicy.test.ts`). PU-26–PU-30 are outstanding Phase 4/5 requirements that depend on a
-built or installed artifact.
+PU-01–PU-28 and PU-30–PU-35 are implemented (`plugin.test.ts`, `packaging.test.ts`,
+`packagingArtifact.test.ts`, `coveragePolicy.test.ts`, and the PU-28 host journey). PU-29 remains a
+Phase 4 requirement because it applies only if `rad-components` survives extraction as a
+compatibility wrapper.
 
 | ID    | Requirement                                                                                   |
 | ----- | --------------------------------------------------------------------------------------------- |
@@ -1337,16 +1339,16 @@ built or installed artifact.
 | PU-07 | Exactly one api factory is registered, bound to `radiusApiRef`                                 |
 | PU-08 | The feature flag list is exactly `radius-catalog`                                              |
 | PU-09 | Every routable page is exposed as a named extension                                            |
-| PU-10 | KNOWN-DEFECT: `radiusApiRef` is not reachable from the entry point, so hosts cannot override it |
+| PU-10 | `radiusApiRef` and the `RadiusApi` type are reachable from the public entry point                |
 | PU-11 | `package.json` declares `backstage.role: frontend-plugin`                                      |
 | PU-12 | `files` is `dist` only, and `publishConfig` points at built entry points                       |
 | PU-13 | `sideEffects: false` holds, so hosts can tree-shake the package                                |
 | PU-14 | React, React DOM, and `react-router-dom` are peer dependencies, not dependencies               |
 | PU-15 | The declared React peer range covers React 18, which both hosts run                            |
-| PU-16 | KNOWN-DEFECT: the package is `private` and cannot be published                                 |
+| PU-16 | The plugin package is publishable rather than marked `private`                                 |
 | PU-17 | The source manifest declares the graph workspace dependency; packing/installability is not inferred |
 | PU-18 | KNOWN-DEFECT: the repository, plugin, and graph package disagree on license                    |
-| PU-19 | The package name is pinned pending npm-scope confirmation                                      |
+| PU-19 | The package uses the approved `@radius-project/backstage-plugin-radius` name                    |
 | PU-20 | Coverage floors are defined in the root config, where the repo-wide run honors them            |
 | PU-21 | No workspace declares a floor the repo-wide run would silently ignore                          |
 | PU-22 | No `global` group exists, which would measure the files no path group claims                   |
@@ -1354,10 +1356,10 @@ built or installed artifact.
 | PU-24 | Every floor points at an existing workspace source directory, not a narrower path               |
 | PU-25 | Statements and lines are required; every declared floor is a finite percentage greater than zero and at most 100 |
 | PU-26 | A built `dist` exposes the same named exports as the source entry point                        |
-| PU-27 | Emitted type declarations resolve with `tsc --noEmit` from a consumer fixture                   |
-| PU-28 | Each lazily imported extension component resolves without throwing                             |
+| PU-27 | Emitted type declarations resolve with `tsc --noEmit` from an isolated packed consumer          |
+| PU-28 | Each lazily imported extension component resolves through its real dashboard host route         |
 | PU-29 | If `rad-components` retains exports, it forwards only: no layout, renderer, or domain logic    |
-| PU-30 | The published manifest declares the agreed license and preserves notices for moved code        |
+| PU-30 | The packed manifest declares Apache-2.0 and the archive includes the repository license         |
 | PU-31 | The exemption list is empty, so every workspace carries a measured floor rather than a note |
 | PU-32 | Narrowing a group to one component directory is detected as an unguarded workspace              |
 | PU-33 | Zero, negative, non-finite, and greater-than-100 percentages are rejected                        |
@@ -1547,16 +1549,16 @@ meaningless):
 
 | Workspace                       | Statements | Branches | Functions | Lines |
 | ------------------------------- | ---------: | -------: | --------: | ----: |
-| `plugins/plugin-radius`         |        73% |      55% |       67% |   73% |
+| `plugins/plugin-radius`         |        73% |      55% |       68% |   74% |
 | `plugins/plugin-radius-backend` |        93% |      n/a |      100% |  100% |
 | `packages/rad-components`       |        95% |      93% |       94% |   94% |
 | `packages/app`                  |        93% |     100% |       83% |   92% |
 | `packages/backend`              |       100% |      n/a |      100% |  100% |
 
 The `plugin-radius` floors moved from 61/33/46/60 to 69/46/58/68, then to 70/50/61/70, then to
-72/54/64/72 for Phase 1, and now to 73/55/67/73 for the connection and error-state
-characterization. Each raise is committed alongside the tests that earned it, so a floor is never
-aspirational.
+72/54/64/72 for Phase 1, to 73/55/67/73 for Phase 2, and now to 73/55/68/74 for the executable
+factory and packaging contracts. Each raise is committed alongside the tests that earned it, so a
+floor is never aspirational.
 
 `packages/rad-components` now measures 95.08/93.75/94.59/94.59 after the record normalizer,
 manifest validation, layout-failure characterization, and real-renderer accessibility semantics.

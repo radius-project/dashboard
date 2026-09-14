@@ -29,6 +29,7 @@
     "@babel/preset-env": "^8.0.2",
     "@babel/preset-react": "^8.0.1",
     "@babel/preset-typescript": "^8.0.1",
+    "@backstage/cli": "^0.36.5",
     "@backstage/cli-defaults": "^0.1.5",
     "@juggle/resize-observer": "^3.4.0",
     "@storybook/addon-a11y": "^10.5.10",

@@ -6,7 +6,7 @@ import {
   ApplicationListInfoCard,
   EnvironmentListInfoCard,
   RadiusLogo,
-} from '@internal/plugin-radius';
+} from '@radius-project/backstage-plugin-radius';
 import LearnCard from './LearnCard';
 import CommunityCard from './CommunityCard';
 import SupportCard from './SupportCard';
