@@ -48,7 +48,7 @@ describe('package contract', () => {
     expect(pkg.backstage).toEqual({
       role: 'frontend-plugin',
       pluginId: 'radius',
-      pluginPackages: ['@radius-project/backstage-plugin-radius'],
+      pluginPackages: ['@internal/plugin-radius'],
     });
   });
 
@@ -84,8 +84,8 @@ describe('package contract', () => {
     expect(pkg.devDependencies?.react).toMatch(/^\^18\./);
   });
 
-  it('PU-16: is publishable rather than marked private', () => {
-    expect(pkg.private).toBeUndefined();
+  it('PU-16: KNOWN-DEFECT remains private pending release approval', () => {
+    expect(pkg.private).toBe(true);
   });
 
   /**
@@ -122,7 +122,7 @@ describe('package contract', () => {
     expect(radComponents.private).toBeUndefined();
   });
 
-  it('PU-19: uses the approved public package name', () => {
-    expect(pkg.name).toBe('@radius-project/backstage-plugin-radius');
+  it('PU-19: pins the current internal name pending scope confirmation', () => {
+    expect(pkg.name).toBe('@internal/plugin-radius');
   });
 });

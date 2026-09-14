@@ -1,9 +1,10 @@
 {
-  "name": "@radius-project/backstage-plugin-radius",
+  "name": "@internal/plugin-radius",
   "version": "0.1.0",
   "main": "dist/index.esm.js",
   "types": "dist/index.d.ts",
   "license": "Apache-2.0",
+  "private": true,
   "publishConfig": {
     "access": "public",
     "main": "dist/index.esm.js",
@@ -13,7 +14,7 @@
     "role": "frontend-plugin",
     "pluginId": "radius",
     "pluginPackages": [
-      "@radius-project/backstage-plugin-radius"
+      "@internal/plugin-radius"
     ]
   },
   "sideEffects": false,

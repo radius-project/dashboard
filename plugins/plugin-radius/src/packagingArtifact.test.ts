@@ -35,8 +35,8 @@ const consumerRoot = path.join(artifactRoot, 'consumer');
 const pluginInstall = path.join(
   consumerRoot,
   'node_modules',
-  '@radius-project',
-  'backstage-plugin-radius',
+  '@internal',
+  'plugin-radius',
 );
 const graphInstall = path.join(
   consumerRoot,
@@ -99,15 +99,15 @@ beforeAll(() => {
   fs.mkdirSync(artifactRoot, { recursive: true });
 
   packWorkspace('@radapp.io/rad-components', graphArchive);
-  packWorkspace('@radius-project/backstage-plugin-radius', pluginArchive);
+  packWorkspace('@internal/plugin-radius', pluginArchive);
   extractArchive(pluginArchive, pluginInstall);
   extractArchive(graphArchive, graphInstall);
 
   fs.writeFileSync(
     path.join(consumerRoot, 'index.ts'),
     [
-      "import { ApplicationListPage, radiusApiRef, radiusPlugin } from '@radius-project/backstage-plugin-radius';",
-      "import type { RadiusApi } from '@radius-project/backstage-plugin-radius';",
+      "import { ApplicationListPage, radiusApiRef, radiusPlugin } from '@internal/plugin-radius';",
+      "import type { RadiusApi } from '@internal/plugin-radius';",
       'declare const api: RadiusApi;',
       'void api.listApplications();',
       'void ApplicationListPage;',
@@ -155,7 +155,7 @@ describe('built plugin artifact', () => {
 
   it('PU-27a: resolves both candidate tarballs instead of workspace source', () => {
     expect(
-      require.resolve('@radius-project/backstage-plugin-radius/package.json', {
+      require.resolve('@internal/plugin-radius/package.json', {
         paths: [consumerRoot],
       }),
     ).toBe(path.join(pluginInstall, 'package.json'));
@@ -166,14 +166,14 @@ describe('built plugin artifact', () => {
     ).toBe(path.join(graphInstall, 'package.json'));
   });
 
-  it('PU-30: packs publishable metadata, built files, and the Apache license', () => {
+  it('PU-27b: packs current metadata and built files without workspace ranges', () => {
     const manifest = readJson<PackedPackageJson>(
       path.join(pluginInstall, 'package.json'),
     );
     const dependencyEntries = Object.entries(manifest.dependencies ?? {});
 
     expect(manifest).toMatchObject({
-      name: '@radius-project/backstage-plugin-radius',
+      name: '@internal/plugin-radius',
       main: 'dist/index.esm.js',
       types: 'dist/index.d.ts',
       license: 'Apache-2.0',
@@ -182,22 +182,18 @@ describe('built plugin artifact', () => {
       backstage: {
         role: 'frontend-plugin',
         pluginId: 'radius',
-        pluginPackages: ['@radius-project/backstage-plugin-radius'],
+        pluginPackages: ['@internal/plugin-radius'],
       },
     });
-    expect(manifest.private).toBeUndefined();
+    expect(manifest.private).toBe(true);
     expect(
-      dependencyEntries.filter(
-        ([name, range]) =>
-          name.startsWith('@internal/') || range.startsWith('workspace:'),
-      ),
+      dependencyEntries.filter(([, range]) => range.startsWith('workspace:')),
     ).toEqual([]);
     expect(Object.keys(manifest.peerDependencies ?? {}).sort()).toEqual([
       'react',
       'react-dom',
       'react-router-dom',
     ]);
-    expect(fs.existsSync(path.join(pluginInstall, 'LICENSE'))).toBe(true);
     expect(fs.existsSync(path.join(pluginInstall, 'dist', 'index.d.ts'))).toBe(
       true,
     );

@@ -24,7 +24,7 @@ import {
   EnvironmentIcon,
   ResourceIcon,
   RecipeIcon,
-} from '@radius-project/backstage-plugin-radius';
+} from '@internal/plugin-radius';
 
 const useSidebarLogoStyles = makeStyles({
   root: {

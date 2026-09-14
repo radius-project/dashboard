@@ -6455,10 +6455,10 @@ __metadata:
     "@backstage/plugin-user-settings": "npm:^0.9.6"
     "@backstage/test-utils": "npm:^1.7.21"
     "@backstage/theme": "npm:^0.7.3"
+    "@internal/plugin-radius": "workspace:^"
     "@material-ui/core": "npm:^4.12.4"
     "@material-ui/icons": "npm:^4.11.3"
     "@playwright/test": "npm:^1.62.1"
-    "@radius-project/backstage-plugin-radius": "workspace:^"
     "@testing-library/dom": "npm:^10.4.1"
     "@testing-library/jest-dom": "npm:^7.0.1"
     "@testing-library/react": "npm:^16.3.3"
@@ -6514,6 +6514,46 @@ __metadata:
     jest: "npm:^30.5.1"
     msw: "npm:^2.15.0"
     supertest: "npm:^7.2.2"
+  languageName: unknown
+  linkType: soft
+
+"@internal/plugin-radius@workspace:^, @internal/plugin-radius@workspace:plugins/plugin-radius":
+  version: 0.0.0-use.local
+  resolution: "@internal/plugin-radius@workspace:plugins/plugin-radius"
+  dependencies:
+    "@backstage/cli": "npm:^0.36.5"
+    "@backstage/cli-defaults": "npm:^0.1.5"
+    "@backstage/core-app-api": "npm:^1.20.4"
+    "@backstage/core-components": "npm:^0.18.13"
+    "@backstage/core-plugin-api": "npm:^1.12.9"
+    "@backstage/dev-utils": "npm:^1.1.26"
+    "@backstage/plugin-kubernetes": "npm:^0.12.22"
+    "@backstage/plugin-kubernetes-common": "npm:^0.9.12"
+    "@backstage/test-utils": "npm:^1.7.21"
+    "@backstage/theme": "npm:^0.7.3"
+    "@date-io/core": "npm:^3.2.0"
+    "@material-ui/core": "npm:^4.12.4"
+    "@material-ui/icons": "npm:^4.11.3"
+    "@material-ui/lab": "npm:^4.0.0-alpha.61"
+    "@radapp.io/rad-components": "workspace:^"
+    "@testing-library/dom": "npm:^10.4.1"
+    "@testing-library/jest-dom": "npm:^7.0.1"
+    "@testing-library/react": "npm:^16.3.3"
+    "@testing-library/user-event": "npm:^14.6.6"
+    "@types/jest": "npm:^30.0.0"
+    "@types/react": "npm:^18"
+    jest: "npm:^30.5.1"
+    jest-canvas-mock: "npm:^2.5.8"
+    msw: "npm:^2.15.0"
+    react: "npm:^18.3.1"
+    react-dom: "npm:^18.3.1"
+    react-error-boundary: "npm:^6.1.4"
+    react-router-dom: "npm:^6.30.2"
+    react-use: "npm:^17.6.1"
+  peerDependencies:
+    react: ^16.13.1 || ^17.0.2 || ^18.0.0
+    react-dom: ^16.13.1 || ^17.0.2 || ^18.0.0
+    react-router-dom: ^6.3.0
   languageName: unknown
   linkType: soft
 
@@ -9487,46 +9527,6 @@ __metadata:
   peerDependencies:
     react: ^16.13.1 || ^17.0.2 || ^18.0.0
     react-dom: ^16.13.1 || ^17.0.2 || ^18.0.0
-  languageName: unknown
-  linkType: soft
-
-"@radius-project/backstage-plugin-radius@workspace:^, @radius-project/backstage-plugin-radius@workspace:plugins/plugin-radius":
-  version: 0.0.0-use.local
-  resolution: "@radius-project/backstage-plugin-radius@workspace:plugins/plugin-radius"
-  dependencies:
-    "@backstage/cli": "npm:^0.36.5"
-    "@backstage/cli-defaults": "npm:^0.1.5"
-    "@backstage/core-app-api": "npm:^1.20.4"
-    "@backstage/core-components": "npm:^0.18.13"
-    "@backstage/core-plugin-api": "npm:^1.12.9"
-    "@backstage/dev-utils": "npm:^1.1.26"
-    "@backstage/plugin-kubernetes": "npm:^0.12.22"
-    "@backstage/plugin-kubernetes-common": "npm:^0.9.12"
-    "@backstage/test-utils": "npm:^1.7.21"
-    "@backstage/theme": "npm:^0.7.3"
-    "@date-io/core": "npm:^3.2.0"
-    "@material-ui/core": "npm:^4.12.4"
-    "@material-ui/icons": "npm:^4.11.3"
-    "@material-ui/lab": "npm:^4.0.0-alpha.61"
-    "@radapp.io/rad-components": "workspace:^"
-    "@testing-library/dom": "npm:^10.4.1"
-    "@testing-library/jest-dom": "npm:^7.0.1"
-    "@testing-library/react": "npm:^16.3.3"
-    "@testing-library/user-event": "npm:^14.6.6"
-    "@types/jest": "npm:^30.0.0"
-    "@types/react": "npm:^18"
-    jest: "npm:^30.5.1"
-    jest-canvas-mock: "npm:^2.5.8"
-    msw: "npm:^2.15.0"
-    react: "npm:^18.3.1"
-    react-dom: "npm:^18.3.1"
-    react-error-boundary: "npm:^6.1.4"
-    react-router-dom: "npm:^6.30.2"
-    react-use: "npm:^17.6.1"
-  peerDependencies:
-    react: ^16.13.1 || ^17.0.2 || ^18.0.0
-    react-dom: ^16.13.1 || ^17.0.2 || ^18.0.0
-    react-router-dom: ^6.3.0
   languageName: unknown
   linkType: soft
 

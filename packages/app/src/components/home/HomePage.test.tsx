@@ -7,8 +7,8 @@ import {
   resourcePageRouteRef,
   environmentPageRouteRef,
   radiusApiRef,
-} from '@radius-project/backstage-plugin-radius';
-import type { RadiusApi } from '@radius-project/backstage-plugin-radius';
+} from '@internal/plugin-radius';
+import type { RadiusApi } from '@internal/plugin-radius';
 import { HomePage } from './HomePage';
 
 /**

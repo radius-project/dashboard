@@ -42,15 +42,14 @@ describe('current package import boundaries', () => {
     const imports = importSpecifiers(appRoot);
     const pluginImports = imports.filter(
       ({ file, specifier }) =>
-        specifier.startsWith('@radius-project/backstage-plugin-radius') ||
+        specifier.startsWith('@internal/plugin-radius') ||
         resolvesWithin(file, specifier, pluginRoot),
     );
 
     expect(pluginImports.length).toBeGreaterThan(0);
     expect(
       pluginImports.filter(
-        ({ specifier }) =>
-          specifier !== '@radius-project/backstage-plugin-radius',
+        ({ specifier }) => specifier !== '@internal/plugin-radius',
       ),
     ).toEqual([]);
   });
