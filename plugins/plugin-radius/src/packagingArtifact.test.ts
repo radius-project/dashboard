@@ -27,6 +27,11 @@ interface PackedPackageJson {
   peerDependencies?: Record<string, string>;
 }
 
+interface ManifestLifecycle {
+  before: string;
+  after: string;
+}
+
 const repoRoot = path.resolve(__dirname, '../../..');
 const artifactRoot = path.join(repoRoot, '.copilot-tracking', 'plugin-package');
 const pluginArchive = path.join(artifactRoot, 'plugin.tgz');
@@ -50,8 +55,14 @@ const pluginManifestPath = path.join(
   'plugin-radius',
   'package.json',
 );
-let sourcePluginManifestBeforePack: string;
-let sourcePluginManifestAfterPack: string;
+const graphManifestPath = path.join(
+  repoRoot,
+  'packages',
+  'rad-components',
+  'package.json',
+);
+let pluginManifestLifecycle: ManifestLifecycle;
+let graphManifestLifecycle: ManifestLifecycle;
 
 const run = (command: string, args: string[]) =>
   execFileSync(command, args, {
@@ -77,9 +88,25 @@ const runYarn = (args: string[]) => {
   return run('yarn', args);
 };
 
-const packWorkspace = (workspace: string, output: string) => {
-  runYarn(['workspace', workspace, 'build']);
-  runYarn(['workspace', workspace, 'pack', '--out', output]);
+const packWorkspace = (
+  workspace: string,
+  output: string,
+  manifestPath: string,
+): ManifestLifecycle => {
+  const before = fs.readFileSync(manifestPath, 'utf8');
+
+  try {
+    runYarn(['workspace', workspace, 'build']);
+    runYarn(['workspace', workspace, 'pack', '--out', output]);
+    return {
+      before,
+      after: fs.readFileSync(manifestPath, 'utf8'),
+    };
+  } finally {
+    if (fs.readFileSync(manifestPath, 'utf8') !== before) {
+      fs.writeFileSync(manifestPath, before);
+    }
+  }
 };
 
 const extractArchive = (archive: string, destination: string) => {
@@ -106,44 +133,55 @@ beforeAll(() => {
   fs.rmSync(artifactRoot, { recursive: true, force: true });
   fs.mkdirSync(artifactRoot, { recursive: true });
 
-  sourcePluginManifestBeforePack = fs.readFileSync(pluginManifestPath, 'utf8');
-  packWorkspace('@radapp.io/rad-components', graphArchive);
-  packWorkspace('@internal/plugin-radius', pluginArchive);
-  sourcePluginManifestAfterPack = fs.readFileSync(pluginManifestPath, 'utf8');
-  extractArchive(pluginArchive, pluginInstall);
-  extractArchive(graphArchive, graphInstall);
+  try {
+    graphManifestLifecycle = packWorkspace(
+      '@radapp.io/rad-components',
+      graphArchive,
+      graphManifestPath,
+    );
+    pluginManifestLifecycle = packWorkspace(
+      '@internal/plugin-radius',
+      pluginArchive,
+      pluginManifestPath,
+    );
+    extractArchive(pluginArchive, pluginInstall);
+    extractArchive(graphArchive, graphInstall);
 
-  fs.writeFileSync(
-    path.join(consumerRoot, 'index.ts'),
-    [
-      "import { ApplicationListPage, radiusApiRef, radiusPlugin } from '@internal/plugin-radius';",
-      "import type { RadiusApi } from '@internal/plugin-radius';",
-      'declare const api: RadiusApi;',
-      'void api.listApplications();',
-      'void ApplicationListPage;',
-      'void radiusApiRef;',
-      'void radiusPlugin.getId();',
-      '',
-    ].join('\n'),
-  );
-  fs.writeFileSync(
-    path.join(consumerRoot, 'tsconfig.json'),
-    `${JSON.stringify(
-      {
-        compilerOptions: {
-          strict: true,
-          noEmit: true,
-          skipLibCheck: true,
-          module: 'ESNext',
-          moduleResolution: 'Bundler',
-          target: 'ES2022',
+    fs.writeFileSync(
+      path.join(consumerRoot, 'index.ts'),
+      [
+        "import { ApplicationListPage, radiusApiRef, radiusPlugin } from '@internal/plugin-radius';",
+        "import type { RadiusApi } from '@internal/plugin-radius';",
+        'declare const api: RadiusApi;',
+        'void api.listApplications();',
+        'void ApplicationListPage;',
+        'void radiusApiRef;',
+        'void radiusPlugin.getId();',
+        '',
+      ].join('\n'),
+    );
+    fs.writeFileSync(
+      path.join(consumerRoot, 'tsconfig.json'),
+      `${JSON.stringify(
+        {
+          compilerOptions: {
+            strict: true,
+            noEmit: true,
+            skipLibCheck: true,
+            module: 'ESNext',
+            moduleResolution: 'Bundler',
+            target: 'ES2022',
+          },
+          include: ['index.ts'],
         },
-        include: ['index.ts'],
-      },
-      null,
-      2,
-    )}\n`,
-  );
+        null,
+        2,
+      )}\n`,
+    );
+  } catch (error) {
+    fs.rmSync(artifactRoot, { recursive: true, force: true });
+    throw error;
+  }
 }, 180_000);
 
 afterAll(() => {
@@ -176,8 +214,9 @@ describe('built plugin artifact', () => {
     ).toBe(path.join(graphInstall, 'package.json'));
   });
 
-  it('PU-27b: restores the source manifest after prepack and postpack', () => {
-    expect(sourcePluginManifestAfterPack).toBe(sourcePluginManifestBeforePack);
+  it('PU-27b: restores both source manifests after build and pack', () => {
+    expect(pluginManifestLifecycle.after).toBe(pluginManifestLifecycle.before);
+    expect(graphManifestLifecycle.after).toBe(graphManifestLifecycle.before);
     expect(readJson<PackedPackageJson>(pluginManifestPath)).toMatchObject({
       main: 'src/index.ts',
       types: 'src/index.ts',

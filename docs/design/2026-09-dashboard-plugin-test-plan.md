@@ -733,7 +733,8 @@ The source contract is now the intended consumer contract:
 - PU-27 packs both the plugin and its current graph dependency, extracts them into an isolated
   `node_modules` tree, and compiles a consumer against the emitted `dist/index.d.ts`. PU-27a proves
   package resolution points at those extracted candidate tarballs rather than workspace source,
-  and PU-27b proves the prepack/postpack lifecycle restores the source manifest.
+  and PU-27b proves build/pack restores both candidate source manifests byte-for-byte, with
+  failure-path cleanup guarding the working tree.
 - PU-27c inspects the packed manifest and archive: the current internal/private identity,
   Backstage metadata, built entry points, `files`, `sideEffects`, peer React placement, rewritten
   workspace ranges, and absence of shipped `src` content are enforced.
@@ -1364,7 +1365,7 @@ metadata but does not decide the final package license/notices.
 | PU-27 | Emitted type declarations resolve with `tsc --noEmit` from an isolated packed consumer          |
 | PU-28 | Each lazily imported extension component resolves through its real dashboard host route         |
 | PU-29 | If `rad-components` retains exports, it forwards only: no layout, renderer, or domain logic    |
-| PU-30 | The packed manifest declares Apache-2.0 and the archive includes the repository license         |
+| PU-30 | Deferred release qualification confirms the final public manifest and approved license/notices  |
 | PU-31 | The exemption list is empty, so every workspace carries a measured floor rather than a note |
 | PU-32 | Narrowing a group to one component directory is detected as an unguarded workspace              |
 | PU-33 | Zero, negative, non-finite, and greater-than-100 percentages are rejected                        |
