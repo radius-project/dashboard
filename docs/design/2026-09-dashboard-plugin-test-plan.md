@@ -80,7 +80,7 @@ Progression as the plan is executed, re-measured after each phase increment:
 | `packages/rad-components`       |   80.00% |        81.33% |       86.52% |                    86.52% |                   86.52% |                 86.52% |        95.08% |        95.08% |
 | `packages/app`                  |   75.00% |        75.00% |       75.00% |                    75.00% |                   75.00% |                 93.51% |        93.51% |        93.51% |
 | `packages/backend`              |    0.00% |         0.00% |        0.00% |                     0.00% |                    0.00% |                100.00% |       100.00% |       100.00% |
-| Suites / cases                  |   31/127 |        33/159 |       34/260 |                    36/272 |                   43/331 |                 53/427 |        54/460 |    **56/472** |
+| Suites / cases                  |   31/127 |        33/159 |       34/260 |                    36/272 |                   43/331 |                 53/427 |        54/460 |    **56/477** |
 
 Statement coverage only; the enforced floors in Appendix G carry all four metrics.
 
@@ -665,8 +665,23 @@ The semantic normalizer is `packages/rad-components/src/graphRecord.ts`. It emit
 and edge meaning: ids, labels, types, the currently absent icon/status semantics, quantized
 positions, resolved endpoints, and direction. All fourteen records are committed under
 `src/__fixtures__/graph-records/`; `graph-expected-changes.md` is empty. GU-22 rejects undeclared
-record changes, GU-23 reports unchanged known-defect fields as carried forward, and GU-24 keeps the
-manifest empty between extraction phases.
+record changes, GU-23 reports known defects whose own invariant is still violated as carried
+forward, and GU-24 keeps the manifest empty between extraction phases.
+
+GU-22 alone is not sufficient, because it compares generated records against the committed ones: a
+change that edits a record file and the renderer together satisfies it without consulting the
+manifest. GU-25 closes that by diffing the committed records against the base branch, where the
+previous baseline still exists, so a silently rewritten baseline has to be declared. It resolves the
+base commit from `GRAPH_RECORD_BASE_REF`, then `origin/main`, and fails rather than skipping when no
+base is reachable; the build workflow checks out full history so the base is present. A record that
+does not exist at the base is a new fixture, not a mutated baseline, and needs no entry.
+
+Known defects are tracked by invariant, not by record field. Each entry in `knownGraphDefects`
+carries an `isPresent` predicate that reads the violated invariant — a dangling edge endpoint, a
+self-edge, duplicate node ids, absent icons, absent status badges — straight off the record. Field
+tracking was weaker: any descendant change under a declared field cleared the defect, so populating
+`nodes.0.icon` would have suppressed a still-live duplicate-id defect. GU-23b pins each predicate
+against both a healthy and a violating record so none of them can degrade into a constant.
 
 The direct renderer spec at `packages/rad-components/e2e-tests/appGraph.test.ts` covers true
 component unmount/remount determinism and scheduled-work cleanup, the renderer's existing
@@ -704,7 +719,7 @@ the leaked state lives in a module-level binding, so the first layout in a test 
 later one and there is no clean measurement left to compare against. A naive version of this test
 passes while the defect is present.
 
-Completion evidence: GU-01–GU-24, CN-01–CN-08, and ER-01–ER-10 pass; all records are
+Completion evidence: GU-01–GU-25, CN-01–CN-08, and ER-01–ER-10 pass; all records are
 committed; GU-20 demonstrates the suite cannot pass against a stub or without the stylesheet.
 The repository run is 54 suites / 460 cases, and the Playwright run is 2 specs / 13 cases.
 
@@ -773,7 +788,7 @@ This is the extraction. The plugin switches to `@radius-project/core` and
   no layout, no renderer, no domain logic, and no independent React Flow or Dagre dependency.
 - Report any `KNOWN-DEFECT` field that did not change, so a defect is not carried forward silently.
 
-Completion evidence: GU-22–GU-24 pass; the manifest is emptied and reviewed; no duplicate parser,
+Completion evidence: GU-22–GU-25 pass; the manifest is emptied and reviewed; no duplicate parser,
 layout, or renderer remains; `AppGraph.tsx` either forwards or is gone.
 
 ### Phase 5: host integration and the installed artifact
@@ -1382,7 +1397,7 @@ metadata but does not decide the final package license/notices.
 | BE-04 | `init` mounts the router on `httpRouter` and logs initialization once        |
 | BE-05 | A router construction failure surfaces as a startup error, not a silent skip |
 
-#### Graph: GU-01–GU-24
+#### Graph: GU-01–GU-25
 
 Each requirement is tagged with its tier from the graph test taxonomy. Tier A and B correctness
 requirements remain stable during extraction; the linked-defect replacement exception above
@@ -1416,8 +1431,9 @@ expected-change manifest.
 | GU-20 | B    | Removing the real renderer or its stylesheet makes GU-12, GU-13, and GU-19 fail — **done**           |
 | GU-21 | C    | Each Appendix E fixture produces its committed graph record — **done**                               |
 | GU-22 | C    | Every record difference in an extraction pull request maps to an expected-change manifest entry — **done** |
-| GU-23 | C    | A `KNOWN-DEFECT` record field that does not change during extraction is reported as carried forward — **done** |
+| GU-23 | C    | A `KNOWN-DEFECT` whose own invariant is still violated is reported as carried forward — **done** |
 | GU-24 | C    | The manifest is empty at the end of each extraction phase — **done**                                 |
+| GU-25 | C    | A committed record edited relative to the base branch maps to a manifest entry — **done**            |
 
 GU-20 is the meta-test. Without it, a graph suite can pass against a stub and prove nothing, which
 is the exact failure mode the current `ApplicationTab.test.tsx` has today.
@@ -1479,9 +1495,9 @@ names, element nesting, or raw coordinates.
 
 The records are frozen under `packages/rad-components/src/__fixtures__/graph-records/` and diffed
 in Phase 4 against `packages/rad-components/src/__fixtures__/graph-expected-changes.md`. The
-manifest is currently empty. Fixtures tagged `KNOWN-DEFECT` declare the record fields expected to
-change through `knownGraphDefects` in `graphRecord.ts`; GU-23 reports any such field carried forward
-unchanged.
+manifest is currently empty. Fixtures tagged `KNOWN-DEFECT` declare the invariant they violate
+through `knownGraphDefects` in `graphRecord.ts`; GU-23 reports every defect whose invariant is still
+violated, so only an actual repair retires an entry.
 
 ### Appendix F: source files with no colocated test
 

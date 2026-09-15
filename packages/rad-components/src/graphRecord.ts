@@ -42,22 +42,78 @@ export interface GraphRecordFieldChange {
   newValue: string;
 }
 
+/**
+ * A defect that is characterized rather than fixed. `isPresent` reads the
+ * invariant the defect actually violates straight off the record, so unrelated
+ * extraction work - a new icon, a moved node, a relabelled edge - cannot make a
+ * still-broken fixture look repaired. When a defect is genuinely fixed its
+ * predicate goes false and GU-23 fails, which is the signal to retire the entry.
+ */
 export interface KnownGraphDefect {
   fixture: string;
   issue: string;
-  fields: string[];
+  invariant: string;
+  isPresent: (record: GraphRecord) => boolean;
 }
 
+const nodeIds = (record: GraphRecord) => new Set(record.nodes.map(n => n.id));
+
+const hasDanglingEdge = (record: GraphRecord) => {
+  const ids = nodeIds(record);
+  return record.edges.some(
+    edge => !ids.has(edge.source) || !ids.has(edge.target),
+  );
+};
+
+const hasSelfEdge = (record: GraphRecord) =>
+  record.edges.some(edge => edge.source === edge.target);
+
+const hasDuplicateNodeIds = (record: GraphRecord) =>
+  nodeIds(record).size !== record.nodes.length;
+
+const hasNoNodeIcons = (record: GraphRecord) =>
+  record.nodes.length > 0 && record.nodes.every(node => node.icon === null);
+
+const hasNoStatusBadges = (record: GraphRecord) =>
+  record.nodes.length > 0 &&
+  record.nodes.every(node => node.statusBadge === null);
+
 export const knownGraphDefects: KnownGraphDefect[] = [
-  { fixture: 'missing-target', issue: '#353', fields: ['edges'] },
-  { fixture: 'unparseable-connection', issue: '#353', fields: ['edges'] },
-  { fixture: 'self-reference', issue: '#357', fields: ['edges'] },
-  { fixture: 'duplicate-ids', issue: '#357', fields: ['nodes'] },
-  { fixture: 'multi-tier', issue: '#35', fields: ['nodes.icon'] },
+  {
+    fixture: 'missing-target',
+    issue: '#353',
+    invariant: 'every edge endpoint resolves to a node',
+    isPresent: hasDanglingEdge,
+  },
+  {
+    fixture: 'unparseable-connection',
+    issue: '#353',
+    invariant: 'every edge endpoint resolves to a node',
+    isPresent: hasDanglingEdge,
+  },
+  {
+    fixture: 'self-reference',
+    issue: '#357',
+    invariant: 'no edge points at its own source',
+    isPresent: hasSelfEdge,
+  },
+  {
+    fixture: 'duplicate-ids',
+    issue: '#357',
+    invariant: 'node ids are unique',
+    isPresent: hasDuplicateNodeIds,
+  },
+  {
+    fixture: 'multi-tier',
+    issue: '#35',
+    invariant: 'distinct resource types carry distinct icons',
+    isPresent: hasNoNodeIcons,
+  },
   {
     fixture: 'deploy-status-matrix',
     issue: '#89',
-    fields: ['nodes.statusBadge'],
+    invariant: 'distinct deployment statuses carry status badges',
+    isPresent: hasNoStatusBadges,
   },
 ];
 
@@ -161,20 +217,16 @@ export function diffGraphRecords(
 }
 
 export function findCarriedForwardGraphDefects(
-  changedFields: ReadonlySet<string>,
+  records: Record<string, GraphRecord>,
   knownDefects: KnownGraphDefect[],
 ): KnownGraphDefect[] {
   return knownDefects.filter(defect => {
-    const fixtureChanges = [...changedFields]
-      .filter(field => field.startsWith(`${defect.fixture}:`))
-      .map(field =>
-        field.slice(defect.fixture.length + 1).replace(/\.\d+(?=\.|$)/g, ''),
+    const record = records[defect.fixture];
+    if (!record) {
+      throw new Error(
+        `Known defect ${defect.issue} names fixture "${defect.fixture}", which has no graph record`,
       );
-    return defect.fields.every(
-      field =>
-        !fixtureChanges.some(
-          changed => changed === field || changed.startsWith(`${field}.`),
-        ),
-    );
+    }
+    return defect.isPresent(record);
   });
 }

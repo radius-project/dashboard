@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { execFileSync } from 'child_process';
 import { AppGraph } from '../graph';
 import {
   diffGraphRecords,
@@ -7,6 +8,7 @@ import {
   findUnapprovedGraphRecordChanges,
   GraphRecord,
   GraphRecordChange,
+  GraphRecordNode,
   knownGraphDefects,
   normalizeGraphModel,
 } from '../graphRecord';
@@ -75,6 +77,62 @@ const readRecord = (fixture: string): GraphRecord =>
   JSON.parse(
     fs.readFileSync(path.join(fixtureDirectory, `${fixture}.json`), 'utf8'),
   ) as GraphRecord;
+
+const repoRoot = path.resolve(__dirname, '../../../..');
+
+const git = (args: string[]): string | undefined => {
+  try {
+    return execFileSync('git', args, {
+      cwd: repoRoot,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    });
+  } catch {
+    return undefined;
+  }
+};
+
+/**
+ * GU-21 and GU-22 both compare generated records against the committed ones, so
+ * a change that edits a record file and the implementation together satisfies
+ * them without ever consulting the manifest. GU-25 closes that by diffing the
+ * committed records against the base branch, where the old baseline still
+ * lives. CI checks out full history so the base commit is present; locally the
+ * fetched `origin/main` serves the same purpose.
+ */
+const resolveBaseRef = (): string => {
+  const candidates = [
+    process.env.GRAPH_RECORD_BASE_REF,
+    'origin/main',
+    'main',
+  ].filter((ref): ref is string => Boolean(ref));
+
+  for (const ref of candidates) {
+    const resolved = git([
+      'rev-parse',
+      '--verify',
+      '--quiet',
+      `${ref}^{commit}`,
+    ]);
+    if (resolved) {
+      return resolved.trim();
+    }
+  }
+
+  throw new Error(
+    `Cannot resolve a base commit to compare graph records against (tried ${candidates.join(
+      ', ',
+    )}). Fetch the base branch, or set GRAPH_RECORD_BASE_REF to a commit that contains it.`,
+  );
+};
+
+const readRecordAtRef = (
+  ref: string,
+  committedPath: string,
+): GraphRecord | undefined => {
+  const contents = git(['show', `${ref}:${committedPath}`]);
+  return contents ? (JSON.parse(contents) as GraphRecord) : undefined;
+};
 
 const parseManifest = (contents: string): GraphRecordChange[] =>
   contents
@@ -390,35 +448,157 @@ describe('graph records', () => {
     });
   });
 
-  it('GU-23: reports unchanged KNOWN-DEFECT record fields as carried forward', async () => {
-    const changedFields = new Set(
-      Object.entries(await generatedRecords())
-        .flatMap(([fixture, record]) =>
-          diffGraphRecords(fixture, readRecord(fixture), record),
-        )
-        .map(change => `${change.fixture}:${change.field}`),
-    );
-
+  it('GU-23: reports KNOWN-DEFECT invariant violations as carried forward', async () => {
     expect(
-      findCarriedForwardGraphDefects(changedFields, knownGraphDefects),
+      findCarriedForwardGraphDefects(
+        await generatedRecords(),
+        knownGraphDefects,
+      ),
     ).toEqual(knownGraphDefects);
   });
 
-  it('GU-23a: clears only defects whose declared record fields changed', () => {
-    const defects = [
-      { fixture: 'sample', issue: '#1', fields: ['nodes.icon'] },
-      { fixture: 'sample', issue: '#2', fields: ['edges'] },
-      { fixture: 'other', issue: '#3', fields: ['nodes'] },
-    ];
-    const changedFields = new Set([
-      'sample:nodes.0.icon',
-      'sample:unrelated',
-      'other:nodes.0.label',
-    ]);
+  it('GU-23a: clears a defect only when its own invariant is repaired', () => {
+    const duplicate = readRecord('duplicate-ids');
+    const defect = knownGraphDefects.find(
+      known => known.fixture === 'duplicate-ids',
+    )!;
+    const records = (record: GraphRecord) => ({ 'duplicate-ids': record });
 
-    expect(findCarriedForwardGraphDefects(changedFields, defects)).toEqual([
-      defects[1],
-    ]);
+    // An unrelated extraction change - here the icon field the renderer will
+    // start populating - must not be mistaken for a repair. The old
+    // field-based tracker cleared the defect on exactly this input.
+    const withIcons: GraphRecord = {
+      ...duplicate,
+      nodes: duplicate.nodes.map(node => ({ ...node, icon: 'container' })),
+    };
+    expect(
+      findCarriedForwardGraphDefects(records(withIcons), [defect]),
+    ).toEqual([defect]);
+
+    // Deduplicating the ids is the actual repair, and only that clears it.
+    const deduplicated: GraphRecord = {
+      ...duplicate,
+      nodes: [duplicate.nodes[0]],
+    };
+    expect(
+      findCarriedForwardGraphDefects(records(deduplicated), [defect]),
+    ).toEqual([]);
+  });
+
+  it('GU-23b: detects each declared defect invariant independently', () => {
+    const node = (id: string): GraphRecordNode => ({
+      id,
+      label: id,
+      type: 'test/Type',
+      icon: 'icon',
+      statusBadge: { kind: 'success', accessibleName: 'Succeeded' },
+      position: { x: 0, y: 0 },
+    });
+    const healthy: GraphRecord = {
+      nodes: [node('a'), node('b')],
+      edges: [{ source: 'a', target: 'b', direction: 'source-to-target' }],
+    };
+    const byFixture = (fixture: string) =>
+      knownGraphDefects.find(defect => defect.fixture === fixture)!;
+
+    // Every invariant reports "repaired" on a healthy record, so none of them
+    // is a constant that would pin a defect forever.
+    Object.keys(fixtures).forEach(fixture => {
+      const defect = knownGraphDefects.find(known => known.fixture === fixture);
+      if (defect) {
+        expect(defect.isPresent(healthy)).toBe(false);
+      }
+    });
+
+    expect(
+      byFixture('missing-target').isPresent({
+        ...healthy,
+        edges: [
+          { source: 'a', target: 'absent', direction: 'source-to-target' },
+        ],
+      }),
+    ).toBe(true);
+    expect(
+      byFixture('self-reference').isPresent({
+        ...healthy,
+        edges: [{ source: 'a', target: 'a', direction: 'source-to-target' }],
+      }),
+    ).toBe(true);
+    expect(
+      byFixture('duplicate-ids').isPresent({
+        ...healthy,
+        nodes: [node('a'), node('a')],
+      }),
+    ).toBe(true);
+    expect(
+      byFixture('multi-tier').isPresent({
+        ...healthy,
+        nodes: healthy.nodes.map(current => ({ ...current, icon: null })),
+      }),
+    ).toBe(true);
+    expect(
+      byFixture('deploy-status-matrix').isPresent({
+        ...healthy,
+        nodes: healthy.nodes.map(current => ({
+          ...current,
+          statusBadge: null,
+        })),
+      }),
+    ).toBe(true);
+
+    // An empty record has no nodes to be missing an icon or badge, so those
+    // invariants must not fire on it.
+    expect(byFixture('multi-tier').isPresent({ nodes: [], edges: [] })).toBe(
+      false,
+    );
+  });
+
+  it('GU-23c: rejects a defect naming a fixture with no record', () => {
+    expect(() =>
+      findCarriedForwardGraphDefects({}, [
+        {
+          fixture: 'absent-fixture',
+          issue: '#0',
+          invariant: 'never evaluated',
+          isPresent: () => true,
+        },
+      ]),
+    ).toThrow('has no graph record');
+  });
+
+  it('GU-25: rejects committed record edits not declared in the manifest', () => {
+    const baseRef = resolveBaseRef();
+    const manifest = parseManifest(fs.readFileSync(manifestPath, 'utf8'));
+    const relativeDirectory = path
+      .relative(repoRoot, fixtureDirectory)
+      .replaceAll('\\', '/');
+
+    const changes = Object.keys(fixtures).flatMap(fixture => {
+      const committedPath = `${relativeDirectory}/${fixture}.json`;
+      const base = readRecordAtRef(baseRef, committedPath);
+      // A record that does not exist at the base ref is a new fixture, not a
+      // mutated baseline, so there is nothing for the manifest to approve.
+      return base ? diffGraphRecords(fixture, base, readRecord(fixture)) : [];
+    });
+
+    expect(findUnapprovedGraphRecordChanges(changes, manifest)).toEqual([]);
+  });
+
+  it('GU-25a: treats a mutated committed record as an unapproved change', () => {
+    const baseline = readRecord('duplicate-ids');
+    const edited: GraphRecord = {
+      ...baseline,
+      nodes: [{ ...baseline.nodes[0], id: 'silently-deduplicated' }].concat(
+        baseline.nodes.slice(1),
+      ),
+    };
+
+    expect(
+      findUnapprovedGraphRecordChanges(
+        diffGraphRecords('duplicate-ids', baseline, edited),
+        [],
+      ),
+    ).not.toEqual([]);
   });
 
   it('GU-24: keeps the checked-in expected-change manifest empty', () => {
