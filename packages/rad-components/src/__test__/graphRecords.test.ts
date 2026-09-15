@@ -55,6 +55,8 @@ const fixtures: Record<string, unknown> = {
 const load = (fixture: unknown): AppGraph =>
   JSON.parse(JSON.stringify(fixture)) as AppGraph;
 
+const updateMode = process.env.UPDATE_GRAPH_RECORDS === 'true';
+
 const createFreshGraphRecord = async (
   fixture: unknown,
 ): Promise<GraphRecord> => {
@@ -180,13 +182,16 @@ describe('graph records', () => {
     });
   });
 
-  it.each(Object.entries(fixtures))(
+  /**
+   * In update mode the committed records are the artifact being replaced, so
+   * comparing against them proves nothing. These cases are skipped rather than
+   * left to pass without assertions, so the reported count reflects what was
+   * actually checked. GU-22 still validates every change before any write.
+   */
+  (updateMode ? it.skip : it).each(Object.entries(fixtures))(
     'GU-21: %s produces its committed semantic graph record',
     async (name, fixture) => {
-      const actual = await createFreshGraphRecord(fixture);
-      if (process.env.UPDATE_GRAPH_RECORDS !== 'true') {
-        expect(actual).toEqual(readRecord(name));
-      }
+      expect(await createFreshGraphRecord(fixture)).toEqual(readRecord(name));
     },
   );
 
@@ -201,7 +206,7 @@ describe('graph records', () => {
     );
     expect(findUnapprovedGraphRecordChanges(changes, manifest)).toEqual([]);
 
-    if (process.env.UPDATE_GRAPH_RECORDS === 'true') {
+    if (updateMode) {
       updateGraphRecords(records, baselines, manifest, (fixture, record) => {
         fs.mkdirSync(fixtureDirectory, { recursive: true });
         fs.writeFileSync(
@@ -316,7 +321,7 @@ describe('graph records', () => {
           {
             fixture: 'single-node',
             field: 'nodes.0.label',
-            oldValue: '"solo"',
+            oldValue: JSON.stringify(baseline.nodes[0].label),
             newValue: '"Changed"',
             reason: 'Approved mutation',
           },

@@ -1549,17 +1549,16 @@ work. See "Where coverage floors must live" for why these are root path groups r
 per-workspace config and why the current shape guard is not a historical ratchet.
 
 Enforced today (measured after Phase 0, Phase 3 source checks, the full Phase 1 suites, and the
-Phase 2 graph-record and connection/error characterization suites; `n/a` means the metric has no
-data in that workspace, and an omitted value means a floor would be zero and therefore
-meaningless):
+Phase 2 graph-record and connection/error characterization suites; an omitted value would mean a
+floor of zero and therefore no floor at all, which the policy tests reject):
 
 | Workspace                       | Statements | Branches | Functions | Lines |
 | ------------------------------- | ---------: | -------: | --------: | ----: |
 | `plugins/plugin-radius`         |        73% |      55% |       68% |   74% |
-| `plugins/plugin-radius-backend` |        93% |      n/a |      100% |  100% |
+| `plugins/plugin-radius-backend` |        93% |     100% |      100% |  100% |
 | `packages/rad-components`       |        95% |      93% |       94% |   94% |
 | `packages/app`                  |        93% |     100% |       83% |   92% |
-| `packages/backend`              |       100% |      n/a |      100% |  100% |
+| `packages/backend`              |       100% |     100% |      100% |  100% |
 
 The `plugin-radius` floors moved from 61/33/46/60 to 69/46/58/68, then to 70/50/61/70, then to
 72/54/64/72 for Phase 1, to 73/55/67/73 for Phase 2, and now to 73/55/68/74 for the executable
@@ -1576,6 +1575,20 @@ raised to the measured result.
 
 The backend plugin floor moved from 62/n/a/50/71 to 93/n/a/100/100 when BE-01–BE-05 replaced the
 single health-check smoke test with router, registration, lifecycle, and failure-path coverage.
+
+Both backend workspaces now carry a 100% branch floor. Neither contains a branch counter today, so
+Istanbul reports the empty set as 100%; the floor is set rather than omitted precisely because it
+costs nothing now and refuses the first uncovered branch either workspace acquires. That is the one
+case where a floor is not a rounded-down measurement, and it is stricter than the measurement, not
+weaker.
+
+`packages/backend`'s floor should be read with its measurement conditions in mind. The entry point
+is six `backend.add(import(...))` calls, and the workspace `jest.transform` override lowers those
+dynamic imports to `require` so Jest's CommonJS runtime can execute them at all. BK-01–BK-06
+therefore prove the module graph, the installed module set, and that `start` follows every `add`.
+They do not exercise native ESM dynamic import as the packed host would, so 100% here means "every
+statement ran under the test transform", not "production module loading is verified". Phase 5's
+host build is what qualifies the latter.
 
 `packages/app` previously carried no branch or function floor because both measured 0%: its
 statement coverage came from module loading, not from tests. Phase 1 closed that — the workspace is

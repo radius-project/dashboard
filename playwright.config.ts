@@ -17,7 +17,7 @@
 import { defineConfig } from '@playwright/test';
 import { generateProjects } from '@backstage/e2e-test-utils/playwright';
 
-// Set PLAYWRIGHT_DISABLE_WEBSERVER=true when tests should run against an externally managed URL (for example PLAYWRIGHT_URL=http://localhost:7007).
+// Set PLAYWRIGHT_DISABLE_WEBSERVER=true when tests should run against externally managed URLs (for example PLAYWRIGHT_URL=http://localhost:7007). This hands over both the app on port 3000 and the Storybook host on port 6006.
 const disableWebServer = process.env.PLAYWRIGHT_DISABLE_WEBSERVER === 'true';
 const browserChannel = process.env.PLAYWRIGHT_BROWSER_CHANNEL;
 
@@ -31,26 +31,26 @@ export default defineConfig({
     timeout: 5_000,
   },
 
-  // Run your local dev server before starting the tests
-  webServer: [
-    ...(!disableWebServer
-      ? [
-          {
-            command: 'yarn start',
-            port: 3000,
-            reuseExistingServer: true,
-            timeout: 180_000,
-          },
-        ]
-      : []),
-    {
-      command:
-        'yarn workspace @radapp.io/rad-components storybook --ci --no-open',
-      port: 6006,
-      reuseExistingServer: true,
-      timeout: 120_000,
-    },
-  ],
+  // Run your local dev server before starting the tests. Both servers are
+  // managed together, so PLAYWRIGHT_DISABLE_WEBSERVER hands over the app and
+  // the Storybook host at once rather than leaving one of them spawned.
+  webServer: disableWebServer
+    ? []
+    : [
+        {
+          command: 'yarn start',
+          port: 3000,
+          reuseExistingServer: true,
+          timeout: 180_000,
+        },
+        {
+          command:
+            'yarn workspace @radapp.io/rad-components storybook --ci --no-open',
+          port: 6006,
+          reuseExistingServer: true,
+          timeout: 120_000,
+        },
+      ],
 
   forbidOnly: !!process.env.CI,
 

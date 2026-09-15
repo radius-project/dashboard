@@ -12,6 +12,8 @@ interface PackageJson {
   name?: string;
   private?: boolean;
   license?: string;
+  main?: string;
+  types?: string;
   sideEffects?: boolean;
   files?: string[];
   backstage?: {
@@ -25,10 +27,39 @@ interface PackageJson {
   peerDependencies?: Record<string, string>;
 }
 
-const readJson = (relativePath: string) =>
-  JSON.parse(
-    fs.readFileSync(path.resolve(__dirname, relativePath), 'utf8'),
-  ) as PackageJson;
+/**
+ * `packagingArtifact.test.ts` runs a real `build` and `pack` in this same Jest
+ * run, and Backstage's `prepack` transiently rewrites the workspace manifest's
+ * top-level `main` and `types` to their `dist` targets before `postpack` puts
+ * them back. Every other field -- `publishConfig`, `backstage`, `files`,
+ * `private`, `license`, and the `workspace:` dependency ranges -- is left
+ * untouched, so only those two keys can be observed mid-flight.
+ *
+ * Reading during that window would therefore make an assertion on `main` or
+ * `types` intermittently wrong, so this re-reads until the manifest is out of
+ * the packed state. Source-entry assertions belong in PU-27b, which owns the
+ * pack lifecycle and can guarantee ordering; do not add them here.
+ */
+const sleepSync = (milliseconds: number) =>
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, milliseconds);
+
+const readJson = (relativePath: string) => {
+  const absolutePath = path.resolve(__dirname, relativePath);
+  const deadline = Date.now() + 240_000;
+
+  for (;;) {
+    const manifest = JSON.parse(
+      fs.readFileSync(absolutePath, 'utf8'),
+    ) as PackageJson;
+
+    const midPack = manifest.main?.startsWith('dist/');
+    if (!midPack || Date.now() > deadline) {
+      return manifest;
+    }
+
+    sleepSync(50);
+  }
+};
 
 const pkg = readJson('../package.json');
 const radComponents = readJson('../../../packages/rad-components/package.json');
