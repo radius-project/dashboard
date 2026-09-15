@@ -2,7 +2,6 @@ import fs from 'fs';
 import path from 'path';
 import { AppGraph } from '../graph';
 import {
-  createGraphRecord,
   diffGraphRecords,
   findCarriedForwardGraphDefects,
   findUnapprovedGraphRecordChanges,
@@ -56,11 +55,12 @@ const fixtures: Record<string, unknown> = {
 const load = (fixture: unknown): AppGraph =>
   JSON.parse(JSON.stringify(fixture)) as AppGraph;
 
-const createFreshGraphRecord = (fixture: unknown): GraphRecord => {
+const createFreshGraphRecord = async (
+  fixture: unknown,
+): Promise<GraphRecord> => {
   let record: GraphRecord | undefined;
-  jest.isolateModules(() => {
-    const { createGraphRecord } =
-      require('../graphRecord') as typeof import('../graphRecord');
+  await jest.isolateModulesAsync(async () => {
+    const { createGraphRecord } = await import('../graphRecord');
     record = createGraphRecord(load(fixture));
   });
   if (!record) {
@@ -87,16 +87,42 @@ const parseManifest = (contents: string): GraphRecordChange[] =>
       return { fixture, field, oldValue, newValue, reason };
     });
 
-const generatedRecords = () =>
-  Object.fromEntries(
-    Object.entries(fixtures).map(([name, fixture]) => [
-      name,
-      createFreshGraphRecord(fixture),
-    ]),
+const generatedRecords = async (): Promise<Record<string, GraphRecord>> => {
+  const records: Record<string, GraphRecord> = {};
+  for (const [name, fixture] of Object.entries(fixtures)) {
+    records[name] = await createFreshGraphRecord(fixture);
+  }
+  return records;
+};
+
+const updateGraphRecords = (
+  records: Record<string, GraphRecord>,
+  baselines: Record<string, GraphRecord>,
+  manifest: GraphRecordChange[],
+  writeRecord: (fixture: string, record: GraphRecord) => void,
+) => {
+  const changes = Object.entries(records).flatMap(([fixture, record]) =>
+    diffGraphRecords(fixture, baselines[fixture], record),
   );
+  const unapproved = findUnapprovedGraphRecordChanges(changes, manifest);
+
+  if (unapproved.length > 0) {
+    throw new Error(
+      `Refusing to update graph records with unapproved changes:\n${JSON.stringify(
+        unapproved,
+        null,
+        2,
+      )}`,
+    );
+  }
+
+  Object.entries(records).forEach(([fixture, record]) =>
+    writeRecord(fixture, record),
+  );
+};
 
 describe('graph records', () => {
-  it('GU-21a: normalizes, quantizes, and sorts semantic graph data', () => {
+  it('GU-21a: normalizes, quantizes, and sorts semantic graph data', async () => {
     expect(
       normalizeGraphModel({
         nodes: [
@@ -105,6 +131,8 @@ describe('graph records', () => {
             label: 'Zulu',
             type: 'test/Zulu',
             status: 'Succeeded',
+            icon: null,
+            statusBadge: null,
             position: { x: 149, y: 251 },
           },
           {
@@ -112,6 +140,8 @@ describe('graph records', () => {
             label: 'Alpha',
             type: 'test/Alpha',
             status: 'Failed',
+            icon: null,
+            statusBadge: null,
             position: { x: 49, y: 50 },
           },
         ],
@@ -144,33 +174,42 @@ describe('graph records', () => {
         { source: 'z', target: 'a', direction: 'source-to-target' },
       ],
     });
-    expect(createGraphRecord(load(empty))).toEqual({ nodes: [], edges: [] });
+    expect(await createFreshGraphRecord(empty)).toEqual({
+      nodes: [],
+      edges: [],
+    });
   });
 
   it.each(Object.entries(fixtures))(
     'GU-21: %s produces its committed semantic graph record',
-    (name, fixture) => {
-      const actual = createFreshGraphRecord(fixture);
-
-      if (process.env.UPDATE_GRAPH_RECORDS === 'true') {
-        fs.mkdirSync(fixtureDirectory, { recursive: true });
-        fs.writeFileSync(
-          path.join(fixtureDirectory, `${name}.json`),
-          `${JSON.stringify(actual, null, 2)}\n`,
-        );
+    async (name, fixture) => {
+      const actual = await createFreshGraphRecord(fixture);
+      if (process.env.UPDATE_GRAPH_RECORDS !== 'true') {
+        expect(actual).toEqual(readRecord(name));
       }
-
-      expect(actual).toEqual(readRecord(name));
     },
   );
 
-  it('GU-22: rejects record changes not declared in the expected-change manifest', () => {
+  it('GU-22: rejects record changes not declared in the expected-change manifest', async () => {
     const manifest = parseManifest(fs.readFileSync(manifestPath, 'utf8'));
-    const changes = Object.entries(generatedRecords()).flatMap(
-      ([fixture, record]) =>
-        diffGraphRecords(fixture, readRecord(fixture), record),
+    const records = await generatedRecords();
+    const baselines = Object.fromEntries(
+      Object.keys(records).map(fixture => [fixture, readRecord(fixture)]),
+    );
+    const changes = Object.entries(records).flatMap(([fixture, record]) =>
+      diffGraphRecords(fixture, baselines[fixture], record),
     );
     expect(findUnapprovedGraphRecordChanges(changes, manifest)).toEqual([]);
+
+    if (process.env.UPDATE_GRAPH_RECORDS === 'true') {
+      updateGraphRecords(records, baselines, manifest, (fixture, record) => {
+        fs.mkdirSync(fixtureDirectory, { recursive: true });
+        fs.writeFileSync(
+          path.join(fixtureDirectory, `${fixture}.json`),
+          `${JSON.stringify(record, null, 2)}\n`,
+        );
+      });
+    }
   });
 
   it('GU-22a: accepts only exact expected record changes', () => {
@@ -233,17 +272,122 @@ describe('graph records', () => {
 
     expect(diffGraphRecords('sample', baseline, current)).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ field: 'nodes.0.label' }),
+        expect.objectContaining({
+          field: 'nodes.0.label',
+          oldValue: '"Old"',
+          newValue: '"New"',
+        }),
         expect.objectContaining({ field: 'nodes.0.icon' }),
-        expect.objectContaining({ field: 'nodes.1' }),
-        expect.objectContaining({ field: 'edges.0' }),
+        expect.objectContaining({
+          field: 'nodes.1',
+          oldValue: '<absent>',
+        }),
+        expect.objectContaining({
+          field: 'edges.0',
+          newValue: '<absent>',
+        }),
       ]),
     );
   });
 
-  it('GU-23: reports unchanged KNOWN-DEFECT record fields as carried forward', () => {
+  it('GU-22c: validates every change before update mode writes any record', () => {
+    const baseline = readRecord('single-node');
+    const changed = {
+      ...baseline,
+      nodes: [{ ...baseline.nodes[0], label: 'Changed' }],
+    };
+    const writeRecord = jest.fn();
+
+    expect(() =>
+      updateGraphRecords(
+        { 'single-node': changed, empty: readRecord('empty') },
+        { 'single-node': baseline, empty: readRecord('empty') },
+        [],
+        writeRecord,
+      ),
+    ).toThrow('Refusing to update graph records with unapproved changes');
+    expect(writeRecord).not.toHaveBeenCalled();
+
+    expect(() =>
+      updateGraphRecords(
+        { 'single-node': changed, empty: readRecord('empty') },
+        { 'single-node': baseline, empty: readRecord('empty') },
+        [
+          {
+            fixture: 'single-node',
+            field: 'nodes.0.label',
+            oldValue: '"solo"',
+            newValue: '"Changed"',
+            reason: 'Approved mutation',
+          },
+        ],
+        writeRecord,
+      ),
+    ).not.toThrow();
+    expect(writeRecord).toHaveBeenCalledTimes(2);
+  });
+
+  it('GU-22d: distinguishes absence from strings and null in manifest values', () => {
+    const baseline = {
+      nodes: [{ id: 'node' }],
+      edges: [],
+    } as unknown as GraphRecord;
+    const withString = {
+      nodes: [{ id: 'node', icon: '<absent>' }],
+      edges: [],
+    } as unknown as GraphRecord;
+    const withNull = {
+      nodes: [{ id: 'node', icon: null }],
+      edges: [],
+    } as unknown as GraphRecord;
+
+    expect(diffGraphRecords('sample', baseline, withString)).toContainEqual(
+      expect.objectContaining({
+        field: 'nodes.0.icon',
+        oldValue: '<absent>',
+        newValue: '"<absent>"',
+      }),
+    );
+    expect(diffGraphRecords('sample', baseline, withNull)).toContainEqual(
+      expect.objectContaining({
+        field: 'nodes.0.icon',
+        oldValue: '<absent>',
+        newValue: 'null',
+      }),
+    );
+  });
+
+  it('GU-21b: records renderer-facing icon and status semantics', () => {
+    const normalized = normalizeGraphModel({
+      nodes: [
+        {
+          id: 'node',
+          label: 'Node',
+          type: 'test/Type',
+          status: 'Succeeded',
+          icon: 'database',
+          statusBadge: {
+            kind: 'success',
+            accessibleName: 'Provisioning succeeded',
+          },
+          position: { x: 0, y: 0 },
+        },
+      ],
+      edges: [],
+    });
+
+    expect(normalized.nodes[0]).toMatchObject({
+      icon: 'database',
+      statusBadge: {
+        kind: 'success',
+        accessibleName: 'Provisioning succeeded',
+      },
+    });
+  });
+
+  it('GU-23: reports unchanged KNOWN-DEFECT record fields as carried forward', async () => {
     const changedFields = new Set(
-      Object.entries(generatedRecords())
+      Object.entries(await generatedRecords())
         .flatMap(([fixture, record]) =>
           diffGraphRecords(fixture, readRecord(fixture), record),
         )

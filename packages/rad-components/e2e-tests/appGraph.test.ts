@@ -28,7 +28,8 @@ test.describe('real AppGraph renderer', () => {
     page,
   }) => {
     await page.addInitScript(() => {
-      const active = new Set<number>();
+      const activeTimeouts = new Set<number>();
+      const activeAnimationFrames = new Set<number>();
       const nativeSetTimeout = window.setTimeout.bind(window);
       const nativeClearTimeout = window.clearTimeout.bind(window);
       const nativeRequestAnimationFrame =
@@ -38,35 +39,49 @@ test.describe('real AppGraph renderer', () => {
 
       window.setTimeout = ((handler: TimerHandler, timeout?: number) => {
         const id = nativeSetTimeout(() => {
-          active.delete(id);
+          activeTimeouts.delete(id);
           if (typeof handler === 'function') {
             handler();
           } else {
             window.eval(handler);
           }
         }, timeout);
-        active.add(id);
+        activeTimeouts.add(id);
         return id;
       }) as typeof window.setTimeout;
       window.clearTimeout = ((id?: number) => {
-        if (id !== undefined) active.delete(id);
+        if (id !== undefined) activeTimeouts.delete(id);
         nativeClearTimeout(id);
       }) as typeof window.clearTimeout;
       window.requestAnimationFrame = callback => {
         const id = nativeRequestAnimationFrame(time => {
-          active.delete(id);
+          activeAnimationFrames.delete(id);
           callback(time);
         });
-        active.add(id);
+        activeAnimationFrames.add(id);
         return id;
       };
       window.cancelAnimationFrame = id => {
-        active.delete(id);
+        activeAnimationFrames.delete(id);
         nativeCancelAnimationFrame(id);
       };
       (
-        window as Window & { activeScheduledWork?: () => number }
-      ).activeScheduledWork = () => active.size;
+        window as Window & {
+          scheduledWork?: {
+            count: () => number;
+            trackTimeout: (id: number) => void;
+            completeTimeout: (id: number) => void;
+            trackAnimationFrame: (id: number) => void;
+            completeAnimationFrame: (id: number) => void;
+          };
+        }
+      ).scheduledWork = {
+        count: () => activeTimeouts.size + activeAnimationFrames.size,
+        trackTimeout: id => activeTimeouts.add(id),
+        completeTimeout: id => activeTimeouts.delete(id),
+        trackAnimationFrame: id => activeAnimationFrames.add(id),
+        completeAnimationFrame: id => activeAnimationFrames.delete(id),
+      };
     });
     const pageErrors: Error[] = [];
     page.on('pageerror', error => pageErrors.push(error));
@@ -79,24 +94,53 @@ test.describe('real AppGraph renderer', () => {
         })),
       );
 
-    const baselineScheduledWork = await page.evaluate(() =>
-      (
-        window as Window & { activeScheduledWork: () => number }
-      ).activeScheduledWork(),
+    const baselineScheduledWork = await page.evaluate(() => {
+      const work = (
+        window as Window & {
+          scheduledWork: {
+            count: () => number;
+            trackTimeout: (id: number) => void;
+            completeTimeout: (id: number) => void;
+            trackAnimationFrame: (id: number) => void;
+            completeAnimationFrame: (id: number) => void;
+          };
+        }
+      ).scheduledWork;
+      const collidingId = -1;
+      const baseline = work.count();
+      work.trackTimeout(collidingId);
+      work.trackAnimationFrame(collidingId);
+      work.completeTimeout(collidingId);
+      const countAfterTimeoutCompletes = work.count();
+      work.completeAnimationFrame(collidingId);
+      return {
+        baseline,
+        countAfterTimeoutCompletes,
+        countAfterCleanup: work.count(),
+      };
+    });
+    expect(baselineScheduledWork.countAfterTimeoutCompletes).toBe(
+      baselineScheduledWork.baseline + 1,
+    );
+    expect(baselineScheduledWork.countAfterCleanup).toBe(
+      baselineScheduledWork.baseline,
     );
     await page.getByRole('button', { name: 'Mount graph' }).click();
     await expect(node(page, 'frontend')).toBeVisible();
     const first = await positions();
     await page.getByRole('button', { name: 'Unmount graph' }).click();
     await expect(page.locator('.react-flow')).toHaveCount(0);
-    await page.waitForTimeout(100);
-    expect(
-      await page.evaluate(() =>
-        (
-          window as Window & { activeScheduledWork: () => number }
-        ).activeScheduledWork(),
-      ),
-    ).toBeLessThanOrEqual(baselineScheduledWork);
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          (
+            window as Window & {
+              scheduledWork: { count: () => number };
+            }
+          ).scheduledWork.count(),
+        ),
+      )
+      .toBeLessThanOrEqual(baselineScheduledWork.baseline);
 
     await page.getByRole('button', { name: 'Mount graph' }).click();
     await expect(node(page, 'frontend')).toBeVisible();

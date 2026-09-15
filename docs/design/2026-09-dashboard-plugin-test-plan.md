@@ -80,7 +80,7 @@ Progression as the plan is executed, re-measured after each phase increment:
 | `packages/rad-components`       |   80.00% |        81.33% |       86.52% |                    86.52% |                   86.52% |                 86.52% |        95.08% |        95.08% |
 | `packages/app`                  |   75.00% |        75.00% |       75.00% |                    75.00% |                   75.00% |                 93.51% |        93.51% |        93.51% |
 | `packages/backend`              |    0.00% |         0.00% |        0.00% |                     0.00% |                    0.00% |                100.00% |       100.00% |       100.00% |
-| Suites / cases                  |   31/127 |        33/159 |       34/260 |                    36/272 |                   43/331 |                 53/427 |        54/460 |    **56/469** |
+| Suites / cases                  |   31/127 |        33/159 |       34/260 |                    36/272 |                   43/331 |                 53/427 |        54/460 |    **56/472** |
 
 Statement coverage only; the enforced floors in Appendix G carry all four metrics.
 

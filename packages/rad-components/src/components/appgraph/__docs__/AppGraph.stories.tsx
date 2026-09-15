@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { useState } from 'react';
+import React, { useState } from 'react';
 import Example from './Example';
 import { AppGraphProps } from '../AppGraph';
 import empty from '../../../__fixtures__/graph/empty.json';

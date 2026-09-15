@@ -3,11 +3,13 @@ import {
   initialNodes,
   getLayoutedElements,
 } from './components/appgraph/AppGraph';
+import {
+  getResourceNodeSemantics,
+  ResourceNodeSemantics,
+} from './components/resourcenode';
 
-export interface GraphModelNode {
+export interface GraphModelNode extends ResourceNodeSemantics {
   id: string;
-  label: string;
-  type: string;
   status: string;
   position: { x: number; y: number };
 }
@@ -37,13 +39,15 @@ export function buildGraphModel(graph: AppGraph): GraphModel {
   const { nodes, edges } = initialNodes(graph);
 
   return {
-    nodes: nodes.map(node => ({
-      id: node.id,
-      label: node.data.name,
-      type: node.data.type,
-      status: node.data.provisioningState,
-      position: node.position,
-    })),
+    nodes: nodes.map(node => {
+      const semantics = getResourceNodeSemantics(node.data);
+      return {
+        id: node.id,
+        ...semantics,
+        status: node.data.provisioningState,
+        position: node.position,
+      };
+    }),
     edges: edges.map(edge => ({
       id: edge.id,
       source: edge.source,
@@ -62,13 +66,15 @@ export function buildLayoutedGraphModel(graph: AppGraph): GraphModel {
   const layouted = getLayoutedElements(nodes, edges, { direction: 'TB' });
 
   return {
-    nodes: layouted.nodes.map(node => ({
-      id: node.id,
-      label: (node.data as { name: string }).name,
-      type: (node.data as { type: string }).type,
-      status: (node.data as { provisioningState: string }).provisioningState,
-      position: node.position,
-    })),
+    nodes: layouted.nodes.map(node => {
+      const data = node.data as Parameters<typeof getResourceNodeSemantics>[0];
+      return {
+        id: node.id,
+        ...getResourceNodeSemantics(data),
+        status: data.provisioningState,
+        position: node.position,
+      };
+    }),
     edges: layouted.edges.map(edge => ({
       id: edge.id,
       source: edge.source,

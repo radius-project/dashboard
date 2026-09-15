@@ -73,11 +73,8 @@ export function normalizeGraphModel(model: GraphModel): GraphRecord {
         id: node.id,
         label: node.label,
         type: node.type,
-        // The current ResourceNode does not render icons or status badges.
-        // Keeping those fields explicit makes their future introduction visible
-        // in the extraction record diff instead of silently changing the schema.
-        icon: null,
-        statusBadge: null,
+        icon: node.icon,
+        statusBadge: node.statusBadge,
         position: {
           x: quantize(node.position.x),
           y: quantize(node.position.y),
@@ -125,6 +122,8 @@ export function diffGraphRecords(
   current: GraphRecord,
 ): GraphRecordFieldChange[] {
   const changes: GraphRecordFieldChange[] = [];
+  const serialize = (value: unknown) =>
+    value === undefined ? '<absent>' : JSON.stringify(value);
 
   const visit = (field: string, oldValue: unknown, newValue: unknown) => {
     if (
@@ -147,12 +146,12 @@ export function diffGraphRecords(
       return;
     }
 
-    if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
+    if (serialize(oldValue) !== serialize(newValue)) {
       changes.push({
         fixture,
         field,
-        oldValue: JSON.stringify(oldValue),
-        newValue: JSON.stringify(newValue),
+        oldValue: serialize(oldValue),
+        newValue: serialize(newValue),
       });
     }
   };
