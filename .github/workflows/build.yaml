@@ -51,6 +51,8 @@ jobs:
 
       - name: Install dependencies
         run: yarn install --immutable
+
+      - name: Lint
         if: ${{ env.CI_LINT == 'true' }}
         run: yarn run lint:all
 
