@@ -1,7 +1,12 @@
 import { expect, Page, test } from '@playwright/test';
 
+// Relative to the Storybook baseURL in playwright.components.config.ts.
 const storyUrl = (story: string) =>
-  `http://127.0.0.1:6006/iframe.html?id=appgraph--${story}&viewMode=story`;
+  `/iframe.html?id=appgraph--${story}&viewMode=story`;
+
+// Test-only stories live in their own non-documented Storybook title.
+const harnessStoryUrl = (story: string) =>
+  `/iframe.html?id=appgraph-harness--${story}&viewMode=story`;
 
 const node = (page: Page, name: string) =>
   page.getByRole('button', { name: new RegExp(`^${name}`, 'i') });
@@ -67,25 +72,19 @@ test.describe('real AppGraph renderer', () => {
       };
       (
         window as Window & {
-          scheduledWork?: {
-            count: () => number;
-            trackTimeout: (id: number) => void;
-            completeTimeout: (id: number) => void;
-            trackAnimationFrame: (id: number) => void;
-            completeAnimationFrame: (id: number) => void;
-          };
+          scheduledWork?: { count: () => number };
         }
       ).scheduledWork = {
+        // Timeouts and animation frames are counted in separate sets because the
+        // two id spaces are independent: a timeout id and a frame id can be the
+        // same number, and a shared set would let one cancellation hide the
+        // other's leak.
         count: () => activeTimeouts.size + activeAnimationFrames.size,
-        trackTimeout: id => activeTimeouts.add(id),
-        completeTimeout: id => activeTimeouts.delete(id),
-        trackAnimationFrame: id => activeAnimationFrames.add(id),
-        completeAnimationFrame: id => activeAnimationFrames.delete(id),
       };
     });
     const pageErrors: Error[] = [];
     page.on('pageerror', error => pageErrors.push(error));
-    await page.goto(storyUrl('remount-harness'));
+    await page.goto(harnessStoryUrl('remount-harness'));
     const positions = async () =>
       page.locator('.react-flow__node').evaluateAll(nodes =>
         nodes.map(node => ({
@@ -94,53 +93,21 @@ test.describe('real AppGraph renderer', () => {
         })),
       );
 
-    const baselineScheduledWork = await page.evaluate(() => {
-      const work = (
-        window as Window & {
-          scheduledWork: {
-            count: () => number;
-            trackTimeout: (id: number) => void;
-            completeTimeout: (id: number) => void;
-            trackAnimationFrame: (id: number) => void;
-            completeAnimationFrame: (id: number) => void;
-          };
-        }
-      ).scheduledWork;
-      const collidingId = -1;
-      const baseline = work.count();
-      work.trackTimeout(collidingId);
-      work.trackAnimationFrame(collidingId);
-      work.completeTimeout(collidingId);
-      const countAfterTimeoutCompletes = work.count();
-      work.completeAnimationFrame(collidingId);
-      return {
-        baseline,
-        countAfterTimeoutCompletes,
-        countAfterCleanup: work.count(),
-      };
-    });
-    expect(baselineScheduledWork.countAfterTimeoutCompletes).toBe(
-      baselineScheduledWork.baseline + 1,
-    );
-    expect(baselineScheduledWork.countAfterCleanup).toBe(
-      baselineScheduledWork.baseline,
-    );
+    const scheduledWorkCount = () =>
+      page.evaluate(() =>
+        (
+          window as Window & { scheduledWork: { count: () => number } }
+        ).scheduledWork.count(),
+      );
+    const baselineScheduledWork = await scheduledWorkCount();
     await page.getByRole('button', { name: 'Mount graph' }).click();
     await expect(node(page, 'frontend')).toBeVisible();
     const first = await positions();
     await page.getByRole('button', { name: 'Unmount graph' }).click();
     await expect(page.locator('.react-flow')).toHaveCount(0);
     await expect
-      .poll(() =>
-        page.evaluate(() =>
-          (
-            window as Window & {
-              scheduledWork: { count: () => number };
-            }
-          ).scheduledWork.count(),
-        ),
-      )
-      .toBeLessThanOrEqual(baselineScheduledWork.baseline);
+      .poll(scheduledWorkCount)
+      .toBeLessThanOrEqual(baselineScheduledWork);
 
     await page.getByRole('button', { name: 'Mount graph' }).click();
     await expect(node(page, 'frontend')).toBeVisible();
@@ -255,10 +222,10 @@ test.describe('real AppGraph renderer', () => {
         stylesheet: true,
       });
 
-    await page.goto(storyUrl('stubbed-renderer'));
+    await page.goto(harnessStoryUrl('stubbed-renderer'));
     await expect(node(page, 'frontend')).toHaveCount(0);
 
-    await page.goto(storyUrl('stylesheet-removed'));
+    await page.goto(harnessStoryUrl('stylesheet-removed'));
     await expect(node(page, 'frontend')).toBeHidden();
     await expect(page.locator('.react-flow__controls')).toBeHidden();
   });

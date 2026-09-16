@@ -1,14 +1,29 @@
 /**
- * Build-time package qualification. The fixture resolves the local tarballs
- * from an isolated node_modules tree while repository dependencies remain
- * available for declaration checking. Phase 5 replaces this with a fully clean
- * install and host build.
+ * Build-time package qualification. This is not a unit test: it runs a real
+ * `yarn build` and `yarn pack`, and Backstage's `prepack` rewrites the workspace
+ * manifest on disk while it does. It therefore runs alone, through
+ * `yarn test:package`, rather than inside the repository Jest run — nothing else
+ * may read those manifests concurrently, and a run that is killed mid-pack must
+ * not leave a tracked file rewritten behind other passing tests.
+ *
+ * The fixture resolves the local tarballs from an isolated node_modules tree
+ * while repository dependencies remain available for declaration checking.
+ * Phase 5 replaces this with a fully clean install and host build.
  */
 /* eslint-disable no-restricted-imports */
 import { execFileSync } from 'child_process';
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 import * as publicApi from './index';
+
+/**
+ * Set by `yarn test:package`. Without it the suite does not run, because the
+ * repository Jest run must not trigger a build and pack. PP-01 asserts that the
+ * script and its CI step exist and target this file, so the guard cannot make
+ * the qualification disappear silently.
+ */
+const qualifying = process.env.PACKAGE_QUALIFICATION === 'true';
 
 interface PackedPackageJson {
   name: string;
@@ -33,7 +48,11 @@ interface ManifestLifecycle {
 }
 
 const repoRoot = path.resolve(__dirname, '../../..');
-const artifactRoot = path.join(repoRoot, '.copilot-tracking', 'plugin-package');
+// A private temp directory, never a tracked path: the cleanup below is a
+// recursive delete, and the agent scratch directory holds real working files.
+const artifactRoot = qualifying
+  ? fs.mkdtempSync(path.join(os.tmpdir(), 'radius-plugin-package-'))
+  : '';
 const pluginArchive = path.join(artifactRoot, 'plugin.tgz');
 const graphArchive = path.join(artifactRoot, 'rad-components.tgz');
 const consumerRoot = path.join(artifactRoot, 'consumer');
@@ -130,7 +149,7 @@ const runtimeExports = (entryPoint: string) =>
     .sort();
 
 beforeAll(() => {
-  fs.rmSync(artifactRoot, { recursive: true, force: true });
+  if (!qualifying) return;
   fs.mkdirSync(artifactRoot, { recursive: true });
 
   try {
@@ -185,10 +204,11 @@ beforeAll(() => {
 }, 180_000);
 
 afterAll(() => {
+  if (!qualifying) return;
   fs.rmSync(artifactRoot, { recursive: true, force: true });
 });
 
-describe('built plugin artifact', () => {
+(qualifying ? describe : describe.skip)('built plugin artifact', () => {
   it('PU-26: exposes the same runtime exports from dist as the source entry point', () => {
     expect(
       runtimeExports(path.join(pluginInstall, 'dist', 'index.esm.js')),
@@ -217,10 +237,11 @@ describe('built plugin artifact', () => {
   it('PU-27b: restores both source manifests after build and pack', () => {
     expect(pluginManifestLifecycle.after).toBe(pluginManifestLifecycle.before);
     expect(graphManifestLifecycle.after).toBe(graphManifestLifecycle.before);
+    // The source development contract: both entry points resolve to TypeScript
+    // source, not to build output left behind by prepack.
     expect(readJson<PackedPackageJson>(pluginManifestPath)).toMatchObject({
       main: 'src/index.ts',
       types: 'src/index.ts',
-      private: true,
     });
   });
 
@@ -234,7 +255,6 @@ describe('built plugin artifact', () => {
       name: '@internal/plugin-radius',
       main: 'dist/index.esm.js',
       types: 'dist/index.d.ts',
-      license: 'Apache-2.0',
       files: ['dist'],
       sideEffects: false,
       backstage: {
@@ -243,7 +263,6 @@ describe('built plugin artifact', () => {
         pluginPackages: ['@internal/plugin-radius'],
       },
     });
-    expect(manifest.private).toBe(true);
     expect(
       dependencyEntries.filter(([, range]) => range.startsWith('workspace:')),
     ).toEqual([]);

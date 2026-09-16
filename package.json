@@ -22,6 +22,8 @@
     "test": "backstage-cli repo test",
     "test:all": "backstage-cli repo test --coverage",
     "test:e2e": "playwright test",
+    "test:e2e:components": "playwright test --config playwright.components.config.ts",
+    "test:package": "node scripts/test-package.js",
     "fix": "backstage-cli repo fix",
     "lint": "backstage-cli repo lint --since origin/main",
     "lint:all": "backstage-cli repo lint",

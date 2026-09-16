@@ -6,7 +6,7 @@ import {
 import {
   getResourceNodeSemantics,
   ResourceNodeSemantics,
-} from './components/resourcenode';
+} from './components/resourcenode/ResourceNode';
 
 export interface GraphModelNode extends ResourceNodeSemantics {
   id: string;

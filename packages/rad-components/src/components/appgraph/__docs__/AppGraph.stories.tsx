@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import React, { useState } from 'react';
+import React from 'react';
 import Example from './Example';
 import { AppGraphProps } from '../AppGraph';
 import empty from '../../../__fixtures__/graph/empty.json';
@@ -72,40 +72,4 @@ export const Dark: Story = {
       </div>
     ),
   ],
-};
-
-export const StubbedRenderer: Story = {
-  render: () => <div>Graph placeholder</div>,
-};
-
-export const StylesheetRemoved: Story = {
-  args: {
-    graph: multiTier,
-  } as AppGraphProps,
-  decorators: [
-    StoryComponent => (
-      <>
-        <style>
-          {
-            '.react-flow__node,.react-flow__edge,.react-flow__controls{display:none!important}'
-          }
-        </style>
-        <StoryComponent />
-      </>
-    ),
-  ],
-};
-
-export const RemountHarness: Story = {
-  render: function RemountHarnessStory() {
-    const [mounted, setMounted] = useState(false);
-    return (
-      <>
-        <button type="button" onClick={() => setMounted(value => !value)}>
-          {mounted ? 'Unmount graph' : 'Mount graph'}
-        </button>
-        {mounted && <Example graph={multiTier} />}
-      </>
-    );
-  },
 };

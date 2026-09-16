@@ -28,53 +28,59 @@ interface PackageJson {
 }
 
 /**
- * `packagingArtifact.test.ts` runs a real `build` and `pack` in this same Jest
- * run, and Backstage's `prepack` transiently rewrites the workspace manifest's
- * top-level `main` and `types` to their `dist` targets before `postpack` puts
- * them back. Every other field -- `publishConfig`, `backstage`, `files`,
- * `private`, `license`, and the `workspace:` dependency ranges -- is left
- * untouched, so only those two keys can be observed mid-flight.
- *
- * Reading during that window would therefore make an assertion on `main` or
- * `types` intermittently wrong, so this re-reads until the manifest is out of
- * the packed state. Source-entry assertions belong in PU-27b, which owns the
- * pack lifecycle and can guarantee ordering; do not add them here.
+ * A plain read. The only thing that transiently rewrites these manifests is
+ * Backstage's `prepack`, and the suite that triggers it runs alone under
+ * `yarn test:package` rather than inside this Jest run, so there is no window
+ * to synchronise against. PP-01 keeps that separation from being undone.
  */
-const sleepSync = (milliseconds: number) =>
-  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, milliseconds);
-
-const readJson = (relativePath: string) => {
-  const absolutePath = path.resolve(__dirname, relativePath);
-  const deadline = Date.now() + 240_000;
-
-  for (;;) {
-    const manifest = JSON.parse(
-      fs.readFileSync(absolutePath, 'utf8'),
-    ) as PackageJson;
-
-    const midPack = manifest.main?.startsWith('dist/');
-    if (!midPack || Date.now() > deadline) {
-      return manifest;
-    }
-
-    sleepSync(50);
-  }
-};
+const readJson = (relativePath: string) =>
+  JSON.parse(
+    fs.readFileSync(path.resolve(__dirname, relativePath), 'utf8'),
+  ) as PackageJson;
 
 const pkg = readJson('../package.json');
-const radComponents = readJson('../../../packages/rad-components/package.json');
-const repo = readJson('../../../package.json');
 
 /**
  * Phase 3 packaging contract.
  *
  * The plugin is intended to be published and consumed by an external Backstage
  * host. These tests inspect source metadata, not a packed artifact or an
- * installation. They record the conditions that currently prevent
- * publication so they cannot be forgotten or silently "fixed" by an unrelated
- * change.
+ * installation. Remaining release decisions -- final package name, whether the
+ * package is published, and the repository license reconciliation -- are
+ * checklist items in the design plan rather than assertions here, because a
+ * test that asserts an open decision turns CI red for whoever closes it.
  */
 describe('package contract', () => {
+  /**
+   * The artifact qualification suite runs a real build and pack, so it runs
+   * alone under `yarn test:package` instead of inside this Jest run. That makes
+   * it skippable, so this pins the two things that keep it running: the script
+   * that sets PACKAGE_QUALIFICATION and targets the suite, and the CI step that
+   * invokes the script.
+   */
+  it('PP-01: qualifies packed artifacts through a separate serial script in CI', () => {
+    const repoManifest = JSON.parse(
+      fs.readFileSync(path.resolve(__dirname, '../../../package.json'), 'utf8'),
+    ) as { scripts?: Record<string, string> };
+    const script = repoManifest.scripts?.['test:package'];
+    expect(script).toBe('node scripts/test-package.js');
+
+    const runner = fs.readFileSync(
+      path.resolve(__dirname, '../../../scripts/test-package.js'),
+      'utf8',
+    );
+    expect(runner).toContain("PACKAGE_QUALIFICATION: 'true'");
+    expect(runner).toContain(
+      'plugins/plugin-radius/src/packagingArtifact.test.ts',
+    );
+
+    const workflow = fs.readFileSync(
+      path.resolve(__dirname, '../../../.github/workflows/build.yaml'),
+      'utf8',
+    );
+    expect(workflow).toContain('yarn run test:package');
+  });
+
   it('PU-11: declares the Backstage role that host discovery depends on', () => {
     expect(pkg.backstage).toEqual({
       role: 'frontend-plugin',
@@ -115,10 +121,6 @@ describe('package contract', () => {
     expect(pkg.devDependencies?.react).toMatch(/^\^18\./);
   });
 
-  it('PU-16: KNOWN-DEFECT remains private pending release approval', () => {
-    expect(pkg.private).toBe(true);
-  });
-
   /**
    * Yarn rewrites `workspace:^` to a semver range when packing. This assertion
    * records the current source dependency, not a publication defect. Only an
@@ -132,25 +134,6 @@ describe('package contract', () => {
       .map(([name]) => name);
 
     expect(workspaceRanges).toEqual(['@radapp.io/rad-components']);
-  });
-
-  /**
-   * KNOWN-DEFECT: the repository LICENSE file is Apache-2.0 and the plugin
-   * declares Apache-2.0, but the graph package it depends on declares ISC, and
-   * the workspace root declares no license at all. `rad-components` is not
-   * private, so it is the one publishable package in the repository and it
-   * disagrees with the repository license. This must be resolved before the
-   * graph code moves or anything is published.
-   */
-  it('PU-18: KNOWN-DEFECT the repository, plugin, and graph package disagree on license', () => {
-    expect(repo.license).toBeUndefined();
-    expect(
-      fs.readFileSync(path.resolve(__dirname, '../../../LICENSE'), 'utf8'),
-    ).toContain('Apache License');
-
-    expect(pkg.license).toBe('Apache-2.0');
-    expect(radComponents.license).toBe('ISC');
-    expect(radComponents.private).toBeUndefined();
   });
 
   it('PU-19: pins the current internal name pending scope confirmation', () => {

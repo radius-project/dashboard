@@ -17,6 +17,13 @@ export interface ResourceNodeSemantics {
   } | null;
 }
 
+/**
+ * Internal seam. Deliberately not re-exported from the package barrel: `icon` and
+ * `statusBadge` are hard-coded `null` because the renderer has no icon or status
+ * source yet (#35, #89), and publishing that shape would invite consumers to depend
+ * on fields that are expected to change once those defects are fixed. Graph records
+ * record the absence as an explicit sentinel instead.
+ */
 export const getResourceNodeSemantics = (
   resource: Resource,
 ): ResourceNodeSemantics => ({

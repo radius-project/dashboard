@@ -17,7 +17,7 @@
 import { defineConfig } from '@playwright/test';
 import { generateProjects } from '@backstage/e2e-test-utils/playwright';
 
-// Set PLAYWRIGHT_DISABLE_WEBSERVER=true when the Backstage app is already served elsewhere, such as the built container the release workflow starts on port 7007 (paired with PLAYWRIGHT_URL=http://localhost:7007). The flag only hands over the app on port 3000; see the webServer comment below for why Storybook is spawned either way.
+// Set PLAYWRIGHT_DISABLE_WEBSERVER=true when the Backstage app is already served elsewhere, such as the built container the release workflow starts on port 7007 (paired with PLAYWRIGHT_URL=http://localhost:7007).
 const disableWebServer = process.env.PLAYWRIGHT_DISABLE_WEBSERVER === 'true';
 const browserChannel = process.env.PLAYWRIGHT_BROWSER_CHANNEL;
 
@@ -32,33 +32,16 @@ export default defineConfig({
   },
 
   // Run your local dev server before starting the tests.
-  //
-  // The two entries are deliberately gated differently. PLAYWRIGHT_DISABLE_WEBSERVER
-  // means "something else already serves the Backstage app", so only the app entry is
-  // dropped. Storybook is always spawned because nothing else ever serves it: the
-  // built container published by the release workflow contains the Backstage app
-  // alone, so leaving Storybook out under that flag makes the rad-components browser
-  // suite fail with ERR_CONNECTION_REFUSED on port 6006. reuseExistingServer keeps a
-  // Storybook host a developer already started from being spawned twice.
-  webServer: [
-    ...(!disableWebServer
-      ? [
-          {
-            command: 'yarn start',
-            port: 3000,
-            reuseExistingServer: true,
-            timeout: 180_000,
-          },
-        ]
-      : []),
-    {
-      command:
-        'yarn workspace @radapp.io/rad-components storybook --ci --no-open',
-      port: 6006,
-      reuseExistingServer: true,
-      timeout: 120_000,
-    },
-  ],
+  webServer: disableWebServer
+    ? []
+    : [
+        {
+          command: 'yarn start',
+          port: 3000,
+          reuseExistingServer: true,
+          timeout: 180_000,
+        },
+      ],
 
   forbidOnly: !!process.env.CI,
 
@@ -77,11 +60,15 @@ export default defineConfig({
 
   outputDir: './logs/e2e-test-results',
 
-  projects: generateProjects().map(project => ({
-    ...project,
-    use: {
-      ...project.use,
-      ...(browserChannel ? { channel: browserChannel } : {}),
-    },
-  })), // Find all packages with e2e-test folders
+  // The rad-components browser suite has its own config and webServer; see
+  // playwright.components.config.ts.
+  projects: generateProjects()
+    .filter(project => project.name !== '@radapp.io/rad-components')
+    .map(project => ({
+      ...project,
+      use: {
+        ...project.use,
+        ...(browserChannel ? { channel: browserChannel } : {}),
+      },
+    })), // Find all packages with e2e-test folders
 });

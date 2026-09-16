@@ -6,6 +6,10 @@ import AppGraph from '../AppGraph';
 import * as sampledata from '../../../sampledata';
 
 describe('AppGraph component', () => {
+  // GU-17 replaces Dagre.layout on the shared module object. Without this the
+  // throwing implementation survives into every later test in this file.
+  afterEach(() => jest.restoreAllMocks());
+
   it('AppGraph should render correctly', () => {
     const application = sampledata.DemoApplication;
     render(<AppGraph graph={application} />);

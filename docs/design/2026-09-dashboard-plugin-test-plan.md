@@ -73,14 +73,14 @@ evidence of tested behavior there. Phase 1 closed it: the workspace now measures
 
 Progression as the plan is executed, re-measured after each phase increment:
 
-| Workspace                       | Baseline | After 0 and 3 | After Tier A | After first Phase 1 pages | After Phase 1 components | After Phase 1 complete | After Phase 2 | After Phase 3 |
-| ------------------------------- | -------: | ------------: | -----------: | ------------------------: | -----------------------: | ---------------------: | ------------: | ------------: |
-| `plugins/plugin-radius`         |   54.77% |        58.42% |       58.42% |                    61.22% |                   69.19% |                 72.70% |        73.79% |    **73.89%** |
-| `plugins/plugin-radius-backend` |   62.50% |        62.50% |       62.50% |                    62.50% |                   62.50% |                 93.75% |        93.75% |        93.75% |
-| `packages/rad-components`       |   80.00% |        81.33% |       86.52% |                    86.52% |                   86.52% |                 86.52% |        95.08% |        95.08% |
-| `packages/app`                  |   75.00% |        75.00% |       75.00% |                    75.00% |                   75.00% |                 93.51% |        93.51% |        93.51% |
-| `packages/backend`              |    0.00% |         0.00% |        0.00% |                     0.00% |                    0.00% |                100.00% |       100.00% |       100.00% |
-| Suites / cases                  |   31/127 |        33/159 |       34/260 |                    36/272 |                   43/331 |                 53/427 |        54/460 |    **56/477** |
+| Workspace                       | Baseline | After 0 and 3 | After Tier A | After first Phase 1 pages | After Phase 1 components | After Phase 1 complete | After Phase 2 | After Phase 3 | After review |
+| ------------------------------- | -------: | ------------: | -----------: | ------------------------: | -----------------------: | ---------------------: | ------------: | ------------: | --------------: |
+| `plugins/plugin-radius`         |   54.77% |        58.42% |       58.42% |                    61.22% |                   69.19% |                 72.70% |        73.79% |        73.89% |     **73.89%** |
+| `plugins/plugin-radius-backend` |   62.50% |        62.50% |       62.50% |                    62.50% |                   62.50% |                 93.75% |        93.75% |        93.75% |          93.75% |
+| `packages/rad-components`       |   80.00% |        81.33% |       86.52% |                    86.52% |                   86.52% |                 86.52% |        95.08% |        95.08% |      **95.89%** |
+| `packages/app`                  |   75.00% |        75.00% |       75.00% |                    75.00% |                   75.00% |                 93.51% |        93.51% |        93.51% |          93.51% |
+| `packages/backend`              |    0.00% |         0.00% |        0.00% |                     0.00% |                    0.00% |                100.00% |       100.00% |       100.00% |         100.00% |
+| Suites / cases                  |   31/127 |        33/159 |       34/260 |                    36/272 |                   43/331 |                 53/427 |        54/460 |        56/477 |     **56/476** |
 
 Statement coverage only; the enforced floors in Appendix G carry all four metrics.
 
@@ -766,18 +766,27 @@ The source contract is now the intended consumer contract:
   The test uses the production plugin and route table with deterministic Kubernetes/UCP responses,
   so a wrong import, missing component export, or unresolved route fails in the browser.
 
-`packagingArtifact.test.ts` supplies the built and local-artifact evidence:
+`packagingArtifact.test.ts` supplies the built and local-artifact evidence. It is **not** part of
+the repository Jest run: it performs a real `yarn build` and `yarn pack`, and Backstage's `prepack`
+rewrites workspace manifests on disk while it does, so it runs alone under `yarn test:package` as
+its own CI step. That removes the filesystem race with `packaging.test.ts`, which now reads those
+manifests with a plain read instead of a spin-lock, and means a run killed mid-pack cannot leave a
+tracked manifest rewritten behind other passing tests. PP-01 pins the script and the CI step so the
+suite cannot quietly stop running. Its tarballs and consumer fixture live in a private
+`os.tmpdir()` directory, because the cleanup is a recursive delete.
 
 - PU-26 builds the plugin and compares the named runtime exports in `dist/index.esm.js` with the
   source entry point.
 - PU-27 packs both the plugin and its current graph dependency, extracts them into an isolated
   `node_modules` tree, and compiles a consumer against the emitted `dist/index.d.ts`. PU-27a proves
   package resolution points at those extracted candidate tarballs rather than workspace source,
-  and PU-27b proves build/pack restores both candidate source manifests byte-for-byte, with
-  failure-path cleanup guarding the working tree.
-- PU-27c inspects the packed manifest and archive: the current internal/private identity,
+  and PU-27b proves build/pack restores both candidate source manifests byte-for-byte and that the
+  source development contract still resolves to TypeScript source, with failure-path cleanup
+  guarding the working tree.
+- PU-27c inspects the packed manifest and archive: package identity,
   Backstage metadata, built entry points, `files`, `sideEffects`, peer React placement, rewritten
-  workspace ranges, and absence of shipped `src` content are enforced.
+  workspace ranges, and absence of shipped `src` content are enforced. It does not assert the
+  `private` flag or the license, which are release checklist items.
 
 The current import boundary is non-vacuous: PB-04 finds the host's real plugin imports and requires
 every one to use the package entry point. PB-01a and PB-02a do the equivalent for the current
@@ -1027,8 +1036,8 @@ its issue is fixed, and that failure is the signal the fix landed, not a regress
 | #355  | Graph layout state leaks between applications via a module-level Dagre graph — **fixed in this PR at maintainer request; GU-08 is now a positive invariant, not a characterization pin** | GU-08 (regression) |
 | #356  | Cluster selection disagrees between `RadiusApi` and the graph request        | CN-03, CN-04         |
 | #357  | Graph builder does not validate resources: self-loops and duplicate node ids | GU-06a               |
-| #358  | Publication/consumer blockers: final package name and publishability remain deferred; the API contract is exported and source `workspace:^` is proven to rewrite during local packing | PU-10, PU-16, PU-17, PU-19, PU-26–PU-28 |
-| #359  | `rad-components` declares ISC while the repository is Apache-2.0             | PU-18                |
+| #358  | Publication/consumer blockers: final package name and publishability remain deferred; the API contract is exported and source `workspace:^` is proven to rewrite during local packing | PU-10, PU-17, PU-19, PU-26–PU-28; release checklist below |
+| #359  | `rad-components` declares ISC while the repository is Apache-2.0             | Release checklist below |
 | #360  | Five page suites can time out under loaded parallel execution and misreport as coverage failures | Phase 1 default-worker recheck; open guardrail |
 | #361  | A resource type with no description shows placeholder container documentation | RT-07                |
 | #362  | `ResourceLayout` renders literal `undefined/undefined: undefined` off-route  | LY-04                |
@@ -1042,6 +1051,27 @@ its issue is fixed, and that failure is the signal the fix landed, not a regress
 | #370  | The graph request error state has no retry action                             | GU-16                |
 
 Six notes on reading this table.
+
+### Release checklist, not tests
+
+Three open decisions used to be pinned as assertions — `PU-16` on `private === true`, `PU-18` on
+the license disagreement, and `FF-02` on the exact export list of `features.ts`. They are removed.
+A characterization test asserts what the code *does*, and its failure is a signal that behavior
+changed. These asserted that an open decision was still open, so closing the decision turned CI red
+and the person doing the right thing had to delete a test to do it. That is a checklist wearing a
+test's clothes. Behavioral pins such as GU-15 and GU-18 stay, because there the failure genuinely
+means the product changed.
+
+The decisions themselves still have to be made before anything is published:
+
+- [ ] **Final package name.** The plugin is `@internal/plugin-radius`. The published scope is not
+      decided. `PU-19` records today's name as a fact about the source, not as approval of it.
+- [ ] **Publishability.** The package is `private: true`. Whether it is published, and by which
+      release process, is deferred.
+- [ ] **License reconciliation.** The repository root declares no license; the `LICENSE` file is
+      Apache-2.0; both plugins declare Apache-2.0; `rad-components` declares ISC and is not
+      private, so the only currently publishable package is the one that disagrees with the
+      repository. Resolve before the graph code moves (#359).
 
 `#356` is pinned before the graph request moves: the same two-cluster list is passed to both paths,
 and the test proves `RadiusApi` chooses the first while `ApplicationTab` chooses the last. The
@@ -1132,7 +1162,8 @@ are recorded here because they changed what this plan tests.
    no license, the `LICENSE` file is Apache-2.0, the two plugins declare Apache-2.0, and
    `rad-components` declares ISC while not being private — so the only currently publishable
    package is the one that disagrees with the repository. Maintainers must confirm the license for
-   the moved code before publication; `PU-18` records the present state and fails if it drifts.
+   the moved code before publication; it is tracked as a release checklist item rather than as an
+   assertion, so closing it does not break the build.
 3. **Where the shared journey implementation lives** so that `ai-extensions`'s mandatory consumer
    CI can run it against the supported consumer pin without copying test code. CP-03 assumes it is
    invoked from the dashboard commit itself.
@@ -1388,14 +1419,15 @@ metadata but does not decide the final package license/notices.
 | PU-08 | The feature flag list is exactly `radius-catalog`                                              |
 | PU-09 | Every routable page is exposed as a named extension                                            |
 | PU-10 | `radiusApiRef` and the `RadiusApi` type are reachable from the public entry point                |
+| PP-01 | Packed-artifact qualification runs as a separate serial script and a CI step, not inside the repository Jest run |
 | PU-11 | `package.json` declares `backstage.role: frontend-plugin`                                      |
 | PU-12 | `files` is `dist` only, and `publishConfig` points at built entry points                       |
 | PU-13 | `sideEffects: false` holds, so hosts can tree-shake the package                                |
 | PU-14 | React, React DOM, and `react-router-dom` are peer dependencies, not dependencies               |
 | PU-15 | The declared React peer range covers React 18, which both hosts run                            |
-| PU-16 | KNOWN-DEFECT: the current plugin package remains `private` pending release approval             |
+| PU-16 | *Withdrawn.* The `private` flag is a release decision, not a behavior: see the release checklist |
 | PU-17 | The source manifest declares the graph workspace dependency; packing/installability is not inferred |
-| PU-18 | KNOWN-DEFECT: the repository, plugin, and graph package disagree on license                    |
+| PU-18 | *Withdrawn.* The license disagreement is a release checklist item, not an assertion            |
 | PU-19 | The current `@internal/plugin-radius` name is pinned pending scope confirmation                 |
 | PU-20 | Coverage floors are defined in the root config, where the repo-wide run honors them            |
 | PU-21 | No workspace declares a floor the repo-wide run would silently ignore                          |

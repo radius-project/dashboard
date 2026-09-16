@@ -80,6 +80,14 @@ jobs:
         if: ${{ env.CI_TEST == 'true' }}
         run: yarn run test:e2e
 
+      - name: Run Component Browser Tests
+        if: ${{ env.CI_TEST == 'true' }}
+        run: yarn run test:e2e:components
+
+      - name: Qualify Package Artifacts
+        if: ${{ env.CI_TEST == 'true' }}
+        run: yarn run test:package
+
   build-and-publish-container:
     name: Build and Publish Container
     runs-on: ubuntu-24.04

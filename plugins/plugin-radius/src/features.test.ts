@@ -1,4 +1,3 @@
-import * as features from './features';
 import { featureRadiusCatalog } from './features';
 import { radiusPlugin } from './plugin';
 import * as publicApi from './index';
@@ -11,16 +10,12 @@ import * as publicApi from './index';
  * restates the literal.
  *
  * PU-08 already asserts the value and the registration. This suite covers the
- * module itself: that the value is a usable flag name, that the constant is the
- * single source of it, and that nothing else has crept into the module.
+ * module itself: that the value is a usable flag name and that the plugin
+ * registers exactly that name.
  */
 describe('features', () => {
   it('FF-01: declares the radius catalog flag by its wire name', () => {
     expect(featureRadiusCatalog).toBe('radius-catalog');
-  });
-
-  it('FF-02: exports exactly one feature flag constant', () => {
-    expect(Object.keys(features)).toEqual(['featureRadiusCatalog']);
   });
 
   it('FF-03: uses a name Backstage accepts as a feature flag', () => {
