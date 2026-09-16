@@ -9,6 +9,8 @@ export {
   ResourcePage,
   ResourceTypesListPage,
   ResourceTypeDetailPage,
+  radiusApiRef,
+  type RadiusApi,
 } from './plugin';
 export {
   applicationListPageRouteRef,

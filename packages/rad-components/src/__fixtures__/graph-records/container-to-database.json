@@ -1,0 +1,25 @@
+{
+  "nodes": [
+    {
+      "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Core/containers/webapp",
+      "label": "webapp",
+      "type": "Applications.Core/containers",
+      "icon": "not-yet-populated",
+      "statusBadge": "not-yet-populated"
+    },
+    {
+      "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Datastores/redisCaches/cache",
+      "label": "cache",
+      "type": "Applications.Datastores/redisCaches",
+      "icon": "not-yet-populated",
+      "statusBadge": "not-yet-populated"
+    }
+  ],
+  "edges": [
+    {
+      "source": "/planes/radius/local/resourceGroups/demo/providers/Applications.Datastores/redisCaches/cache",
+      "target": "/planes/radius/local/resourceGroups/demo/providers/Applications.Core/containers/webapp",
+      "direction": "source-to-target"
+    }
+  ]
+}

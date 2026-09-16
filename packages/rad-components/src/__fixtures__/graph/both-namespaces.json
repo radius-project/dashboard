@@ -1,0 +1,19 @@
+{
+  "name": "both-namespaces",
+  "resources": [
+    {
+      "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Core/containers/core-app",
+      "name": "core-app",
+      "type": "Applications.Core/containers",
+      "provider": "radius",
+      "provisioningState": "Succeeded"
+    },
+    {
+      "id": "/planes/radius/local/resourceGroups/demo/providers/Radius.Core/containers/radius-app",
+      "name": "radius-app",
+      "type": "Radius.Core/containers",
+      "provider": "radius",
+      "provisioningState": "Succeeded"
+    }
+  ]
+}

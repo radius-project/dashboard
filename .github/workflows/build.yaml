@@ -32,6 +32,10 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          # GU-25 compares the committed graph records against the base branch
+          # to catch baseline edits that are not declared in the expected-change
+          # manifest, so the base commit has to be present in the clone.
+          fetch-depth: 0
 
       - name: Parse release version and set environment variables
         run: python ./.github/scripts/get_release_version.py
@@ -67,11 +71,22 @@ jobs:
 
       - name: Run Tests
         if: ${{ env.CI_TEST == 'true' }}
+        env:
+          # Empty on push builds, where GU-25 falls back to origin/main.
+          GRAPH_RECORD_BASE_REF: ${{ github.event.pull_request.base.sha }}
         run: yarn run test:all
 
       - name: Run E2E Tests
         if: ${{ env.CI_TEST == 'true' }}
         run: yarn run test:e2e
+
+      - name: Run Component Browser Tests
+        if: ${{ env.CI_TEST == 'true' }}
+        run: yarn run test:e2e:components
+
+      - name: Qualify Package Artifacts
+        if: ${{ env.CI_TEST == 'true' }}
+        run: yarn run test:package
 
   build-and-publish-container:
     name: Build and Publish Container

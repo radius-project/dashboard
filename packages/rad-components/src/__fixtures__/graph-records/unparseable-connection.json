@@ -1,0 +1,18 @@
+{
+  "nodes": [
+    {
+      "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Core/containers/webapp",
+      "label": "webapp",
+      "type": "Applications.Core/containers",
+      "icon": "not-yet-populated",
+      "statusBadge": "not-yet-populated"
+    }
+  ],
+  "edges": [
+    {
+      "source": "not-a-resource-id",
+      "target": "/planes/radius/local/resourceGroups/demo/providers/Applications.Core/containers/webapp",
+      "direction": "source-to-target"
+    }
+  ]
+}

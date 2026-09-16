@@ -1,0 +1,28 @@
+{
+  "name": "container-to-database",
+  "resources": [
+    {
+      "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Core/containers/webapp",
+      "name": "webapp",
+      "type": "Applications.Core/containers",
+      "provider": "radius",
+      "provisioningState": "Succeeded",
+      "connections": [
+        {
+          "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Datastores/redisCaches/cache",
+          "name": "cache",
+          "type": "Applications.Datastores/redisCaches",
+          "provider": "radius",
+          "direction": "Outbound"
+        }
+      ]
+    },
+    {
+      "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Datastores/redisCaches/cache",
+      "name": "cache",
+      "type": "Applications.Datastores/redisCaches",
+      "provider": "radius",
+      "provisioningState": "Succeeded"
+    }
+  ]
+}

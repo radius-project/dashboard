@@ -1,0 +1,12 @@
+{
+  "nodes": [
+    {
+      "id": "/planes/radius/local/resourceGroups/demo/providers/Custom.Provider/widgets/widget",
+      "label": "widget",
+      "type": "Custom.Provider/widgets",
+      "icon": "not-yet-populated",
+      "statusBadge": "not-yet-populated"
+    }
+  ],
+  "edges": []
+}

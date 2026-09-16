@@ -17,8 +17,9 @@
 import { defineConfig } from '@playwright/test';
 import { generateProjects } from '@backstage/e2e-test-utils/playwright';
 
-// Set PLAYWRIGHT_DISABLE_WEBSERVER=true when tests should run against an externally managed URL (for example PLAYWRIGHT_URL=http://localhost:7007).
+// Set PLAYWRIGHT_DISABLE_WEBSERVER=true when the Backstage app is already served elsewhere, such as the built container the release workflow starts on port 7007 (paired with PLAYWRIGHT_URL=http://localhost:7007).
 const disableWebServer = process.env.PLAYWRIGHT_DISABLE_WEBSERVER === 'true';
+const browserChannel = process.env.PLAYWRIGHT_BROWSER_CHANNEL;
 
 /**
  * See https://playwright.dev/docs/test-configuration.
@@ -30,15 +31,17 @@ export default defineConfig({
     timeout: 5_000,
   },
 
-  // Run your local dev server before starting the tests
+  // Run your local dev server before starting the tests.
   webServer: disableWebServer
-    ? undefined
-    : {
-        command: 'yarn start',
-        port: 3000,
-        reuseExistingServer: true,
-        timeout: 60_000,
-      },
+    ? []
+    : [
+        {
+          command: 'yarn start',
+          port: 3000,
+          reuseExistingServer: true,
+          timeout: 180_000,
+        },
+      ],
 
   forbidOnly: !!process.env.CI,
 
@@ -57,5 +60,15 @@ export default defineConfig({
 
   outputDir: './logs/e2e-test-results',
 
-  projects: generateProjects(), // Find all packages with e2e-test folders
+  // The rad-components browser suite has its own config and webServer; see
+  // playwright.components.config.ts.
+  projects: generateProjects()
+    .filter(project => project.name !== '@radapp.io/rad-components')
+    .map(project => ({
+      ...project,
+      use: {
+        ...project.use,
+        ...(browserChannel ? { channel: browserChannel } : {}),
+      },
+    })), // Find all packages with e2e-test folders
 });

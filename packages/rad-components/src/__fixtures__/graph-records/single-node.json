@@ -1,0 +1,12 @@
+{
+  "nodes": [
+    {
+      "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Core/containers/solo",
+      "label": "solo",
+      "type": "Applications.Core/containers",
+      "icon": "not-yet-populated",
+      "statusBadge": "not-yet-populated"
+    }
+  ],
+  "edges": []
+}

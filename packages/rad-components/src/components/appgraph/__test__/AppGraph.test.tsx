@@ -1,10 +1,15 @@
 import React from 'react';
 import '@testing-library/jest-dom';
 import { render, screen } from '@testing-library/react';
+import Dagre from '@dagrejs/dagre';
 import AppGraph from '../AppGraph';
 import * as sampledata from '../../../sampledata';
 
 describe('AppGraph component', () => {
+  // GU-17 replaces Dagre.layout on the shared module object. Without this the
+  // throwing implementation survives into every later test in this file.
+  afterEach(() => jest.restoreAllMocks());
+
   it('AppGraph should render correctly', () => {
     const application = sampledata.DemoApplication;
     render(<AppGraph graph={application} />);
@@ -13,5 +18,19 @@ describe('AppGraph component', () => {
     // that the UI rendered.
     const name = screen.getByRole('link', { name: 'React Flow attribution' });
     expect(name).toBeInTheDocument();
+  });
+
+  /**
+   * KNOWN-DEFECT: layout failures escape the renderer rather than producing a
+   * degraded graph with an explanation. Tracked by #368.
+   */
+  it('GU-17: KNOWN-DEFECT propagates a graph layout failure', () => {
+    jest.spyOn(Dagre, 'layout').mockImplementation(() => {
+      throw new Error('layout failed');
+    });
+
+    expect(() =>
+      render(<AppGraph graph={sampledata.DemoApplication} />),
+    ).toThrow('layout failed');
   });
 });

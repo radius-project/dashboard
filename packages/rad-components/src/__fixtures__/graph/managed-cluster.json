@@ -1,0 +1,21 @@
+{
+  "name": "managed-cluster",
+  "resources": [
+    {
+      "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Core/containers/webapp",
+      "name": "webapp",
+      "type": "Applications.Core/containers",
+      "provider": "radius",
+      "provisioningState": "Succeeded",
+      "resources": [
+        {
+          "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Core/containers/webapp-managed",
+          "name": "webapp-managed",
+          "type": "Applications.Core/containers",
+          "provider": "kubernetes",
+          "provisioningState": "Succeeded"
+        }
+      ]
+    }
+  ]
+}

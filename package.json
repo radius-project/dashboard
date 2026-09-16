@@ -22,6 +22,8 @@
     "test": "backstage-cli repo test",
     "test:all": "backstage-cli repo test --coverage",
     "test:e2e": "playwright test",
+    "test:e2e:components": "playwright test --config playwright.components.config.ts",
+    "test:package": "node scripts/test-package.js",
     "fix": "backstage-cli repo fix",
     "lint": "backstage-cli repo lint --since origin/main",
     "lint:all": "backstage-cli repo lint",
@@ -67,5 +69,42 @@
     "*.{json,md}": [
       "prettier --write"
     ]
+  },
+  "jest": {
+    "coveragePathIgnorePatterns": [
+      "/__docs__/"
+    ],
+    "coverageThreshold": {
+      "./plugins/plugin-radius/src/": {
+        "statements": 73,
+        "branches": 55,
+        "functions": 68,
+        "lines": 74
+      },
+      "./plugins/plugin-radius-backend/src/": {
+        "statements": 93,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "./packages/rad-components/src/": {
+        "statements": 95,
+        "branches": 93,
+        "functions": 94,
+        "lines": 94
+      },
+      "./packages/app/src/": {
+        "statements": 93,
+        "branches": 100,
+        "functions": 83,
+        "lines": 92
+      },
+      "./packages/backend/src/": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      }
+    }
   }
 }

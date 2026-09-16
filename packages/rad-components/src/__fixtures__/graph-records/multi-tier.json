@@ -1,0 +1,49 @@
+{
+  "nodes": [
+    {
+      "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Core/containers/backend",
+      "label": "backend",
+      "type": "Applications.Core/containers",
+      "icon": "not-yet-populated",
+      "statusBadge": "not-yet-populated"
+    },
+    {
+      "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Core/containers/frontend",
+      "label": "frontend",
+      "type": "Applications.Core/containers",
+      "icon": "not-yet-populated",
+      "statusBadge": "not-yet-populated"
+    },
+    {
+      "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Core/gateways/edge",
+      "label": "edge",
+      "type": "Applications.Core/gateways",
+      "icon": "not-yet-populated",
+      "statusBadge": "not-yet-populated"
+    },
+    {
+      "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Datastores/redisCaches/cache",
+      "label": "cache",
+      "type": "Applications.Datastores/redisCaches",
+      "icon": "not-yet-populated",
+      "statusBadge": "not-yet-populated"
+    }
+  ],
+  "edges": [
+    {
+      "source": "/planes/radius/local/resourceGroups/demo/providers/Applications.Core/containers/backend",
+      "target": "/planes/radius/local/resourceGroups/demo/providers/Applications.Core/containers/frontend",
+      "direction": "source-to-target"
+    },
+    {
+      "source": "/planes/radius/local/resourceGroups/demo/providers/Applications.Core/gateways/edge",
+      "target": "/planes/radius/local/resourceGroups/demo/providers/Applications.Core/containers/frontend",
+      "direction": "source-to-target"
+    },
+    {
+      "source": "/planes/radius/local/resourceGroups/demo/providers/Applications.Datastores/redisCaches/cache",
+      "target": "/planes/radius/local/resourceGroups/demo/providers/Applications.Core/containers/backend",
+      "direction": "source-to-target"
+    }
+  ]
+}

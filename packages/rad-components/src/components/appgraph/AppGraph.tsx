@@ -75,7 +75,7 @@ function AppGraph(props: AppGraphProps) {
   );
 }
 
-function initialNodes(graph: AppGraphData): {
+export function initialNodes(graph: AppGraphData): {
   nodes: Node<Resource>[];
   edges: Edge[];
 } {
@@ -146,13 +146,16 @@ function initialNodes(graph: AppGraphData): {
   return { nodes, edges };
 }
 
-const g = new Dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
-
-function getLayoutedElements(
+export function getLayoutedElements(
   nodes: Node[],
   edges: Edge[],
   options: { direction: string },
-) {
+): { nodes: Node[]; edges: Edge[] } {
+  // Built per call. A module-scoped graph accumulated every node and edge it
+  // had ever been given, so a second render laid out against the union of all
+  // previous graphs: stale nodes kept influencing positions and removed ones
+  // were never dropped.
+  const g = new Dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
   g.setGraph({ rankdir: options.direction });
 
   edges.forEach(edge => g.setEdge(edge.source, edge.target));

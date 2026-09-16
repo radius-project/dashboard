@@ -1,0 +1,33 @@
+{
+  "name": "deploy-status-matrix",
+  "resources": [
+    {
+      "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Core/containers/alpha",
+      "name": "alpha",
+      "type": "Applications.Core/containers",
+      "provider": "radius",
+      "provisioningState": "Succeeded"
+    },
+    {
+      "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Core/containers/beta",
+      "name": "beta",
+      "type": "Applications.Core/containers",
+      "provider": "radius",
+      "provisioningState": "Failed"
+    },
+    {
+      "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Core/containers/gamma",
+      "name": "gamma",
+      "type": "Applications.Core/containers",
+      "provider": "radius",
+      "provisioningState": "Updating"
+    },
+    {
+      "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Core/containers/delta",
+      "name": "delta",
+      "type": "Applications.Core/containers",
+      "provider": "radius",
+      "provisioningState": "Accepted"
+    }
+  ]
+}
