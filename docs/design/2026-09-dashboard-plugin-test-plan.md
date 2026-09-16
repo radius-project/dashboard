@@ -698,6 +698,16 @@ base commit from `GRAPH_RECORD_BASE_REF`, then `origin/main`, and fails rather t
 base is reachable; the build workflow checks out full history so the base is present. A record that
 does not exist at the base is a new fixture, not a mutated baseline, and needs no entry.
 
+The corpus is authored in `Applications.Core/*` and `Applications.Datastores/*` rather than the
+`Radius.*` namespace that `main` now defaults to (#327). That is deliberate and not an oversight.
+`AppGraph.tsx` compares against the literal strings `Applications.Core/containers` (line 93, layout
+order) and `Applications.Core/gateways` (line 122, the inbound-to-outbound edge workaround). A
+`Radius.*` corpus would fall through both branches, so it would approve records that never reach the
+code the records exist to characterize — in particular the gateway workaround would go unexercised.
+The namespace-insensitivity is itself a product defect, filed as #373. Once the comparisons are
+namespace-aware, migrating the corpus becomes a single declared change that also gains a real
+assertion, instead of two rename rounds that gain nothing.
+
 Known defects are tracked by invariant, not by record field. Each entry in `knownGraphDefects`
 carries an `isPresent` predicate that reads the violated invariant — a dangling edge endpoint, a
 self-edge, duplicate node ids, absent icons, absent status badges — straight off the record. Field
@@ -1049,6 +1059,7 @@ its issue is fixed, and that failure is the signal the fix landed, not a regress
 | #368  | The graph has no explicit empty state or degraded layout-failure state        | GU-15, GU-17         |
 | #369  | Partial namespace failures are silently presented as complete inventory      | ER-08                |
 | #370  | The graph request error state has no retry action                             | GU-16                |
+| #373  | `AppGraph` hard-codes `Applications.Core/*` type literals, so `Radius.Core` resources take different layout and edge-direction paths | Tier C corpus namespace choice; no assertion yet |
 
 Six notes on reading this table.
 
@@ -1406,6 +1417,16 @@ PU-01–PU-28 and PU-31–PU-35 are implemented (`plugin.test.ts`, `packaging.te
 Phase 4 requirement because it applies only if `rad-components` survives extraction as a
 compatibility wrapper. PU-30 remains release qualification: Phase 3 preserves the existing license
 metadata but does not decide the final package license/notices.
+
+These four suites assert on the *repository* rather than on the plugin, and they resolve `../../..`
+to do it, so they will need rehoming when the plugin is extracted. They deliberately do not live at
+the repository root. `backstage-cli repo test` only discovers tests inside workspace packages, and
+when it finds none it prints `No tests found` and **exits 0** — verified with a throwaway probe at
+`repo-tests/probe.test.ts`. Relocating repo-policy tests to the root would therefore convert them
+from enforced policy into dead files that pass, which is the worst available failure mode for a test
+whose entire job is to fail when the repository drifts. A dedicated policy *workspace* is the clean
+answer and is deferred: it would itself be scanned by PU-23 and needs a deliberate exclusion rule
+rather than an exemption entry.
 
 | ID    | Requirement                                                                                   |
 | ----- | --------------------------------------------------------------------------------------------- |
