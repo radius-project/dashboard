@@ -4,45 +4,29 @@
       "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Core/containers/alpha",
       "label": "alpha",
       "type": "Applications.Core/containers",
-      "icon": null,
-      "statusBadge": null,
-      "position": {
-        "x": 100,
-        "y": 100
-      }
+      "icon": "not-yet-populated",
+      "statusBadge": "not-yet-populated"
     },
     {
       "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Core/containers/beta",
       "label": "beta",
       "type": "Applications.Core/containers",
-      "icon": null,
-      "statusBadge": null,
-      "position": {
-        "x": 300,
-        "y": 100
-      }
+      "icon": "not-yet-populated",
+      "statusBadge": "not-yet-populated"
     },
     {
       "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Core/containers/delta",
       "label": "delta",
       "type": "Applications.Core/containers",
-      "icon": null,
-      "statusBadge": null,
-      "position": {
-        "x": 800,
-        "y": 100
-      }
+      "icon": "not-yet-populated",
+      "statusBadge": "not-yet-populated"
     },
     {
       "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Core/containers/gamma",
       "label": "gamma",
       "type": "Applications.Core/containers",
-      "icon": null,
-      "statusBadge": null,
-      "position": {
-        "x": 500,
-        "y": 100
-      }
+      "icon": "not-yet-populated",
+      "statusBadge": "not-yet-populated"
     }
   ],
   "edges": []

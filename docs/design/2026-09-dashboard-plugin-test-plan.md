@@ -437,10 +437,24 @@ reduced by a single normalization function to a **graph record**: a sorted, stab
 projection.
 
 A record contains, per node, the resource id, the displayed label, the displayed type, the icon
-identity, the status badge and its accessible name, and a **quantized** position bucket rather than
-raw pixel coordinates. It contains, per edge, the resolved source and target ids and the direction.
-It deliberately omits colours, class names, element nesting, transform matrices, and anything else
-that is presentation detail rather than meaning.
+identity, and the status badge with its accessible name. It contains, per edge, the resolved source
+and target ids and the direction. It deliberately omits layout coordinates, colours, class names,
+element nesting, transform matrices, and anything else that is presentation detail rather than
+meaning.
+
+Coordinates are omitted on purpose. They are produced by Dagre, not by the dashboard, so recording
+them would pin a third-party layout algorithm's output as if it were dashboard semantics, and any
+Dagre upgrade would surface as a wall of record churn that reviewers learn to wave through. The
+properties that actually matter about layout — every node receives a finite position, no two node
+bounding boxes overlap, and rendering order does not change the result — are asserted directly as
+invariants in Tier A (GU-08, GU-09) where a failure names the violated property.
+
+Where the renderer does not yet supply a value, the record stores the explicit sentinel
+`not-yet-populated` rather than `null`. The distinction matters: `null` is a value the renderer
+could legitimately produce, so a record full of `null` icons is indistinguishable from a renderer
+that deliberately cleared them. The sentinel says "this field has never been populated by any
+renderer", which is what #35 and #89 actually describe, and it makes the defect predicates in
+GU-23 test a stated condition instead of a coincidence.
 
 The records are generated from the current implementation and committed in Phase 2, before any
 extraction. The extraction pull request regenerates them and CI diffs old against new. Then:
@@ -453,8 +467,9 @@ extraction. The extraction pull request regenerates them and CI diffs old agains
 - The manifest is emptied at the end of each extraction phase, so it never becomes a permanent
   allowlist.
 
-Because the position bucket is quantized, an equivalent layout does not produce a diff, but a node
-that moves to a different region of the graph does.
+Because the record carries no coordinates, an equivalent layout does not produce a diff at all. A
+node that moves to a different region of the graph is caught by the Tier A layout invariants rather
+than by record churn.
 
 #### Tier D — visual baselines
 
@@ -474,18 +489,24 @@ requires that the behavior it protected is covered by a Tier A, B, or C test tha
 Characterization records capture what the code does today, including what it does wrong. The design
 requires that the frozen baseline not bless existing defects. Each known defect is recorded in the
 baseline **and** tagged `KNOWN-DEFECT` with a linked issue, which marks its record fields as
-expected to change. Three are known already: the shared module-level Dagre graph; the gateway
-inbound-to-outbound correction in `initialNodes`, which compensates for an upstream direction bug;
-and the divergence where resource reads select the first cluster while the graph request selects
-the last. A `KNOWN-DEFECT` field that does **not** change during extraction is also reported, so a
-defect cannot be silently carried forward.
+expected to change. Two remain: the gateway inbound-to-outbound correction in `initialNodes`, which
+compensates for an upstream direction bug; and the divergence where resource reads select the first
+cluster while the graph request selects the last. A third — the shared module-level Dagre graph
+(#355) — was characterized first and then fixed during review; see below. A `KNOWN-DEFECT` field
+that does **not** change during extraction is also reported, so a defect cannot be silently carried
+forward.
 
 `KNOWN-DEFECT` tests are characterization pins, not correctness invariants, even when colocated
 with Tier A tests. Fixing a linked defect must replace its pin with the desired-behavior regression
-test in the same reviewed change. For example, fixing #355 replaces GU-08's inequality with
-equality between isolated and sequential layouts. Record the issue, old/new behavior, and affected
-fixture fields in the expected-change manifest when graph records are available. This narrow
-exception never permits weakening unrelated topology, rendering, or interaction assertions.
+test in the same reviewed change. #355 is the worked example: the Dagre graph was a module-level
+singleton, so every layout accumulated the previous application's nodes and edges. GU-08 originally
+pinned that with an inequality. On maintainer request the singleton was moved inside
+`getLayoutedElements`, and GU-08 now asserts the equality it always should have: rendering graph A
+then graph B produces the same result as rendering graph B alone, in both orderings. The
+`jest.isolateModules` machinery that existed only to observe the leak went with it. Record the
+issue, old/new behavior, and affected fixture fields in the expected-change manifest when graph
+records are available. This narrow exception never permits weakening unrelated topology, rendering,
+or interaction assertions.
 
 ## Phases
 
@@ -662,8 +683,9 @@ unchanged (apart from reviewed linked-defect replacements), so it must not name 
 being extracted. Phase 4 repoints that one adapter at the shared package and the invariants keep running.
 
 The semantic normalizer is `packages/rad-components/src/graphRecord.ts`. It emits only sorted node
-and edge meaning: ids, labels, types, the currently absent icon/status semantics, quantized
-positions, resolved endpoints, and direction. All fourteen records are committed under
+and edge meaning: ids, labels, types, the currently unpopulated icon/status semantics recorded as
+the explicit `not-yet-populated` sentinel, resolved endpoints, and direction. It records no layout
+coordinates. All fourteen records are committed under
 `src/__fixtures__/graph-records/`; `graph-expected-changes.md` is empty. GU-22 rejects undeclared
 record changes, GU-23 reports known defects whose own invariant is still violated as carried
 forward, and GU-24 keeps the manifest empty between extraction phases.
@@ -714,10 +736,13 @@ which is the argument for doing this before the extraction rather than after:
 - A **self-referential connection** produces a self-loop (GU-06a), and **duplicate resource ids**
   produce duplicate node ids, one of which React Flow silently discards.
 
-The module-level Dagre graph is now pinned too (GU-08). Detecting it required `jest.isolateModules`:
-the leaked state lives in a module-level binding, so the first layout in a test file pollutes every
-later one and there is no clean measurement left to compare against. A naive version of this test
-passes while the defect is present.
+The module-level Dagre graph was pinned by GU-08, and then fixed. Detecting it required
+`jest.isolateModules`: the leaked state lived in a module-level binding, so the first layout in a
+test file polluted every later one and there was no clean measurement left to compare against. A
+naive version of that test passes while the defect is present. During review the maintainer asked
+for the underlying bug rather than a longer-lived characterization, so `getLayoutedElements` now
+constructs its own graph per call, GU-08 asserts equality between the sequential and standalone
+layouts in both orderings, and the isolation machinery is gone. #355 is closed by this change.
 
 Completion evidence: GU-01–GU-25, CN-01–CN-08, and ER-01–ER-10 pass; all records are
 committed; GU-20 demonstrates the suite cannot pass against a stub or without the stylesheet.
@@ -999,7 +1024,7 @@ its issue is fixed, and that failure is the signal the fix landed, not a regress
 | #352  | `parseResourceId` rejects legal names and types; `ResourceLink` then throws | RU-02, AC-08, EC-08  |
 | #353  | Graph silently drops connections whose target cannot be resolved            | GU-04, GU-05a        |
 | #354  | `initialNodes` mutates the graph payload it is given                        | GU-05b               |
-| #355  | Graph layout state leaks between applications via a module-level Dagre graph | GU-08                |
+| #355  | Graph layout state leaks between applications via a module-level Dagre graph — **fixed in this PR at maintainer request; GU-08 is now a positive invariant, not a characterization pin** | GU-08 (regression) |
 | #356  | Cluster selection disagrees between `RadiusApi` and the graph request        | CN-03, CN-04         |
 | #357  | Graph builder does not validate resources: self-loops and duplicate node ids | GU-06a               |
 | #358  | Publication/consumer blockers: final package name and publishability remain deferred; the API contract is exported and source `workspace:^` is proven to rewrite during local packing | PU-10, PU-16, PU-17, PU-19, PU-26–PU-28 |
@@ -1111,9 +1136,11 @@ are recorded here because they changed what this plan tests.
 3. **Where the shared journey implementation lives** so that `ai-extensions`'s mandatory consumer
    CI can run it against the supported consumer pin without copying test code. CP-03 assumes it is
    invoked from the dashboard commit itself.
-4. **Quantization bucket size for graph record positions.** Too coarse hides a real layout
-   regression; too fine produces churn on every harmless change. Calibrate in Phase 2 against the
-   Appendix E fixtures.
+4. **~~Quantization bucket size for graph record positions.~~ Resolved: records carry no positions.**
+   Any bucket size trades a hidden layout regression against churn on harmless changes. Both sides
+   of that trade are bad, and the underlying reason is that coordinates come from Dagre rather than
+   from the dashboard. Layout is now asserted as properties in Tier A (GU-08, GU-09) and omitted
+   from records entirely, so there is no bucket to calibrate.
 5. **Whether to move dashboard from Jest to Vitest, after Phase 4.** Deferred rather than rejected.
    Deciding it requires knowing whether the Backstage CLI has gained supported Vitest support by
    then, and the decision should be made against a frozen baseline so the migration itself can be
@@ -1416,7 +1443,7 @@ expected-change manifest.
 | GU-05b| A    | Building the model does not mutate the caller's graph — **done, KNOWN-DEFECT**                      |
 | GU-06 | A    | A self-referential connection produces no duplicate node and no self-loop — **done, KNOWN-DEFECT**  |
 | GU-07 | A    | Building the same fixture twice yields the same model — **done**, including rendered remount determinism |
-| GU-08 | A    | Rendering graph A then graph B produces the same result as rendering graph B alone — **done, KNOWN-DEFECT** |
+| GU-08 | A    | Rendering graph A then graph B produces the same result as rendering graph B alone, in either ordering — **done, regression test for the fixed #355** |
 | GU-09 | A    | Every node receives a finite position and no two node bounding boxes overlap — **done**                  |
 | GU-10 | A    | Node identities and edge relationships survive layout and rendering — **done**                        |
 | GU-11 | A    | Unmounting and remounting with the same data produces the same record and leaks no timers — **done** |
@@ -1430,10 +1457,16 @@ expected-change manifest.
 | GU-19 | B    | The graph renders correctly in light and dark themes with the shared stylesheet loaded — **done**    |
 | GU-20 | B    | Removing the real renderer or its stylesheet makes GU-12, GU-13, and GU-19 fail — **done**           |
 | GU-21 | C    | Each Appendix E fixture produces its committed graph record — **done**                               |
+| GU-21b | C   | Records carry renderer-facing icon and status semantics, using an explicit `not-yet-populated` sentinel where the renderer supplies none — **done** |
+| GU-21c | C   | Records carry no layout coordinates, so a Dagre change cannot churn the corpus — **done**            |
 | GU-22 | C    | Every record difference in an extraction pull request maps to an expected-change manifest entry — **done** |
 | GU-23 | C    | A `KNOWN-DEFECT` whose own invariant is still violated is reported as carried forward — **done** |
+| GU-23a | C   | A defect clears only when its own invariant is repaired, not when an unrelated one is — **done** |
+| GU-23b | C   | Each defect predicate detects its own condition and reports repair on a healthy record — **done** |
+| GU-23c | C   | A defect naming a fixture with no record is rejected rather than silently ignored — **done**     |
 | GU-24 | C    | The manifest is empty at the end of each extraction phase — **done**                                 |
 | GU-25 | C    | A committed record edited relative to the base branch maps to a manifest entry — **done**            |
+| GU-25a | C   | A mutated committed record is reported as an unapproved change — **done**                            |
 
 GU-20 is the meta-test. Without it, a graph suite can pass against a stub and prove nothing, which
 is the exact failure mode the current `ApplicationTab.test.tsx` has today.
@@ -1489,9 +1522,9 @@ the plugin's graph journeys. Each is small, fixed, and uses placeholder names:
 
 Each fixture has a committed **graph record** produced by one normalization function shared by
 every graph test. A record holds, per node: resource id, displayed label, displayed type, icon
-identity, status badge kind and accessible name, and a quantized position bucket. Per edge:
+identity, and status badge kind and accessible name. Per edge:
 resolved source id, resolved target id, and direction. It holds nothing else — no colours, class
-names, element nesting, or raw coordinates.
+names, element nesting, or coordinates of any kind.
 
 The records are frozen under `packages/rad-components/src/__fixtures__/graph-records/` and diffed
 in Phase 4 against `packages/rad-components/src/__fixtures__/graph-expected-changes.md`. The

@@ -1,19 +1,26 @@
 import { AppGraph } from './graph';
 import { buildLayoutedGraphModel, GraphModel } from './graphModel';
 
+/**
+ * The renderer does not populate icons or status badges yet. That is recorded
+ * as an explicit `not-yet-populated` state rather than a pinned `null`, so when
+ * richer node rendering lands the diff reads as a state transition rather than
+ * as a regression against an asserted absence.
+ */
+export const NOT_YET_POPULATED = 'not-yet-populated';
+
 export interface GraphRecordNode {
   id: string;
   label: string;
   type: string;
-  icon: string | null;
-  statusBadge: {
-    kind: string;
-    accessibleName: string;
-  } | null;
-  position: {
-    x: number;
-    y: number;
-  };
+  /** An icon name, or `NOT_YET_POPULATED`. */
+  icon: string;
+  statusBadge:
+    | {
+        kind: string;
+        accessibleName: string;
+      }
+    | typeof NOT_YET_POPULATED;
 }
 
 export interface GraphRecordEdge {
@@ -72,11 +79,12 @@ const hasDuplicateNodeIds = (record: GraphRecord) =>
   nodeIds(record).size !== record.nodes.length;
 
 const hasNoNodeIcons = (record: GraphRecord) =>
-  record.nodes.length > 0 && record.nodes.every(node => node.icon === null);
+  record.nodes.length > 0 &&
+  record.nodes.every(node => node.icon === NOT_YET_POPULATED);
 
 const hasNoStatusBadges = (record: GraphRecord) =>
   record.nodes.length > 0 &&
-  record.nodes.every(node => node.statusBadge === null);
+  record.nodes.every(node => node.statusBadge === NOT_YET_POPULATED);
 
 export const knownGraphDefects: KnownGraphDefect[] = [
   {
@@ -117,24 +125,23 @@ export const knownGraphDefects: KnownGraphDefect[] = [
   },
 ];
 
-const POSITION_BUCKET_SIZE = 100;
-
-const quantize = (value: number) =>
-  Math.round(value / POSITION_BUCKET_SIZE) * POSITION_BUCKET_SIZE;
-
+/**
+ * The record deliberately holds no coordinates. Whatever the graph is migrated
+ * to will lay out with different node dimensions and different engine settings,
+ * so recording positions would change every fixture at once and force a blanket
+ * approval - exactly the moment a real regression would slip through. Layout is
+ * covered by renderer-independent assertions instead: GU-09 requires finite
+ * positions and GU-09a requires non-overlapping nodes.
+ */
 export function normalizeGraphModel(model: GraphModel): GraphRecord {
   return {
     nodes: model.nodes
-      .map(node => ({
+      .map((node): GraphRecordNode => ({
         id: node.id,
         label: node.label,
         type: node.type,
-        icon: node.icon,
-        statusBadge: node.statusBadge,
-        position: {
-          x: quantize(node.position.x),
-          y: quantize(node.position.y),
-        },
+        icon: node.icon ?? NOT_YET_POPULATED,
+        statusBadge: node.statusBadge ?? NOT_YET_POPULATED,
       }))
       .sort((left, right) => left.id.localeCompare(right.id)),
     edges: model.edges

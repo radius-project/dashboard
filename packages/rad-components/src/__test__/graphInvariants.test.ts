@@ -280,39 +280,31 @@ describe('graph invariants', () => {
   });
 
   /**
-   * KNOWN-DEFECT: `getLayoutedElements` reuses one module-level Dagre graph, so
-   * nodes and edges from a previously laid-out graph are still present when the
-   * next one is laid out. Laying out A then B therefore does not equal laying
-   * out B alone: B's nodes are displaced by A's, which the user cannot see. This
-   * is the defect most likely to be mistaken for a layout regression during the
-   * extraction, so it is pinned before the extraction starts.
+   * `getLayoutedElements` used to reuse one module-level Dagre graph, so nodes
+   * and edges from a previously laid-out graph were still present when the next
+   * one was laid out: rendering A then B displaced B's nodes by A's, invisibly
+   * to the user. The graph is now constructed per call, and this pins that.
    *
-   * Module isolation is what makes this observable. The leaked state lives in a
-   * module-level binding, so the first layout in this file would otherwise
-   * pollute every later one and there would be no clean measurement to compare
-   * against.
+   * No module isolation is needed any more. That the plain sequence below holds
+   * is itself the evidence there is no module-level state left to leak; the
+   * previous version of this test could only observe the defect by reloading
+   * the module between layouts.
    */
-  it('GU-08: KNOWN-DEFECT layout state leaks between successive graphs', () => {
+  it('GU-08: layout state does not leak between successive graphs', () => {
     const layoutSequence = (...fixtures: unknown[]) => {
       let result: unknown;
-      jest.isolateModules(() => {
-        // `jest.isolateModules` is synchronous, so a fresh copy of the module
-        // has to be pulled in with `require`.
-        /* eslint-disable @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires, no-restricted-imports */
-        const fresh =
-          require('../graphModel') as typeof import('../graphModel');
-        /* eslint-enable @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires, no-restricted-imports */
-        for (const fixture of fixtures) {
-          result = fresh.buildLayoutedGraphModel(load(fixture));
-        }
-      });
+      for (const fixture of fixtures) {
+        result = buildLayoutedGraphModel(load(fixture));
+      }
       return result;
     };
 
     const alone = layoutSequence(singleNode);
-    const afterAnotherGraph = layoutSequence(largeFanOut, singleNode);
 
-    expect(afterAnotherGraph).not.toEqual(alone);
+    expect(layoutSequence(largeFanOut, singleNode)).toEqual(alone);
+    expect(layoutSequence(singleNode, largeFanOut)).toEqual(
+      layoutSequence(largeFanOut),
+    );
   });
 
   describe('GU-09: every node receives a finite position', () => {

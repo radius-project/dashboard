@@ -4,12 +4,8 @@
       "id": "/planes/radius/local/resourceGroups/demo/providers/Custom.Provider/widgets/widget",
       "label": "widget",
       "type": "Custom.Provider/widgets",
-      "icon": null,
-      "statusBadge": null,
-      "position": {
-        "x": 100,
-        "y": 100
-      }
+      "icon": "not-yet-populated",
+      "statusBadge": "not-yet-populated"
     }
   ],
   "edges": []

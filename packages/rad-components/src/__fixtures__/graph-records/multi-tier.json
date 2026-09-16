@@ -4,45 +4,29 @@
       "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Core/containers/backend",
       "label": "backend",
       "type": "Applications.Core/containers",
-      "icon": null,
-      "statusBadge": null,
-      "position": {
-        "x": 300,
-        "y": 400
-      }
+      "icon": "not-yet-populated",
+      "statusBadge": "not-yet-populated"
     },
     {
       "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Core/containers/frontend",
       "label": "frontend",
       "type": "Applications.Core/containers",
-      "icon": null,
-      "statusBadge": null,
-      "position": {
-        "x": 200,
-        "y": 700
-      }
+      "icon": "not-yet-populated",
+      "statusBadge": "not-yet-populated"
     },
     {
       "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Core/gateways/edge",
       "label": "edge",
       "type": "Applications.Core/gateways",
-      "icon": null,
-      "statusBadge": null,
-      "position": {
-        "x": 100,
-        "y": 400
-      }
+      "icon": "not-yet-populated",
+      "statusBadge": "not-yet-populated"
     },
     {
       "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Datastores/redisCaches/cache",
       "label": "cache",
       "type": "Applications.Datastores/redisCaches",
-      "icon": null,
-      "statusBadge": null,
-      "position": {
-        "x": 300,
-        "y": 100
-      }
+      "icon": "not-yet-populated",
+      "statusBadge": "not-yet-populated"
     }
   ],
   "edges": [

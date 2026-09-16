@@ -3,6 +3,7 @@ import path from 'path';
 import { execFileSync } from 'child_process';
 import { AppGraph } from '../graph';
 import {
+  createGraphRecord,
   diffGraphRecords,
   findCarriedForwardGraphDefects,
   findUnapprovedGraphRecordChanges,
@@ -10,6 +11,7 @@ import {
   GraphRecordChange,
   GraphRecordNode,
   knownGraphDefects,
+  NOT_YET_POPULATED,
   normalizeGraphModel,
 } from '../graphRecord';
 
@@ -59,19 +61,8 @@ const load = (fixture: unknown): AppGraph =>
 
 const updateMode = process.env.UPDATE_GRAPH_RECORDS === 'true';
 
-const createFreshGraphRecord = async (
-  fixture: unknown,
-): Promise<GraphRecord> => {
-  let record: GraphRecord | undefined;
-  await jest.isolateModulesAsync(async () => {
-    const { createGraphRecord } = await import('../graphRecord');
-    record = createGraphRecord(load(fixture));
-  });
-  if (!record) {
-    throw new Error('Graph record generation did not produce a record');
-  }
-  return record;
-};
+const createFreshGraphRecord = async (fixture: unknown): Promise<GraphRecord> =>
+  createGraphRecord(load(fixture));
 
 const readRecord = (fixture: string): GraphRecord =>
   JSON.parse(
@@ -182,7 +173,7 @@ const updateGraphRecords = (
 };
 
 describe('graph records', () => {
-  it('GU-21a: normalizes, quantizes, and sorts semantic graph data', async () => {
+  it('GU-21a: normalizes and sorts semantic graph data', async () => {
     expect(
       normalizeGraphModel({
         nodes: [
@@ -216,17 +207,15 @@ describe('graph records', () => {
           id: 'a',
           label: 'Alpha',
           type: 'test/Alpha',
-          icon: null,
-          statusBadge: null,
-          position: { x: 0, y: 100 },
+          icon: NOT_YET_POPULATED,
+          statusBadge: NOT_YET_POPULATED,
         },
         {
           id: 'z',
           label: 'Zulu',
           type: 'test/Zulu',
-          icon: null,
-          statusBadge: null,
-          position: { x: 100, y: 300 },
+          icon: NOT_YET_POPULATED,
+          statusBadge: NOT_YET_POPULATED,
         },
       ],
       edges: [
@@ -238,6 +227,16 @@ describe('graph records', () => {
       nodes: [],
       edges: [],
     });
+  });
+
+  it('GU-21c: records no layout coordinates', async () => {
+    // Coordinates would change in every fixture at once under a different
+    // layout engine, forcing a blanket approval. GU-09 and GU-09a carry the
+    // layout guarantees instead.
+    const serialized = JSON.stringify(await generatedRecords());
+
+    expect(serialized).not.toContain('position');
+    expect(serialized).not.toContain('"x"');
   });
 
   /**
@@ -309,9 +308,8 @@ describe('graph records', () => {
           id: 'node',
           label: 'Old',
           type: 'test/Type',
-          icon: null,
-          statusBadge: null,
-          position: { x: 0, y: 0 },
+          icon: NOT_YET_POPULATED,
+          statusBadge: NOT_YET_POPULATED,
         },
       ],
       edges: [
@@ -492,7 +490,6 @@ describe('graph records', () => {
       type: 'test/Type',
       icon: 'icon',
       statusBadge: { kind: 'success', accessibleName: 'Succeeded' },
-      position: { x: 0, y: 0 },
     });
     const healthy: GraphRecord = {
       nodes: [node('a'), node('b')],
@@ -533,7 +530,10 @@ describe('graph records', () => {
     expect(
       byFixture('multi-tier').isPresent({
         ...healthy,
-        nodes: healthy.nodes.map(current => ({ ...current, icon: null })),
+        nodes: healthy.nodes.map(current => ({
+          ...current,
+          icon: NOT_YET_POPULATED,
+        })),
       }),
     ).toBe(true);
     expect(
@@ -541,7 +541,7 @@ describe('graph records', () => {
         ...healthy,
         nodes: healthy.nodes.map(current => ({
           ...current,
-          statusBadge: null,
+          statusBadge: NOT_YET_POPULATED as typeof NOT_YET_POPULATED,
         })),
       }),
     ).toBe(true);

@@ -4,23 +4,15 @@
       "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Core/containers/webapp",
       "label": "webapp",
       "type": "Applications.Core/containers",
-      "icon": null,
-      "statusBadge": null,
-      "position": {
-        "x": 100,
-        "y": 400
-      }
+      "icon": "not-yet-populated",
+      "statusBadge": "not-yet-populated"
     },
     {
       "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Datastores/redisCaches/cache",
       "label": "cache",
       "type": "Applications.Datastores/redisCaches",
-      "icon": null,
-      "statusBadge": null,
-      "position": {
-        "x": 100,
-        "y": 100
-      }
+      "icon": "not-yet-populated",
+      "statusBadge": "not-yet-populated"
     }
   ],
   "edges": [
