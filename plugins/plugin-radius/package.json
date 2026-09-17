@@ -37,7 +37,7 @@
     "@material-ui/icons": "^4.11.3",
     "@material-ui/lab": "^4.0.0-alpha.61",
     "@radapp.io/rad-components": "workspace:^",
-    "react-error-boundary": "^6.1.4",
+    "react-error-boundary": "^6.1.5",
     "react-use": "^17.6.1"
   },
   "peerDependencies": {

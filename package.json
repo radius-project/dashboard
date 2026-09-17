@@ -42,7 +42,7 @@
     "@internal/app": "workspace:^",
     "@jest/environment-jsdom-abstract": "^30.5.1",
     "@module-federation/enhanced": "^2.9.0",
-    "@playwright/test": "^1.62.1",
+    "@playwright/test": "^1.63.0",
     "@spotify/prettier-config": "^15.0.0",
     "concurrently": "^10.0.5",
     "jest": "^30.5.1",
