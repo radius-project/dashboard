@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link, Route } from 'react-router-dom';
+import { ThemeProvider, useTheme } from '@material-ui/core/styles';
 import { FlatRoutes } from '@backstage/core-app-api';
 import { renderInTestApp, TestApiProvider } from '@backstage/test-utils';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
@@ -789,5 +790,70 @@ describe('ResourceTypeDetailPage', () => {
         required: 'No',
       },
     ]);
+  });
+
+  /**
+   * Regression coverage for radius-project/dashboard#340: code samples used to
+   * be painted with fixed light-mode colors, so in dark mode they rendered the
+   * theme's near-white text on a near-white background.
+   */
+  describe('code block theming', () => {
+    /**
+     * Flips only `palette.type` on the surrounding Backstage theme so the page
+     * sees a dark palette while every other theme value stays intact.
+     */
+    const WithPaletteType = ({
+      type,
+      children,
+    }: {
+      type: 'light' | 'dark';
+      children: React.ReactNode;
+    }) => {
+      const theme = useTheme();
+      return (
+        <ThemeProvider
+          theme={{ ...theme, palette: { ...theme.palette, type } }}
+        >
+          {children}
+        </ThemeProvider>
+      );
+    };
+
+    const renderCodeBlock = async (type: 'light' | 'dark') => {
+      const getResourceType = requestStub(async () =>
+        makeResourceType({ Description: '```yaml\nimage: nginx\n```' }),
+      );
+
+      await renderInTestApp(
+        <TestApiProvider apis={[[radiusApiRef, { getResourceType }]]}>
+          <WithPaletteType type={type}>
+            <FlatRoutes>
+              <Route
+                path="/resource-types/:namespace/:typeName"
+                element={<ResourceTypeDetailPage />}
+              />
+            </FlatRoutes>
+          </WithPaletteType>
+        </TestApiProvider>,
+        { routeEntries: [resourceTypePath()] },
+      );
+
+      const code = await screen.findByText(/image: nginx/);
+      return code.closest('pre');
+    };
+
+    it('RT-31: paints code blocks light-on-dark in dark mode', async () => {
+      expect(await renderCodeBlock('dark')).toHaveStyle({
+        backgroundColor: '#161b22',
+        color: '#e6edf3',
+      });
+    });
+
+    it('RT-32: paints code blocks dark-on-light in light mode', async () => {
+      expect(await renderCodeBlock('light')).toHaveStyle({
+        backgroundColor: '#f6f8fa',
+        color: '#24292f',
+      });
+    });
   });
 });
