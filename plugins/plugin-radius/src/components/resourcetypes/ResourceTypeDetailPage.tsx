@@ -34,8 +34,8 @@ import { useApi } from '@backstage/core-plugin-api';
 import { radiusApiRef } from '../../plugin';
 
 /**
- * GitHub-flavored color tokens resolved against the active Backstage theme so
- * code samples, tables, and links stay readable in both light and dark mode.
+ * Keep GitHub-flavored colors on code surfaces while allowing the surrounding
+ * page to follow any Backstage light, dark, or branded theme.
  */
 const getThemeColors = (theme: Theme) => {
   const isDark = theme.palette.type === 'dark';
@@ -45,16 +45,15 @@ const getThemeColors = (theme: Theme) => {
     inlineCodeBackground: isDark
       ? 'rgba(110, 118, 129, 0.4)'
       : 'rgba(175, 184, 193, 0.2)',
-    border: isDark ? '#30363d' : '#d0d7de',
-    borderHover: isDark ? '#6e7681' : '#8c959f',
-    surfaceBackground: isDark ? '#0d1117' : '#fff',
-    subtleBackground: isDark ? '#161b22' : '#f8f9fa',
-    textPrimary: isDark ? '#e6edf3' : '#24292f',
-    textMuted: isDark ? '#8b949e' : '#656d76',
-    link: isDark ? '#58a6ff' : '#0969da',
-    linkHoverBackground: isDark ? 'rgba(56, 139, 253, 0.15)' : '#f1f8ff',
-    divider: isDark ? '#30363d' : '#f1f8ff',
-    danger: isDark ? '#f85149' : '#cf222e',
+    border: theme.palette.divider,
+    borderHover: theme.palette.linkHover,
+    surfaceBackground: theme.palette.background.paper,
+    subtleBackground: theme.palette.action.hover,
+    textPrimary: theme.palette.text.primary,
+    textMuted: theme.palette.text.secondary,
+    link: theme.palette.link,
+    linkHoverBackground: theme.palette.action.hover,
+    divider: theme.palette.divider,
     buttonBackground: isDark
       ? 'rgba(22, 27, 34, 0.95)'
       : 'rgba(246, 248, 250, 0.95)',
@@ -169,41 +168,6 @@ const useStyles = makeStyles((theme: Theme) => {
             backgroundColor: `${colors.buttonActiveBackground} !important`,
           },
         },
-    },
-    // Additional styles for code snippet container
-    codeSnippetContainer: {
-      position: 'relative',
-      '& > div': {
-        position: 'relative',
-      },
-      // More specific targeting for Backstage CodeSnippet
-      '& .MuiIconButton-root, & button': {
-        position: 'absolute !important',
-        top: '8px !important',
-        right: '8px !important',
-        width: '32px !important',
-        height: '32px !important',
-        padding: '0 !important',
-        backgroundColor: `${colors.buttonBackground} !important`,
-        border: `1px solid ${colors.buttonBorder} !important`,
-        borderRadius: '6px !important',
-        '& svg': {
-          display: 'none !important',
-        },
-        '&::after': {
-          content: '""',
-          display: 'block !important',
-          width: '16px',
-          height: '16px',
-          backgroundImage: clipboardIconUrl(colors.iconFill),
-          backgroundRepeat: 'no-repeat',
-          backgroundPosition: 'center',
-          backgroundSize: '16px 16px',
-        },
-        '&:hover': {
-          backgroundColor: `${colors.buttonHoverBackground} !important`,
-        },
-      },
     },
   };
 });
@@ -1303,7 +1267,7 @@ This should test whether copy buttons appear properly.`;
                                       {property.required ? (
                                         <span
                                           style={{
-                                            color: colors.danger,
+                                            color: colors.textPrimary,
                                             fontSize: '12px',
                                             fontWeight: 'bold',
                                           }}
@@ -1517,7 +1481,7 @@ This should test whether copy buttons appear properly.`;
                                         {property.required ? (
                                           <span
                                             style={{
-                                              color: colors.danger,
+                                              color: colors.textPrimary,
                                               fontSize: '12px',
                                               fontWeight: 'bold',
                                             }}
