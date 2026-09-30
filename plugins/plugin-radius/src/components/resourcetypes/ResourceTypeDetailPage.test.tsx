@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link, Route } from 'react-router-dom';
+import { ThemeProvider, useTheme } from '@material-ui/core/styles';
 import { FlatRoutes } from '@backstage/core-app-api';
 import { renderInTestApp, TestApiProvider } from '@backstage/test-utils';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
@@ -789,5 +790,185 @@ describe('ResourceTypeDetailPage', () => {
         required: 'No',
       },
     ]);
+  });
+
+  /**
+   * Regression coverage for radius-project/dashboard#340: code samples used to
+   * be painted with fixed light-mode colors, so in dark mode they rendered the
+   * theme's near-white text on a near-white background.
+   */
+  describe('theme-aware colors', () => {
+    /**
+     * Supplies the requested palette type and, when requested, distinctive
+     * semantic tokens that make accidental hard-coded colors easy to detect.
+     */
+    const WithTheme = ({
+      type,
+      useCustomTokens = false,
+      children,
+    }: {
+      type: 'light' | 'dark';
+      useCustomTokens?: boolean;
+      children: React.ReactNode;
+    }) => {
+      const theme = useTheme();
+      const palette = useCustomTokens
+        ? {
+            ...theme.palette,
+            type,
+            background: {
+              ...theme.palette.background,
+              paper: '#102030',
+            },
+            text: {
+              ...theme.palette.text,
+              primary: '#f5f5f5',
+              secondary: '#d6dde3',
+            },
+            action: {
+              ...theme.palette.action,
+              hover: '#203040',
+            },
+            divider: '#6f8294',
+            link: '#9fd3ff',
+            linkHover: '#c2e4ff',
+          }
+        : { ...theme.palette, type };
+
+      return (
+        <ThemeProvider theme={{ ...theme, palette }}>{children}</ThemeProvider>
+      );
+    };
+
+    const renderThemedPage = async (
+      type: 'light' | 'dark',
+      resourceType: ResourceTypeDetail,
+      tab = '/overview',
+      useCustomTokens = false,
+    ) => {
+      const params = {
+        namespace: resourceType.ResourceProviderNamespace,
+        typeName: resourceType.Name,
+      };
+      const getResourceType = requestStub(async () => resourceType, params);
+
+      return await renderInTestApp(
+        <TestApiProvider apis={[[radiusApiRef, { getResourceType }]]}>
+          <WithTheme type={type} useCustomTokens={useCustomTokens}>
+            <FlatRoutes>
+              <Route
+                path="/resource-types/:namespace/:typeName"
+                element={<ResourceTypeDetailPage />}
+              />
+            </FlatRoutes>
+          </WithTheme>
+        </TestApiProvider>,
+        { routeEntries: [resourceTypePath(params, tab)] },
+      );
+    };
+
+    const renderOverviewCodeBlock = async (type: 'light' | 'dark') => {
+      await renderThemedPage(
+        type,
+        makeResourceType({ Description: '```yaml\nimage: nginx\n```' }),
+      );
+
+      const code = await screen.findByText(/image: nginx/);
+      return {
+        pre: code.closest('pre'),
+        copyButton: screen.getByRole('button', {
+          name: 'Copy to clipboard',
+        }),
+      };
+    };
+
+    it('RT-31: paints code blocks light-on-dark in dark mode', async () => {
+      const { pre, copyButton } = await renderOverviewCodeBlock('dark');
+
+      expect(pre).toHaveStyle({
+        backgroundColor: '#161b22',
+        color: '#e6edf3',
+      });
+      expect(copyButton).toHaveStyle({
+        backgroundColor: 'rgba(22, 27, 34, 0.95)',
+        border: '1px solid rgba(240, 246, 252, 0.1)',
+      });
+    });
+
+    it('RT-32: paints code blocks dark-on-light in light mode', async () => {
+      const { pre, copyButton } = await renderOverviewCodeBlock('light');
+
+      expect(pre).toHaveStyle({
+        backgroundColor: '#f6f8fa',
+        color: '#24292f',
+      });
+      expect(copyButton).toHaveStyle({
+        backgroundColor: 'rgba(246, 248, 250, 0.95)',
+        border: '1px solid rgba(31, 35, 40, 0.15)',
+      });
+    });
+
+    it('RT-33: themes code blocks inside property descriptions', async () => {
+      const { container } = await renderThemedPage(
+        'dark',
+        makeResourceType(
+          withProperties({
+            image: {
+              type: 'string',
+              description: '```yaml\nimage: nginx\n```',
+            },
+          }),
+        ),
+        '/properties',
+      );
+
+      const pre = container.querySelector('pre');
+      expect(pre).not.toBeNull();
+      expect(window.getComputedStyle(pre!)).toMatchObject({
+        backgroundColor: 'rgb(22, 27, 34)',
+        color: 'rgb(230, 237, 243)',
+      });
+    });
+
+    it('RT-34: derives surrounding page colors from Backstage theme tokens', async () => {
+      await renderThemedPage(
+        'dark',
+        makeResourceType({
+          APIVersions: {
+            '2025-08-01-preview': {
+              Schema: {
+                properties: {
+                  image: { type: 'string' },
+                  port: { type: 'number' },
+                },
+                required: ['image'],
+              },
+            },
+            '2023-10-01-preview': { Schema: { properties: {} } },
+          },
+          APIVersionList: ['2025-08-01-preview', '2023-10-01-preview'],
+        }),
+        '/properties',
+        true,
+      );
+
+      const navigationTitle = await screen.findByText('API Versions');
+      expect(navigationTitle).toHaveStyle({ color: '#f5f5f5' });
+      expect(navigationTitle.parentElement).toHaveStyle({
+        backgroundColor: '#203040',
+        border: '1px solid #6f8294',
+      });
+
+      expect(
+        screen.getByRole('link', { name: '2025-08-01-preview' }),
+      ).toHaveStyle({
+        backgroundColor: '#102030',
+        border: '1px solid #6f8294',
+        color: '#9fd3ff',
+      });
+
+      expect(screen.getByText('Yes')).toHaveStyle({ color: '#f5f5f5' });
+      expect(screen.getAllByText('No')[0]).toHaveStyle({ color: '#d6dde3' });
+    });
   });
 });

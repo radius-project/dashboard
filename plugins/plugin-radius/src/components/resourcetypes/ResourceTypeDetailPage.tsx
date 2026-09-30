@@ -23,135 +23,154 @@ import {
   TableRow,
   Paper,
   makeStyles,
+  useTheme,
   IconButton,
   Tooltip,
   Box,
 } from '@material-ui/core';
+import type { Theme } from '@material-ui/core';
 import useAsync from 'react-use/lib/useAsync';
 import { useApi } from '@backstage/core-plugin-api';
 import { radiusApiRef } from '../../plugin';
 
-const useStyles = makeStyles(() => ({
-  tableCell: {
-    padding: '16px !important',
-    verticalAlign: 'top !important',
-  },
-  markdownDescription: {
-    margin: '0 !important',
-    padding: '0 !important',
-    '& > *': {
+/**
+ * Keep GitHub-flavored colors on code surfaces while allowing the surrounding
+ * page to follow any Backstage light, dark, or branded theme.
+ */
+const getThemeColors = (theme: Theme) => {
+  const isDark = theme.palette.type === 'dark';
+  return {
+    codeBackground: isDark ? '#161b22' : '#f6f8fa',
+    codeForeground: isDark ? '#e6edf3' : '#24292f',
+    inlineCodeBackground: isDark
+      ? 'rgba(110, 118, 129, 0.4)'
+      : 'rgba(175, 184, 193, 0.2)',
+    border: theme.palette.divider,
+    borderHover: theme.palette.linkHover,
+    surfaceBackground: theme.palette.background.paper,
+    subtleBackground: theme.palette.action.hover,
+    textPrimary: theme.palette.text.primary,
+    textMuted: theme.palette.text.secondary,
+    link: theme.palette.link,
+    linkHoverBackground: theme.palette.action.hover,
+    divider: theme.palette.divider,
+    buttonBackground: isDark
+      ? 'rgba(22, 27, 34, 0.95)'
+      : 'rgba(246, 248, 250, 0.95)',
+    buttonBorder: isDark
+      ? 'rgba(240, 246, 252, 0.1)'
+      : 'rgba(31, 35, 40, 0.15)',
+    buttonHoverBackground: isDark
+      ? 'rgba(110, 118, 129, 0.4)'
+      : 'rgba(208, 215, 222, 0.32)',
+    buttonActiveBackground: isDark
+      ? 'rgba(110, 118, 129, 0.5)'
+      : 'rgba(31, 35, 40, 0.12)',
+    // Hex without the leading '#', for embedding in url-encoded SVG data URIs.
+    iconFill: isDark ? '8b949e' : '656d76',
+  };
+};
+
+const clipboardIconUrl = (fill: string) =>
+  `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23${fill}'%3E%3Cpath d='M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z'/%3E%3Cpath d='M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z'/%3E%3C/svg%3E")`;
+
+const checkIconUrl = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%2300a56b'%3E%3Cpath d='M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z'/%3E%3C/svg%3E")`;
+
+const useStyles = makeStyles((theme: Theme) => {
+  const colors = getThemeColors(theme);
+  return {
+    tableCell: {
+      padding: '16px !important',
+      verticalAlign: 'top !important',
+    },
+    markdownDescription: {
       margin: '0 !important',
       padding: '0 !important',
-    },
-    '& p': {
-      margin: '0 !important',
-      padding: '0 !important',
-      lineHeight: '1.4 !important',
-    },
-    '& ul, & ol': {
-      margin: '0 !important',
-      paddingLeft: '16px !important',
-    },
-    '& li': {
-      margin: '0 !important',
-    },
-    '& code': {
-      backgroundColor: '#f6f8fa !important',
-      padding: '2px 4px !important',
-      borderRadius: '3px !important',
-      fontSize: '85% !important',
-    },
-    '& pre': {
-      margin: '0 !important',
-      padding: '8px !important',
-      backgroundColor: '#f6f8fa !important',
-      borderRadius: '6px !important',
-      overflow: 'auto !important',
-    },
-  },
-  markdownContainer: {
-    // Target all possible copy button selectors in CodeSnippet
-    '& button[title*="Copy"], & button[aria-label*="Copy"], & button[aria-label*="copy"]':
-      {
-        position: 'absolute !important',
-        top: '8px !important',
-        right: '8px !important',
-        width: '32px !important',
-        height: '32px !important',
-        padding: '0 !important',
+      '& > *': {
         margin: '0 !important',
-        backgroundColor: 'rgba(246, 248, 250, 0.95) !important',
-        border: '1px solid rgba(31, 35, 40, 0.15) !important',
+        padding: '0 !important',
+      },
+      '& p': {
+        margin: '0 !important',
+        padding: '0 !important',
+        lineHeight: '1.4 !important',
+      },
+      '& ul, & ol': {
+        margin: '0 !important',
+        paddingLeft: '16px !important',
+      },
+      '& li': {
+        margin: '0 !important',
+      },
+      '& code': {
+        backgroundColor: `${colors.codeBackground} !important`,
+        color: `${colors.codeForeground} !important`,
+        padding: '2px 4px !important',
+        borderRadius: '3px !important',
+        fontSize: '85% !important',
+      },
+      '& pre': {
+        margin: '0 !important',
+        padding: '8px !important',
+        backgroundColor: `${colors.codeBackground} !important`,
+        color: `${colors.codeForeground} !important`,
         borderRadius: '6px !important',
-        cursor: 'pointer !important',
-        display: 'flex !important',
-        alignItems: 'center !important',
-        justifyContent: 'center !important',
-        opacity: '0.7 !important',
-        transition: 'all 0.2s ease !important',
-        zIndex: 1000,
-        minWidth: '32px !important',
-        minHeight: '32px !important',
-        // Hide existing icon/text
-        '& svg, & span, & *': {
-          display: 'none !important',
-        },
-        // Add GitHub clipboard icon
-        '&::after': {
-          content: '""',
-          display: 'block !important',
-          width: '16px',
-          height: '16px',
-          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23656d76'%3E%3Cpath d='M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z'/%3E%3Cpath d='M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z'/%3E%3C/svg%3E")`,
-          backgroundRepeat: 'no-repeat',
-          backgroundPosition: 'center',
-          backgroundSize: '16px 16px',
-        },
-        '&:hover': {
-          opacity: '1 !important',
-          backgroundColor: 'rgba(208, 215, 222, 0.32) !important',
-        },
-        '&:active': {
-          backgroundColor: 'rgba(31, 35, 40, 0.12) !important',
-        },
+        overflow: 'auto !important',
       },
-  },
-  // Additional styles for code snippet container
-  codeSnippetContainer: {
-    position: 'relative',
-    '& > div': {
-      position: 'relative',
-    },
-    // More specific targeting for Backstage CodeSnippet
-    '& .MuiIconButton-root, & button': {
-      position: 'absolute !important',
-      top: '8px !important',
-      right: '8px !important',
-      width: '32px !important',
-      height: '32px !important',
-      padding: '0 !important',
-      backgroundColor: 'rgba(246, 248, 250, 0.95) !important',
-      border: '1px solid rgba(31, 35, 40, 0.15) !important',
-      borderRadius: '6px !important',
-      '& svg': {
-        display: 'none !important',
-      },
-      '&::after': {
-        content: '""',
-        display: 'block !important',
-        width: '16px',
-        height: '16px',
-        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23656d76'%3E%3Cpath d='M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z'/%3E%3Cpath d='M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z'/%3E%3C/svg%3E")`,
-        backgroundRepeat: 'no-repeat',
-        backgroundPosition: 'center',
-        backgroundSize: '16px 16px',
-      },
-      '&:hover': {
-        backgroundColor: 'rgba(208, 215, 222, 0.32) !important',
+      '& pre code': {
+        backgroundColor: 'transparent !important',
+        color: 'inherit !important',
       },
     },
-  },
-}));
+    markdownContainer: {
+      // Target all possible copy button selectors in CodeSnippet
+      '& button[title*="Copy"], & button[aria-label*="Copy"], & button[aria-label*="copy"]':
+        {
+          position: 'absolute !important',
+          top: '8px !important',
+          right: '8px !important',
+          width: '32px !important',
+          height: '32px !important',
+          padding: '0 !important',
+          margin: '0 !important',
+          backgroundColor: `${colors.buttonBackground} !important`,
+          border: `1px solid ${colors.buttonBorder} !important`,
+          borderRadius: '6px !important',
+          cursor: 'pointer !important',
+          display: 'flex !important',
+          alignItems: 'center !important',
+          justifyContent: 'center !important',
+          opacity: '0.7 !important',
+          transition: 'all 0.2s ease !important',
+          zIndex: 1000,
+          minWidth: '32px !important',
+          minHeight: '32px !important',
+          // Hide existing icon/text
+          '& svg, & span, & *': {
+            display: 'none !important',
+          },
+          // Add GitHub clipboard icon
+          '&::after': {
+            content: '""',
+            display: 'block !important',
+            width: '16px',
+            height: '16px',
+            backgroundImage: clipboardIconUrl(colors.iconFill),
+            backgroundRepeat: 'no-repeat',
+            backgroundPosition: 'center',
+            backgroundSize: '16px 16px',
+          },
+          '&:hover': {
+            opacity: '1 !important',
+            backgroundColor: `${colors.buttonHoverBackground} !important`,
+          },
+          '&:active': {
+            backgroundColor: `${colors.buttonActiveBackground} !important`,
+          },
+        },
+    },
+  };
+});
 
 // Custom GitHub-style copy button component
 const GitHubCopyButton = ({
@@ -162,6 +181,8 @@ const GitHubCopyButton = ({
   className?: string;
 }) => {
   const [copied, setCopied] = useState(false);
+  const theme = useTheme();
+  const colors = getThemeColors(theme);
 
   const handleCopy = async () => {
     try {
@@ -185,8 +206,8 @@ const GitHubCopyButton = ({
           width: '32px',
           height: '32px',
           padding: '0',
-          backgroundColor: 'rgba(246, 248, 250, 0.95)',
-          border: '1px solid rgba(31, 35, 40, 0.15)',
+          backgroundColor: colors.buttonBackground,
+          border: `1px solid ${colors.buttonBorder}`,
           borderRadius: '6px',
           opacity: copied ? 1 : 0.7,
           transition: 'all 0.2s ease',
@@ -194,12 +215,12 @@ const GitHubCopyButton = ({
         }}
         onMouseEnter={e => {
           e.currentTarget.style.opacity = '1';
-          e.currentTarget.style.backgroundColor = 'rgba(208, 215, 222, 0.32)';
+          e.currentTarget.style.backgroundColor = colors.buttonHoverBackground;
         }}
         onMouseLeave={e => {
           if (!copied) {
             e.currentTarget.style.opacity = '0.7';
-            e.currentTarget.style.backgroundColor = 'rgba(246, 248, 250, 0.95)';
+            e.currentTarget.style.backgroundColor = colors.buttonBackground;
           }
         }}
       >
@@ -208,8 +229,8 @@ const GitHubCopyButton = ({
             width: '16px',
             height: '16px',
             backgroundImage: copied
-              ? `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%2300a56b'%3E%3Cpath d='M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z'/%3E%3C/svg%3E")`
-              : `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23656d76'%3E%3Cpath d='M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z'/%3E%3Cpath d='M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z'/%3E%3C/svg%3E")`,
+              ? checkIconUrl
+              : clipboardIconUrl(colors.iconFill),
             backgroundRepeat: 'no-repeat',
             backgroundPosition: 'center',
             backgroundSize: '16px 16px',
@@ -222,6 +243,8 @@ const GitHubCopyButton = ({
 
 export const ResourceTypeDetailPage = () => {
   const classes = useStyles();
+  const theme = useTheme();
+  const colors = getThemeColors(theme);
   const { namespace, typeName } = useParams<{
     namespace: string;
     typeName: string;
@@ -287,8 +310,9 @@ export const ResourceTypeDetailPage = () => {
         >
           <pre
             style={{
-              backgroundColor: '#f6f8fa',
-              border: '1px solid #d0d7de',
+              backgroundColor: colors.codeBackground,
+              color: colors.codeForeground,
+              border: `1px solid ${colors.border}`,
               borderRadius: '6px',
               padding: '16px',
               overflow: 'auto',
@@ -298,7 +322,9 @@ export const ResourceTypeDetailPage = () => {
                 'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace',
             }}
           >
-            <code>{code}</code>
+            <code style={{ color: 'inherit', backgroundColor: 'transparent' }}>
+              {code}
+            </code>
           </pre>
           <GitHubCopyButton text={code} />
         </div>,
@@ -404,8 +430,8 @@ This should test whether copy buttons appear properly.`;
                     style={{
                       padding: '16px',
                       marginBottom: '32px',
-                      backgroundColor: '#f8f9fa',
-                      border: '1px solid #d0d7de',
+                      backgroundColor: colors.subtleBackground,
+                      border: `1px solid ${colors.border}`,
                     }}
                   >
                     <Typography
@@ -413,7 +439,7 @@ This should test whether copy buttons appear properly.`;
                       style={{
                         marginBottom: '12px',
                         fontWeight: 'bold',
-                        color: '#24292f',
+                        color: colors.textPrimary,
                       }}
                     >
                       API Versions
@@ -443,10 +469,10 @@ This should test whether copy buttons appear properly.`;
                               fontSize: '13px',
                               fontFamily:
                                 'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace',
-                              backgroundColor: '#fff',
-                              border: '1px solid #d0d7de',
+                              backgroundColor: colors.surfaceBackground,
+                              border: `1px solid ${colors.border}`,
                               borderRadius: '6px',
-                              color: '#0969da',
+                              color: colors.link,
                               textDecoration: 'none',
                               transition: 'all 0.15s ease-in-out',
                               fontWeight: '500',
@@ -464,16 +490,18 @@ This should test whether copy buttons appear properly.`;
                               }
                             }}
                             onMouseEnter={e => {
-                              e.currentTarget.style.backgroundColor = '#f1f8ff';
-                              e.currentTarget.style.borderColor = '#0969da';
+                              e.currentTarget.style.backgroundColor =
+                                colors.linkHoverBackground;
+                              e.currentTarget.style.borderColor = colors.link;
                               e.currentTarget.style.transform =
                                 'translateY(-1px)';
                               e.currentTarget.style.boxShadow =
                                 '0 3px 6px rgba(0,0,0,0.1)';
                             }}
                             onMouseLeave={e => {
-                              e.currentTarget.style.backgroundColor = '#fff';
-                              e.currentTarget.style.borderColor = '#d0d7de';
+                              e.currentTarget.style.backgroundColor =
+                                colors.surfaceBackground;
+                              e.currentTarget.style.borderColor = colors.border;
                               e.currentTarget.style.transform = 'translateY(0)';
                               e.currentTarget.style.boxShadow = 'none';
                             }}
@@ -1121,10 +1149,10 @@ This should test whether copy buttons appear properly.`;
                               fontFamily:
                                 'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace',
                               fontSize: '0.9em',
-                              backgroundColor: 'rgba(175, 184, 193, 0.2)',
+                              backgroundColor: colors.inlineCodeBackground,
                               padding: '2px 4px',
                               borderRadius: '3px',
-                              color: '#24292f',
+                              color: colors.textPrimary,
                             }}
                           >
                             {version}
@@ -1194,7 +1222,7 @@ This should test whether copy buttons appear properly.`;
                                         <a
                                           href={`#${version}-${property.name}`}
                                           style={{
-                                            color: '#0969da',
+                                            color: colors.link,
                                             textDecoration: 'underline',
                                           }}
                                           onClick={e => {
@@ -1239,7 +1267,7 @@ This should test whether copy buttons appear properly.`;
                                       {property.required ? (
                                         <span
                                           style={{
-                                            color: '#cf222e',
+                                            color: colors.textPrimary,
                                             fontSize: '12px',
                                             fontWeight: 'bold',
                                           }}
@@ -1249,7 +1277,7 @@ This should test whether copy buttons appear properly.`;
                                       ) : (
                                         <span
                                           style={{
-                                            color: '#656d76',
+                                            color: colors.textMuted,
                                             fontSize: '12px',
                                           }}
                                         >
@@ -1281,7 +1309,7 @@ This should test whether copy buttons appear properly.`;
                                           />
                                         </div>
                                       ) : (
-                                        <em style={{ color: '#656d76' }}>
+                                        <em style={{ color: colors.textMuted }}>
                                           No description available
                                         </em>
                                       )}
@@ -1295,12 +1323,15 @@ This should test whether copy buttons appear properly.`;
                           <Paper
                             style={{
                               padding: '16px',
-                              backgroundColor: '#f6f8fa',
+                              backgroundColor: colors.subtleBackground,
                             }}
                           >
                             <Typography
                               variant="body2"
-                              style={{ color: '#656d76', fontStyle: 'italic' }}
+                              style={{
+                                color: colors.textMuted,
+                                fontStyle: 'italic',
+                              }}
                             >
                               No properties available for this API version or
                               schema not found.
@@ -1320,7 +1351,7 @@ This should test whether copy buttons appear properly.`;
                               gutterBottom
                               style={{
                                 marginBottom: '16px',
-                                borderBottom: '2px solid #f1f8ff',
+                                borderBottom: `2px solid ${colors.divider}`,
                                 paddingBottom: '8px',
                               }}
                             >
@@ -1328,7 +1359,7 @@ This should test whether copy buttons appear properly.`;
                               <Typography
                                 variant="body2"
                                 style={{
-                                  color: '#656d76',
+                                  color: colors.textMuted,
                                   fontWeight: 'normal',
                                   marginTop: '4px',
                                 }}
@@ -1405,7 +1436,7 @@ This should test whether copy buttons appear properly.`;
                                           <a
                                             href={`#${version}-${table.id}.${property.name}`}
                                             style={{
-                                              color: '#0969da',
+                                              color: colors.link,
                                               textDecoration: 'underline',
                                             }}
                                             onClick={e => {
@@ -1450,7 +1481,7 @@ This should test whether copy buttons appear properly.`;
                                         {property.required ? (
                                           <span
                                             style={{
-                                              color: '#cf222e',
+                                              color: colors.textPrimary,
                                               fontSize: '12px',
                                               fontWeight: 'bold',
                                             }}
@@ -1460,7 +1491,7 @@ This should test whether copy buttons appear properly.`;
                                         ) : (
                                           <span
                                             style={{
-                                              color: '#656d76',
+                                              color: colors.textMuted,
                                               fontSize: '12px',
                                             }}
                                           >
@@ -1492,7 +1523,9 @@ This should test whether copy buttons appear properly.`;
                                             />
                                           </div>
                                         ) : (
-                                          <em style={{ color: '#656d76' }}>
+                                          <em
+                                            style={{ color: colors.textMuted }}
+                                          >
                                             No description available
                                           </em>
                                         )}
@@ -1510,7 +1543,7 @@ This should test whether copy buttons appear properly.`;
                               <a
                                 href={`#${version}-${table.parentProperty}`}
                                 style={{
-                                  color: '#0969da',
+                                  color: colors.link,
                                   textDecoration: 'none',
                                   fontSize: '14px',
                                   fontWeight: '500',
@@ -1584,8 +1617,8 @@ This should test whether copy buttons appear properly.`;
                     style={{
                       padding: '16px',
                       marginBottom: '32px',
-                      backgroundColor: '#f8f9fa',
-                      border: '1px solid #d0d7de',
+                      backgroundColor: colors.subtleBackground,
+                      border: `1px solid ${colors.border}`,
                     }}
                   >
                     <Typography
@@ -1593,7 +1626,7 @@ This should test whether copy buttons appear properly.`;
                       style={{
                         marginBottom: '12px',
                         fontWeight: 'bold',
-                        color: '#24292f',
+                        color: colors.textPrimary,
                       }}
                     >
                       API Versions
@@ -1623,10 +1656,10 @@ This should test whether copy buttons appear properly.`;
                               fontSize: '13px',
                               fontFamily:
                                 'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace',
-                              backgroundColor: '#fff',
-                              border: '1px solid #d0d7de',
+                              backgroundColor: colors.surfaceBackground,
+                              border: `1px solid ${colors.border}`,
                               borderRadius: '6px',
-                              color: '#24292f',
+                              color: colors.textPrimary,
                               textDecoration: 'none',
                               transition: 'all 0.2s ease',
                               cursor: 'pointer',
@@ -1644,16 +1677,19 @@ This should test whether copy buttons appear properly.`;
                               }
                             }}
                             onMouseEnter={e => {
-                              e.currentTarget.style.backgroundColor = '#f6f8fa';
-                              e.currentTarget.style.borderColor = '#8c959f';
+                              e.currentTarget.style.backgroundColor =
+                                colors.codeBackground;
+                              e.currentTarget.style.borderColor =
+                                colors.borderHover;
                               e.currentTarget.style.transform =
                                 'translateY(-1px)';
                               e.currentTarget.style.boxShadow =
                                 '0 3px 6px rgba(0,0,0,0.1)';
                             }}
                             onMouseLeave={e => {
-                              e.currentTarget.style.backgroundColor = '#fff';
-                              e.currentTarget.style.borderColor = '#d0d7de';
+                              e.currentTarget.style.backgroundColor =
+                                colors.surfaceBackground;
+                              e.currentTarget.style.borderColor = colors.border;
                               e.currentTarget.style.transform = 'translateY(0)';
                               e.currentTarget.style.boxShadow = 'none';
                             }}
@@ -2300,10 +2336,10 @@ This should test whether copy buttons appear properly.`;
                               fontFamily:
                                 'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace',
                               fontSize: '0.9em',
-                              backgroundColor: 'rgba(175, 184, 193, 0.2)',
+                              backgroundColor: colors.inlineCodeBackground,
                               padding: '2px 4px',
                               borderRadius: '3px',
-                              color: '#24292f',
+                              color: colors.textPrimary,
                             }}
                           >
                             {version}
@@ -2364,7 +2400,7 @@ This should test whether copy buttons appear properly.`;
                                         <a
                                           href={`#output-${version}-${property.name}`}
                                           style={{
-                                            color: '#0969da',
+                                            color: colors.link,
                                             textDecoration: 'underline',
                                           }}
                                           onClick={e => {
@@ -2423,7 +2459,7 @@ This should test whether copy buttons appear properly.`;
                                           />
                                         </div>
                                       ) : (
-                                        <em style={{ color: '#656d76' }}>
+                                        <em style={{ color: colors.textMuted }}>
                                           No description available
                                         </em>
                                       )}
@@ -2437,12 +2473,15 @@ This should test whether copy buttons appear properly.`;
                           <Paper
                             style={{
                               padding: '16px',
-                              backgroundColor: '#f6f8fa',
+                              backgroundColor: colors.subtleBackground,
                             }}
                           >
                             <Typography
                               variant="body2"
-                              style={{ color: '#656d76', fontStyle: 'italic' }}
+                              style={{
+                                color: colors.textMuted,
+                                fontStyle: 'italic',
+                              }}
                             >
                               No output properties available for this API
                               version.
@@ -2462,7 +2501,7 @@ This should test whether copy buttons appear properly.`;
                               gutterBottom
                               style={{
                                 marginBottom: '16px',
-                                borderBottom: '2px solid #f1f8ff',
+                                borderBottom: `2px solid ${colors.divider}`,
                                 paddingBottom: '8px',
                               }}
                             >
@@ -2470,7 +2509,7 @@ This should test whether copy buttons appear properly.`;
                               <Typography
                                 variant="body2"
                                 style={{
-                                  color: '#656d76',
+                                  color: colors.textMuted,
                                   fontWeight: 'normal',
                                   marginTop: '4px',
                                 }}
@@ -2538,7 +2577,7 @@ This should test whether copy buttons appear properly.`;
                                           <a
                                             href={`#output-${version}-${table.id}.${property.name}`}
                                             style={{
-                                              color: '#0969da',
+                                              color: colors.link,
                                               textDecoration: 'underline',
                                             }}
                                             onClick={e => {
@@ -2597,7 +2636,9 @@ This should test whether copy buttons appear properly.`;
                                             />
                                           </div>
                                         ) : (
-                                          <em style={{ color: '#656d76' }}>
+                                          <em
+                                            style={{ color: colors.textMuted }}
+                                          >
                                             No description available
                                           </em>
                                         )}
@@ -2615,7 +2656,7 @@ This should test whether copy buttons appear properly.`;
                               <a
                                 href={`#output-${version}-${table.parentProperty}`}
                                 style={{
-                                  color: '#0969da',
+                                  color: colors.link,
                                   textDecoration: 'none',
                                   fontSize: '14px',
                                   fontWeight: '500',
