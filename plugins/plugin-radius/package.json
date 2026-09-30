@@ -37,7 +37,7 @@
     "@material-ui/icons": "^4.11.3",
     "@material-ui/lab": "^4.0.0-alpha.61",
     "@radapp.io/rad-components": "workspace:^",
-    "react-error-boundary": "^6.1.5",
+    "react-error-boundary": "^6.1.6",
     "react-use": "^17.6.1"
   },
   "peerDependencies": {
@@ -58,7 +58,7 @@
     "@testing-library/user-event": "^14.6.7",
     "@types/jest": "^30.0.0",
     "@types/react": "^18",
-    "jest": "^30.5.1",
+    "jest": "^30.5.2",
     "jest-canvas-mock": "^2.5.8",
     "msw": "^2.15.0",
     "react": "^18.3.1",
