@@ -46,6 +46,7 @@ const useStyles = makeStyles({
 
 export const ApplicationTab = ({ application }: { application: string }) => {
   const styles = useStyles();
+  const applicationName = parseResourceId(application)?.name;
   const kubernetesApi = useApi(kubernetesApiRef);
   const radiusApi = useApi(radiusApiRef);
 
@@ -131,11 +132,13 @@ export const ApplicationTab = ({ application }: { application: string }) => {
 
   return (
     <>
-      <InfoCard
-        title={`Application Graph: ${parseResourceId(application)?.name}`}
-      >
+      <InfoCard title={`Application Graph: ${applicationName}`}>
         <div className={styles.container}>
-          <AppGraph graph={value!} />
+          {/* The getGraph response has no name of its own; use the
+              application's so an exported image is named after it. */}
+          <AppGraph
+            graph={{ ...value, name: value.name || applicationName || '' }}
+          />
         </div>
       </InfoCard>
     </>
