@@ -1,6 +1,6 @@
 import React from 'react';
 import { renderInTestApp, TestApiProvider } from '@backstage/test-utils';
-import { screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { RadiusApi } from '../../api';
 import { radiusApiRef } from '../../plugin';
 import { ResourceTypesTable } from './ResourceTypesTable';
@@ -136,7 +136,8 @@ describe('ResourceTypesTable', () => {
     });
 
     const table = screen.getByRole('table');
-    const rows = table.querySelectorAll('tbody > tr');
+    // The first body row holds the column filters.
+    const [filters, ...rows] = Array.from(table.querySelectorAll('tbody > tr'));
 
     // Should have 2 data rows
     expect(rows).toHaveLength(2);
@@ -149,6 +150,13 @@ describe('ResourceTypesTable', () => {
     headings.forEach((heading, index) => {
       expect(heading).toHaveTextContent(expectedColumns[index]);
     });
+
+    // Every column has a labelled filter input
+    expect(
+      Array.from(filters.querySelectorAll('input')).map(input =>
+        input.getAttribute('aria-label'),
+      ),
+    ).toEqual(expectedColumns.map(column => `filter data by ${column}`));
 
     // Verify first row data
     const row1Cells = row1.querySelectorAll('td');
@@ -249,7 +257,8 @@ describe('ResourceTypesTable', () => {
     });
 
     const table = screen.getByRole('table');
-    const rows = table.querySelectorAll('tbody > tr');
+    // The first body row holds the column filters.
+    const rows = Array.from(table.querySelectorAll('tbody > tr')).slice(1);
 
     // Should show Custom.Database and Radius.Core; Applications.* and
     // Microsoft.* should be filtered out by default.
@@ -267,5 +276,113 @@ describe('ResourceTypesTable', () => {
     // Verify that the checkbox exists
     const checkbox = screen.getByRole('checkbox');
     expect(checkbox).toBeInTheDocument();
+  });
+
+  it('should sort and filter resource types by column', async () => {
+    const resourceType = (namespace: string, type: string): RT => ({
+      id: `/planes/radius/local/providers/System.Resources/resourceproviders/${namespace}`,
+      name: namespace,
+      type: 'System.Resources/resourceproviders',
+      systemData: {},
+      properties: { namespace, type, apiVersion: '2023-10-01-preview' },
+    });
+    const api: Pick<RadiusApi, 'listResourceTypes'> = {
+      listResourceTypes: async () =>
+        Promise.resolve<{ value: RT[] }>({
+          value: [
+            resourceType('Custom.Database', 'mongoDatabases'),
+            resourceType('Custom.Compute', 'containers'),
+            resourceType('Custom.Messaging', 'queues'),
+          ],
+        }),
+    };
+
+    await renderInTestApp(
+      <TestApiProvider apis={[[radiusApiRef, api]]}>
+        <ResourceTypesTable title="Resource Types" />
+      </TestApiProvider>,
+      {
+        mountedRoutes: {
+          '/resource-types/:namespace/:typeName':
+            resourceTypeDetailPageRouteRef,
+        },
+      },
+    );
+
+    const types = () =>
+      screen
+        .getAllByRole('row')
+        .filter(row => row.hasAttribute('index'))
+        .map(row => row.querySelector('td')?.textContent);
+
+    await waitFor(() =>
+      expect(types()).toEqual(['mongoDatabases', 'containers', 'queues']),
+    );
+
+    fireEvent.click(screen.getByText('Type'));
+    expect(types()).toEqual(['containers', 'mongoDatabases', 'queues']);
+
+    fireEvent.change(screen.getByLabelText('filter data by Namespace'), {
+      target: { value: 'messaging' },
+    });
+    await waitFor(() => expect(types()).toEqual(['queues']));
+  });
+
+  /**
+   * The table remounts when the checkbox changes the data set. The table does
+   * not re-apply an entered column filter to new data, so the remount clears
+   * the filters rather than leave a filter showing that no longer applies.
+   */
+  it('should clear column filters consistently when showing all resource types', async () => {
+    const resourceType = (namespace: string, type: string): RT => ({
+      id: `/planes/radius/local/providers/System.Resources/resourceproviders/${namespace}`,
+      name: namespace,
+      type: 'System.Resources/resourceproviders',
+      systemData: {},
+      properties: { namespace, type, apiVersion: '2023-10-01-preview' },
+    });
+    const api: Pick<RadiusApi, 'listResourceTypes'> = {
+      listResourceTypes: async () =>
+        Promise.resolve<{ value: RT[] }>({
+          value: [
+            resourceType('Custom.Compute', 'containers'),
+            resourceType('Custom.Database', 'mongoDatabases'),
+            resourceType('Applications.Core', 'containers'),
+          ],
+        }),
+    };
+
+    await renderInTestApp(
+      <TestApiProvider apis={[[radiusApiRef, api]]}>
+        <ResourceTypesTable title="Resource Types" />
+      </TestApiProvider>,
+      {
+        mountedRoutes: {
+          '/resource-types/:namespace/:typeName':
+            resourceTypeDetailPageRouteRef,
+        },
+      },
+    );
+
+    const namespaces = () =>
+      screen
+        .getAllByRole('row')
+        .filter(row => row.hasAttribute('index'))
+        .map(row => row.querySelectorAll('td')[1]?.textContent);
+
+    const typeFilter = await screen.findByLabelText('filter data by Type');
+    fireEvent.change(typeFilter, { target: { value: 'containers' } });
+    await waitFor(() => expect(namespaces()).toEqual(['Custom.Compute']));
+
+    fireEvent.click(screen.getByRole('checkbox'));
+
+    await waitFor(() =>
+      expect(namespaces()).toEqual([
+        'Custom.Compute',
+        'Custom.Database',
+        'Applications.Core',
+      ]),
+    );
+    expect(screen.getByLabelText('filter data by Type')).toHaveValue('');
   });
 });
