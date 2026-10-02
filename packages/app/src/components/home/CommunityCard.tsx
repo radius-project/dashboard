@@ -1,7 +1,8 @@
-import { InfoCard, LinkButton } from '@backstage/core-components';
+import { LinkButton } from '@backstage/core-components';
 import { CardActions, Typography } from '@material-ui/core';
 
 import React from 'react';
+import { CollapsibleInfoCard } from './CollapsibleInfoCard';
 
 const actions = () => (
   <CardActions>
@@ -26,7 +27,8 @@ const actions = () => (
 );
 
 export const CommunityCard = ({ className }: { className?: string }) => (
-  <InfoCard
+  <CollapsibleInfoCard
+    cardId="community"
     title="Join the community"
     subheader="Find ways to participate and contribute"
     className={className}
@@ -37,7 +39,7 @@ export const CommunityCard = ({ className }: { className?: string }) => (
       project in various ways. By joining our community, you can make a
       meaningful impact and help shape the future of this project.
     </Typography>
-  </InfoCard>
+  </CollapsibleInfoCard>
 );
 
 export default CommunityCard;

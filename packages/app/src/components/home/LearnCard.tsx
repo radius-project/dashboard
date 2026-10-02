@@ -1,7 +1,8 @@
-import { InfoCard, LinkButton } from '@backstage/core-components';
+import { LinkButton } from '@backstage/core-components';
 import { CardActions, Typography } from '@material-ui/core';
 
 import React from 'react';
+import { CollapsibleInfoCard } from './CollapsibleInfoCard';
 
 const actions = () => (
   <CardActions>
@@ -30,7 +31,8 @@ const actions = () => (
 );
 
 export const LearnCard = ({ className }: { className?: string }) => (
-  <InfoCard
+  <CollapsibleInfoCard
+    cardId="learn"
     title="Learn more"
     subheader="Discover documentation, tutorials, and reference materials"
     className={className}
@@ -42,7 +44,7 @@ export const LearnCard = ({ className }: { className?: string }) => (
       collaborate on cloud-native applications across public clouds and private
       infrastructure
     </Typography>
-  </InfoCard>
+  </CollapsibleInfoCard>
 );
 
 export default LearnCard;
