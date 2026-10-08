@@ -91,7 +91,7 @@
     "@internal/app": "workspace:^",
     "better-sqlite3": "^12.11.1",
     "node-gyp": "^13.0.2",
-    "pg": "^8.23.0"
+    "pg": "^8.23.1"
   },
   "devDependencies": {
     "@backstage/cli": "^0.36.6",
