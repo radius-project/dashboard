@@ -41,7 +41,7 @@
     "@backstage/e2e-test-utils": "^0.1.2",
     "@internal/app": "workspace:^",
     "@jest/environment-jsdom-abstract": "^30.5.2",
-    "@module-federation/enhanced": "^2.9.1",
+    "@module-federation/enhanced": "^2.9.2",
     "@playwright/test": "^1.63.0",
     "@spotify/prettier-config": "^15.0.0",
     "concurrently": "^10.0.5",
