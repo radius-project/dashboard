@@ -1,7 +1,8 @@
-import { InfoCard, LinkButton } from '@backstage/core-components';
+import { LinkButton } from '@backstage/core-components';
 import { CardActions, Typography } from '@material-ui/core';
 
 import React from 'react';
+import { CollapsibleInfoCard } from './CollapsibleInfoCard';
 
 const actions = () => (
   <CardActions>
@@ -23,7 +24,8 @@ const actions = () => (
 );
 
 export const SupportCard = ({ className }: { className?: string }) => (
-  <InfoCard
+  <CollapsibleInfoCard
+    cardId="support"
     title="Get help with Radius"
     subheader="Report issues or ask other users for help"
     className={className}
@@ -34,7 +36,7 @@ export const SupportCard = ({ className }: { className?: string }) => (
       Seek guidance, offer help to others, and build connections within the
       community.
     </Typography>
-  </InfoCard>
+  </CollapsibleInfoCard>
 );
 
 export default SupportCard;
