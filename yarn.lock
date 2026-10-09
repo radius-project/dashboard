@@ -9513,6 +9513,7 @@ __metadata:
     "@types/react": "npm:^18"
     babel-jest: "npm:^30.5.2"
     dagre: "npm:^0.8.5"
+    html-to-image: "npm:1.11.11"
     identity-obj-proxy: "npm:^3.0.0"
     jest: "npm:^30.5.2"
     jsdom: "npm:^29.1.1"
@@ -20099,6 +20100,13 @@ __metadata:
   bin:
     html-minifier-terser: cli.js
   checksum: 10c0/1aa4e4f01cf7149e3ac5ea84fb7a1adab86da40d38d77a6fff42852b5ee3daccb78b615df97264e3a6a5c33e57f0c77f471d607ca1e1debd1dab9b58286f4b5a
+  languageName: node
+  linkType: hard
+
+"html-to-image@npm:1.11.11":
+  version: 1.11.11
+  resolution: "html-to-image@npm:1.11.11"
+  checksum: 10c0/0b6349221ad253dfca01d165c589d44341e942faf0273aab28c8b7d86ff2922d3e8e6390f57bf5ddaf6bac9a3b590a8cdaa77d52a363354796dd0e0e05eb35d2
   languageName: node
   linkType: hard
 

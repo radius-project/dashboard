@@ -117,6 +117,31 @@ describe('ApplicationTab', () => {
     });
   });
 
+  it('should name the graph after the application when the response has no name', async () => {
+    const { name: _name, ...unnamedGraph } = graphResponse;
+    const mockProxy = jest
+      .fn()
+      .mockResolvedValue(
+        new Response(JSON.stringify(unnamedGraph), { status: 200 }),
+      );
+    const kubeApi = createMockKubernetesApi(mockProxy);
+
+    await renderInTestApp(
+      <TestApiProvider
+        apis={[
+          [kubernetesApiRef, kubeApi],
+          [radiusApiRef, mockRadiusApi],
+        ]}
+      >
+        <ApplicationTab application="/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/applications/test-app" />
+      </TestApiProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('app-graph')).toHaveTextContent('test-app');
+    });
+  });
+
   it('GU-16 / ER-05: KNOWN-DEFECT shows an error panel without retry when the graph request fails', async () => {
     const mockProxy = jest
       .fn()
