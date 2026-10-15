@@ -4,7 +4,7 @@
   "name": "Dashboard",
   "image": "mcr.microsoft.com/devcontainers/base:ubuntu24.04",
   "features": {
-    "ghcr.io/devcontainers/features/common-utils:2.7.0": {
+    "ghcr.io/devcontainers/features/common-utils:2.7.1": {
       "configureZshAsDefaultShell": false
     },
     "ghcr.io/devcontainers/features/node:2.1.1": {
