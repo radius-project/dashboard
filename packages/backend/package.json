@@ -90,7 +90,7 @@
     "@backstage/plugin-proxy-backend": "^0.6.18",
     "@internal/app": "workspace:^",
     "better-sqlite3": "^12.11.1",
-    "node-gyp": "^13.0.2",
+    "node-gyp": "^13.1.0",
     "pg": "^8.23.1"
   },
   "devDependencies": {
