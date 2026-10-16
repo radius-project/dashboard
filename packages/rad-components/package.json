@@ -25,10 +25,10 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "@babel/core": "^8.0.6",
-    "@babel/preset-env": "^8.0.6",
+    "@babel/core": "^8.0.7",
+    "@babel/preset-env": "^8.0.7",
     "@babel/preset-react": "^8.0.1",
-    "@babel/preset-typescript": "^8.0.1",
+    "@babel/preset-typescript": "^8.0.7",
     "@backstage/cli": "^0.36.6",
     "@backstage/cli-defaults": "^0.1.6",
     "@juggle/resize-observer": "^3.4.0",
@@ -55,7 +55,7 @@
     "react-dom": "^18.3.1",
     "storybook": "^10.6.1",
     "typescript": "^6.0.3",
-    "vite": "^8.3.2"
+    "vite": "^8.3.4"
   },
   "peerDependencies": {
     "react": "^16.13.1 || ^17.0.2 || ^18.0.0",
