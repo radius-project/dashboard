@@ -84,7 +84,12 @@ export const ResourceTypesTable = (props: { title: string }) => {
       <Table
         key={`table-${showOtherResourceTypes}`}
         title={props.title}
-        options={{ search: false, paging: false }}
+        options={{
+          search: false,
+          paging: false,
+          sorting: true,
+          filtering: true,
+        }}
         columns={columns}
         data={filteredData}
       />

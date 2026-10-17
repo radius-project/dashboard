@@ -44,7 +44,7 @@ describe('EnvironmentListPage', () => {
     expect(table).toBeInTheDocument();
 
     const rows = screen.getAllByRole('row');
-    expect(rows).toHaveLength(2); // Header + empty row
+    expect(rows).toHaveLength(3); // Header + column filters + empty row
     const [header] = rows;
 
     // Verify correct headings (we had headings that will never be shown for an environment)

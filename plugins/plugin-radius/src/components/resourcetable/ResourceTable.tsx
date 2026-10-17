@@ -16,6 +16,24 @@ import { radiusApiRef } from '../../plugin';
 import { parseResourceId } from '@radapp.io/rad-components';
 import { isEnvironmentType, isApplicationType } from '../../resources';
 
+/**
+ * Sorts and filters a column by the text its cell shows. Several columns show
+ * a value derived from the row (a name parsed from a resource ID, a computed
+ * kind) rather than a plain field, so the table's default field-based sorting
+ * and filtering would do nothing or act on the full resource ID.
+ */
+const byDisplayedText = (
+  text: (row: Resource) => string | undefined,
+): Pick<TableColumn<Resource>, 'customSort' | 'customFilterAndSearch'> => ({
+  customSort: (a, b) => (text(a) ?? '').localeCompare(text(b) ?? ''),
+  customFilterAndSearch: (filter, row) =>
+    (text(row) ?? '').toLowerCase().includes(String(filter).toLowerCase()),
+});
+
+/** The name shown for an optional resource ID reference, as rendered by `OptionalResourceLink`. */
+const referencedName = (id: unknown): string | undefined =>
+  typeof id === 'string' ? parseResourceId(id)?.name : undefined;
+
 const DataTable = (props: {
   resources: Resource[];
   title: string;
@@ -28,11 +46,13 @@ const DataTable = (props: {
       title: 'Name',
       type: 'string',
       render: row => <ResourceLink id={row.id} />,
+      ...byDisplayedText(row => parseResourceId(row.id)?.name),
     },
     {
       title: 'Resource Group',
       type: 'string',
       render: row => parseResourceId(row.id)?.group,
+      ...byDisplayedText(row => parseResourceId(row.id)?.group),
     },
   ];
 
@@ -66,6 +86,7 @@ const DataTable = (props: {
       title: 'Kind',
       type: 'string',
       render: row => getEnvironmentKind(row),
+      ...byDisplayedText(getEnvironmentKind),
     });
   } else {
     columns.push({ title: 'Type', field: 'type', type: 'string' });
@@ -82,6 +103,7 @@ const DataTable = (props: {
       render: row => (
         <OptionalResourceLink id={row.properties?.environment as string} />
       ),
+      ...byDisplayedText(row => referencedName(row.properties?.environment)),
     });
   } else {
     columns.push({
@@ -91,6 +113,7 @@ const DataTable = (props: {
       render: row => (
         <OptionalResourceLink id={row.properties?.application as string} />
       ),
+      ...byDisplayedText(row => referencedName(row.properties?.application)),
     });
     columns.push({
       title: 'Environment',
@@ -99,6 +122,7 @@ const DataTable = (props: {
       render: row => (
         <OptionalResourceLink id={row.properties?.environment as string} />
       ),
+      ...byDisplayedText(row => referencedName(row.properties?.environment)),
     });
   }
 
@@ -166,7 +190,12 @@ const DataTable = (props: {
   return (
     <Table
       title={props.title}
-      options={{ search: false, paging: false }}
+      options={{
+        search: false,
+        paging: false,
+        sorting: true,
+        filtering: true,
+      }}
       columns={columns}
       data={sortedData}
     />
