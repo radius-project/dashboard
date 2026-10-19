@@ -139,6 +139,7 @@ type ScenarioOptions = {
   manifest?: unknown;
   manifestOutput?: string;
   queryError?: string;
+  memberError?: string;
   gitError?: string;
   missingAfterPush?: boolean;
   missingMessage?: string;
@@ -164,6 +165,27 @@ function scenario(version = '0.60.0', options: ScenarioOptions = {}) {
         : git(args);
     }
     assert.equal(command, 'docker');
+    if (args[0] === 'buildx') {
+      assert.deepEqual(args, [
+        'buildx',
+        'imagetools',
+        'inspect',
+        '--raw',
+        `${repository}:${version}`,
+      ]);
+      if (options.queryError) {
+        return { status: 1, stdout: '', stderr: options.queryError };
+      }
+      return present
+        ? ok('{}')
+        : {
+            status: 1,
+            stdout: '',
+            stderr:
+              options.missingMessage ??
+              `ERROR: ${repository}:${version}: not found\n`,
+          };
+    }
     if (args[0] === 'manifest') {
       assert.deepEqual(args, [
         'manifest',
@@ -171,21 +193,14 @@ function scenario(version = '0.60.0', options: ScenarioOptions = {}) {
         '--verbose',
         `${repository}:${version}`,
       ]);
-      if (options.queryError) {
-        return { status: 1, stdout: '', stderr: options.queryError };
+      assert.ok(present, 'Members are inspected only for an existing tag');
+      if (options.memberError) {
+        return { status: 1, stdout: '', stderr: options.memberError };
       }
-      return present
-        ? ok(
-            options.manifestOutput ??
-              JSON.stringify(options.manifest ?? manifestDescriptor()),
-          )
-        : {
-            status: 1,
-            stdout: '',
-            stderr:
-              options.missingMessage ??
-              `no such manifest: ${repository}:${version}`,
-          };
+      return ok(
+        options.manifestOutput ??
+          JSON.stringify(options.manifest ?? manifestDescriptor()),
+      );
     }
     if (args[0] === 'image') {
       assert.equal(args[1], 'inspect');
@@ -342,11 +357,17 @@ for (const entry of [
         ['push', `${repository}:${entry.version}`],
       ]);
       assert.equal(
-        dockerCalls(state, 'manifest').length,
+        dockerCalls(state, 'buildx').length,
         3,
         'Probe before build, before push, and after publication',
       );
+      assert.equal(
+        dockerCalls(state, 'manifest').length,
+        1,
+        'Inspect members only after publication creates the tag',
+      );
     } else {
+      assert.equal(dockerCalls(state, 'buildx').length, 0);
       assert.equal(dockerCalls(state, 'manifest').length, 0);
       assert.throws(
         () => runReleaseImage('stage', env, state.run, state.log),
@@ -361,6 +382,7 @@ test('local builds stamp edge and the checkout revision without querying the reg
   const state = scenario('edge');
   runReleaseImage('build', {}, state.run, state.log);
   assert.ok(dockerCalls(state, 'build')[0].includes(`${versionLabel}=edge`));
+  assert.equal(dockerCalls(state, 'buildx').length, 0);
   assert.equal(dockerCalls(state, 'manifest').length, 0);
 });
 
@@ -597,6 +619,9 @@ for (const queryError of [
   'unauthorized: manifest unknown',
   'manifest unknown\nTLS handshake timeout',
   'manifest unknown: connection refused',
+  'manifest unknown',
+  `no such manifest: ${repository}:0.60.0`,
+  `ERROR: ${repository}:0.60.1: not found`,
 ]) {
   test(`registry failure does not authorize a new tag: ${queryError}`, () => {
     const state = scenario('0.60.0', { queryError });
@@ -609,12 +634,31 @@ for (const queryError of [
   });
 }
 
-test('an explicit MANIFEST_UNKNOWN response permits building a missing release', () => {
-  const state = scenario('0.60.0', {
-    missingMessage: 'manifest unknown: manifest unknown',
+for (const memberError of [
+  'manifest unknown',
+  `no such manifest: ${repository}:0.60.0`,
+]) {
+  test(`an existing index with a missing member is never replaced: ${memberError}`, () => {
+    const state = scenario('0.60.0', { present: true, memberError });
+    assert.throws(
+      () => runReleaseImage('build', releaseEnv(), state.run, state.log),
+      /docker manifest inspect --verbose .* failed/,
+    );
+    assert.throws(
+      () => runReleaseImage('stage', releaseEnv(), state.run, state.log),
+      /docker manifest inspect --verbose .* failed/,
+    );
+    assert.equal(dockerCalls(state, 'build').length, 0);
+    assert.equal(dockerCalls(state, 'tag').length, 0);
+    assert.equal(dockerCalls(state, 'push').length, 0);
   });
+}
+
+test('only an explicit top-level not-found response permits building a missing release', () => {
+  const state = scenario('0.60.0');
   runReleaseImage('build', releaseEnv(), state.run, state.log);
   assert.equal(dockerCalls(state, 'build').length, 1);
+  assert.equal(dockerCalls(state, 'manifest').length, 0);
 });
 
 test('invalid manifest JSON fails closed', () => {

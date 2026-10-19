@@ -148,7 +148,9 @@ release qualification. Staging a dashboard image alone does not promote a releas
 Full release versions must match the source `v` tag and be valid Docker tags; SemVer
 build metadata containing `+` is rejected rather than silently rewritten.
 
-Before building a release, `scripts/release-image.ts` queries the full-version tag.
+Before building a release, `scripts/release-image.ts` resolves only the top-level
+full-version tag with `docker buildx imagetools inspect --raw`; only that tag's
+explicit not-found response permits a new build.
 If it already exists, the helper pulls its immutable manifest digest, verifies both
 provenance labels and the single `linux/amd64` platform, and reuses that image for
 the existing container E2E tests and image analysis. Matching output is reused even
@@ -156,8 +158,8 @@ if a rebuild would have a different image ID. Well-formed `unknown/unknown` Buil
 attestation descriptors in an index do not count as runnable platforms. Reuse
 preserves the original index and its attestations without repushing it.
 Missing labels, a conflicting revision
-or version, other platform sets, malformed metadata, or registry query errors fail
-the job; they do not authorize overwriting an existing tag.
+or version, other platform sets, malformed metadata, missing index members, or
+registry query errors fail the job; they do not authorize overwriting an existing tag.
 
 After validation, staging checks the registry again before pushing a missing
 full-version tag and verifies the published metadata. Runs for the same release tag

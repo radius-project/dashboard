@@ -143,29 +143,40 @@ function releaseReference(version: string, ref: string | undefined): string {
   return `${repository}:${version}`;
 }
 
+// `docker manifest inspect` also fetches index members, and reports a missing
+// member or an authorization failure as a missing tag. Resolve only the
+// top-level tag, and treat nothing but its explicit 404 as absence.
+function releaseExists(run: CommandRunner, reference: string): boolean {
+  const result = run('docker', [
+    'buildx',
+    'imagetools',
+    'inspect',
+    '--raw',
+    reference,
+  ]);
+  if (result.status === 0) {
+    return true;
+  }
+  if (result.stderr.trim() === `ERROR: ${reference}: not found`) {
+    return false;
+  }
+  throw new Error(
+    `Cannot query ${reference}: ${result.stderr || result.stdout}`,
+  );
+}
+
 function existingRelease(
   run: CommandRunner,
   reference: string,
   expected: Provenance,
 ): string | undefined {
-  const result = run('docker', ['manifest', 'inspect', '--verbose', reference]);
-  if (result.status !== 0) {
-    // Only an explicit missing manifest permits a new tag. Authentication,
-    // network, and unsupported-platform failures must not authorize a push.
-    const error = result.stderr.trim();
-    if (
-      error === `no such manifest: ${reference}` ||
-      error === 'manifest unknown' ||
-      error === 'manifest unknown: manifest unknown'
-    ) {
-      return undefined;
-    }
-    throw new Error(
-      `Cannot query ${reference}: ${result.stderr || result.stdout}`,
-    );
+  if (!releaseExists(run, reference)) {
+    return undefined;
   }
-
-  const manifest: unknown = JSON.parse(result.stdout);
+  // The tag exists, so any failure to read its members must fail closed.
+  const manifest: unknown = JSON.parse(
+    checked(run, 'docker', ['manifest', 'inspect', '--verbose', reference]),
+  );
   const entries = Array.isArray(manifest) ? manifest : [manifest];
   const runnableDigests: string[] = [];
   for (const entry of entries) {
