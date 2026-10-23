@@ -125,6 +125,50 @@ yarn build-image
 
 The current `Dockerfile` is set up to build the container using state from the repo like the `node_modules/` folder. This is why the set of steps described above is required.
 
+The `build-image` command uses `packages/backend/Dockerfile`. Its Docker build receives
+`org.opencontainers.image.revision` from `git rev-parse --verify HEAD` (the actual checkout,
+not `GITHUB_SHA`) and `org.opencontainers.image.version` from `REL_VERSION`, defaulting to
+`edge` for local builds. A Git checkout is required to produce this provenance.
+
+#### Release image staging
+
+The Build workflow stages release images under full-version tags. It does not publish
+stable `X.Y` channel aliases during a tag build:
+
+| Git ref | Version label | Published image tag |
+| --- | --- | --- |
+| `refs/tags/v0.60.0-rc.1` | `0.60.0-rc.1` | `0.60.0-rc.1` |
+| `refs/tags/v0.60.0` | `0.60.0` | `0.60.0` |
+| `refs/tags/v0.60.1` | `0.60.1` | `0.60.1` |
+| `refs/heads/main` | `edge` | `latest` (unchanged) |
+| Pull request | `pr-<number>` | Not published |
+
+Radius's gated release finalizer promotes the stable `X.Y` aliases with ORAS after
+release qualification. Staging a dashboard image alone does not promote a release.
+Full release versions must match the source `v` tag and be valid Docker tags; SemVer
+build metadata containing `+` is rejected rather than silently rewritten.
+
+Before building a release, `scripts/release-image.ts` resolves only the top-level
+full-version tag with `docker buildx imagetools inspect --raw`; only that tag's
+explicit not-found response permits a new build.
+If it already exists, the helper pulls its immutable manifest digest, verifies both
+provenance labels and the single `linux/amd64` platform, and reuses that image for
+the existing container E2E tests and image analysis. Matching output is reused even
+if a rebuild would have a different image ID. Well-formed `unknown/unknown` BuildKit
+attestation descriptors in an index do not count as runnable platforms. Reuse
+preserves the original index and its attestations without repushing it.
+Missing labels, a conflicting revision
+or version, other platform sets, malformed metadata, missing index members, or
+registry query errors fail the job; they do not authorize overwriting an existing tag.
+
+After validation, staging checks the registry again before pushing a missing
+full-version tag and verifies the published metadata. Runs for the same release tag
+are serialized without cancellation. Registry tags do not support a client-side
+atomic create-only operation, so release-version writes must remain exclusive to
+this workflow; the Radius finalizer writes channel aliases instead. An existing
+conflicting release requires investigation, not deletion or an automatic overwrite.
+The independently published `main`/`latest` path remains unchanged.
+
 ### Formatting
 
 This project is configured to use `prettier` for code formatting. This is checked as part of the pull-request process.
@@ -152,6 +196,28 @@ yarn run lint:all
 ```
 
 ### Testing
+
+**Run offline release image regressions:**
+
+```bash
+yarn run test:release-images
+```
+
+This suite is also part of `yarn run test:all`, which CI runs for pull requests and
+release tags. It requires Node.js 24, Git, and Python, but no installed dependencies,
+Docker daemon, registry credentials, or network access. To run without Yarn:
+
+```bash
+node --test scripts/release-image.test.ts
+```
+
+The tests use a temporary Git checkout, the actual release-version parser, and a
+fake Docker command runner. They cover RC, final, patch, edge, provenance forwarding
+through the real build script chain, immutable-tag reuse and conflicts, platform
+validation, failure handling, and the absence of early channel publication.
+Attestation-bearing indexes are covered for both reuse and post-push verification,
+including rejection of malformed descriptors, extra runnable platforms, and
+attestation-only indexes.
 
 **Run E2E tests:**
 

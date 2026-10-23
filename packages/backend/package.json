@@ -78,7 +78,7 @@
     "lint": "backstage-cli package lint",
     "test": "backstage-cli package test",
     "clean": "backstage-cli package clean",
-    "build-image": "docker build ../.. -f Dockerfile -t ghcr.io/radius-project/dashboard"
+    "build-image": "node ../../scripts/release-image.ts build"
   },
   "dependencies": {
     "@backstage/backend-defaults": "^0.18.0",
