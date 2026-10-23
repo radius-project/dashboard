@@ -25,7 +25,7 @@
   "dependencies": {
     "@backstage/backend-plugin-api": "^1.10.1",
     "@types/express": "*",
-    "express": "^5.2.1"
+    "express": "^5.3.0"
   },
   "devDependencies": {
     "@backstage/cli": "^0.36.6",
@@ -33,7 +33,7 @@
     "@types/jest": "^30.0.0",
     "@types/supertest": "^7.2.1",
     "jest": "^30.5.2",
-    "msw": "^3.0.2",
+    "msw": "^3.0.3",
     "supertest": "^7.3.1"
   },
   "files": [
