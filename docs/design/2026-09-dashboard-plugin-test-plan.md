@@ -10,50 +10,40 @@
 
 ## Purpose
 
-The [companion design](./2026-09-radius-backstage-plugin.md) decides the architecture: common
-domain logic and graph rendering are owned and published by `radius-project/ai-extensions`
-(`@radius-project/core`, `@radius-project/graph-react`), and the Backstage product plugin is
-productized and published from this repository (`@radius-project/backstage-plugin-radius`). Two
-extraction consequences drive this test plan:
+`radius-project/ai-extensions` owns and publishes shared domain logic and graph rendering as
+`@radius-project/core` and `@radius-project/graph-react`. This repository develops and publishes the
+Backstage plugin, proposed as `@radius-project/backstage-plugin-radius`. The
+[companion design](./2026-09-radius-backstage-plugin.md) sets that ownership. Extraction changes
+two things the tests must protect:
 
-1. **Graph consistency is achieved by deletion, not duplication.** `packages/rad-components` is
-   retired as an implementation owner. Its renderer and layout are consolidated into
-   `graph-react` alongside the Canvas renderer, and the dashboard consumes that package. The design
-   states that duplicated implementations are not an acceptable compatibility mechanism, so this
-   plan does **not** test dashboard-side parity against a second copy of the model. It tests that
-   the frozen pre-extraction behavior survives the switch and that no parallel implementation
-   remains.
-2. **The plugin becomes a published contract.** `packages/app` stops being a privileged consumer of
-   workspace source and becomes one host among several, alongside an external Backstage host
-   fixture.
+1. The dashboard and Canvas must use one graph implementation. Move the renderer and layout from
+   `packages/rad-components` into `graph-react`, combine them with Canvas's renderer, and switch the
+   dashboard to that package. Delete the old implementation. Tests compare the rendered result
+   with a frozen baseline, not with a second dashboard copy of the model.
+2. The plugin becomes a published contract. `packages/app` must use the same package entry points
+   as an external Backstage host fixture, without privileged access to workspace source.
 
-Both changes rewrite code that today has no meaningful regression net. This plan establishes that
-net first, freezes it as a reviewed baseline **before** any extraction, then extends it to the
-plugin contract, the installed artifact, and the host boundary.
+Both changes affect code that lacked meaningful regression tests when this work began. Record
+passing tests before extraction, review and freeze the baseline, then extend coverage to plugin
+contracts, installed packages, and host integration.
 
-The October revision adds a separate frontend migration stream. Backstage plugins remain in use;
-they are moving to new frontend and backend systems. The dashboard backend already uses the new
-system. The Radius frontend and standalone app do not. Test native Radius extensions first, move
-the app through a temporary hybrid stage, then remove required compatibility helpers. Do not use
-`convertLegacyPlugin` as the final implementation of Radius, which this repository owns.
+The dashboard backend already uses Backstage's new system; the Radius frontend and standalone app
+still use the legacy frontend. Test native Radius extensions first, move the app through hybrid
+mode, then remove required compatibility helpers. We own Radius and must implement native support,
+not leave it wrapped in `convertLegacyPlugin`.
 
-This document tracks delivery, required checks, and exact requirements. Start with the current
-state, then the status table. Use the phase sections for work still to come, and the appendices
-when a pull request needs an exact export, route, request, page, fixture, or host case.
-
-The design's own "Test plan" section states the required suites at the program level across both
-repositories. This document is the dashboard-side execution plan for them: it enumerates the
-dashboard requirements, their IDs, and their order. Where the two disagree, the design wins and
-this plan is corrected.
+The phases assign dashboard work and required checks. The appendices specify exports, routes,
+requests, pages, fixtures, and host cases. The companion design sets the required suites across
+both repositories. If the documents disagree, follow the design and correct this plan.
 
 ## Revised migration scope
 
-This plan follows the companion design's
-[Backstage delivery decision](./2026-09-radius-backstage-plugin.md#backstage-changes-and-delivery-decision).
-The source check is at dashboard commit
+The companion design's
+[Backstage delivery decision](./2026-09-radius-backstage-plugin.md#backstage-changes-and-delivery-decision)
+uses dashboard commit
 [`9d295b5`](https://github.com/radius-project/dashboard/commit/9d295b5097c62d9c3fa9dab136172f34c1b912bf).
-It is a source assessment, not a migration test run. Existing coverage numbers and completed phases
-below describe the earlier legacy-frontend baseline. They do not qualify new frontend support.
+The review inspected source; it did not run a migration. Coverage figures and completed phases
+below describe the earlier legacy frontend. They do not establish new-system support.
 
 | Surface                      | What is already present                                                                                    | New evidence required                                                                                                              |
 | ---------------------------- | ---------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
@@ -63,27 +53,24 @@ below describe the earlier legacy-frontend baseline. They do not qualify new fro
 | Standalone app               | Legacy `createApp`, root element tree, routes, APIs, themes, guest sign-in, and sidebar.                   | Hybrid cutover and then native modules/extensions, with URL, auth, theme, and navigation regression checks.                        |
 | Third-party frontend plugins | Catalog, catalog graph, home, user settings, and Kubernetes API integration.                               | Exact-version native-entry inventory, temporary adapters only where needed, and a removal condition for every adapter.             |
 
-The first stable release must qualify native Radius support and the fully migrated standalone app.
-The legacy public Radius entry remains tested for the agreed support window. Hybrid mode is a
-transition, not another permanent product. The frontend-system matrix is separate from the
-React 18/19 graph-library matrix.
+Before the first stable release, test native Radius support and the fully migrated standalone app.
+Keep testing the legacy public entry for its agreed support window. Retire hybrid mode after the
+app migration. Test frontend systems separately from React 18/19 graph-library support.
 
 `convertLegacyPlugin` and `convertLegacyPageExtension` from `@backstage/core-compat-api` apply to
-third-party frontend plugins, not backend plugins. Each page must be listed and checked; cards
-need the relevant plugin's supported converter or a native blueprint. Temporary app helpers
+third-party frontend plugins, not backend plugins. List and test every converted page. Use the
+relevant plugin's supported converter or a native blueprint for cards. Temporary app helpers
 (`convertLegacyAppOptions`, `convertLegacyAppRoot`) preserve app composition while the app moves
 to `@backstage/frontend-defaults`. They do not replace native Radius support.
 
-All required installs and CI runs use open-source Backstage without a Spotify subscription,
-premium plugin, or license credential. Paid Spotify plugins are optional host choices. Their
-presence is not evidence that Radius access control works, and their absence must not block
-Radius installation.
+Run required installs and CI on open-source Backstage without a Spotify subscription, premium
+plugin, or license credential. Hosts may choose paid plugins, but Radius must install without them.
+Their presence does not prove that Radius access control works.
 
 ## Current state
 
-Measured by running the suite, not estimated: `yarn test:all --coverageReporters=json-summary`
-against the tree at the time of writing. Test-case counts are pre-Phase-0 (31 suites, 127 cases);
-coverage percentages are the Phase 0 baseline.
+`yarn test:all --coverageReporters=json-summary` measured the original tree. The case counts below
+precede Phase 0 (31 suites, 127 cases); the coverage percentages record its baseline.
 
 | Workspace                       | Source files | With a colocated test | Test cases |
 | ------------------------------- | -----------: | --------------------: | ---------: |
@@ -94,7 +81,7 @@ coverage percentages are the Phase 0 baseline.
 | `packages/backend`              |            1 |                     1 |          1 |
 | **Total**                       |       **71** |                **31** |    **127** |
 
-Measured coverage at that same point, which is what the Phase 0 floors are derived from:
+Phase 0 set its coverage floors from these measurements:
 
 | Workspace                       | Statements | Branches | Functions |  Lines |
 | ------------------------------- | ---------: | -------: | --------: | -----: |
@@ -105,13 +92,11 @@ Measured coverage at that same point, which is what the Phase 0 floors are deriv
 | `packages/backend`              |      0.00% |      n/a |       n/a |  0.00% |
 | **Total**                       | **56.95%** |**31.82%**|**42.03%** |**57.35%**|
 
-`packages/app` reported 75% of statements with 0% of branches and 0% of functions. That is the
-signature of coverage produced by module loading rather than by testing: the files are imported, so
-their top level is recorded, but nothing inside them is ever called. Statement coverage was not
-evidence of tested behavior there. Phase 1 closed it: the workspace now measures
-93.51/100.00/83.33/92.86, and `packages/backend` moved from 0% to 100%.
+`packages/app` reported 75% of statements but 0% of branches and functions. Imports ran top-level
+code without calling the functions inside, so the statement figure did not prove tested behavior.
+Phase 1 raised coverage to 93.51/100.00/83.33/92.86. Backend coverage rose from 0% to 100%.
 
-Progression as the plan is executed, re-measured after each phase increment:
+Measurements after each phase increment:
 
 | Workspace                       | Baseline | After 0 and 3 | After Tier A | After first Phase 1 pages | After Phase 1 components | After Phase 1 complete | After Phase 2 | After Phase 3 | After review |
 | ------------------------------- | -------: | ------------: | -----------: | ------------------------: | -----------------------: | ---------------------: | ------------: | ------------: | --------------: |
@@ -124,31 +109,29 @@ Progression as the plan is executed, re-measured after each phase increment:
 
 Statement coverage only; the enforced floors in Appendix G carry all four metrics.
 
-Plus two Playwright specs with fourteen cases: the home-page smoke case, eight direct real-renderer
-cases, and five dashboard-host journeys using deterministic Kubernetes/UCP interception.
+Two Playwright specs add fourteen cases: one home-page smoke test, eight direct real-renderer
+cases, and five dashboard-host journeys with fixed Kubernetes/UCP interceptions.
 
-The raw counts understate the gap. Three findings matter more:
+The original counts hid these gaps:
 
 - **Coverage is concentrated.** 45 of 127 unit cases live in `plugin-radius/src/api/api.test.ts`.
   Fifteen unit test files contain exactly one case, and most of those assert once or twice.
-- **The graph is effectively untested.** `AppGraph.test.tsx` renders the sample application and
-  asserts that the React Flow attribution link exists. It asserts nothing about nodes, edges, edge
-  direction, ordering, or Dagre layout. `initialNodes` contains a deliberate gateway
-  direction-correction branch and an operator-precedence-sensitive `order` computation; neither is
-  covered. Any graph rework is currently a blind change.
-- **No test describes the plugin as a contract.** `plugin.test.ts` asserts `radiusPlugin` is
-  defined. Nothing pins the public export surface, the route refs, the extension mount points, the
-  `radiusApiRef` id, or the feature-flag name — exactly the things an external consumer depends on
-  and that a rearchitecture silently breaks.
+- **The graph had little coverage.** `AppGraph.test.tsx` rendered the sample application and checked
+  the React Flow attribution link, not nodes, edges, direction, ordering, or Dagre layout.
+  Neither the gateway direction-correction branch nor the precedence-sensitive `order`
+  computation in `initialNodes` had tests.
+- **The plugin contract had no tests.** `plugin.test.ts` checked only that `radiusPlugin` existed.
+  Tests did not pin public exports, route refs, extension mount points, the `radiusApiRef` id,
+  or the feature-flag name that external consumers depend on.
 - **Forty source files had no colocated test,** including every `packages/app` component,
   `ResourceListPage`, `ResourceLayout`, `OverviewTab`, `DetailsTab`, `RecipeListPage`,
   `RecipeTable`, and the `resources/resource.ts` domain model. Phase 1 has now closed every one of
   them that ships behavior; only `packages/app/src/index.tsx`, the barrels, and `setupTests.ts`
   remain deliberately without direct tests. See Appendix F.
 
-There was no coverage threshold in CI: `yarn test:all` ran with `--coverage` but no floor, so
-coverage could fall to zero without failing a build. Phase 0 closed this; see
-"Where coverage floors must live" for why the obvious placement does not work.
+CI ran `yarn test:all` with `--coverage` but no threshold, so zero coverage could pass. Phase 0
+added floors in the root configuration. Per-workspace floors do not work in the repository run;
+see "Where coverage floors must live."
 
 ## Current status
 
@@ -168,8 +151,8 @@ coverage could fall to zero without failing a build. Phase 0 closed this; see
 | 8     | Release qualification                    | both                                      | Not started | The published plugin loads in the control-plane image and in an external Backstage host                                                                                                                                                                                                                                           |
 | 9     | Migrate the test corpus to `Radius.*`    | dashboard, tracks `radius` releases       | Not started | Tests and fixtures describe the resource-type model the product is moving to, not the legacy one                                                                                                                                                                                                                                  |
 
-Every phase is executed in `radius-project/dashboard`. The repository column records what each phase
-depends on, not where the work happens.
+All phase work runs in `radius-project/dashboard`. The repository column identifies dependencies,
+not the location of the work.
 
 Phases 3A-3C do not wait for `ai-extensions` releases. Phase 4 is the direct shared-release dependency,
 because that is where dashboard replaces its own implementations with the published `core` and
@@ -177,29 +160,24 @@ because that is where dashboard replaces its own implementations with the publis
 repositories because the consumer-pin gate is defined in `ai-extensions` CI while the pin, the
 journey implementation it invokes, and the release checks live here.
 
-Phase 3 in particular is **not** developed in `ai-extensions`. The design assigns the Backstage
-product to dashboard: `ai-extensions` owns and publishes `@radius-project/core` and
-`@radius-project/graph-react`, while dashboard owns the Backstage plugin. Phase 3 qualifies the
-current `@internal/plugin-radius` package locally without changing its private status or deciding
-its final public name, license/notices, or publication settings. It therefore touches no shared
-code and waits on no upstream release; the deferred release decisions remain prerequisites for
-actual publication.
+Dashboard owns Phase 3 and the Backstage plugin. Ai-extensions owns and publishes
+`@radius-project/core` and `@radius-project/graph-react`. Phase 3 tests the current
+`@internal/plugin-radius` package locally without changing its private status or selecting its
+public name, license/notices, or publication settings. It changes no shared code and needs no
+upstream release. Publication still requires those release decisions.
 
-Phases 0–2 must complete **before** any extraction begins; the design makes a frozen, reviewed
-real-renderer baseline a prerequisite, not a follow-up. Phase 3 may run in parallel with Phase 2.
-Like the new frontend stream, it does not wait for upstream graph consolidation.
-Phase 4 is the extraction itself and is gated on Phase 2's records. Phases 5–8 follow it.
+Complete Phases 0–2 before extraction. Review and freeze the real-renderer baseline first. Phase 3
+may run alongside Phase 2 and, like the frontend work, needs no upstream graph release. Phase 4
+extracts the code after Phase 2's records pass review. Phases 5–8 follow it.
 
-The next frontend work is 3A, then 3B, then 3C. These phases map to design units P8a, P8b, and
-P8c; they do not reopen completed Phase 3 or mark new contracts as tested. They may run alongside
-Phase 4 in separate changes. Record a passing host baseline at each frontend cutover and rerun
-the Phase 2 graph requirements. Do not replace frontend registration and graph/domain code in
-the same baseline change. Phase 5 needs Phase 4 and native plugin support from 3A. Its stable
-standalone acceptance and Phase 8 also require 3C. Phase 6 gates apply as soon as each surface
-exists; do not wait for the final extraction to protect native entry changes.
+Run frontend Phases 3A, 3B, and 3C in that order. They correspond to P8a, P8b, and P8c and add new
+tests without reopening completed Phase 3. They may run alongside Phase 4 in separate changes.
+Record a passing host baseline at each cutover and rerun Phase 2 graph checks. Change frontend
+registration separately from graph/domain extraction. Phase 5 needs Phase 4 and 3A; stable
+standalone acceptance and Phase 8 also need 3C. Apply Phase 6 gates as each surface appears,
+including native entries before extraction finishes.
 
-Phase 9 is sequenced separately and deliberately: it is the only phase whose timing is an open
-question rather than a dependency. See open decision 8.
+Phase 9's timing remains a maintainer decision rather than a fixed dependency. See open decision 8.
 
 ## Rules for every change
 
@@ -275,24 +253,20 @@ CI is authoritative for packaging, container, and control-plane checks.
 
 ### Known flakiness in the existing suite
 
-Five `plugin-radius` page suites — `EnvironmentListPage`, `ApplicationListPage`,
-`ResourceTypesListPage`, `ResourceTypeDetailPage`, and `ResourcePage` — exceed Jest's default 5000 ms
-per-test timeout when the repo-wide run executes workspaces in parallel on a loaded machine. Each
-passes reliably in isolation, so this is a timing property of the harness, not a defect in the code
-under test.
+On a loaded machine, five `plugin-radius` page suites exceed Jest's default 5000 ms per-test
+timeout during parallel repository runs: `EnvironmentListPage`, `ApplicationListPage`,
+`ResourceTypesListPage`, `ResourceTypeDetailPage`, and `ResourcePage`. Each passes reliably alone.
+The failures come from test-runner contention, not the product.
 
-This matters more than a normal flake because it interacts with the coverage floors: a timed-out
-suite executes less code, so the run can fail on a threshold rather than on the timeout, pointing
-the reader at the wrong cause. That was observed during Phase 0 — branches reported 30.72% against a
-31% floor purely because seven suites had timed out.
+A timed-out suite runs less code and can fail a coverage threshold, hiding the timeout behind a
+misleading report. During Phase 0, seven timed-out suites lowered branch coverage to 30.72% against
+a 31% floor.
 
-It was recorded rather than fixed while Phases 0–2 froze behavior, because raising `testTimeout`
-during the reference window would change the harness being used as evidence. Phase 1 re-examined it
-after the page suites were rewritten: the actual CI command, `yarn test:all` at the default worker
-count, passed all **53 suites / 427 cases** in **38.257 seconds** on the completed Phase 1 tree. That
-downgrades open decision 7 from an active blocker to an environment-specific guardrail; #360 stays
-open because the original failure occurred only under loaded parallel execution and one clean run
-does not prove the contention mode is gone.
+The baseline work recorded the timeout without raising `testTimeout`, which would change the
+runner being used as evidence. After the Phase 1 page rewrites, CI's `yarn test:all` command passed
+all 53 suites / 427 cases with default workers in 38.257 seconds. Open decision 7 is therefore an
+environment-specific guardrail rather than an active blocker. Keep #360 open: one clean run does
+not rule out the loaded-machine failure.
 
 The diagnostic remains `yarn test:all --maxWorkers=2`. If a future default-worker run fails while
 the reduced-parallelism run passes, the difference identifies contention rather than a product or
@@ -315,17 +289,13 @@ No new test framework is introduced. The existing runners are:
 | Browser                | Playwright 1.62, Chromium                                     |
 | Visual                 | Storybook, screenshotted through Playwright                   |
 
-Two properties of this setup shape the plan.
-
-**The Backstage CLI owns the Jest configuration.** There is no `jest.config.js` and no `jest` key in
-any workspace `package.json` today; `backstage-cli repo test` supplies the config, transform, and
-environment. Coverage floors are therefore expressed as a `jest` key the CLI merges, not as a
-hand-written config that would fight it.
+The Backstage CLI supplies Jest configuration, transforms, and environment. The original tree had
+no `jest.config.js` or workspace `jest` key. Add floors through a `jest` key that the CLI merges,
+not a separate handwritten configuration.
 
 #### Where coverage floors must live
 
-This is the one non-obvious result of Phase 0, and getting it wrong produces a gate that silently
-enforces nothing.
+Per-workspace coverage floors do not protect CI.
 
 CI runs `yarn test:all`, which is `backstage-cli repo test --coverage`. That command runs each
 workspace as a Jest **project**, and Jest rejects `coverageThreshold` inside a project config:
@@ -334,10 +304,8 @@ workspace as a Jest **project**, and Jest rejects `coverageThreshold` inside a p
 Option "coverageThreshold" is not supported in an individual project configuration.
 ```
 
-It prints that as a warning and continues, so a per-workspace floor looks correct in review, passes
-CI, and never fails a build. Confusingly, the same per-workspace floor *does* work when a single
-workspace is run on its own, which makes a local spot-check agree with an expectation that CI does
-not share.
+Jest prints the warning and continues. The same floor works when a workspace runs alone, so a
+local check can pass while repository CI silently ignores the threshold.
 
 Floors therefore live in the **root** `package.json`, as `coverageThreshold` path groups:
 
@@ -351,7 +319,7 @@ Floors therefore live in the **root** `package.json`, as `coverageThreshold` pat
 }
 ```
 
-Two consequences follow from Jest's semantics:
+Jest handles these groups as follows:
 
 - A file matched by a path group is **removed** from the `global` group. Once every source
   directory has a group, `global` measures nothing, reports 0%, and fails the build for a reason
@@ -360,45 +328,34 @@ Two consequences follow from Jest's semantics:
   that hole by requiring an exact `./<workspace>/src/` group or a recorded exemption. A threshold
   on one component subdirectory does not protect the rest of the workspace.
 
-An exemption is used where a floor would be zero — `packages/backend` is 0% covered, and a floor of
-zero is not a floor. The exemption carries the reason and is removed when Phase 1 adds the first
-real test.
+At the baseline, `packages/backend` had 0% coverage. A zero floor would enforce nothing, so the
+policy recorded a justified exemption. Phase 1 removed it after adding the first real test.
 
-The enforcement mechanism is itself verified by a negative test rather than assumed: raising one
-group's floor to 99 must fail the run naming that exact group. `PU-20`–`PU-25` then keep the
-configuration in the shape that works. PU-32–PU-34 reject partial-directory groups, zero,
+Test enforcement by raising one group's floor to 99: the run must fail and name that group.
+`PU-20`–`PU-25` protect the configuration. PU-32–PU-34 reject partial-directory groups, zero,
 negative, non-finite, out-of-range, and missing required percentages. Optional branch/function
-floors, when present, must also be positive.
+floors must also be positive when present.
 
-These are configuration-shape guards, not a historical ratchet: lowering a positive threshold
-to another positive value does not fail them. Review must reject unjustified decreases; automated
-comparison against the base revision is still a Phase 6 deliverable.
+These tests check configuration shape, not historical values. They allow a positive threshold to
+fall to another positive value. Reviewers must reject unjustified decreases until Phase 6 adds
+automatic comparison with the base revision.
 
-Jest is kept for the duration of this plan, and that is a deliberate choice rather than inertia.
-Backstage does not offer a supported Vitest path, so adopting Vitest means leaving the Backstage
-build system for tests and maintaining per-workspace configuration that has to be re-aligned on
-every CLI upgrade. More importantly, a runner migration is incompatible with the mechanism this plan
-depends on: Phases 0–2 freeze current behavior so that the extraction can be diffed against it, and
-changing the runner inside that window makes every failure ambiguous between an extraction fault and
-a migration artifact. The migration also does not address the risk that motivates this work, because
-the tests that cover the graph run in Playwright, which is runner-agnostic. Revisit it as a separate
-change once the baseline is frozen and Phase 4 is complete, or sooner if the Backstage CLI gains
-supported Vitest support. Nothing here depends on Jest specifically; it depends on not changing
-runners mid-extraction.
+Keep Jest during extraction. Backstage has no supported Vitest path at this baseline, so switching
+would require separate workspace configurations and maintenance after CLI upgrades. A runner
+change during Phases 0–2 would also obscure whether failures came from extraction or the runner.
+The graph tests use Playwright and gain nothing from that switch. Reconsider Vitest in a separate
+change after Phase 4, or sooner if the CLI adds supported integration. The requirement is a stable
+runner during extraction, not permanent use of Jest.
 
-**`jest-canvas-mock` is present because React Flow calls canvas APIs that jsdom does not implement.**
-A stubbed canvas can satisfy a render assertion without laying anything out, which is why the graph
-tiers that must not be fooled — Tier B and Tier C — run in real Chromium rather than under Jest.
-jsdom stays useful for the request boundary and for states that contain no graph.
+React Flow calls canvas APIs missing from jsdom, so tests use `jest-canvas-mock`. A stubbed canvas
+can pass a render assertion without laying out a graph. Run Tier B and C tests in real Chromium.
+Keep jsdom for request handling and states without a graph.
 
-**The two repositories do not share a runner.** `ai-extensions` uses Vitest; dashboard uses Jest.
-`graph-react` will therefore be authored and tested under Vitest upstream and consumed under Jest
-here, so its published artifact crosses a runner, module-format, and transform boundary on the way
-in. That seam is what the installed-artifact requirements (IA-01–IA-08) and the consumer pin
-(CP-01–CP-05) exist to cover; passing tests upstream are not evidence that the package works in this
-host. The boundary follows from ownership, not from tooling preference, so converting dashboard to
-Vitest would not remove it — and testing a dependency with the same runner its author used is weaker
-evidence, not stronger, because it can hide packaging and interop faults.
+Ai-extensions tests graph-react with Vitest; dashboard consumes it under Jest. The published
+artifact crosses runner, module-format, and transform boundaries. IA-01–IA-08 and CP-01–CP-05 test
+that crossing; upstream tests cannot prove that the package works here. Repository ownership
+creates the boundary regardless of runner choice. Using the author's runner can hide packaging
+and interop faults rather than expose them.
 
 ### Layers
 
@@ -412,14 +369,13 @@ evidence, not stronger, because it can hide packaging and interop faults.
 | L6    | Record diff       | Playwright + a normalizer   | The graph record for each fixture, diffed against the frozen baseline      |
 | L7    | Visual            | Storybook + Playwright      | Reviewed screenshots of stable states                                      |
 
-The graph spans L5 and L6 rather than L1. Once the renderer is owned by `graph-react`, a
-dashboard-side pure-model test would be testing someone else's package; what the dashboard must
-keep proving is that the rendered result is still correct in its own host.
+Test the dashboard graph at L5 and L6. Graph-react owns pure-model behavior after extraction;
+dashboard must prove that the installed package still renders correctly in its host.
 
 ### Boundaries the rearchitecture creates
 
-The rearchitecture turns one implicit boundary into several explicit ones, and moves two of them
-into another repository. Each gets its own layer so a failure lands at the smallest honest scope.
+Extraction separates host, plugin, shared-package, and graph responsibilities. Two move across
+repositories. Test each boundary separately so a failure identifies the smallest affected scope.
 
 ```mermaid
 graph TD
@@ -443,19 +399,17 @@ graph TD
 
 ### What the graph rework breaks, and why it matters
 
-`AppGraph.tsx` currently mixes normalization, layout, and rendering, and keeps module-level mutable
-state — a single shared `Dagre.graphlib.Graph` reused across every call to `getLayoutedElements`,
-which accumulates nodes and edges across renders. That state is both a correctness risk and the
-reason the current code cannot be tested in isolation. It is also being deleted, which is why this
-plan spends its effort on behavior that survives the deletion rather than on the code that does not.
+The reviewed `AppGraph.tsx` mixed normalization, layout, and rendering. Every
+`getLayoutedElements` call reused a module-level `Dagre.graphlib.Graph`, accumulating nodes and edges
+across renders and preventing isolated tests. The later #355 fix removed that state. Extraction
+will replace the remaining internals, so tests must protect rendered behavior rather than pin the
+code being deleted.
 
 ### Graph test taxonomy
 
-The graph is the hardest thing in this plan to test, because the consolidation deliberately
-replaces the node objects, the edge objects, the layout engine inputs, and the rendered markup.
-Any test that asserts the *shape* of those objects is guaranteed to break and will teach us
-nothing when it does. Every graph test is therefore classified by whether it is **allowed to
-break**, and that classification is written in the test file.
+Consolidation replaces node and edge objects, layout inputs, and markup. Tests of those internal
+shapes will break even when the graph remains correct. Mark each test with a tier that states
+whether extraction may change its assertion.
 
 | Tier | Kind                  | Asserts                                                                | Allowed to change?                            |
 | ---- | --------------------- | ---------------------------------------------------------------------- | --------------------------------------------- |
@@ -465,57 +419,47 @@ break**, and that classification is written in the test file.
 | D    | Visual baseline       | Reviewed screenshots of selected stable states                         | **Yes**, with a stated product reason.        |
 | E    | Implementation unit   | Internals of the current model and layout                              | **Deleted** with the code it describes.       |
 
-#### Tier A — invariants
+#### Tier A: invariants
 
-Properties that must hold for any correct graph implementation, expressed without naming a single
-internal field. These are written once and are expected to survive the extraction untouched. They
-are the primary regression net.
+State properties every correct graph must satisfy without naming internal fields. Write these
+tests once and keep them unchanged through extraction.
 
 Examples: every resource yields exactly one node; every retained connection yields exactly one
 edge; every edge endpoint resolves to a node that exists; node ids are unique; the same input
 produces the same output twice in a row; rendering graph A then graph B equals rendering graph B
 alone; every node receives a finite position; no two node bounding boxes overlap.
 
-#### Tier B — semantic and observable
+#### Tier B: semantic and observable
 
-What the product actually promises. Asserted through accessible roles and names and through the
-rendered output, never through React Flow or Dagre internals. A user can find a node by its
-resource name; a connection between two named resources is represented; zoom and fit controls are
-operable; the empty graph states that it is empty; a failed graph states that it failed.
+Test what users can see and operate through accessible roles, names, and rendered output. A user
+can find a resource by name, see connections between named resources, and operate zoom and fit.
+Empty graphs report that they are empty; failed graphs report the failure. Do not inspect React
+Flow or Dagre internals.
 
-These are the tests the design requires to exist **before** extraction, driven in a real browser
-against the real renderer rather than a test double. Today `ApplicationTab.test.tsx` replaces
-`AppGraph` with a double, so no such coverage exists.
+Run these tests in a real browser with the real renderer before extraction.
+`ApplicationTab.test.tsx` replaces `AppGraph` with a double and cannot provide that coverage.
 
-#### Tier C — record diff, and how we verify we changed what we expected
+#### Tier C: record diff, and how we verify we changed what we expected
 
-This is the mechanism that answers the question directly. Snapshotting React Flow's node objects
-would produce an unreadable diff full of incidental churn. Instead, each fixture is rendered and
-reduced by a single normalization function to a **graph record**: a sorted, stable, semantic
-projection.
+Render each fixture and use one normalizer to produce a sorted, stable graph record. A snapshot
+of React Flow's node objects would bury meaningful changes in internal object churn.
 
-A record contains, per node, the resource id, the displayed label, the displayed type, the icon
-identity, and the status badge with its accessible name. It contains, per edge, the resolved source
-and target ids and the direction. It deliberately omits layout coordinates, colours, class names,
-element nesting, transform matrices, and anything else that is presentation detail rather than
-meaning.
+A record stores each node's resource id, displayed label and type, icon identity, and status badge
+with its accessible name. For each edge, it stores resolved source and target ids and direction.
+It omits coordinates, colours, class names, nesting, transform matrices, and other presentation
+details.
 
-Coordinates are omitted on purpose. They are produced by Dagre, not by the dashboard, so recording
-them would pin a third-party layout algorithm's output as if it were dashboard semantics, and any
-Dagre upgrade would surface as a wall of record churn that reviewers learn to wave through. The
-properties that actually matter about layout — every node receives a finite position, no two node
-bounding boxes overlap, and rendering order does not change the result — are asserted directly as
-invariants in Tier A (GU-08, GU-09) where a failure names the violated property.
+Dagre produces coordinates. Recording them would make each layout-algorithm upgrade churn the
+baseline without explaining whether users lost anything. Tier A instead checks the required
+properties: finite positions, no overlapping node boxes, and independence from render order.
+GU-08 and GU-09 name the violated property when they fail.
 
-Where the renderer does not yet supply a value, the record stores the explicit sentinel
-`not-yet-populated` rather than `null`. The distinction matters: `null` is a value the renderer
-could legitimately produce, so a record full of `null` icons is indistinguishable from a renderer
-that deliberately cleared them. The sentinel says "this field has never been populated by any
-renderer", which is what #35 and #89 actually describe, and it makes the defect predicates in
-GU-23 test a stated condition instead of a coincidence.
+Use `not-yet-populated` when the renderer has never supplied a field. A legitimate renderer could
+return `null` to clear an icon, so `null` cannot distinguish that choice from the missing features
+in #35 and #89. The sentinel lets GU-23 test the actual missing-field condition.
 
-The records are generated from the current implementation and committed in Phase 2, before any
-extraction. The extraction pull request regenerates them and CI diffs old against new. Then:
+Generate and commit records from the current implementation in Phase 2, before extraction.
+Regenerate them in the extraction PR and compare old and new in CI:
 
 - **A difference that is not listed in the expected-change manifest fails the check.**
 - The manifest is a committed file. Each entry names the fixture, the record field, the old value,
@@ -525,53 +469,43 @@ extraction. The extraction pull request regenerates them and CI diffs old agains
 - The manifest is emptied at the end of each extraction phase, so it never becomes a permanent
   allowlist.
 
-Because the record carries no coordinates, an equivalent layout does not produce a diff at all. A
-node that moves to a different region of the graph is caught by the Tier A layout invariants rather
-than by record churn.
+Equivalent layout changes produce no record diff. Tier A checks required layout properties
+instead of comparing node coordinates.
 
-#### Tier D — visual baselines
+#### Tier D: visual baselines
 
-Screenshots cover what the record deliberately discards: colour, spacing, clipping, and theme.
-Reviewed by a human, re-baselined only with a stated product reason. See Appendix D.
+Capture colour, spacing, clipping, and themes in screenshots. A reviewer must approve each new
+baseline for a stated product reason. See Appendix D.
 
-#### Tier E — implementation units
+#### Tier E: implementation units
 
-Tests that describe the current `initialNodes`, `getLayoutedElements`, and `ResourceNode`
-internals. They are valuable now and are **expected to be deleted**, not migrated, when the code
-they describe moves to `graph-react`. The design is explicit that tests move with extracted code
-and that dashboard test implementations are not copied into `ai-extensions`. Deleting a Tier E test
-requires that the behavior it protected is covered by a Tier A, B, or C test that stays here.
+Tier E tests describe `initialNodes`, `getLayoutedElements`, and `ResourceNode` internals. Delete
+them when those implementations move to graph-react. Relevant shared-code tests move with the
+extracted code; do not copy dashboard test implementations into ai-extensions. Before deleting a
+Tier E test, identify the Tier A, B, or C test that continues to protect its dashboard behavior.
 
 #### Not blessing existing defects
 
-Characterization records capture what the code does today, including what it does wrong. The design
-requires that the frozen baseline not bless existing defects. Each known defect is recorded in the
-baseline **and** tagged `KNOWN-DEFECT` with a linked issue, which marks its record fields as
-expected to change. Two remain: the gateway inbound-to-outbound correction in `initialNodes`, which
-compensates for an upstream direction bug; and the divergence where resource reads select the first
-cluster while the graph request selects the last. A third — the shared module-level Dagre graph
-(#355) — was characterized first and then fixed during review; see below. A `KNOWN-DEFECT` field
-that does **not** change during extraction is also reported, so a defect cannot be silently carried
-forward.
+Records capture existing behavior, including defects. Tag each defect `KNOWN-DEFECT`, link its
+issue, and mark its fields as expected to change. Two cases remain here: `initialNodes` corrects
+gateway direction to compensate for an upstream bug, and resource reads choose the first cluster
+while graph requests choose the last. Review fixed a third case, shared Dagre state (#355), after
+recording it. Report unchanged `KNOWN-DEFECT` fields too, so extraction cannot carry them forward
+silently.
 
-`KNOWN-DEFECT` tests are characterization pins, not correctness invariants, even when colocated
-with Tier A tests. Fixing a linked defect must replace its pin with the desired-behavior regression
-test in the same reviewed change. #355 is the worked example: the Dagre graph was a module-level
-singleton, so every layout accumulated the previous application's nodes and edges. GU-08 originally
-pinned that with an inequality. On maintainer request the singleton was moved inside
-`getLayoutedElements`, and GU-08 now asserts the equality it always should have: rendering graph A
-then graph B produces the same result as rendering graph B alone, in both orderings. The
-`jest.isolateModules` machinery that existed only to observe the leak went with it. Record the
-issue, old/new behavior, and affected fixture fields in the expected-change manifest when graph
-records are available. This narrow exception never permits weakening unrelated topology, rendering,
-or interaction assertions.
+`KNOWN-DEFECT` assertions record current behavior, not correctness, even beside Tier A tests.
+Replace the assertion with a desired-behavior regression test in the same reviewed fix. For #355,
+GU-08 originally recorded unequal layouts caused by accumulated nodes and edges. Moving graph
+creation inside `getLayoutedElements` made sequential and standalone layouts equal in both
+orderings. GU-08 now asserts that equality, and the `jest.isolateModules` leak-detection code is
+gone. When records exist, list the issue, old/new behavior, and affected fields in the
+expected-change manifest. Never weaken unrelated topology, rendering, or interaction assertions.
 
 ## Phases
 
-### Phase 0: record the behavior — **done**
+### Phase 0: record the behavior (done)
 
-Write down what ships today, then make it enforceable. No production behavior changes in this
-phase.
+Record shipped behavior and add checks that enforce it. Change no production behavior in this phase.
 
 Deliverables:
 
@@ -586,44 +520,43 @@ Deliverables:
   shapes the graph must handle. **Deferred to Phase 2**, where the records that consume them are
   built; extracting fixtures with no consumer would freeze a shape nothing reads.
 
-What executing this phase changed beyond the deliverables:
+Phase 0 also changed the following:
 
-- The plugin's dead duplicate of `resourceId.ts` was deleted and its test moved to the package it
-  actually imported from. Recording behavior surfaced a file that no longer had any.
+- The plugin's unused `resourceId.ts` copy was deleted. Its test moved to the package it actually
+  imported.
 - Threshold enforcement was verified with a negative test rather than assumed, which is what
   exposed the project-config trap.
 
 Completion evidence: `yarn test:all` fails if coverage drops, demonstrated by raising one group's
 floor and observing the named failure; Appendix A matches the tree; PU-20–PU-25 and PU-31–PU-35
-keep the configuration in the only shape that enforces anything.
+keep the configuration enforceable.
 
-### Phase 1: harden existing behavior — **done**
+### Phase 1: harden existing behavior (done)
 
 Close the twenty-four substantive gaps in Appendix F and deepen the fifteen one-case smoke tests.
 Cover the domain logic and every shipped page in loading, empty, populated, and error states.
 
 Priority order, highest regression risk first:
 
-1. `resources/resource.ts`, `resourceId.ts`, `resourceTypes.ts` — the domain model every page reads.
+1. `resources/resource.ts`, `resourceId.ts`, `resourceTypes.ts`: the domain model every page reads.
    `resourceId.ts` is **done**: the existing suite is now tagged RU-01 (well-formed ids) and RU-02
    (rejected ids) against the live `rad-components` implementation, including two `KNOWN-DEFECT`
    cases recording inputs it wrongly rejects (names containing `.` or `_`, and resource types
    containing a digit). Both are legal Radius names. `resource.ts` (RS-01–RS-14) and
    `resourceTypes.ts` are also covered.
 2. `ResourceListPage`, `ResourceLayout`, `OverviewTab`, `DetailsTab`, `ApplicationResourcesTab`,
-   `EnvironmentResourcesTab` — the untested spine of resource navigation.
-3. `RecipeListPage`, `RecipeTable` — untested rendering over already-tested aggregation.
-4. `ApplicationListInfoCard`, `EnvironmentListInfoCard` — the two exported cards a consumer can
+   `EnvironmentResourcesTab`: untested resource navigation.
+3. `RecipeListPage`, `RecipeTable`: untested rendering over already-tested aggregation.
+4. `ApplicationListInfoCard`, `EnvironmentListInfoCard`: the two exported cards a consumer can
    embed without a route.
 5. `packages/app` `Root`, `HomePage`, `LearnCard`, `CommunityCard`, `SupportCard`.
 6. `plugin-radius-backend/src/service/router.ts` registration and router behavior. Its `index.ts`
    is a barrel, not the registration itself.
 
-Every page test must assert the error path. Today no page test asserts what a user sees when the
-Kubernetes proxy returns a non-OK response, yet `makeRequest` throws on every such response.
+Every page test must check the error path. Before Phase 1, no page test checked what users saw
+after a non-OK Kubernetes proxy response, although `makeRequest` throws on each one.
 
-**Done so far.** Beyond `resourceId.ts` above, the pages that were at or near 0% statement coverage
-now have suites, all of which assert the error path:
+The following pages and components now have suites with error-path assertions:
 
 - `RecipeListPage` (RE-01–RE-08). The aggregation already had unit tests, but nothing exercised the
   asynchronous half of the feature: the pack ids live on the environment and each pack is fetched
@@ -651,11 +584,10 @@ now have suites, all of which assert the error path:
   (DT-01–DT-03), `ApplicationResourcesTab` (AR-01–AR-03), `EnvironmentResourcesTab` (EV-01–EV-03),
   and `ResourceLayout` (LY-01–LY-04).
 
-**Four defects surfaced while writing these**, all filed and pinned: #361, #362, #363, and the
-wider blast radius of #352. See "Tracked defects".
+Those tests exposed #361, #362, #363, and further effects of #352. Each has a filed issue and a
+characterization assertion. See "Tracked defects."
 
-Three traps are worth recording, because in each case the obvious assertion passes or fails for a
-reason unrelated to the behavior under test.
+Three query choices can make assertions pass or fail for the wrong reason.
 
 `ResponseErrorPanel` renders its message twice, in the summary heading and again in the expanded
 detail list, so `getByText` fails there with "found multiple elements". Assert on all matches.
@@ -663,19 +595,17 @@ detail list, so `getByText` fails there with "found multiple elements". Assert o
 `LinkButton` renders an anchor with `role="button"`, not `role="link"`, so a `getByRole('link')`
 query for an action button finds nothing while the correct href is sitting in the DOM.
 
-Most importantly: a name appearing on the page is not evidence it appears in the list. The
-application's own name is in the breadcrumbs *and* in the Application column of every row it owns;
-an environment's name is in the Environment column of each of its resources. Whole-page and even
-whole-table queries therefore cannot distinguish "the parent is wrongly listed as its own child"
-from "the rows correctly say which parent they belong to". AR-03 and EV-03 read the Name column
-specifically. Both originally passed against the wrong evidence. Their parent fixtures must also
-have matching membership properties: with empty properties, the ordinary membership predicate
-already excludes the parent and a missing explicit self-ID filter remains invisible.
+A name on the page does not prove that it appears as a list item. An application's name appears
+in breadcrumbs and its resources' Application column; an environment's name appears in its
+resources' Environment column. Query the Name column in AR-03 and EV-03 to distinguish a parent
+listed as its own child from a correct parent label. Both tests originally passed on the wrong
+text. Give parent fixtures matching membership properties too. Empty properties exclude the
+parent before the self-ID filter runs and hide a missing filter.
 
-This moved `plugins/plugin-radius` from 61.22% to **69.19%** statements, 46.23% to **58.79%**
-functions, and 33% to **46.74%** branches, and the floors are raised accordingly.
+These tests raised `plugins/plugin-radius` statement coverage from 61.22% to 69.19%, function
+coverage from 46.23% to 58.79%, and branch coverage from 33% to 46.74%. The floors rose with them.
 
-**Closing increment.** The remaining Appendix F files are now covered. In `plugin-radius`:
+The closing Phase 1 increment covered the remaining Appendix F files. In `plugin-radius`:
 `RecipeTable` (RK-01–RK-10, including the empty, populated, and per-resource-type-row cases and the
 recipe-name-to-source mapping), `routes.ts` (RO-01–RO-07), `features.ts` (FF-01–FF-05), and
 `resources/resource.ts` (RS-01–RS-14). In the hosts: `packages/app`'s `Root`, `HomePage`, the three
@@ -687,16 +617,13 @@ which let its coverage exemption be deleted and replaced by a measured floor (PU
 The backend plugin registration and lifecycle are now pinned by BE-01–BE-05, taking
 `plugin-radius-backend` from 62.50/n/a/50.00/71.43 to **93.75/n/a/100/100**.
 
-Three things the closing increment had to work around, none of them defects in the code under test.
-`resources/resource.ts` emits no JavaScript, so RS is written as compile-time characterization:
-exact-type and optional-key helpers assert the intended model property rather than accepting any
-unrelated TypeScript error. When #365 is fixed, RS-14 is deleted and replaced with assertions for
-the corrected model rather than inverted into a permanent defect assertion. `packages/backend`'s
-entry point is nothing but `backend.add(import(…))`, which the CLI's
-default SWC options leave as a native dynamic import that Jest's CJS runtime refuses to execute;
-the workspace therefore carries a documented `jest.transform` override. And Backstage appends a
-visually hidden `", Opens in a new window"` to the accessible name of every external link, so the
-home-card href assertions match on a prefix rather than an exact string.
+The tests also account for three test-environment constraints. `resources/resource.ts` emits no
+JavaScript, so RS uses compile-time exact-type and optional-key assertions. An unrelated TypeScript
+error cannot satisfy them. Fixing #365 must replace RS-14 with corrected-model assertions, not
+preserve the defect. The backend entry uses `backend.add(import(…))`; default SWC output leaves
+native dynamic imports that Jest's CJS runtime rejects. The workspace therefore documents a
+`jest.transform` override. Backstage also appends a hidden `", Opens in a new window"` to external
+link names, so home-card href queries match a prefix.
 
 **Outstanding:** the cluster-selection divergence (#356), which Phase 2 covers with the connection
 regression cases rather than a colocated unit test.
@@ -705,11 +632,10 @@ Completion evidence: RU-01–RU-14, every component prefix listed in Appendix B,
 pass; every substantive file in Appendix F has a direct test or is a barrel/infrastructure file
 covered indirectly; coverage floors are raised to the new measured values.
 
-### Phase 2: freeze the pre-extraction baseline — **done**
+### Phase 2: freeze the pre-extraction baseline (done)
 
-The design requires real-renderer journeys before any graph or domain implementation moves. This
-phase is the reason the extraction can be reviewed at all, and it is the phase most likely to be
-skipped under schedule pressure. Nothing in Phase 4 may start until this is frozen.
+Freeze real-renderer journeys before moving graph or domain code. They let reviewers compare
+extraction against known behavior. Phase 4 cannot start before this baseline is frozen.
 
 - Add dashboard-owned browser journeys that drive the **real** renderer and the real stylesheet
   against deterministic fake Kubernetes and UCP responses. No `AppGraph` test double.
@@ -735,10 +661,9 @@ derived from the builder or its parser. GU-02a demonstrates that redirected, rev
 and extra edges fail those assertions, including count-preserving duplicates in the multi-tier
 graph. This is model-level assertion sensitivity, not the pending GU-20 real-renderer/CSS check.
 
-They are written against `buildGraphModel` in `packages/rad-components/src/graphModel.ts` rather
-than against `initialNodes` directly. That indirection is the point: Tier A must survive extraction
-unchanged (apart from reviewed linked-defect replacements), so it must not name the implementation
-being extracted. Phase 4 repoints that one adapter at the shared package and the invariants keep running.
+Tier A tests call `buildGraphModel` in `packages/rad-components/src/graphModel.ts` rather than
+`initialNodes`. Phase 4 can point that adapter at the shared package while keeping the assertions
+unchanged, except for reviewed linked-defect replacements.
 
 The semantic normalizer is `packages/rad-components/src/graphRecord.ts`. It emits only sorted node
 and edge meaning: ids, labels, types, the currently unpopulated icon/status semantics recorded as
@@ -748,30 +673,24 @@ coordinates. All fourteen records are committed under
 record changes, GU-23 reports known defects whose own invariant is still violated as carried
 forward, and GU-24 keeps the manifest empty between extraction phases.
 
-GU-22 alone is not sufficient, because it compares generated records against the committed ones: a
-change that edits a record file and the renderer together satisfies it without consulting the
-manifest. GU-25 closes that by diffing the committed records against the base branch, where the
-previous baseline still exists, so a silently rewritten baseline has to be declared. It resolves the
-base commit from `GRAPH_RECORD_BASE_REF`, then `origin/main`, and fails rather than skipping when no
-base is reachable; the build workflow checks out full history so the base is present. A record that
-does not exist at the base is a new fixture, not a mutated baseline, and needs no entry.
+GU-22 compares generated and committed records. Editing both the renderer and record could pass it
+without declaring the change. GU-25 also compares committed records with the base branch and
+requires a manifest entry for changed baselines. It resolves `GRAPH_RECORD_BASE_REF`, then
+`origin/main`, and fails if neither is reachable. The build workflow checks out full history.
+A record absent at the base belongs to a new fixture and needs no baseline-change entry.
 
-The corpus is authored in `Applications.Core/*` and `Applications.Datastores/*` rather than the
-`Radius.*` namespace that `main` now defaults to (#327). That is deliberate and not an oversight.
+The corpus uses `Applications.Core/*` and `Applications.Datastores/*`, although `main` defaults
+to `Radius.*` (#327), to reach the legacy branches under review.
 `AppGraph.tsx` compares against the literal strings `Applications.Core/containers` (line 93, layout
 order) and `Applications.Core/gateways` (line 122, the inbound-to-outbound edge workaround). A
-`Radius.*` corpus would fall through both branches, so it would approve records that never reach the
-code the records exist to characterize — in particular the gateway workaround would go unexercised.
-The namespace-insensitivity is itself a product defect, filed as #373. Once the comparisons are
-namespace-aware, migrating the corpus becomes a single declared change that also gains a real
-assertion, instead of two rename rounds that gain nothing.
+`Radius.*` corpus would skip both branches, including the gateway workaround the records must
+characterize. The hard-coded namespace checks are defect #373. Once those checks accept both
+namespaces, one declared corpus migration can add useful assertions instead of two rename rounds.
 
-Known defects are tracked by invariant, not by record field. Each entry in `knownGraphDefects`
-carries an `isPresent` predicate that reads the violated invariant — a dangling edge endpoint, a
-self-edge, duplicate node ids, absent icons, absent status badges — straight off the record. Field
-tracking was weaker: any descendant change under a declared field cleared the defect, so populating
-`nodes.0.icon` would have suppressed a still-live duplicate-id defect. GU-23b pins each predicate
-against both a healthy and a violating record so none of them can degrade into a constant.
+Each `knownGraphDefects` entry has an `isPresent` predicate for its violated invariant: dangling
+endpoints, self-edges, duplicate ids, missing icons, or missing badges. Tracking changed fields
+instead would let a populated `nodes.0.icon` clear an unrelated duplicate-id defect. GU-23b tests
+each predicate against healthy and violating records so a constant predicate cannot pass.
 
 The direct renderer spec at `packages/rad-components/e2e-tests/appGraph.test.ts` covers true
 component unmount/remount determinism and scheduled-work cleanup, the renderer's existing
@@ -791,8 +710,7 @@ key, and ER-08 records the silent partial-inventory result. A separate applicati
 proves late results are ignored but the superseded network request is not cancelled. Each incorrect
 behavior is linked below rather than being normalized into the baseline.
 
-Writing the invariants immediately found four defects that no existing test could have caught,
-which is the argument for doing this before the extraction rather than after:
+The invariants found four defects before extraction that the existing tests could not detect:
 
 - `initialNodes` **mutates its input**, rewriting `connection.direction` in place. A caller that
   renders the same graph object twice gets different input the second time (GU-05b).
@@ -804,24 +722,22 @@ which is the argument for doing this before the extraction rather than after:
 - A **self-referential connection** produces a self-loop (GU-06a), and **duplicate resource ids**
   produce duplicate node ids, one of which React Flow silently discards.
 
-The module-level Dagre graph was pinned by GU-08, and then fixed. Detecting it required
-`jest.isolateModules`: the leaked state lived in a module-level binding, so the first layout in a
-test file polluted every later one and there was no clean measurement left to compare against. A
-naive version of that test passes while the defect is present. During review the maintainer asked
-for the underlying bug rather than a longer-lived characterization, so `getLayoutedElements` now
-constructs its own graph per call, GU-08 asserts equality between the sequential and standalone
-layouts in both orderings, and the isolation machinery is gone. #355 is closed by this change.
+GU-08 first recorded the Dagre state leak with `jest.isolateModules`. Without module isolation, the
+first layout polluted later measurements and could let the defective code pass. During review,
+the maintainer requested a fix. `getLayoutedElements` now creates a graph per call, and GU-08
+compares sequential and standalone layouts for equality in both orderings. The isolation code is
+gone, and that fix closed #355.
 
 Completion evidence: GU-01–GU-25, CN-01–CN-08, and ER-01–ER-10 pass; all records are
 committed; GU-20 demonstrates the suite cannot pass against a stub or without the stylesheet.
 The repository run is 54 suites / 460 cases, and the Playwright run is 2 specs / 13 cases.
 
-### Phase 3: plugin contract and packaging — **done**
+### Phase 3: plugin contract and packaging (done)
 
-Make the current package a tested artifact contract before release decisions or shared-package
-consumption. This phase is dashboard-owned and independent of `ai-extensions`.
+Test the current package before selecting release settings or adopting shared packages.
+Dashboard owns this phase; it needs no ai-extensions release.
 
-The source contract is now the intended consumer contract:
+The current source entry now exposes the intended consumer contract:
 
 - The workspace and host retain `@internal/plugin-radius` and the package remains private while
   final naming and publishability stay deferred. It declares the Backstage plugin metadata needed
@@ -834,14 +750,12 @@ The source contract is now the intended consumer contract:
   The test uses the production plugin and route table with deterministic Kubernetes/UCP responses,
   so a wrong import, missing component export, or unresolved route fails in the browser.
 
-`packagingArtifact.test.ts` supplies the built and local-artifact evidence. It is **not** part of
-the repository Jest run: it performs a real `yarn build` and `yarn pack`, and Backstage's `prepack`
-rewrites workspace manifests on disk while it does, so it runs alone under `yarn test:package` as
-its own CI step. That removes the filesystem race with `packaging.test.ts`, which now reads those
-manifests with a plain read instead of a spin-lock, and means a run killed mid-pack cannot leave a
-tracked manifest rewritten behind other passing tests. PP-01 pins the script and the CI step so the
-suite cannot quietly stop running. Its tarballs and consumer fixture live in a private
-`os.tmpdir()` directory, because the cleanup is a recursive delete.
+`packagingArtifact.test.ts` runs a real `yarn build` and `yarn pack`. Backstage's `prepack` rewrites
+workspace manifests, so run this suite alone through `yarn test:package` in its own CI step, outside
+repository Jest. This avoids racing with `packaging.test.ts`, which reads manifests without a
+spin-lock. A killed pack run can no longer leave rewritten manifests hidden behind passing
+concurrent tests. PP-01 requires the script and CI step. Store tarballs and the consumer fixture
+in a private `os.tmpdir()` directory so recursive cleanup cannot affect repository files.
 
 - PU-26 builds the plugin and compares the named runtime exports in `dist/index.esm.js` with the
   source entry point.
@@ -856,18 +770,15 @@ suite cannot quietly stop running. Its tarballs and consumer fixture live in a p
   workspace ranges, and absence of shipped `src` content are enforced. It does not assert the
   `private` flag or the license, which are release checklist items.
 
-The current import boundary is non-vacuous: PB-04 finds the host's real plugin imports and requires
-every one to use the package entry point. PB-01a and PB-02a do the equivalent for the current
-`rad-components` dependency and reject private source reach-ins.
+PB-04 must find real host imports and require every one to use the plugin entry point. PB-01a and
+PB-02a apply the same check to rad-components and reject private source imports. An empty scan
+cannot pass as evidence.
 
-This does **not** claim the final shared-package or installed-host qualification early. PB-01–PB-03
-and PB-05 name `core` and `graph-react` contracts that do not exist in this repository until
-Phase 4; PU-29 is also a Phase 4 forwarding/deletion check. Phase 5 owns the fully clean package
-manager installation, transitive candidate proof, CSS/build output, peer-React tree, nested/base-path
-host mounting, and IA-01–IA-08. Phase 3's extracted local-tarball consumer deliberately proves the
-current artifact without representing that later external-host gate. Final package naming,
-publishability, and license/notice qualification remain release decisions and are not advanced by
-this phase.
+Phase 3 proves the current local tarball, not final shared-package or installed-host support.
+PB-01–PB-03 and PB-05 apply when Phase 4 adds core and graph-react; PU-29 checks forwarding/deletion
+there too. Phase 5 covers clean package-manager installs, transitive resolution, CSS/build output,
+React peers, nested/base-path mounting, and IA-01–IA-08. Final package names, publication settings,
+and license/notices remain release decisions.
 
 ### Phase 3A: native Radius frontend and backend audit
 
@@ -933,14 +844,14 @@ This maps to design unit P8c and depends on 3B plus native support for every req
 - Advance the supported-consumer pin through review and qualify the native host against candidate
   shared packages when Phase 4 provides them. Preserve the coherent rollback tuple.
 
-Completion evidence: FS-13-FS-16 pass. All required surfaces run natively; no required app helper
-or third-party plugin converter remains. A documentation claim or a source-import scan alone
-does not prove this; the built native host must run the same journeys.
+Completion evidence: FS-13-FS-16 pass. All required surfaces run natively without required app
+helpers or third-party converters. Run the same journeys in the built host; documentation and
+source scans alone cannot prove completion.
 
 ### Phase 4: consume shared packages and remove duplicates
 
-This is the extraction. The plugin switches to `@radius-project/core` and
-`@radius-project/graph-react`, and the superseded dashboard implementations are deleted.
+Switch the plugin to `@radius-project/core` and `@radius-project/graph-react`, then delete the
+replaced dashboard implementations.
 
 - Regenerate the graph records and diff them against the Phase 2 baseline. Every difference must
   map to an entry in `graph-expected-changes.md`; an unexplained difference fails the check.
@@ -1053,33 +964,31 @@ frontend entry and backend package set in the release/rollback tuple.
 
 ### Phase 9: migrate the test corpus from `Applications.Core` to `Radius.*`
 
-Almost the entire test corpus is written against the legacy `Applications.Core` namespace. That was
-correct when it was written and is becoming wrong. This phase moves it.
+Most test fixtures use legacy `Applications.Core` types. Add current `Radius.*` coverage without
+losing tests for legacy types that remain supported.
 
-Scope of the problem, measured by `git grep -c`: `Applications.` appears in **40 files** across
+At the plan's measurement, `git grep -c` found `Applications.` in 40 files across
 `plugins/plugin-radius` and `packages/rad-components`, including every graph fixture added in
 Phase 2, `sampledata.ts`, and 57 occurrences in `api.test.ts` alone. `Radius.` appears in 15. The
-dashboard's own UI already leans the other way — `ResourceTypesTable.tsx` sets
+dashboard's UI already hides those types: `ResourceTypesTable.tsx` sets
 `EXCLUDED_NAMESPACES = ['Applications.', 'Microsoft.']`, so the resource types page deliberately
 hides the namespace nearly all of our tests are written in.
 
-**One correction to the premise, which changes the urgency but not the direction.** As of the
-research done for this plan, `Applications.Core` is **not formally deprecated**. There is no
+The plan's research found no formal deprecation of `Applications.Core`: no
 announcement, issue, or release note declaring it deprecated and no stated removal release; the
 `Applications.*` providers are still registered out of the box in
 `deploy/manifest/built-in-providers/self-hosted/`; the Dapr integration documentation states the
 legacy types "remain supported" for that integration and there is no `Radius.Dapr` namespace at all;
-and the `Radius.*` types are still **preview-gated** behind `--preview` / `RADIUS_PREVIEW=true`. The
+and the `Radius.*` types are still preview-gated behind `--preview` / `RADIUS_PREVIEW=true`. The
 v0.59 release notes say only that `Radius.Core` "will eventually replace the existing
-`Applications.Core` types". There is also **no migration guide** in the docs.
+`Applications.Core` types". The docs contain no migration guide.
 
-So this is not a deadline-driven migration. It is driven by the fact that we are about to freeze a
-behavioral baseline and then rearchitect against it, and freezing a baseline that describes only the
-legacy model bakes legacy assumptions into the thing that is supposed to detect regressions.
+No announced deadline drives this work. A baseline limited to legacy types would preserve legacy
+assumptions in the tests meant to detect migration regressions.
 
-**It is not a namespace rename, and planning it as one will fail.** `Radius.Core` contains only five
-first-class types — `applications`, `environments`, `recipePacks`, `terraformSettings`,
-`bicepSettings`. Everything else became a **user-defined resource type** registered from a YAML
+This requires model changes, not a namespace rename. `Radius.Core` contains five first-class types:
+`applications`, `environments`, `recipePacks`, `terraformSettings`, and `bicepSettings`.
+Other types became user-defined resource types registered from YAML
 manifest, spread across `Radius.Compute`, `Radius.Data`, `Radius.Security`, `Radius.Messaging`,
 `Radius.Storage`, and `Radius.AI`. Some legacy types have no successor at all.
 
@@ -1099,20 +1008,19 @@ manifest, spread across `Radius.Compute`, `Radius.Data`, `Radius.Security`, `Rad
 | `Applications.Messaging/rabbitMQQueues`    | `Radius.Messaging/rabbitMQ`     | Note the dropped `Queues` suffix                                 |
 | `Applications.Dapr/*`                      | **no successor**                | Dapr still requires the legacy types; keep this fixture coverage  |
 
-The last row matters for scope: this phase is not "delete every `Applications.*` fixture". Dapr
-coverage must stay on the legacy types, so the corpus ends up deliberately mixed, and the tests need
-to say which namespace they are exercising and why.
+Keep Dapr fixtures on legacy types. The corpus must cover both namespaces, and each test must
+state which namespace it exercises and why.
 
-What actually differs, and therefore what the fixtures must change:
+Update fixtures for these differences:
 
 - **Resource ids.** The overall shape is unchanged, but three real forms break the current parser.
   Type names may contain **digits** (`Radius.Data/neo4jDatabases`); the normative rule is
   `^[a-z][A-Za-z0-9]+$`, against our `[a-zA-Z]+`. Namespaces may contain digits too, normatively
   `^[A-Z][A-Za-z0-9]+\.[A-Z][A-Za-z0-9]+$`. And globally-scoped recipe packs produce ids with **no
-  `resourceGroups` segment at all** — `/planes/radius/local/providers/Radius.Core/recipePacks/kubernetes-pack`
-  — which our regex requires unconditionally. This is the same parser as the one already failing on
-  `.` and `_`; the two should be fixed together, and the character classes should be taken from
-  `pkg/cli/manifest/validation.go` rather than guessed again.
+  `resourceGroups` segment at all**, as in
+  `/planes/radius/local/providers/Radius.Core/recipePacks/kubernetes-pack`.
+  Our regex requires that segment. Fix this alongside its existing rejection of `.` and `_`.
+  Take the character classes from `pkg/cli/manifest/validation.go`.
 - **API versions are per-type, not per-namespace.** `Applications.*` is uniformly
   `2023-10-01-preview`; most `Radius.*` types are `2025-08-01-preview`, but
   `Radius.Data/neo4jDatabases` is `2025-09-11-preview`, and a user-defined type may carry any
@@ -1121,7 +1029,7 @@ What actually differs, and therefore what the fixtures must change:
   when the dynamic lookup fails against a `Radius.*` type.
 - **Environments.** `properties.compute` is gone; the Kubernetes namespace moved to
   `properties.providers.kubernetes.namespace`. `properties.recipes` is gone, replaced by
-  `properties.recipePacks`. `properties.providers` changed shape, not just contents — legacy
+  `properties.recipePacks`. `properties.providers` changed structure: legacy
   `azure: { scope }` became `azure: { subscriptionId, resourceGroupName?, identity? }`, and
   `kubernetes` is a new key. `recipeConfig` split into separate `terraformSettings` and
   `bicepSettings` resources referenced by id, and `extensions` is gone. Our
@@ -1130,28 +1038,25 @@ What actually differs, and therefore what the fixtures must change:
   schema carrying `application`, `environment`, `connections`, and `codeReference`.
 - **The graph response gained a required field.** `Radius.Core/applications/getGraph` returns
   `connections[].kind`, a required enum of `Connection` or `Dependency`, plus optional `icons` and
-  `resources[].iconHash`. The request body is no longer empty — it accepts `includeIcons` and
+  `resources[].iconHash`. The request body accepts `includeIcons` and
   `dependsOnEdges`. The upstream wire-change note calls out consumers keying off the enum shape and
-  **names the dashboard**. Our graph model has no concept of edge kind today, so this is a real
-  feature gap, not just a fixture rename.
+  names the dashboard. The graph model lacks edge kinds, so this requires product support.
 
 Work items:
 
 - **NS-01** Every fixture and test declares the namespace it exercises. No test silently assumes one.
 - **NS-02** The Appendix E graph fixtures gain `Radius.*` counterparts. `both-namespaces.json`
   already covers the mixed case and stays.
-- **NS-03** `sampledata.ts` is corrected and re-namespaced. It currently declares
-  `type: 'Applications.Core/container'` — **singular** — while its own id says `containers`. Nothing
-  caught that, and it means the container branch in `initialNodes` has never been exercised by the
-  sample data, because that branch compares against the plural string.
+- **NS-03** Correct and re-namespace `sampledata.ts`. Its type is singular,
+  `type: 'Applications.Core/container'`, while its id says `containers`.
+  The sample therefore never exercises `initialNodes`' plural container comparison.
 - **NS-04** The two hardcoded namespace couplings in `AppGraph.tsx` are made namespace-aware: the
   layout `order` check against `Applications.Core/containers`, and the gateway direction correction
   against `Applications.Core/gateways`. Under the new model these are `Radius.Compute/containers`
-  and `Radius.Compute/routes`, so both silently stop applying — a container is laid out as if it
-  were a leaf, and the gateway direction workaround stops firing. Whether the workaround is even
-  still needed against the new graph API must be checked, not assumed.
+  and `Radius.Compute/routes`. The old checks treat a new container as a leaf and skip the gateway
+  direction workaround. Check whether the new graph API still needs that workaround.
 - **NS-05** `getEquivalentTypes` covers only applications and environments. Extend it, or replace it,
-  using the mapping above — and record the types that deliberately have no equivalent.
+  using the mapping above. Record types that deliberately have no equivalent.
 - **NS-06** `parseResourceId` accepts digits in type and namespace segments and ids with no
   resource group. Shares a fix with the existing parser defect.
 - **NS-07** The graph model carries `connections[].kind`, and a fixture covers a `Dependency` edge.
@@ -1161,17 +1066,13 @@ Work items:
   since that is the central case of the new model and nothing in our corpus exercises it.
 - **NS-10** Dapr fixtures stay on `Applications.*` with a comment explaining why.
 
-**Sequencing.** This phase must not run during Phases 1 and 2. Those phases freeze current behavior,
-and re-namespacing the corpus mid-freeze would change the fixtures and the expected records at the
-same time as the implementation changes underneath them, which is exactly the ambiguity the
-baseline exists to prevent. It also should not be folded into Phase 4, for the same reason in
-reverse: extraction and re-namespacing would land together and no diff would be attributable.
+Run this separately from Phases 1, 2, and 4. Changing namespaces, fixtures, records, and
+implementation together would hide which change caused a difference.
 
-The natural slot is **after Phase 4's record diff is green**, as a deliberate Tier C
-expected-change event with its own `graph-expected-changes.md` entry. Alternatively it runs before
-Phase 1 if the team decides the legacy baseline is not worth freezing at all — but that decision has
-to be made now, not discovered later, because every fixture added in the meantime increases the
-cost.
+Run it after Phase 4's record diff passes, with its own Tier C entry in
+`graph-expected-changes.md`. The original alternative was to migrate before Phase 1 instead of
+freezing a legacy baseline. That choice needed an early decision: each new legacy fixture adds
+migration work.
 
 **Prerequisite:** confirm with maintainers whether the dashboard is expected to support the
 `Radius.*` types before they leave preview. If yes, this moves ahead of Phase 7. See open decision 8.
@@ -1182,48 +1083,44 @@ against an `Applications.*` type without a stated reason.
 
 ## Tracked defects
 
-Every `KNOWN-DEFECT` assertion in this repository is recorded here with the issue that owns it, so a
-frozen baseline never silently blesses a defect. A characterization test tagged `KNOWN-DEFECT`
-asserts what the code does **today**, not what it should do — so each one is expected to fail when
-its issue is fixed, and that failure is the signal the fix landed, not a regression.
+Each `KNOWN-DEFECT` assertion has an issue here. It records existing behavior rather than desired
+behavior and should fail when the fix lands. Replace that assertion with a regression test for
+the fix; do not preserve the defect to keep the baseline green.
 
-| Issue | Defect                                                                    | Pinned by            |
-| ----- | ------------------------------------------------------------------------- | -------------------- |
-| #35   | Graph nodes do not expose resource-type icon identity                     | GU-21, GU-23         |
-| #41   | Selecting a graph node does not reveal dismissible resource details       | GU-18                |
-| #89   | Graph nodes do not expose deployment status                               | GU-21, GU-23         |
-| #352  | `parseResourceId` rejects legal names and types; `ResourceLink` then throws | RU-02, AC-08, EC-08  |
-| #353  | Graph silently drops connections whose target cannot be resolved            | GU-04, GU-05a        |
-| #354  | `initialNodes` mutates the graph payload it is given                        | GU-05b               |
-| #355  | Graph layout state leaks between applications via a module-level Dagre graph — **fixed in this PR at maintainer request; GU-08 is now a positive invariant, not a characterization pin** | GU-08 (regression) |
-| #356  | Cluster selection disagrees between `RadiusApi` and the graph request        | CN-03, CN-04         |
-| #357  | Graph builder does not validate resources: self-loops and duplicate node ids | GU-06a               |
+| Issue | Defect                                                                                                                                                                                | Pinned by                                                 |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| #35   | Graph nodes do not expose resource-type icon identity                                                                                                                                 | GU-21, GU-23                                              |
+| #41   | Selecting a graph node does not reveal dismissible resource details                                                                                                                   | GU-18                                                     |
+| #89   | Graph nodes do not expose deployment status                                                                                                                                           | GU-21, GU-23                                              |
+| #352  | `parseResourceId` rejects legal names and types; `ResourceLink` then throws                                                                                                           | RU-02, AC-08, EC-08                                       |
+| #353  | Graph silently drops connections whose target cannot be resolved                                                                                                                      | GU-04, GU-05a                                             |
+| #354  | `initialNodes` mutates the graph payload it is given                                                                                                                                  | GU-05b                                                    |
+| #355  | Graph layout state leaked between applications through a module-level Dagre graph; fixed during baseline review at maintainer request. GU-08 now asserts the correct invariant        | GU-08 (regression)                                        |
+| #356  | Cluster selection disagrees between `RadiusApi` and the graph request                                                                                                                 | CN-03, CN-04                                              |
+| #357  | Graph builder does not validate resources: self-loops and duplicate node ids                                                                                                          | GU-06a                                                    |
 | #358  | Publication/consumer blockers: final package name and publishability remain deferred; the API contract is exported and source `workspace:^` is proven to rewrite during local packing | PU-10, PU-17, PU-19, PU-26–PU-28; release checklist below |
-| #359  | `rad-components` declares ISC while the repository is Apache-2.0             | Release checklist below |
-| #360  | Five page suites can time out under loaded parallel execution and misreport as coverage failures | Phase 1 default-worker recheck; open guardrail |
-| #361  | A resource type with no description shows placeholder container documentation | RT-07                |
-| #362  | `ResourceLayout` renders literal `undefined/undefined: undefined` off-route  | LY-04                |
-| #363  | The output-properties tab hides read-only nested properties and shows writable ones | RT-27         |
-| #364  | "Join us on Discord" navigates to the dashboard home page instead of Discord | CC-05, CC-06        |
-| #365  | `Resource.systemData` is required and typed `Record<string, never>`, so every fixture must be cast | RS-14 |
-| #366  | The Sucrase Jest transform's cache key ignores `instrument`, so an override that selects it reports 0% while its tests pass | PU-35 guardrail; fix is upstream |
-| #367  | Connection context is implicit, unscoped, and not consistently cancellable   | CN-02, CN-05–CN-08, ER-01, ER-02 |
-| #368  | The graph has no explicit empty state or degraded layout-failure state        | GU-15, GU-17         |
-| #369  | Partial namespace failures are silently presented as complete inventory      | ER-08                |
-| #370  | The graph request error state has no retry action                             | GU-16                |
-| #373  | `AppGraph` hard-codes `Applications.Core/*` type literals, so `Radius.Core` resources take different layout and edge-direction paths | Tier C corpus namespace choice; no assertion yet |
+| #359  | `rad-components` declares ISC while the repository is Apache-2.0                                                                                                                      | Release checklist below                                   |
+| #360  | Five page suites can time out under loaded parallel execution and misreport as coverage failures                                                                                      | Phase 1 default-worker recheck; open guardrail            |
+| #361  | A resource type with no description shows placeholder container documentation                                                                                                         | RT-07                                                     |
+| #362  | `ResourceLayout` renders literal `undefined/undefined: undefined` off-route                                                                                                           | LY-04                                                     |
+| #363  | The output-properties tab hides read-only nested properties and shows writable ones                                                                                                   | RT-27                                                     |
+| #364  | "Join us on Discord" navigates to the dashboard home page instead of Discord                                                                                                          | CC-05, CC-06                                              |
+| #365  | `Resource.systemData` is required and typed `Record<string, never>`, so every fixture must be cast                                                                                    | RS-14                                                     |
+| #366  | The Sucrase Jest transform's cache key ignores `instrument`, so an override that selects it reports 0% while its tests pass                                                           | PU-35 guardrail; fix is upstream                          |
+| #367  | Connection context is implicit, unscoped, and not consistently cancellable                                                                                                            | CN-02, CN-05–CN-08, ER-01, ER-02                          |
+| #368  | The graph has no explicit empty state or degraded layout-failure state                                                                                                                | GU-15, GU-17                                              |
+| #369  | Partial namespace failures are silently presented as complete inventory                                                                                                               | ER-08                                                     |
+| #370  | The graph request error state has no retry action                                                                                                                                     | GU-16                                                     |
+| #373  | `AppGraph` hard-codes `Applications.Core/*` type literals, so `Radius.Core` resources take different layout and edge-direction paths                                                  | Tier C corpus namespace choice; no assertion yet          |
 
-Six notes on reading this table.
+The following notes distinguish release decisions, product defects, and test-harness defects.
 
 ### Release checklist, not tests
 
-Three open decisions used to be pinned as assertions — `PU-16` on `private === true`, `PU-18` on
-the license disagreement, and `FF-02` on the exact export list of `features.ts`. They are removed.
-A characterization test asserts what the code *does*, and its failure is a signal that behavior
-changed. These asserted that an open decision was still open, so closing the decision turned CI red
-and the person doing the right thing had to delete a test to do it. That is a checklist wearing a
-test's clothes. Behavioral pins such as GU-15 and GU-18 stay, because there the failure genuinely
-means the product changed.
+Removed assertions PU-16, PU-18, and FF-02 pinned `private === true`, conflicting licenses, and the
+exact `features.ts` export list. They tested whether decisions remained open rather than whether
+behavior remained correct. Resolving a decision should not fail CI. Keep behavioral assertions
+such as GU-15 and GU-18, whose failure identifies a product change.
 
 The decisions themselves still have to be made before anything is published:
 
@@ -1241,52 +1138,37 @@ The decisions themselves still have to be made before anything is published:
 - [ ] **Native migration completion.** Require 3C before stable standalone release. Confirm that
       required installs do not need Spotify premium plugins or license credentials.
 
-`#356` is pinned before the graph request moves: the same two-cluster list is passed to both paths,
-and the test proves `RadiusApi` chooses the first while `ApplicationTab` chooses the last. The
-divergence can therefore be shown to have been preserved or deliberately fixed during extraction
-rather than disappearing with the old call site.
+For #356, pass the same two-cluster list to both paths before moving the graph request. The test
+records that `RadiusApi` chooses the first and `ApplicationTab` the last. Extraction must then
+show whether it preserves or deliberately fixes that disagreement.
 
-`#352` is pinned in three places because it fails at three depths. `RU-02` records the inputs the
-parser rejects; `AC-08` and `EC-08` record what a user actually sees, which is neither a bad link
-nor a bad row but a blank card reporting `Cannot read properties of null (reading 'scrollWidth')`.
-The parse failure never reaches the surface, so a test that only covered the parser would leave the
-real symptom unrecorded.
+For #352, RU-02 records rejected parser inputs; AC-08 and EC-08 record the visible symptom: a blank
+card reporting `Cannot read properties of null (reading 'scrollWidth')`. Parser-only coverage
+would miss that symptom because the parse error itself never reaches the user.
 
-`#361` and `#363` are both consequences of the same structure: `ResourceTypeDetailPage` is 2,693
-lines containing two near-duplicate eleven-hundred-line tab bodies that are meant to differ by one
-boolean. Pinning them individually is worth doing, but the duplication is the defect that generates
-defects.
+Both #361 and #363 come from `ResourceTypeDetailPage`: 2,693 lines with two near-duplicate
+eleven-hundred-line tab bodies intended to differ by one boolean. Test each defect, but retain
+the duplication as its shared cause.
 
-`#360` is a harness defect rather than a product defect, which is why it is carried as an open
-decision rather than as a `KNOWN-DEFECT` assertion. It is listed here anyway because its failure
-mode is misattribution: it surfaces as a coverage-threshold failure naming an unrelated path group.
+Track #360 as an open test-harness decision, not a `KNOWN-DEFECT` product assertion. It can report
+an unrelated path group's coverage threshold as the cause of a timeout.
 
-`#364` and `#365` are the two defects Phase 1's closing increment found, and they illustrate why
-characterization is done before rearchitecture rather than after. `#364` is a one-character defect
-— `to=""` on a `LinkButton` — that renders a plausible-looking enabled button pointing at `/`, so
-it survives visual review; CC-05 pins the wrong href and CC-06 pins the missing "opens in a new
-window" hint that the two working cards have. `#365` is a type defect: `systemData` is declared
-required and `Record<string, never>`, meaning "an object with no properties", so no honest value
-satisfies it and every fixture in the repository casts around it. RS-14 now asserts the exact
-property type and requiredness, so it fails for the intended model change rather than for any
-unrelated TypeScript error. When #365 is fixed, the defect assertion is deleted and replaced with
-coverage of the corrected optional, open-valued field.
+Phase 1's closing increment found #364 and #365. In #364, `to=""` gives an enabled `LinkButton`
+the wrong `/` destination without an obvious visual fault. CC-05 records its href; CC-06 records
+the missing new-window hint present on the two working cards. In #365, the required `systemData`
+field has type `Record<string, never>`, permitting no properties, so fixtures cast around the
+intended model. RS-14 checks exact type and requiredness rather than accepting an unrelated
+TypeScript error. Fixing #365 must replace it with coverage for the optional, open-valued field.
 
-`#366` is recorded the way `#360` is: a harness defect with no `KNOWN-DEFECT` assertion pinning it,
-because there is no product behavior to characterize. It differs from every other row in two ways
-that the row itself has to state, or it misleads. **It cannot be fixed in this repository** — the
-defective `getCacheKey` is in the published `@backstage/cli-module-test-jest`, and
-`@backstage/cli/config/jestSucraseTransform.js` is a 27-line re-export shim, so the fix has to land
-in `backstage/backstage`. And **this repository's exposure is currently zero** — the CLI builds its
-transform map entirely from `jestSwcTransform`, nothing here selects Sucrase, and the
-`packages/backend` override uses SWC.
+Like #360, #366 is a harness defect with no product behavior to characterize. The fix belongs in
+`backstage/backstage`: published `@backstage/cli-module-test-jest` owns the defective `getCacheKey`,
+and `@backstage/cli/config/jestSucraseTransform.js` is a 27-line re-export shim. Current exposure
+here is zero. The CLI uses `jestSwcTransform`, no workspace selects Sucrase, and the backend
+override uses SWC.
 
-It is tracked anyway because it is armed by a plausible future edit rather than by existing code,
-and the edit is one a maintainer is actively likely to make: Sucrase lowers `import()` to `require`
-unconditionally, which is exactly what a Backstage backend entry point needs to be testable, so it
-is the first override that appears to work. It then reports 0% on a file whose tests pass — which
-under the Phase 6 merge gate surfaces as a threshold failure naming a path group that is green,
-where the obvious response of lowering the floor is precisely wrong.
+A future override could select Sucrase because it lowers `import()` to `require` and makes backend
+entry tests run. Its cache can then report 0% coverage while the tests pass. Under Phase 6 that
+would look like a path-group threshold failure. Fix the transform; do not lower the floor.
 
 ## Test data and safety
 
@@ -1301,8 +1183,7 @@ where the obvious response of lowering the floor is precisely wrong.
 
 ## Decisions taken from the design
 
-These were open when this plan was first drafted and are now settled by the companion design. They
-are recorded here because they changed what this plan tests.
+The companion design settled these decisions after the first draft:
 
 1. **Ownership.** Shared domain logic and graph rendering are owned and published by
    `ai-extensions` as `@radius-project/core` and `@radius-project/graph-react`. The Backstage plugin
@@ -1329,23 +1210,20 @@ are recorded here because they changed what this plan tests.
 
 ## Open decisions
 
-1. **Coverage floor targets.** This plan ratchets from the measured baseline. The absolute targets
-   in Appendix G are proposed, not agreed. The design's stronger rule — meaningful coverage of
-   changed code, never lowering an existing baseline — governs where the two differ.
-2. **License.** Verified during Phase 0 and worse than first described: the repository root declares
+1. **Coverage floor targets.** Raise floors from measured results. Appendix G's absolute targets
+   remain proposals. Where they differ, follow the design: meaningfully cover changed code and
+   never lower an existing baseline.
+2. **License.** Phase 0 verified that the repository root declares
    no license, the `LICENSE` file is Apache-2.0, the two plugins declare Apache-2.0, and
-   `rad-components` declares ISC while not being private — so the only currently publishable
-   package is the one that disagrees with the repository. Maintainers must confirm the license for
-   the moved code before publication; it is tracked as a release checklist item rather than as an
-   assertion, so closing it does not break the build.
+   `rad-components` declares ISC and is not private. The only currently publishable package thus
+   disagrees with the repository. Maintainers must confirm the moved code's license before
+   publication. Track that decision in the release checklist, not a test that fails when resolved.
 3. **Where the shared journey implementation lives** so that `ai-extensions`'s mandatory consumer
    CI can run it against the supported consumer pin without copying test code. CP-03 assumes it is
    invoked from the dashboard commit itself.
 4. **~~Quantization bucket size for graph record positions.~~ Resolved: records carry no positions.**
-   Any bucket size trades a hidden layout regression against churn on harmless changes. Both sides
-   of that trade are bad, and the underlying reason is that coordinates come from Dagre rather than
-   from the dashboard. Layout is now asserted as properties in Tier A (GU-08, GU-09) and omitted
-   from records entirely, so there is no bucket to calibrate.
+   Coordinate buckets could hide layout regressions or flag harmless Dagre changes. Tier A
+   instead checks layout properties (GU-08, GU-09), leaving no bucket to calibrate.
 5. **Whether to move dashboard from Jest to Vitest, after Phase 4.** Deferred rather than rejected.
    Deciding it requires knowing whether the Backstage CLI has gained supported Vitest support by
    then, and the decision should be made against a frozen baseline so the migration itself can be
@@ -1362,8 +1240,8 @@ are recorded here because they changed what this plan tests.
    fix-immediately signal.
 8. **When the corpus moves to `Radius.*`, and whether the dashboard must support those types while
    they are still preview-gated.** Phase 9 argues the slot is after Phase 4's record diff is green,
-   but the alternative — moving before Phase 1 and never freezing a legacy baseline at all — is
-   cheaper if maintainers expect `Applications.*` to be unsupported sooner than the plan assumes.
+   but moving before Phase 1 without freezing a legacy baseline would have cost less if maintainers
+   expected `Applications.*` support to end sooner than this plan assumes.
    The research behind Phase 9 found no formal deprecation, no removal release, and no migration
    guide, so this cannot be resolved from the public record and needs a maintainer answer. Deciding
    late is the expensive option, because every fixture added in the meantime is written twice.
@@ -1377,8 +1255,8 @@ are recorded here because they changed what this plan tests.
 
 ### Appendix A: compatibility inventory
 
-Filled in during Phase 0 and asserted by PU-01–PU-09. The lists below are the current tree and
-are the values the contract tests must pin unless an approved change updates them.
+Phase 0 recorded these exports. PU-01–PU-09 must preserve them unless an approved change updates
+the contract.
 
 #### Public exports of `plugins/plugin-radius`
 
@@ -1395,7 +1273,7 @@ Components: `RadiusLogo`, `RadiusLogomarkReverse`, `ApplicationIcon`, `Environme
 
 Other: `featureRadiusCatalog` (value `radius-catalog`).
 
-Not currently exported but depended on by the host in practice — confirm intent in Phase 2:
+The original inventory marked these host dependencies for export review in Phase 2:
 `radiusApiRef` (id `radius-api`), `rootRouteRef`, `RadiusApi` and `RadiusApiImpl`.
 
 #### Public exports of `packages/rad-components`
@@ -1436,22 +1314,22 @@ Resource type detail, Recipes list.
 
 #### Domain and API: RU-01–RU-14
 
-| ID    | Requirement                                                                                  |
-| ----- | -------------------------------------------------------------------------------------------- |
-| RU-01 | `parseResourceId` returns plane, group, type, and name for well-formed ids — **done**         |
-| RU-02 | `parseResourceId` returns `undefined` for malformed, empty, and partially formed ids — **done** |
-| RU-03 | Resource type equivalence maps `Applications.Core/*` and `Radius.Core/*` in both directions   |
-| RU-04 | An unknown resource type yields no equivalents and takes the single-type path                 |
-| RU-05 | `resource.ts` accessors handle a resource with absent, empty, and partial `properties`        |
-| RU-06 | Recipe aggregation groups by type and name, and is stable for duplicate entries               |
-| RU-07 | Recipe aggregation tolerates an environment with no recipes                                   |
-| RU-08 | Each operation in the request table issues exactly the declared path and version              |
-| RU-09 | Version discovery failure falls back to `2023-10-01-preview` and does not throw               |
-| RU-10 | Equivalent-type merge de-duplicates by `id` and preserves first-seen order                    |
-| RU-11 | A partial failure across equivalent types returns the successful results                      |
-| RU-12 | A total failure across equivalent types throws the first rejection                            |
-| RU-13 | A non-OK proxy response throws an error containing the status and body                        |
-| RU-14 | No configured connection produces setup guidance, not an empty successful list                |
+| ID    | Requirement                                                                                 |
+| ----- | ------------------------------------------------------------------------------------------- |
+| RU-01 | `parseResourceId` returns plane, group, type, and name for well-formed ids; done            |
+| RU-02 | `parseResourceId` returns `undefined` for malformed, empty, and partially formed ids; done  |
+| RU-03 | Resource type equivalence maps `Applications.Core/*` and `Radius.Core/*` in both directions |
+| RU-04 | An unknown resource type yields no equivalents and takes the single-type path               |
+| RU-05 | `resource.ts` accessors handle a resource with absent, empty, and partial `properties`      |
+| RU-06 | Recipe aggregation groups by type and name, and is stable for duplicate entries             |
+| RU-07 | Recipe aggregation tolerates an environment with no recipes                                 |
+| RU-08 | Each operation in the request table issues exactly the declared path and version            |
+| RU-09 | Version discovery failure falls back to `2023-10-01-preview` and does not throw             |
+| RU-10 | Equivalent-type merge de-duplicates by `id` and preserves first-seen order                  |
+| RU-11 | A partial failure across equivalent types returns the successful results                    |
+| RU-12 | A total failure across equivalent types throws the first rejection                          |
+| RU-13 | A non-OK proxy response throws an error containing the status and body                      |
+| RU-14 | No configured connection produces setup guidance, not an empty successful list              |
 
 RU-14 replaces the current behavior deliberately. Today `selectCluster()` returns the first cluster
 it finds and the graph request in `ApplicationTab` uses a different one; Phase 0 records that
@@ -1459,27 +1337,25 @@ divergence and Phase 2 adds CN-01–CN-08 as the regression cases that make the 
 
 #### Connections: CN-01–CN-08
 
-| ID    | Requirement                                                                                   |
-| ----- | --------------------------------------------------------------------------------------------- |
-| CN-01 | A single configured connection is selected automatically — **done**                            |
-| CN-02 | Multiple configured connections require an explicit selection; none is auto-picked — **done, KNOWN-DEFECT** |
-| CN-03 | Two clusters whose first and last ordering disagree resolve to the same connection everywhere — **done, KNOWN-DEFECT** |
-| CN-04 | Resource reads and the graph request use the same selected connection — **done, KNOWN-DEFECT** |
-| CN-05 | Changing connection cancels in-flight work and rejects late responses from the superseded one — **done, KNOWN-DEFECT** |
-| CN-06 | Cache keys, filter persistence, and links are connection-scoped; same-named apps do not collide — **done, KNOWN-DEFECT** |
-| CN-07 | Plane selection is explicit rather than assuming `radius/local` — **done, KNOWN-DEFECT**        |
-| CN-08 | An invalid or removed connection selection produces an actionable error, not a blank page — **done, KNOWN-DEFECT** |
+| ID    | Requirement                                                                                                         |
+| ----- | ------------------------------------------------------------------------------------------------------------------- |
+| CN-01 | A single configured connection is selected automatically; done                                                      |
+| CN-02 | Multiple configured connections require an explicit selection; none is auto-picked; done, KNOWN-DEFECT              |
+| CN-03 | Two clusters whose first and last ordering disagree resolve to the same connection everywhere; done, KNOWN-DEFECT   |
+| CN-04 | Resource reads and the graph request use the same selected connection; done, KNOWN-DEFECT                           |
+| CN-05 | Changing connection cancels in-flight work and rejects late responses from the superseded one; done, KNOWN-DEFECT   |
+| CN-06 | Cache keys, filter persistence, and links are connection-scoped; same-named apps do not collide; done, KNOWN-DEFECT |
+| CN-07 | Plane selection is explicit rather than assuming `radius/local`; done, KNOWN-DEFECT                                 |
+| CN-08 | An invalid or removed connection selection produces an actionable error, not a blank page; done, KNOWN-DEFECT       |
 
 #### Error states: ER-01–ER-10
 
-The design requires these to be distinguishable, and requires that loading, empty, partial, stale,
-and error are separate UI states. One requirement each: no configured connection, invalid
-selection, unauthenticated, forbidden, not found, unsupported API version, malformed payload,
-partial inventory, timeout, and unavailable upstream.
+Distinguish loading, empty, partial, stale, and error states. Give each failure its own requirement:
+no configured connection, invalid selection, unauthenticated, forbidden, not found, unsupported
+API version, malformed payload, partial inventory, timeout, and unavailable upstream.
 
-ER-08 is the one that matters most: a partial inventory must be shown as partial with a retry, and
-failed discovery must never be reported as "no resources". Authorization failures are not retried
-and never trigger an automatic cluster switch.
+ER-08 requires partial inventory to appear as partial, with a retry action. Failed discovery must
+never appear as "no resources." Do not retry authorization failures or switch clusters automatically.
 
 #### Package boundaries: PB-01–PB-05
 
@@ -1576,7 +1452,7 @@ Phase 8 separately checks real supported Radius/auth installations.
 Originally scoped as a single `CU-01–CU-26` block. In implementation that proved unreadable: a flat
 range gives no hint which file a failing id belongs to, and renumbering one component shifts every
 later id. Component requirements therefore use a **two-letter prefix per source file**, numbered
-from 01 within that file. The requirement itself is unchanged — one case per shipped page, tab,
+from 01 within that file. The requirement is unchanged: one case per shipped page, tab,
 table, and card, covering loading, empty, populated, and error states, plus the accessible name of
 its heading and primary controls.
 
@@ -1614,12 +1490,10 @@ plugin but ship in the same repository and are rearchitected by the same work:
 for cross-cutting error states. New component suites take the next free two-letter prefix and must
 not reuse one listed in this appendix.
 
-Three of these prefixes cover files that are not components in the rendering sense — `RS` is a
-types-only module, and `RO`, `FF`, and `AP` are declaration lists. They are numbered in the same
-scheme because they are the same kind of requirement: one file, one suite, ids that name it. `RS` in
-particular is the only suite in the repository whose assertions are largely **compile-time**: the
-module emits no JavaScript, so coverage cannot see it and a render test cannot reach it. Exact-type
-and optional-key assertions fail `yarn tsc` when a declared contract changes.
+The scheme also covers non-rendering files: RS is types-only; RO, FF, and AP contain declarations.
+Each still has one file, one suite, and named requirement ids. RS emits no JavaScript, so rendering
+and coverage cannot test it. Its exact-type and optional-key assertions instead fail `yarn tsc`
+when a declared contract changes.
 
 #### Plugin contract and coverage policy
 
@@ -1629,15 +1503,12 @@ Phase 4 requirement because it applies only if `rad-components` survives extract
 compatibility wrapper. PU-30 remains release qualification: Phase 3 preserves the existing license
 metadata but does not decide the final package license/notices.
 
-These four suites assert on the *repository* rather than on the plugin, and they resolve `../../..`
-to do it, so they will need rehoming when the plugin is extracted. They deliberately do not live at
-the repository root. `backstage-cli repo test` only discovers tests inside workspace packages, and
-when it finds none it prints `No tests found` and **exits 0** — verified with a throwaway probe at
-`repo-tests/probe.test.ts`. Relocating repo-policy tests to the root would therefore convert them
-from enforced policy into dead files that pass, which is the worst available failure mode for a test
-whose entire job is to fail when the repository drifts. A dedicated policy *workspace* is the clean
-answer and is deferred: it would itself be scanned by PU-23 and needs a deliberate exclusion rule
-rather than an exemption entry.
+These four suites inspect the repository through `../../..`, so extraction must relocate them.
+Do not put them at the root: `backstage-cli repo test` discovers tests only inside workspaces.
+A temporary `repo-tests/probe.test.ts` confirmed that no discovered tests prints `No tests found`
+and exits 0. Root policy tests would therefore stop enforcing policy without failing CI. A
+dedicated policy workspace is deferred because PU-23 would scan it too; it needs an explicit
+exclusion rule, not an exemption.
 
 | ID    | Requirement                                                                                   |
 | ----- | --------------------------------------------------------------------------------------------- |
@@ -1695,45 +1566,45 @@ requirements remain stable during extraction; the linked-defect replacement exce
 applies to characterization pins, not unrelated invariants. Tier C changes only through the
 expected-change manifest.
 
-| ID    | Tier | Requirement                                                                                        |
-| ----- | ---- | -------------------------------------------------------------------------------------------------- |
-| GU-01 | A    | Every resource yields one node — **done**; unique ids remain a separate duplicate-id defect pin     |
-| GU-02 | A    | Retained connections exactly match fixture-owned source/target multisets — **done**; invalid/self connections are separate defect pins |
-| GU-02a | A   | Redirected, reversed, missing, and extra edges fail the topology assertions — **done**              |
-| GU-03 | A    | Every edge endpoint resolves to a node present in the same graph — **done**                         |
-| GU-04 | A    | A connection to a resource absent from the graph is dropped or stubbed, never left dangling — **done, KNOWN-DEFECT** |
-| GU-05 | A    | An unparseable connection does not drop its owning node — **done**                                |
-| GU-05a | A   | Unparseable connections should be skipped; today's dangling edge is a **KNOWN-DEFECT pin**, not desired behavior |
-| GU-05b| A    | Building the model does not mutate the caller's graph — **done, KNOWN-DEFECT**                      |
-| GU-06 | A    | A self-referential connection produces no duplicate node and no self-loop — **done, KNOWN-DEFECT**  |
-| GU-07 | A    | Building the same fixture twice yields the same model — **done**, including rendered remount determinism |
-| GU-08 | A    | Rendering graph A then graph B produces the same result as rendering graph B alone, in either ordering — **done, regression test for the fixed #355** |
-| GU-09 | A    | Every node receives a finite position and no two node bounding boxes overlap — **done**                  |
-| GU-10 | A    | Node identities and edge relationships survive layout and rendering — **done**                        |
-| GU-11 | A    | Unmounting and remounting with the same data produces the same record and leaks no timers — **done** |
-| GU-12 | B    | A node is findable by its resource name through its accessible name — **done**                       |
-| GU-13 | B    | A connection between two named resources is represented in the rendered output — **done**            |
-| GU-14 | B    | Zoom, fit, and the graph controls are operable by mouse and by keyboard — **done**                   |
-| GU-15 | B    | An empty application renders an explicit empty state with an accessible message, not a blank canvas — **done, KNOWN-DEFECT** |
-| GU-16 | B    | A graph request failure renders a retryable error state, not an empty successful graph — **done, KNOWN-DEFECT** |
-| GU-17 | B    | A layout failure renders an explicitly degraded but usable presentation, not overlapping nodes — **done, KNOWN-DEFECT** |
-| GU-18 | B    | Selecting a node reveals its details, and focus is restored when the details close — **done, KNOWN-DEFECT** |
-| GU-19 | B    | The graph renders correctly in light and dark themes with the shared stylesheet loaded — **done**    |
-| GU-20 | B    | Removing the real renderer or its stylesheet makes GU-12, GU-13, and GU-19 fail — **done**           |
-| GU-21 | C    | Each Appendix E fixture produces its committed graph record — **done**                               |
-| GU-21b | C   | Records carry renderer-facing icon and status semantics, using an explicit `not-yet-populated` sentinel where the renderer supplies none — **done** |
-| GU-21c | C   | Records carry no layout coordinates, so a Dagre change cannot churn the corpus — **done**            |
-| GU-22 | C    | Every record difference in an extraction pull request maps to an expected-change manifest entry — **done** |
-| GU-23 | C    | A `KNOWN-DEFECT` whose own invariant is still violated is reported as carried forward — **done** |
-| GU-23a | C   | A defect clears only when its own invariant is repaired, not when an unrelated one is — **done** |
-| GU-23b | C   | Each defect predicate detects its own condition and reports repair on a healthy record — **done** |
-| GU-23c | C   | A defect naming a fixture with no record is rejected rather than silently ignored — **done**     |
-| GU-24 | C    | The manifest is empty at the end of each extraction phase — **done**                                 |
-| GU-25 | C    | A committed record edited relative to the base branch maps to a manifest entry — **done**            |
-| GU-25a | C   | A mutated committed record is reported as an unapproved change — **done**                            |
+| ID     | Tier | Requirement                                                                                                                                    |
+| ------ | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| GU-01  | A    | Every resource yields one node; done. Unique ids remain a separate duplicate-id defect pin                                                     |
+| GU-02  | A    | Retained connections exactly match fixture-owned source/target multisets; done. Invalid/self connections are separate defect pins              |
+| GU-02a | A    | Redirected, reversed, missing, and extra edges fail the topology assertions; done                                                              |
+| GU-03  | A    | Every edge endpoint resolves to a node present in the same graph; done                                                                         |
+| GU-04  | A    | A connection to a resource absent from the graph is dropped or stubbed, never left dangling; done, KNOWN-DEFECT                                |
+| GU-05  | A    | An unparseable connection does not drop its owning node; done                                                                                  |
+| GU-05a | A    | Unparseable connections should be skipped; today's dangling edge is a **KNOWN-DEFECT pin**, not desired behavior                               |
+| GU-05b | A    | Building the model does not mutate the caller's graph; done, KNOWN-DEFECT                                                                      |
+| GU-06  | A    | A self-referential connection produces no duplicate node and no self-loop; done, KNOWN-DEFECT                                                  |
+| GU-07  | A    | Building the same fixture twice yields the same model, including rendered remount determinism; done                                            |
+| GU-08  | A    | Rendering graph A then graph B produces the same result as rendering graph B alone, in either ordering; done, regression test for fixed #355   |
+| GU-09  | A    | Every node receives a finite position and no two node bounding boxes overlap; done                                                             |
+| GU-10  | A    | Node identities and edge relationships survive layout and rendering; done                                                                      |
+| GU-11  | A    | Unmounting and remounting with the same data produces the same record and leaks no timers; done                                                |
+| GU-12  | B    | A node is findable by its resource name through its accessible name; done                                                                      |
+| GU-13  | B    | A connection between two named resources is represented in the rendered output; done                                                           |
+| GU-14  | B    | Zoom, fit, and the graph controls are operable by mouse and by keyboard; done                                                                  |
+| GU-15  | B    | An empty application renders an explicit empty state with an accessible message, not a blank canvas; done, KNOWN-DEFECT                        |
+| GU-16  | B    | A graph request failure renders a retryable error state, not an empty successful graph; done, KNOWN-DEFECT                                     |
+| GU-17  | B    | A layout failure renders an explicitly degraded but usable presentation, not overlapping nodes; done, KNOWN-DEFECT                             |
+| GU-18  | B    | Selecting a node reveals its details, and focus is restored when the details close; done, KNOWN-DEFECT                                         |
+| GU-19  | B    | The graph renders correctly in light and dark themes with the shared stylesheet loaded; done                                                   |
+| GU-20  | B    | Removing the real renderer or its stylesheet makes GU-12, GU-13, and GU-19 fail; done                                                          |
+| GU-21  | C    | Each Appendix E fixture produces its committed graph record; done                                                                              |
+| GU-21b | C    | Records carry renderer-facing icon and status semantics, using an explicit `not-yet-populated` sentinel where the renderer supplies none; done |
+| GU-21c | C    | Records carry no layout coordinates, so a Dagre change cannot churn the corpus; done                                                           |
+| GU-22  | C    | Every record difference in an extraction pull request maps to an expected-change manifest entry; done                                          |
+| GU-23  | C    | A `KNOWN-DEFECT` whose own invariant is still violated is reported as carried forward; done                                                    |
+| GU-23a | C    | A defect clears only when its own invariant is repaired, not when an unrelated one is; done                                                    |
+| GU-23b | C    | Each defect predicate detects its own condition and reports repair on a healthy record; done                                                   |
+| GU-23c | C    | A defect naming a fixture with no record is rejected rather than silently ignored; done                                                        |
+| GU-24  | C    | The manifest is empty at the end of each extraction phase; done                                                                                |
+| GU-25  | C    | A committed record edited relative to the base branch maps to a manifest entry; done                                                           |
+| GU-25a | C    | A mutated committed record is reported as an unapproved change; done                                                                           |
 
-GU-20 is the meta-test. Without it, a graph suite can pass against a stub and prove nothing, which
-is the exact failure mode the current `ApplicationTab.test.tsx` has today.
+GU-20 checks the tests themselves. It must fail when the real renderer or stylesheet is removed,
+unlike `ApplicationTab.test.tsx`, which passes against a graph stub.
 
 #### Host integration: HU-01–HU-12
 
@@ -1784,11 +1655,10 @@ the plugin's graph journeys. Each is small, fixed, and uses placeholder names:
 `managed-cluster.json`, `deploy-status-matrix.json`, `unknown-type.json`, `duplicate-ids.json`,
 `both-namespaces.json`, `large-fan-out.json`.
 
-Each fixture has a committed **graph record** produced by one normalization function shared by
-every graph test. A record holds, per node: resource id, displayed label, displayed type, icon
-identity, and status badge kind and accessible name. Per edge:
-resolved source id, resolved target id, and direction. It holds nothing else — no colours, class
-names, element nesting, or coordinates of any kind.
+One normalizer shared by all graph tests produces each committed graph record. It stores each
+node's resource id, displayed label and type, icon identity, and badge kind and accessible name.
+For each edge, it stores resolved source id, resolved target id, and direction. It stores no
+colours, class names, nesting, or coordinates.
 
 The records are frozen under `packages/rad-components/src/__fixtures__/graph-records/` and diffed
 in Phase 4 against `packages/rad-components/src/__fixtures__/graph-expected-changes.md`. The
@@ -1798,20 +1668,19 @@ violated, so only an actual repair retires an entry.
 
 ### Appendix F: source files with no colocated test
 
-At the start of Phase 1, forty of seventy-one source files. Sixteen are barrel `index.ts` files,
-covered indirectly by PU-01 and CU-00. Twenty-four needed a direct test; the Phase 1 increments have
-since closed all of them.
+At the start of Phase 1, forty of seventy-one source files had no colocated test. Sixteen were
+barrels covered indirectly by PU-01 and CU-00. Phase 1 covered all twenty-four remaining files.
 
-`packages/app` — all closed: `apis.ts` (AP), `components/Root/Root.tsx` (RR),
+`packages/app`, all closed: `apis.ts` (AP), `components/Root/Root.tsx` (RR),
 `components/home/HomePage.tsx` (HP), `components/home/LearnCard.tsx` (LC),
 `components/home/CommunityCard.tsx` (CC), `components/home/SupportCard.tsx` (SC). `index.tsx`
 remains untested by design: it boots the real application against a real DOM and a real config, so a
 test of it is an integration harness rather than a unit test. The L5 journeys cover what it wires.
 
-`packages/rad-components` — `graph.ts`, `sampledata.ts`. Both are now exercised by the Phase 2
+`packages/rad-components`: Phase 2 exercises `graph.ts` and `sampledata.ts` through
 fixture and Tier A invariant suites rather than by a colocated file.
 
-`plugins/plugin-radius` — all closed: `components/recipes/RecipeListPage.tsx` (RE),
+`plugins/plugin-radius`, all closed: `components/recipes/RecipeListPage.tsx` (RE),
 `components/recipes/RecipeTable.tsx` (RK), `components/resources/ResourceListPage.tsx` (RL),
 `components/applications/ApplicationListInfoCard.tsx` (AC),
 `components/environments/EnvironmentListInfoCard.tsx` (EC),
@@ -1822,22 +1691,19 @@ fixture and Tier A invariant suites rather than by a colocated file.
 `resources/resource.ts` (RS). `setupTests.ts` is test infrastructure, not shipped code: it is
 executed by every suite in the workspace and has no behavior of its own to assert.
 
-`plugins/plugin-radius-backend` — closed: `service/router.ts` (BE-01–BE-05) covers health, 404,
+`plugins/plugin-radius-backend`, closed: `service/router.ts` (BE-01–BE-05) covers health, 404,
 plugin registration and dependencies, router mounting and logging, and startup failure
 propagation. `index.ts` is a barrel and is covered indirectly through the package contract.
 
-`packages/backend` — closed: `src/index.ts` (BK). Covering it required a per-workspace
-`jest.transform` override, recorded in `packages/backend/package.json`: the CLI compiles
-`backend-plugin` packages with SWC `module.ignoreDynamic`, which leaves `import()` native, and Jest's
-CJS runtime then throws `A dynamic import callback was invoked without --experimental-vm-modules`
-the moment the entry point is loaded. Dropping `ignoreDynamic` lowers the six `backend.add(import(…))`
-calls to `require`, which the runtime can service. The Sucrase transform also works, and is the more
-obvious choice because it lowers `import()` unconditionally — but its `getCacheKey` ignores Jest's
-`instrument` flag, so a cached uninstrumented compile from an earlier `--coverage=false` run is
-reused and the file silently reports 0% while its tests pass. Use SWC. Nothing in this repository
-selects Sucrase today, so the exposure is zero until someone writes an override that reaches for it;
-the trap is recorded as #366, and the fix belongs upstream in `backstage/backstage` because the
-defective `getCacheKey` lives in `@backstage/cli-module-test-jest`.
+`packages/backend`, closed: `src/index.ts` (BK) uses the `jest.transform` override in
+`packages/backend/package.json`. For `backend-plugin` packages, the CLI's SWC `module.ignoreDynamic` leaves `import()` native,
+which makes Jest's CJS runtime throw
+`A dynamic import callback was invoked without --experimental-vm-modules`.
+Removing `ignoreDynamic` lowers the six `backend.add(import(…))` calls to supported `require` calls.
+Sucrase also lowers dynamic imports, but its cache ignores Jest's `instrument` flag. Reusing an
+uninstrumented compile from `--coverage=false` can report 0% while tests pass. Use SWC. No workspace
+currently selects Sucrase; #366 records the risk of a future override. The upstream
+`@backstage/cli-module-test-jest` owns the cache-key fix.
 
 Barrels with no direct test: `packages/app/src/components/Root/index.ts`;
 `rad-components` `index.ts`, `components/index.ts`, `components/appgraph/index.ts`,
@@ -1845,25 +1711,20 @@ Barrels with no direct test: `packages/app/src/components/Root/index.ts`;
 `resources/index.ts`, and the six `components/*/index.ts` files; and
 `plugin-radius-backend/src/index.ts`.
 
-Resolved in Phase 0. The duplication was the inverse of what was first recorded here: all eleven
-consumers import `parseResourceId` from `@radapp.io/rad-components`, while the plugin's
-`resources/resourceId.ts` had **no** importers, was not re-exported by `resources/index.ts`, showed
-0% coverage, and was byte-identical to the `rad-components` copy — dead code. It was deleted, and
-`resourceId.test.ts` was moved to `rad-components`, which is where it always pointed: it imported
-from the package, not from the file beside it, so it never tested the copy it sat next to. RU-01 and
-RU-02 now target the live implementation.
+Phase 0 removed the unused `resources/resourceId.ts`. All eleven consumers already imported
+`parseResourceId` from `@radapp.io/rad-components`; the plugin copy had no importers or barrel
+export, 0% coverage, and identical contents. Its adjacent test also imported rad-components rather
+than that file, so `resourceId.test.ts` moved to rad-components. RU-01 and RU-02 now sit with the live parser.
 
 ### Appendix G: coverage floors
 
-Two sets of numbers. The **enforced** floors are live in the root `package.json` today, rounded
-down from measured coverage. A result below a configured floor fails; a smaller regression within
-that rounding margin may pass. The **target** floors and automated no-decrease ratchet are Phase 6
-work. See "Where coverage floors must live" for why these are root path groups rather than
-per-workspace config and why the current shape guard is not a historical ratchet.
+Root `package.json` enforces floors rounded down from measured coverage. A result below a floor
+fails; a regression within the rounding margin may pass. Phase 6 adds the proposed target floors
+and automatic no-decrease checks. See "Where coverage floors must live" for root path-group
+semantics and the limits of the current shape guards.
 
-Enforced today (measured after Phase 0, Phase 3 source checks, the full Phase 1 suites, and the
-Phase 2 graph-record and connection/error characterization suites; an omitted value would mean a
-floor of zero and therefore no floor at all, which the policy tests reject):
+The enforced values follow Phase 0, Phase 3 source checks, all Phase 1 suites, and Phase 2
+graph-record and connection/error characterization suites. Policy tests reject missing floors:
 
 | Workspace                       | Statements | Branches | Functions | Lines |
 | ------------------------------- | ---------: | -------: | --------: | ----: |
@@ -1875,8 +1736,7 @@ floor of zero and therefore no floor at all, which the policy tests reject):
 
 The `plugin-radius` floors moved from 61/33/46/60 to 69/46/58/68, then to 70/50/61/70, then to
 72/54/64/72 for Phase 1, to 73/55/67/73 for Phase 2, and now to 73/55/68/74 for the executable
-factory and packaging contracts. Each raise is committed alongside the tests that earned it, so a
-floor is never aspirational.
+factory and packaging contracts. Each commit raises floors only to results its tests measured.
 
 `packages/rad-components` now measures 95.08/93.75/94.59/94.59 after the record normalizer,
 manifest validation, layout-failure characterization, and real-renderer accessibility semantics.
@@ -1889,36 +1749,25 @@ raised to the measured result.
 The backend plugin floor moved from 62/n/a/50/71 to 93/n/a/100/100 when BE-01–BE-05 replaced the
 single health-check smoke test with router, registration, lifecycle, and failure-path coverage.
 
-Both backend workspaces now carry a 100% branch floor. Neither contains a branch counter today, so
-Istanbul reports the empty set as 100%; the floor is set rather than omitted precisely because it
-costs nothing now and refuses the first uncovered branch either workspace acquires. That is the one
-case where a floor is not a rounded-down measurement, and it is stricter than the measurement, not
-weaker.
+Both backend workspaces enforce 100% branch coverage. Neither currently has a branch counter, so
+Istanbul reports 100% for the empty set. Keeping the floor requires coverage of the first branch
+added. This is the one floor not rounded down from measured branches; it strengthens enforcement.
 
-`packages/backend`'s floor should be read with its measurement conditions in mind. The entry point
-is six `backend.add(import(...))` calls, and the workspace `jest.transform` override lowers those
-dynamic imports to `require` so Jest's CommonJS runtime can execute them at all. BK-01–BK-06
-therefore prove the module graph, the installed module set, and that `start` follows every `add`.
-They do not exercise native ESM dynamic import as the packed host would, so 100% here means "every
-statement ran under the test transform", not "production module loading is verified". Phase 5's
-host build is what qualifies the latter.
+BK-01–BK-06 execute the backend entry's six `backend.add(import(...))` calls after the Jest
+transform lowers imports to `require`. They verify modules, installation, and `start` after every
+`add`, not native ESM loading in a packed host. The 100% floor covers transformed statements.
+Phase 5's host build must qualify production loading.
 
-`packages/app` previously carried no branch or function floor because both measured 0%: its
-statement coverage came from module loading, not from tests. Phase 1 closed that — the workspace is
-now 93.51/100/83.33/92.86, and the 0%-branch-and-function signature of load-only coverage is gone.
-The 100% branch floor is honest but narrow: the workspace contains exactly one branch counter
-across the source set Backstage supplies through `collectCoverageFrom`, so the floor says "the one
-branch stays covered", not "all future branches will be". It is set at the measured value like every
-other floor, and the first uncovered branch someone adds will fail the run — which is the intended
-behavior, not a trap to relax. The deliberately untested `packages/app/src/index.tsx` is already in
-the statement and line denominator at 0/3, but contains no branch counters; it cannot make the
-branch floor impossible to satisfy unless its implementation itself gains a branch, at which point
-that new behavior needs a test or an explicit coverage-boundary decision.
+Before Phase 1, app coverage came from module loading and measured 0% for branches and functions,
+so neither had a floor. Phase 1 measured 93.51/100/83.33/92.86. The 100% branch floor currently
+covers exactly one counter in Backstage's `collectCoverageFrom` source set. An added uncovered
+branch will fail the run and need a test. The deliberately untested `packages/app/src/index.tsx`
+already contributes 0/3 statements and lines but no branches. If it gains a branch, add a test or
+approve a coverage-boundary change rather than relax the floor.
 
-`packages/backend` was previously **exempt**, recorded in `coveragePolicy.test.ts` with its
-justification. Phase 1 gave it a test (BK-01–BK-06) and a measured floor, so the exemption was
-removed and the exemption list is now empty. PU-31 asserts that it stays empty, which forces a
-future exemption to be argued for in the pull request that adds it rather than accumulating quietly.
+Phase 1 replaced the backend's documented exemption with BK-01–BK-06 and a measured floor.
+The exemption list is empty. PU-31 requires it to stay empty unless a reviewed PR changes that
+policy.
 
 Phase 6 targets, not day-one gates. The design's rule takes precedence where they differ:
 meaningful coverage of changed code, and never lowering an existing baseline in either repository.
@@ -1929,8 +1778,6 @@ meaningful coverage of changed code, and never lowering an existing baseline in 
 | `plugins/plugin-radius-backend` |        95% |      85% |       95% |   95% |
 | `packages/app`                  |        80% |      70% |       80% |   80% |
 
-`packages/rad-components` has no target: it is retired in Phase 4, and a forwarding
-wrapper with no logic is covered by PU-29 rather than by a coverage floor. Graph coverage moves to
-`graph-react` in `ai-extensions` and is governed by that repository's floors; the dashboard's
-remaining graph evidence is the L5 journeys and the L6 record diff, which are pass/fail rather than
-percentage gates.
+Rad-components has no target because Phase 4 retires it. PU-29 checks any logic-free forwarding
+wrapper. Graph coverage moves to graph-react under ai-extensions' floors; dashboard retains
+pass/fail L5 journeys and L6 record diffs.
