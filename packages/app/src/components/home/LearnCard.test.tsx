@@ -61,12 +61,15 @@ describe('LearnCard', () => {
     );
   });
 
-  it('LC-06: offers exactly the three documented actions, each marked as leaving the app', async () => {
+  it('LC-06: offers the collapse toggle and exactly the three documented actions, each marked as leaving the app', async () => {
     await renderInTestApp(<LearnCard />);
 
     expect(
-      screen.getAllByRole('button').map(button => button.textContent),
+      screen
+        .getAllByRole('button')
+        .map(button => button.getAttribute('aria-label') ?? button.textContent),
     ).toEqual([
+      'Collapse Learn more',
       'Get Started, Opens in a new window',
       'Tutorials, Opens in a new window',
       'Reference, Opens in a new window',
