@@ -393,20 +393,22 @@ describe('graph invariants', () => {
   });
 
   describe('edge direction', () => {
-    it.each(['Applications.Core', 'Radius.Core'])(
-      'preserves %s gateway topology through model building and layout',
-      namespace => {
+    it.each([
+      ['Applications.Core/gateways', 'Applications.Core/containers'],
+      ['Radius.Compute/routes', 'Radius.Compute/containers'],
+    ])(
+      'preserves %s to %s topology through model building and layout',
+      (gatewayType, containerType) => {
         const graph = (): AppGraph =>
           JSON.parse(
-            JSON.stringify(gatewayInbound).replace(
-              /Applications\.Core/g,
-              namespace,
-            ),
+            JSON.stringify(gatewayInbound)
+              .replace(/Applications\.Core\/gateways/g, gatewayType)
+              .replace(/Applications\.Core\/containers/g, containerType),
           ) as AppGraph;
         const expected: Relationship[] = [
           [
-            fixtureId(`${namespace}/gateways/edge`),
-            fixtureId(`${namespace}/containers/webapp`),
+            fixtureId(`${gatewayType}/edge`),
+            fixtureId(`${containerType}/webapp`),
           ],
         ];
 
