@@ -2,6 +2,7 @@
 
 - **Author**: Nicole James (@nicolejms)
 - **Date**: 2026-09
+- **Revised**: 2026-10-23
 - **Status**: Draft
 - **Companion design**: [Radius Dashboard as a distributable Backstage plugin](./2026-09-radius-backstage-plugin.md)
 - **Related**: [`radius-project/ai-extensions` canvas test plan](https://github.com/radius-project/ai-extensions/blob/2c789d2e2a309d94e4164a1719c64dda580be36c/docs/design/2026-08-radius-canvas-test-plan.md),
@@ -13,7 +14,7 @@ The [companion design](./2026-09-radius-backstage-plugin.md) decides the archite
 domain logic and graph rendering are owned and published by `radius-project/ai-extensions`
 (`@radius-project/core`, `@radius-project/graph-react`), and the Backstage product plugin is
 productized and published from this repository (`@radius-project/backstage-plugin-radius`). Two
-consequences drive this test plan:
+extraction consequences drive this test plan:
 
 1. **Graph consistency is achieved by deletion, not duplication.** `packages/rad-components` is
    retired as an implementation owner. Its renderer and layout are consolidated into
@@ -30,6 +31,12 @@ Both changes rewrite code that today has no meaningful regression net. This plan
 net first, freezes it as a reviewed baseline **before** any extraction, then extends it to the
 plugin contract, the installed artifact, and the host boundary.
 
+The October revision adds a separate frontend migration stream. Backstage plugins remain in use;
+they are moving to new frontend and backend systems. The dashboard backend already uses the new
+system. The Radius frontend and standalone app do not. Test native Radius extensions first, move
+the app through a temporary hybrid stage, then remove required compatibility helpers. Do not use
+`convertLegacyPlugin` as the final implementation of Radius, which this repository owns.
+
 This document tracks delivery, required checks, and exact requirements. Start with the current
 state, then the status table. Use the phase sections for work still to come, and the appendices
 when a pull request needs an exact export, route, request, page, fixture, or host case.
@@ -38,6 +45,39 @@ The design's own "Test plan" section states the required suites at the program l
 repositories. This document is the dashboard-side execution plan for them: it enumerates the
 dashboard requirements, their IDs, and their order. Where the two disagree, the design wins and
 this plan is corrected.
+
+## Revised migration scope
+
+This plan follows the companion design's
+[Backstage delivery decision](./2026-09-radius-backstage-plugin.md#backstage-changes-and-delivery-decision).
+The source check is at dashboard commit
+[`9d295b5`](https://github.com/radius-project/dashboard/commit/9d295b5097c62d9c3fa9dab136172f34c1b912bf).
+It is a source assessment, not a migration test run. Existing coverage numbers and completed phases
+below describe the earlier legacy-frontend baseline. They do not qualify new frontend support.
+
+| Surface                      | What is already present                                                                                    | New evidence required                                                                                                              |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Backend host                 | `createBackend` with app, proxy, auth, guest provider, catalog, and Kubernetes registrations.              | Real native startup, service failure handling, and authorized Kubernetes GET/graph POST checks; no new Radius backend requirement. |
+| Radius backend scaffold      | Native `createBackendPlugin` and `coreServices`, with a health-only router that the host does not install. | Keep BE-01-BE-05 maintenance coverage. Do not require `/api/radius/health` from the production host.                               |
+| Radius frontend              | Legacy plugin, API factory, eight routable extensions, route refs, feature flag, and optional home cards.  | Native page/API extensions and optional card integration using the same product code, plus packed native subpath qualification.    |
+| Standalone app               | Legacy `createApp`, root element tree, routes, APIs, themes, guest sign-in, and sidebar.                   | Hybrid cutover and then native modules/extensions, with URL, auth, theme, and navigation regression checks.                        |
+| Third-party frontend plugins | Catalog, catalog graph, home, user settings, and Kubernetes API integration.                               | Exact-version native-entry inventory, temporary adapters only where needed, and a removal condition for every adapter.             |
+
+The first stable release must qualify native Radius support and the fully migrated standalone app.
+The legacy public Radius entry remains tested for the agreed support window. Hybrid mode is a
+transition, not another permanent product. The frontend-system matrix is separate from the
+React 18/19 graph-library matrix.
+
+`convertLegacyPlugin` and `convertLegacyPageExtension` from `@backstage/core-compat-api` apply to
+third-party frontend plugins, not backend plugins. Each page must be listed and checked; cards
+need the relevant plugin's supported converter or a native blueprint. Temporary app helpers
+(`convertLegacyAppOptions`, `convertLegacyAppRoot`) preserve app composition while the app moves
+to `@backstage/frontend-defaults`. They do not replace native Radius support.
+
+All required installs and CI runs use open-source Backstage without a Spotify subscription,
+premium plugin, or license credential. Paid Spotify plugins are optional host choices. Their
+presence is not evidence that Radius access control works, and their absence must not block
+Radius installation.
 
 ## Current state
 
@@ -112,24 +152,28 @@ coverage could fall to zero without failing a build. Phase 0 closed this; see
 
 ## Current status
 
-| Phase | Name                                | Repository | Status      | Outcome                                                                       |
-| ----- | ----------------------------------- | ---------- | ----------- | ------------------------------------------------------------------------------ |
-| 0     | Record the behavior                 | dashboard  | Done        | Public exports, route table, request table, page inventory, and a coverage floor are written down |
-| 1     | Harden existing behavior            | dashboard  | Done        | Every shipped page, table, tab, card, host component, backend-plugin lifecycle, and domain rule has a real test before it is rearchitected. All thirteen `plugin-radius` components, both host workspaces, the backend plugin, and the declaration modules are covered; `packages/backend` no longer carries a coverage exemption |
-| 2     | Freeze the pre-extraction baseline  | dashboard  | Done        | Real-renderer graph journeys, deterministic host journeys, connection/error characterization, and all fourteen graph records are frozen |
-| 3     | Plugin contract and packaging       | dashboard  | Done        | The current internal package's API factory, exports, lazy host routes, local tarball shape/resolution, declarations, and import boundaries are verified without making release decisions |
-| 4     | Consume shared packages             | dashboard, needs `ai-extensions` releases | Not started | The plugin uses `core` and `graph-react`; no parallel implementation remains |
-| 5     | Host integration and installed artifact | dashboard | Not started | Both hosts mount the plugin from packed tarballs with no source aliases                      |
-| 6     | Permanent CI gates                  | both       | Not started | Coverage floors, contract, packaging, and the consumer pin are required for merge and publish    |
-| 7     | Accessibility, visual, reliability  | dashboard  | Not started | Keyboard and axe coverage, reviewed screenshots, and scheduled failure-mode checks               |
-| 8     | Release qualification               | both       | Not started | The published plugin loads in the control-plane image and in an external Backstage host          |
-| 9     | Migrate the test corpus to `Radius.*` | dashboard, tracks `radius` releases | Not started | Tests and fixtures describe the resource-type model the product is moving to, not the legacy one |
+| Phase | Name                                     | Repository                                | Status      | Outcome                                                                                                                                                                                                                                                                                                                           |
+| ----- | ---------------------------------------- | ----------------------------------------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0     | Record the behavior                      | dashboard                                 | Done        | Public exports, route table, request table, page inventory, and a coverage floor are written down                                                                                                                                                                                                                                 |
+| 1     | Harden existing behavior                 | dashboard                                 | Done        | Every shipped page, table, tab, card, host component, backend-plugin lifecycle, and domain rule has a real test before it is rearchitected. All thirteen `plugin-radius` components, both host workspaces, the backend plugin, and the declaration modules are covered; `packages/backend` no longer carries a coverage exemption |
+| 2     | Freeze the pre-extraction baseline       | dashboard                                 | Done        | Real-renderer graph journeys, deterministic host journeys, connection/error characterization, and all fourteen graph records are frozen                                                                                                                                                                                           |
+| 3     | Plugin contract and packaging            | dashboard                                 | Done        | The current internal package's API factory, exports, lazy host routes, local tarball shape/resolution, declarations, and import boundaries are verified without making release decisions                                                                                                                                          |
+| 3A    | Native Radius frontend and backend audit | dashboard                                 | Not started | Native extensions reuse product code; packed legacy/native entries and the existing native backend are qualified                                                                                                                                                                                                                  |
+| 3B    | Hybrid standalone frontend               | dashboard                                 | Not started | App uses the new frontend root with native Radius and temporary, tracked app/third-party compatibility code                                                                                                                                                                                                                       |
+| 3C    | Native standalone frontend               | dashboard                                 | Not started | Required legacy app helpers and third-party converters are removed; supported legacy public exports remain tested                                                                                                                                                                                                                 |
+| 4     | Consume shared packages                  | dashboard, needs `ai-extensions` releases | Not started | The plugin uses `core` and `graph-react`; no parallel implementation remains                                                                                                                                                                                                                                                      |
+| 5     | Host integration and installed artifact  | dashboard                                 | Not started | Both hosts mount the plugin from packed tarballs with no source aliases                                                                                                                                                                                                                                                           |
+| 6     | Permanent CI gates                       | both                                      | Not started | Coverage floors, contract, packaging, and the consumer pin are required for merge and publish                                                                                                                                                                                                                                     |
+| 7     | Accessibility, visual, reliability       | dashboard                                 | Not started | Keyboard and axe coverage, reviewed screenshots, and scheduled failure-mode checks                                                                                                                                                                                                                                                |
+| 8     | Release qualification                    | both                                      | Not started | The published plugin loads in the control-plane image and in an external Backstage host                                                                                                                                                                                                                                           |
+| 9     | Migrate the test corpus to `Radius.*`    | dashboard, tracks `radius` releases       | Not started | Tests and fixtures describe the resource-type model the product is moving to, not the legacy one                                                                                                                                                                                                                                  |
 
 Every phase is executed in `radius-project/dashboard`. The repository column records what each phase
 depends on, not where the work happens.
 
-Only Phase 4 is blocked on `ai-extensions`, because that is where dashboard replaces its own
-implementations with the published `core` and `graph-react` packages. Phases 6 and 8 span both
+Phases 3A-3C do not wait for `ai-extensions` releases. Phase 4 is the direct shared-release dependency,
+because that is where dashboard replaces its own implementations with the published `core` and
+`graph-react` packages. Phases 6 and 8 span both
 repositories because the consumer-pin gate is defined in `ai-extensions` CI while the pin, the
 journey implementation it invokes, and the release checks live here.
 
@@ -142,9 +186,17 @@ code and waits on no upstream release; the deferred release decisions remain pre
 actual publication.
 
 Phases 0–2 must complete **before** any extraction begins; the design makes a frozen, reviewed
-real-renderer baseline a prerequisite, not a follow-up. Phase 3 may run in parallel with Phase 2,
-and is the only pre-extraction stream that is not gated on the graph consolidation landing upstream.
+real-renderer baseline a prerequisite, not a follow-up. Phase 3 may run in parallel with Phase 2.
+Like the new frontend stream, it does not wait for upstream graph consolidation.
 Phase 4 is the extraction itself and is gated on Phase 2's records. Phases 5–8 follow it.
+
+The next frontend work is 3A, then 3B, then 3C. These phases map to design units P8a, P8b, and
+P8c; they do not reopen completed Phase 3 or mark new contracts as tested. They may run alongside
+Phase 4 in separate changes. Record a passing host baseline at each frontend cutover and rerun
+the Phase 2 graph requirements. Do not replace frontend registration and graph/domain code in
+the same baseline change. Phase 5 needs Phase 4 and native plugin support from 3A. Its stable
+standalone acceptance and Phase 8 also require 3C. Phase 6 gates apply as soon as each surface
+exists; do not wait for the final extraction to protect native entry changes.
 
 Phase 9 is sequenced separately and deliberately: it is the only phase whose timing is an open
 question rather than a dependency. See open decision 8.
@@ -159,7 +211,7 @@ question rather than a dependency. See open decision 8.
 - Keep tests local and repeatable. No live clusters, no personal kubeconfig, no real Radius control
   plane, no network fetches, no public CDN assets.
 - Test the plugin through its **package entry point** (currently `@internal/plugin-radius`, with the
-  final public name deferred), not through deep relative paths, wherever the test is
+  final public name deferred), including an approved native subpath when added, not through deep relative paths, wherever the test is
   asserting consumer-visible behavior. Deep imports are allowed only for genuinely internal helpers.
 - Assert on accessible roles and names, not on CSS classes, Material-UI internals, or React Flow
   internals. The graph rework replaces all of those internals; it must not change what a user can
@@ -173,26 +225,32 @@ question rather than a dependency. See open decision 8.
 - Close servers, timers, browser contexts, and Storybook processes after success or failure.
 - Preserve the public export list, route refs, extension mount points, `radiusApiRef` id, feature
   flag name, and request table in Appendix A unless a separate approved change says otherwise.
+- Keep legacy-root assertions scoped to the legacy entry. Add a separate reviewed native extension
+  inventory; do not change the old baseline to make an untested native entry appear qualified.
+- Install exactly one active Radius entry and one `radius-api` factory in each host. Native and
+  converted copies must not register the same page, API, navigation item, or feature twice.
 
 ## Required checks
 
-| Check                     | Required when                                                                        | What it protects                                                        |
-| ------------------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------- |
-| Focused unit tests        | Every behavior change                                                                | Rules, parsing, aggregation, error handling, and state transitions       |
-| Component render tests    | Any page, tab, table, card, or icon changes                                          | Loading, empty, populated, and error states, and accessible names        |
-| Plugin contract tests     | Exports, routes, extensions, apiRefs, feature flags, or package metadata change      | Silent breakage for anyone consuming the published plugin               |
-| Graph invariant tests     | Any graph normalization, node, edge, layout, or rendering change                     | Structural truths that must hold regardless of implementation           |
-| Graph semantic tests      | Any graph rendering, labelling, or interaction change                                | What a user can see, name, and operate in the graph                     |
-| Graph record diff         | The graph implementation is replaced, extracted, or consolidated                     | Unintended behavior change hidden inside an intended one                |
-| API request tests         | A request path, API version, resource type, merge, or fallback rule changes          | Wrong path, wrong version, dropped duplicates, and swallowed failures    |
-| Backend plugin tests      | The backend plugin, its routes, or its registration changes                          | Broken registration, missing route, and unhandled errors                 |
-| Packaging tests           | Build config, entry points, `files`, dependencies, or peer dependencies change       | Missing code, bundled peer deps, and a package that cannot be installed  |
-| Host integration tests    | `packages/app` wiring, route bindings, or plugin consumption changes                 | A host that compiles but cannot mount or navigate the plugin             |
-| Chromium behavior tests   | Any graph, page, or navigation behavior changes from Phase 2 onward                  | Real navigation, focus, graph interaction, and rendering                |
-| Accessibility and keyboard| An interactive page or graph state changes after Phase 2 begins                      | Unusable controls, poor focus order, missing names, and WCAG            |
-| Installed artifact check  | Package contents, dependencies, styles, or build inputs change                       | A package that builds here but cannot be installed anywhere else        |
-| Screenshot review         | A selected stable visual state changes after Phase 7 begins                          | Layout, clipping, theme, graph, and status presentation                 |
-| Release qualification     | Before release after Phase 8                                                         | Installation, discovery, connection setup, reachability, and page load  |
+| Check                      | Required when                                                                           | What it protects                                                                                   |
+| -------------------------- | --------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Focused unit tests         | Every behavior change                                                                   | Rules, parsing, aggregation, error handling, and state transitions                                 |
+| Component render tests     | Any page, tab, table, card, or icon changes                                             | Loading, empty, populated, and error states, and accessible names                                  |
+| Plugin contract tests      | Exports, routes, extensions, apiRefs, feature flags, or package metadata change         | Silent breakage for anyone consuming the published plugin                                          |
+| Graph invariant tests      | Any graph normalization, node, edge, layout, or rendering change                        | Structural truths that must hold regardless of implementation                                      |
+| Graph semantic tests       | Any graph rendering, labelling, or interaction change                                   | What a user can see, name, and operate in the graph                                                |
+| Graph record diff          | The graph implementation is replaced, extracted, or consolidated                        | Unintended behavior change hidden inside an intended one                                           |
+| API request tests          | A request path, API version, resource type, merge, or fallback rule changes             | Wrong path, wrong version, dropped duplicates, and swallowed failures                              |
+| Backend plugin tests       | The backend plugin, its routes, or its registration changes                             | Broken registration, missing route, and unhandled errors                                           |
+| Packaging tests            | Build config, entry points, `files`, dependencies, or peer dependencies change          | Missing code, bundled peer deps, and a package that cannot be installed                            |
+| Host integration tests     | `packages/app` wiring, route bindings, or plugin consumption changes                    | A host that compiles but cannot mount or navigate the plugin                                       |
+| Frontend-system tests      | Native entries, blueprints, discovery, app composition, or compatibility helpers change | Missing extensions/APIs, duplicate registration, lost cards/themes/auth, and adapters with no exit |
+| Native backend regression  | Backend dependencies, service wiring, authentication, or proxy policy change            | Startup errors and unauthenticated or forbidden GET/graph POST handling                            |
+| Chromium behavior tests    | Any graph, page, or navigation behavior changes from Phase 2 onward                     | Real navigation, focus, graph interaction, and rendering                                           |
+| Accessibility and keyboard | An interactive page or graph state changes after Phase 2 begins                         | Unusable controls, poor focus order, missing names, and WCAG                                       |
+| Installed artifact check   | Package contents, dependencies, styles, or build inputs change                          | A package that builds here but cannot be installed anywhere else                                   |
+| Screenshot review          | A selected stable visual state changes after Phase 7 begins                             | Layout, clipping, theme, graph, and status presentation                                            |
+| Release qualification      | Before release after Phase 8                                                            | Installation, discovery, connection setup, reachability, and page load                             |
 
 Tests that do not open a browser do not retry. Browser checks may retry once to collect useful
 failure information, but the original failure stays visible and a retry-only pass is recorded as
@@ -811,6 +869,74 @@ current artifact without representing that later external-host gate. Final packa
 publishability, and license/notice qualification remain release decisions and are not advanced by
 this phase.
 
+### Phase 3A: native Radius frontend and backend audit
+
+Add native Radius support before switching the standalone app. This maps to design unit P8a and
+can start without published `core` or `graph-react` packages.
+
+- Pin the external native Backstage host, compiler, lockfile, and supported frontend API versions.
+  Record the supported legacy host and its retirement milestone separately.
+- Inventory all eight page extensions, route refs/parameters, the API factory and Kubernetes API
+  dependency, `radius-catalog`, and optional home cards. Approve native extension IDs and default
+  paths. Legacy display names are not unique enough to serve as native extension IDs.
+- Add `createFrontendPlugin`, `PageBlueprint`, and `ApiBlueprint` registration through a documented
+  default-export subpath, initially proposed as `/alpha`. Reuse page components and API logic.
+  Use supported route-ref conversion where needed, not copied routing or domain implementations.
+- Extend the isolated build/pack check to both entry points and declarations. Check source-to-dist
+  export rewriting, native discovery metadata, peer dependencies, and public import boundaries.
+  A packed legacy-root success alone is insufficient.
+- Run the existing dashboard journeys through the packed native plugin in the external fixture.
+  Use supported frontend test utilities for extension/API wiring tests, not legacy plugin mocks
+  that bypass extension installation.
+- Audit the existing native backend and its service dependencies. Add controlled startup and
+  auth/proxy checks. Keep the unused health-only scaffold outside initial distribution.
+
+Completion evidence: FS-01-FS-08 and BS-01-BS-04 pass. Removing a required native page or API
+extension makes its test fail. The legacy contract stays green. No Radius implementation is
+wrapped with `convertLegacyPlugin`.
+
+### Phase 3B: hybrid standalone frontend
+
+Switch `packages/app` only after 3A passes. This maps to design unit P8b.
+
+- Move `createApp` to `@backstage/frontend-defaults`. Use temporary app-options/root helpers only
+  where needed. Update `src/index.tsx` and app render tests for the new `app.createRoot()` element
+  contract.
+- Install Radius natively exactly once. Remove its old route/feature registration only after the
+  corresponding native page works. Do not let root conversion install a second Radius copy.
+- Keep an adapter register for catalog, catalog graph, home, user settings, and Kubernetes API
+  integration. For each, record exact version, native entry and evidence, missing surface, temporary
+  adapter if needed, owner, upstream reference, and removal condition. Mark unverified entries as
+  unverified, not supported.
+- Prefer native third-party entries. If a converter is needed, list every converted page, assign
+  explicit names/paths where inference is wrong, and use the relevant card/entity converter.
+- Run home, settings, catalog, sidebar, themes, API overrides, and sign-in checks as well as Radius
+  journeys. Keep existing standalone URLs; verify nested external mounting separately. No external
+  install may inherit the dashboard's automatic guest sign-in.
+
+Completion evidence: FS-09-FS-12 pass with the real native backend. Store the qualified pre-cutover
+revision/lockfile/image for rollback. Every remaining compatibility use has a named removal owner.
+Hybrid success does not complete 3C or permit a stable release.
+
+### Phase 3C: native standalone frontend
+
+Replace temporary app composition and required third-party adapters with native extensions/modules.
+This maps to design unit P8c and depends on 3B plus native support for every required surface.
+
+- Move API registration, themes, sign-in, navigation, home composition, and route bindings into
+  supported native extensions/modules. Preserve behavior, not the old element-tree structure.
+- Remove obsolete routes, imports, app helpers, and third-party converters after replacement tests
+  pass. A required third-party feature with no native replacement blocks completion; do not
+  remove the feature, invent an upstream deadline, or declare indefinite hybrid mode complete.
+- Repeat all host and real-renderer journeys without required legacy app compatibility code.
+  Keep legacy public Radius exports tested until their approved retirement milestone.
+- Advance the supported-consumer pin through review and qualify the native host against candidate
+  shared packages when Phase 4 provides them. Preserve the coherent rollback tuple.
+
+Completion evidence: FS-13-FS-16 pass. All required surfaces run natively; no required app helper
+or third-party plugin converter remains. A documentation claim or a source-import scan alone
+does not prove this; the built native host must run the same journeys.
+
 ### Phase 4: consume shared packages and remove duplicates
 
 This is the extraction. The plugin switches to `@radius-project/core` and
@@ -851,11 +977,31 @@ Prove both hosts consume the same packed artifact, with no workspace resolution 
   and the candidate CSS is present in the build output and loaded in the browser.
 - Cover nested mounting and a non-root app base path, and both the legacy and the approved new
   frontend entry points.
+- Include the frontend matrix below. Use the hybrid standalone row during 3B, then replace it with
+  the fully native standalone row after 3C. Keep the legacy external row for its support window.
+  Tests must exercise actual features/discovery and not a hand-mounted component that bypasses
+  plugin registration.
 - Run the same journey implementation in both hosts through host-specific setup. No copied pages,
   graph, or test implementations.
 
 Completion evidence: HU-01–HU-12, IA-01–IA-08, and RX-01–RX-03 pass; removing a file from
-`files` or substituting a toy graph fails the gate.
+`files` or substituting a toy graph fails the gate. Stable acceptance also requires
+FS-01-FS-16 and BS-01-BS-04, with 3C complete.
+
+#### Frontend-system host matrix
+
+Pin each host's Backstage version, lockfile, compiler, React version, auth configuration, and plugin
+entry. All Backstage rows stay on qualified React 18; isolated React 19 library tests are separate.
+
+| Host                                      | Radius entry                                             | Backend                           | Required outcome                                                                                                                               |
+| ----------------------------------------- | -------------------------------------------------------- | --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Supported legacy external fixture         | Legacy package root                                      | Qualified new backend system      | Existing public contract and shared journeys pass until the legacy retirement milestone.                                                       |
+| Native external fixture                   | Packed native subpath                                    | Qualified new backend system      | Native features/discovery, nested mount, non-root base path, API override, cards, themes, and host-owned auth pass without a Radius converter. |
+| Temporary hybrid standalone app           | Native Radius plus tracked app/third-party compatibility | Existing native dashboard backend | All existing product and host journeys pass; no duplicate registration. Required during 3B, not a stable support promise.                      |
+| Native standalone app and built container | Native Radius and native host composition                | Existing native dashboard backend | All required journeys pass without required legacy app helpers/converters. Required for 3C and stable release.                                 |
+
+A legacy backend host is not an initial support promise. If later approved, qualify its backend
+adapter separately; frontend `core-compat-api` results cannot qualify it.
 
 ### Phase 6: permanent CI gates
 
@@ -872,6 +1018,9 @@ Combine the checks the earlier phases introduced into required gates.
 - The publish workflow runs the installed-artifact check against the exact artifact it will publish,
   and publishes in dependency order after the cross-consumer gates pass.
 - CI uploads coverage and bounded failure traces; logs contain no kubeconfig or token values.
+- Make native extension contracts, packed subpath resolution, native backend regression, and the
+  active frontend host matrix required checks. Reject duplicate installs, a missing native entry,
+  expired adapter milestones, and success reports from a legacy-only run.
 
 Completion evidence: CP-01–CP-05 pass; all suites run without a live cluster or registry
 credentials; each gate is required on the default branch.
@@ -898,6 +1047,9 @@ clean, actionable failure when the control plane is absent or access is forbidde
 distinguish a test-system failure from a product failure and must prove cleanup.
 
 Complete when every host case passes before release. Skipped or simulated runs do not count.
+Also require the native standalone and external-host matrix, no required temporary compatibility
+code, and installation without Spotify premium packages or license credentials. Record both
+frontend entry and backend package set in the release/rollback tuple.
 
 ### Phase 9: migrate the test corpus from `Applications.Core` to `Radius.*`
 
@@ -1083,6 +1235,11 @@ The decisions themselves still have to be made before anything is published:
       Apache-2.0; both plugins declare Apache-2.0; `rad-components` declares ISC and is not
       private, so the only currently publishable package is the one that disagrees with the
       repository. Resolve before the graph code moves (#359).
+- [ ] **Frontend support policy.** Approve the exact legacy/native Backstage versions, native
+      subpath, retirement milestone for the legacy entry, and owners/exit conditions for temporary
+      third-party adapters. Passing old Phase 3 tests does not close this decision.
+- [ ] **Native migration completion.** Require 3C before stable standalone release. Confirm that
+      required installs do not need Spotify premium plugins or license credentials.
 
 `#356` is pinned before the graph request moves: the same two-cluster list is passed to both paths,
 and the test proves `RadiusApi` chooses the first while `ApplicationTab` chooses the last. The
@@ -1159,10 +1316,16 @@ are recorded here because they changed what this plan tests.
 4. **React.** The dashboard stays on React 18. `graph-react` is qualified independently on 18 and
    19, so this plan carries a React matrix requirement (RX-01–RX-03) but no host upgrade.
 5. **Frontend system.** Both the legacy and the approved new frontend entry points are in scope,
-   so contract and host tests cover both surfaces.
+   but Radius must implement the new entry natively. The standalone app moves through hybrid to
+   native composition in 3A-3C. Retain legacy public exports for a bounded support window, not
+   indefinite app compatibility helpers. This is separate from a React major upgrade.
 6. **The Radius backend plugin is out of the initial distribution.** It is a health-only scaffold
    and is not registered in the running backend. BE-01–BE-05 now provide maintenance coverage for
    its router and lifecycle, but remain explicitly outside the release gates.
+7. **Backend system.** The host and Radius scaffold already use the new backend APIs. Audit and
+   test them; do not schedule a legacy backend rewrite or install the scaffold without a need.
+8. **Commercial plugins.** Spotify premium plugins are optional host choices. The required matrix
+   must pass on open-source Backstage without paid dependencies or license credentials.
 
 ## Open decisions
 
@@ -1204,6 +1367,11 @@ are recorded here because they changed what this plan tests.
    The research behind Phase 9 found no formal deprecation, no removal release, and no migration
    guide, so this cannot be resolved from the public record and needs a maintainer answer. Deciding
    late is the expensive option, because every fixture added in the meantime is written twice.
+9. **Exact frontend support matrix and adapter exits.** P0 selects Backstage versions, native
+   subpath, legacy retirement milestone, and owners/upstream references for third-party gaps.
+   Native Radius support and native standalone completion are decided scope, not open choices.
+   A missing required native third-party feature blocks 3C until resolved or separately approved
+   scope changes; no unverified support range or upstream end date is assumed.
 
 ## Appendices
 
@@ -1323,7 +1491,8 @@ and never trigger an automatic cluster switch.
 | PB-04 | No file under `packages/app/src` imports a path inside the plugin beyond its entry    |
 | PB-05 | No dashboard package re-declares a contract that `core` owns                          |
 
-PB-04 is implemented against the renamed public package. PB-01a and PB-02a provide non-vacuous
+PB-04 currently guards the internal package entry; extend its allowlist to the approved public root
+and native subpath during 3A, while rejecting private source imports. PB-01a and PB-02a provide non-vacuous
 predecessor checks for the current `rad-components` dependency: the scanner must find real imports,
 all must use its public entry point, and none may reach into another package's `src` or `private`
 paths. PB-01–PB-03 and PB-05 receive their final namesake assertions in Phase 4, when `core` and
@@ -1341,6 +1510,48 @@ paths. PB-01–PB-03 and PB-05 receive their final namesake assertions in Phase 
 | IA-06 | Candidate CSS is present in the build output and is loaded in the browser                         |
 | IA-07 | The plugin registers and real host routes serve pages against fake upstream data                  |
 | IA-08 | The gate exercises built output, never a dev server, and never a mocked `core` or `graph-react`   |
+
+Apply IA-01-IA-08 to both supported frontend entries; their phase status does not change merely
+because the legacy tarball imports. FS-07 covers the added native export/declaration/discovery
+surface.
+
+#### Frontend migration: FS-01-FS-16
+
+These are new requirements, not completed Phase 3 assertions. Use the existing Jest/Playwright
+runners and supported frontend test utilities. The legacy PU assertions remain scoped to the root
+entry; native IDs and exports have a separate reviewed inventory.
+
+| ID    | Requirement                                                                                                                                                                                                                                                            | Phase |
+| ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- |
+| FS-01 | Native default export has plugin ID `radius` and a complete reviewed set of uniquely named extensions for all eight routed pages. Removing one fails its installed-host journey.                                                                                       | 3A    |
+| FS-02 | Native `radius-api` lookup constructs the real API with the host Kubernetes dependency and a representative GET reaches the fake transport. Removing the API extension fails lookup. Graph POST remains covered through its current path until Phase 4 centralizes it. | 3A    |
+| FS-03 | Native routes preserve parameter names, external bindings, existing standalone URLs, and nested/base-path navigation with history and direct refresh.                                                                                                                  | 3A    |
+| FS-04 | The `radius-catalog` feature flag has the same ID and enabled/disabled behavior; optional home cards render when installed and their absence does not break Radius pages.                                                                                              | 3A    |
+| FS-05 | Both entries use the same product pages/API logic. Native Radius contains no `convertLegacyPlugin` or copied renderer/domain implementation. Boundary checks reject private imports.                                                                                   | 3A    |
+| FS-06 | A host API override is used by native pages, including connection selection and failure states; no hidden default bypasses it.                                                                                                                                         | 3A    |
+| FS-07 | Packed root/native entries and declarations resolve without source aliases; source export maps are rewritten to shipped files, and explicit features or supported discovery install exactly one Radius plugin/API/page set.                                            | 3A    |
+| FS-08 | The same real-renderer journeys pass in legacy and native external fixtures using the same candidate plugin tarball; neither fixture substitutes hand-mounted pages for plugin registration.                                                                           | 3A    |
+| FS-09 | Hybrid app renders the new `app.createRoot()` element through its actual entry point and preserves alerts, dialogs, sign-in, and host theme behavior.                                                                                                                  | 3B    |
+| FS-10 | Native Radius and converted app composition do not register duplicate Radius routes, API factories, sidebar items, or flags.                                                                                                                                           | 3B    |
+| FS-11 | Home, catalog/entity page, catalog graph, settings, and Kubernetes API integration work at pinned versions. Each temporary adapter has an owner, upstream reference, explicit page/card mapping, and removal condition.                                                | 3B    |
+| FS-12 | Host-owned auth is preserved; unauthenticated and forbidden responses stay distinct, both themes work, and external installation does not enable automatic guest sign-in.                                                                                              | 3B    |
+| FS-13 | Built standalone app runs all required journeys without required legacy app helpers or third-party converters; a source scan is paired with actual native runtime evidence.                                                                                            | 3C    |
+| FS-14 | Removing old app routes/imports does not lose home cards, links, feature flags, theme selection, API overrides, or direct-link refresh.                                                                                                                                | 3C    |
+| FS-15 | Required installs/builds run with no Spotify premium packages or license credentials. Optional host premium plugins do not replace Radius proxy authorization checks.                                                                                                  | 3C    |
+| FS-16 | Cutover records the previous qualified app revision/lockfile/image and the new frontend/backend tuple; restoring the prior tuple passes its journeys. Legacy public entry stays tested until approved retirement.                                                      | 3C    |
+
+#### Native backend regression: BS-01-BS-04
+
+These qualify the existing host, not a new Radius backend. They complement the scaffold's
+BE-01-BE-05 maintenance tests and use controlled identities/services and no live cluster in PR CI.
+Phase 8 separately checks real supported Radius/auth installations.
+
+| ID    | Requirement                                                                                                                                                                                       |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| BS-01 | Real `createBackend` composition initializes the declared app, proxy, auth/provider, catalog, and Kubernetes plugins with controlled configuration; import mocks alone are insufficient.          |
+| BS-02 | A missing required service or failed plugin initialization produces an explicit startup failure, not a silent skip or a passing health-only assertion.                                            |
+| BS-03 | Authenticated allowed requests reach the selected Kubernetes GET and graph POST paths; unauthenticated/forbidden requests are rejected according to host policy without cross-connection leakage. |
+| BS-04 | Required Radius journeys work without registering the health-only Radius scaffold. Its absence does not cause API lookup or discovery failure.                                                    |
 
 #### React matrix: RX-01–RX-03
 
@@ -1526,20 +1737,20 @@ is the exact failure mode the current `ApplicationTab.test.tsx` has today.
 
 #### Host integration: HU-01–HU-12
 
-| ID    | Requirement                                                                                  |
-| ----- | -------------------------------------------------------------------------------------------- |
-| HU-01 | The host app mounts with the plugin and renders without error                                 |
-| HU-02 | Navigating to each of the eight pages renders that page's heading                             |
-| HU-03 | Every external route binding the host declares resolves to a real route ref                   |
-| HU-04 | The sidebar exposes each plugin entry with its accessible name                                |
-| HU-05 | Navigation uses route refs, with no hard-coded root paths                                     |
-| HU-06 | The plugin mounts under a nested route, not only at the app root                              |
-| HU-07 | The plugin works under a non-root app base path                                               |
-| HU-08 | The plugin mounts through both the legacy and the approved new frontend entry points          |
-| HU-09 | The external Backstage fixture mounts the plugin using host-owned authentication              |
-| HU-10 | A forbidden host response surfaces an access error rather than an empty list                  |
-| HU-11 | The same journey implementation runs in both hosts via host-specific setup only               |
-| HU-12 | `packages/backend` starts and serves `/api/radius/health` (maintenance only, not a gate)      |
+| ID    | Requirement                                                                                                                                                           |
+| ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| HU-01 | The host app mounts with the plugin and renders without error                                                                                                         |
+| HU-02 | Navigating to each of the eight pages renders that page's heading                                                                                                     |
+| HU-03 | Every external route binding the host declares resolves to a real route ref                                                                                           |
+| HU-04 | The sidebar exposes each plugin entry with its accessible name                                                                                                        |
+| HU-05 | Navigation uses route refs, with no hard-coded root paths                                                                                                             |
+| HU-06 | The plugin mounts under a nested route, not only at the app root                                                                                                      |
+| HU-07 | The plugin works under a non-root app base path                                                                                                                       |
+| HU-08 | The plugin mounts through both the legacy and the approved new frontend entry points                                                                                  |
+| HU-09 | The external Backstage fixture mounts the plugin using host-owned authentication                                                                                      |
+| HU-10 | A forbidden host response surfaces an access error rather than an empty list                                                                                          |
+| HU-11 | The same journey implementation runs in both hosts via host-specific setup only                                                                                       |
+| HU-12 | The existing native backend starts and supports Radius through the authorized Kubernetes proxy; the unregistered Radius health scaffold is not required (BS-01-BS-04) |
 
 ### Appendix C: browser workflows, E2E-01–E2E-20
 
