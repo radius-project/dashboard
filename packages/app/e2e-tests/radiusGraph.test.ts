@@ -60,7 +60,13 @@ async function fulfillRadiusRequest(route: Route) {
   }
 
   if (url.includes('/getGraph?')) {
-    await route.fulfill({ json: multiTier });
+    const namespace = url.includes('/Radius.Core/')
+      ? 'Radius.Core'
+      : 'Applications.Core';
+    await route.fulfill({
+      body: JSON.stringify(multiTier).replace(/Applications\.Core/g, namespace),
+      contentType: 'application/json',
+    });
     return;
   }
 
@@ -169,6 +175,19 @@ test.describe('Radius application graph journey', () => {
           name: /^Edge from .*backend.* to .*frontend/,
         }),
       ).toBeVisible();
+      const namespace = item.type.split('/')[0];
+      await expect(
+        page.getByRole('button', {
+          name: `Edge from /planes/radius/local/resourceGroups/demo/providers/${namespace}/gateways/edge to /planes/radius/local/resourceGroups/demo/providers/${namespace}/containers/frontend`,
+          exact: true,
+        }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole('button', {
+          name: `Edge from /planes/radius/local/resourceGroups/demo/providers/${namespace}/containers/frontend to /planes/radius/local/resourceGroups/demo/providers/${namespace}/gateways/edge`,
+          exact: true,
+        }),
+      ).toHaveCount(0);
 
       await page.goto('/applications');
     }

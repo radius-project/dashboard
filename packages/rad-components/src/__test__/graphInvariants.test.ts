@@ -393,6 +393,34 @@ describe('graph invariants', () => {
   });
 
   describe('edge direction', () => {
+    it.each(['Applications.Core', 'Radius.Core'])(
+      'preserves %s gateway topology through model building and layout',
+      namespace => {
+        const graph = (): AppGraph =>
+          JSON.parse(
+            JSON.stringify(gatewayInbound).replace(
+              /Applications\.Core/g,
+              namespace,
+            ),
+          ) as AppGraph;
+        const expected: Relationship[] = [
+          [
+            fixtureId(`${namespace}/gateways/edge`),
+            fixtureId(`${namespace}/containers/webapp`),
+          ],
+        ];
+
+        assertRelationships(buildGraphModel(graph()), expected);
+        const layouted = buildLayoutedGraphModel(graph());
+        assertRelationships(layouted, expected);
+        expect(layouted.nodes).toHaveLength(2);
+        for (const node of layouted.nodes) {
+          expect(Number.isFinite(node.position.x)).toBe(true);
+          expect(Number.isFinite(node.position.y)).toBe(true);
+        }
+      },
+    );
+
     it('orients an outbound connection from the dependency to the dependent', () => {
       const model = buildGraphModel(load(containerToDatabase));
 

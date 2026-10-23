@@ -90,7 +90,7 @@ export function initialNodes(graph: AppGraphData): {
     // This is computed based on the number of inbound connections (or whether it's a container).
     const order =
       resource.connections?.filter(c => c.direction === 'Inbound').length ||
-      resource.type === 'Applications.Core/containers'
+      resource.type.endsWith('/containers')
         ? 0
         : 3;
 
@@ -119,7 +119,7 @@ export function initialNodes(graph: AppGraphData): {
 
         if (
           connection.direction === 'Inbound' &&
-          parsedConnection.type === 'Applications.Core/gateways'
+          parsedConnection.type.endsWith('/gateways')
         ) {
           connection.direction = 'Outbound';
         }

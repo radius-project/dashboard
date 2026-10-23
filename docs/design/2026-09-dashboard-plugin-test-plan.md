@@ -698,15 +698,13 @@ base commit from `GRAPH_RECORD_BASE_REF`, then `origin/main`, and fails rather t
 base is reachable; the build workflow checks out full history so the base is present. A record that
 does not exist at the base is a new fixture, not a mutated baseline, and needs no entry.
 
-The corpus is authored in `Applications.Core/*` and `Applications.Datastores/*` rather than the
-`Radius.*` namespace that `main` now defaults to (#327). That is deliberate and not an oversight.
-`AppGraph.tsx` compares against the literal strings `Applications.Core/containers` (line 93, layout
-order) and `Applications.Core/gateways` (line 122, the inbound-to-outbound edge workaround). A
-`Radius.*` corpus would fall through both branches, so it would approve records that never reach the
-code the records exist to characterize — in particular the gateway workaround would go unexercised.
-The namespace-insensitivity is itself a product defect, filed as #373. Once the comparisons are
-namespace-aware, migrating the corpus becomes a single declared change that also gains a real
-assertion, instead of two rename rounds that gain nothing.
+The record corpus remains authored in `Applications.Core/*` and `Applications.Datastores/*`.
+For #373, `AppGraph.tsx` now matches the `/containers` and `/gateways` type suffixes rather than
+full namespace strings. Unit tests check the initial container row and gateway edge direction
+for both `Applications.Core` and `Radius.Core`. Graph-model tests check gateway topology before
+and after layout. The app E2E test returns graph resources in the requested application namespace
+and checks the visible gateway-to-container edge. These tests cover both namespaces without
+changing the saved record corpus. Migrating that corpus remains a separate change.
 
 Known defects are tracked by invariant, not by record field. Each entry in `knownGraphDefects`
 carries an `isPresent` predicate that reads the violated invariant — a dangling edge endpoint, a
@@ -1059,7 +1057,7 @@ its issue is fixed, and that failure is the signal the fix landed, not a regress
 | #368  | The graph has no explicit empty state or degraded layout-failure state        | GU-15, GU-17         |
 | #369  | Partial namespace failures are silently presented as complete inventory      | ER-08                |
 | #370  | The graph request error state has no retry action                             | GU-16                |
-| #373  | `AppGraph` hard-codes `Applications.Core/*` type literals, so `Radius.Core` resources take different layout and edge-direction paths | Tier C corpus namespace choice; no assertion yet |
+| #373  | Fixed: container layout and gateway edge direction use type suffixes across namespaces | AppGraph unit tests, graph-model integration tests, E2E-03 |
 
 Six notes on reading this table.
 
