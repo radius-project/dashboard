@@ -29,6 +29,39 @@ const graphContract = async (page: Page) => ({
 });
 
 test.describe('real AppGraph renderer', () => {
+  test('renders API icons and one edge per typed relationship', async ({
+    page,
+  }) => {
+    await page.goto(storyUrl('with-metadata'));
+    await expect(page.locator('.react-flow__node')).toHaveCount(3);
+    await expect(page.locator('.react-flow__edge')).toHaveCount(2);
+    const images = page.locator('.react-flow__node img');
+    await expect(images).toHaveCount(2);
+    for (const image of await images.all()) {
+      await expect(image).toBeVisible();
+      await expect
+        .poll(() =>
+          image.evaluate(
+            (element: HTMLImageElement) =>
+              element.complete && element.naturalWidth > 0,
+          ),
+        )
+        .toBe(true);
+    }
+    const dependency = page.getByRole('button', { name: /^Dependency:/ });
+    const connection = page.getByRole('button', { name: /^Connection:/ });
+    await expect(dependency).toBeVisible();
+    await expect(connection).toBeVisible();
+    await expect(dependency.locator('.react-flow__edge-path')).toHaveCSS(
+      'stroke-dasharray',
+      '5px, 5px',
+    );
+    await expect(connection.locator('.react-flow__edge-path')).toHaveCSS(
+      'stroke-dasharray',
+      'none',
+    );
+  });
+
   test('GU-11: unmounting and remounting preserves positions without leaking scheduled work', async ({
     page,
   }) => {

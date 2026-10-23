@@ -14,4 +14,24 @@ AppGraph displays the topology of different applications.
 
 #### Arguments
 
-- **resource** _`AppGraph`_ - The application graph to display.
+- **graph** _`AppGraphData`_ - The application graph to display.
+
+#### Icons and edge kinds
+
+For `Radius.Core/applications` with API version `2025-08-01-preview` or later,
+request `getGraph` with the JSON body `{ "includeIcons": true }`. The response
+contains an `icons` map of SVG strings. Each resource selects its icon through
+`iconHash`. AppGraph displays the SVG as an image, not as page markup. A missing
+icon does not remove the resource name or type.
+
+Connections can carry `kind: "Connection"` or `kind: "Dependency"`. AppGraph
+draws one edge for each mirrored relationship. A solid edge marks a connection;
+a dashed edge marks a dependency. Each edge also shows its kind as text.
+If both kinds describe the same directed pair, `Connection` takes precedence.
+Edges retain the existing dependency-to-dependent layout.
+
+Legacy responses without icon metadata or edge kinds still use the existing
+renderer. The dashboard does not read Bicep files or infer missing `dependsOn`
+links. It displays dependency edges only when they are present in the response.
+
+<Canvas of={AppGraph.WithMetadata} />
