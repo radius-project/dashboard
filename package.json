@@ -20,7 +20,8 @@
     "tsc:full": "tsc --skipLibCheck false --incremental false",
     "clean": "backstage-cli repo clean",
     "test": "backstage-cli repo test",
-    "test:all": "backstage-cli repo test --coverage",
+    "test:all": "yarn test:release-images && backstage-cli repo test --coverage",
+    "test:release-images": "node --test scripts/release-image.test.ts",
     "test:e2e": "playwright test",
     "test:e2e:components": "playwright test --config playwright.components.config.ts",
     "test:package": "node scripts/test-package.js",
@@ -42,14 +43,14 @@
     "@internal/app": "workspace:^",
     "@jest/environment-jsdom-abstract": "^30.5.2",
     "@module-federation/enhanced": "^2.9.2",
-    "@playwright/test": "^1.64.0",
+    "@playwright/test": "^1.64.1",
     "@spotify/prettier-config": "^15.0.0",
     "concurrently": "^10.0.6",
     "jest": "^30.5.2",
     "jest-environment-jsdom": "^30.5.2",
     "jsdom": "^29.1.1",
     "node-gyp": "^13.1.0",
-    "prettier": "^3.9.9",
+    "prettier": "^3.9.10",
     "typescript": "~6.0.3"
   },
   "resolutions": {
@@ -58,7 +59,9 @@
     "@backstage/backend-common": "^0.25.0",
     "esbuild": "^0.27.4",
     "jsonpath-plus": "^10.3.0",
-    "mysql2": "^3"
+    "mysql2": "^3",
+    "adm-zip@npm:0.6.0": "0.6.1",
+    "undici@npm:7.29.0": "7.29.1"
   },
   "prettier": "@spotify/prettier-config",
   "lint-staged": {
