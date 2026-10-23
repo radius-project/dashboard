@@ -421,5 +421,55 @@ describe('ResourceTable', () => {
       filterBy('Kind', 'azure');
       await waitFor(() => expect(column(0)).toEqual(['on-azure']));
     });
+
+    it('should keep a column filter when the resource group selection changes', async () => {
+      const api: Pick<RadiusApi, 'listResources'> = {
+        listResources: async <T = { [key: string]: unknown },>() =>
+          Promise.resolve({
+            value: [
+              {
+                id: env('a-group', 'k8s'),
+                type: 'Applications.Core/environments',
+                name: 'k8s',
+                properties: {},
+              },
+              {
+                id: env('b-group', 'on-azure'),
+                type: 'Applications.Core/environments',
+                name: 'on-azure',
+                properties: { providers: { azure: {} } },
+              },
+              {
+                id: env('b-group', 'b-k8s'),
+                type: 'Applications.Core/environments',
+                name: 'b-k8s',
+                properties: {},
+              },
+            ],
+          } as unknown as ResourceList<T>),
+      };
+      const table = (resourceGroupFilter?: string) => (
+        <TestApiProvider apis={[[radiusApiRef, api]]}>
+          <ResourceTable
+            title="Testing"
+            resourceType="Applications.Core/environments"
+            resourceGroupFilter={resourceGroupFilter}
+          />
+        </TestApiProvider>
+      );
+      const { rerender } = await renderInTestApp(table(), {
+        mountedRoutes: {
+          '/resources': resourcePageRouteRef,
+          '/environments': environmentPageRouteRef,
+        },
+      });
+
+      filterBy('Kind', 'azure');
+      await waitFor(() => expect(column(0)).toEqual(['on-azure']));
+
+      rerender(table('b-group'));
+      await waitFor(() => expect(column(0)).toEqual(['on-azure']));
+      expect(screen.getByLabelText('filter data by Kind')).toHaveValue('azure');
+    });
   });
 });

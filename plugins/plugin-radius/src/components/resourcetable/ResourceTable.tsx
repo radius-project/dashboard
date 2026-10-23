@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Resource, ResourceList } from '../../resources';
 import {
   Progress,
@@ -41,6 +41,11 @@ const DataTable = (props: {
   resourceType?: string;
   resourceGroupFilter?: string;
 }) => {
+  // The table drops its column filters whenever the columns are rebuilt (for
+  // example when the resource group selection changes), so remember them here
+  // and hand them back as each column's default filter.
+  const [filterValues, setFilterValues] = useState<Record<string, string>>({});
+
   const columns: TableColumn<Resource>[] = [
     {
       title: 'Name',
@@ -131,6 +136,10 @@ const DataTable = (props: {
     columns.push({ title: 'Status', field: 'properties.provisioningState' });
   }
 
+  for (const column of columns) {
+    column.defaultFilter = filterValues[String(column.title)];
+  }
+
   const data = props.resources.filter(resource => {
     // If the id equals the filter, then exclude it. 'resource.id' will always be a string.
     if (
@@ -198,6 +207,13 @@ const DataTable = (props: {
       }}
       columns={columns}
       data={sortedData}
+      onFilterChange={filters =>
+        setFilterValues(
+          Object.fromEntries(
+            filters.map(f => [String(f.column.title), String(f.value)]),
+          ),
+        )
+      }
     />
   );
 };
