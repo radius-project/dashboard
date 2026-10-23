@@ -8,6 +8,7 @@ import containerToDatabase from '../../../__fixtures__/graph/container-to-databa
 import multiTier from '../../../__fixtures__/graph/multi-tier.json';
 import deployStatusMatrix from '../../../__fixtures__/graph/deploy-status-matrix.json';
 import bothNamespaces from '../../../__fixtures__/graph/both-namespaces.json';
+import { graphWithMetadata } from '../../../__fixtures__/graphWithMetadata';
 
 const meta: Meta<typeof Example> = {
   title: 'AppGraph',
@@ -45,6 +46,12 @@ export const MultiTier: Story = {
 };
 
 export const Demo = MultiTier;
+
+export const WithMetadata: Story = {
+  args: {
+    graph: graphWithMetadata,
+  },
+};
 
 export const DeployStatusMatrix: Story = {
   args: {

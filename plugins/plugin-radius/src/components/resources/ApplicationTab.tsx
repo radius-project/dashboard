@@ -8,34 +8,16 @@ import {
 import { kubernetesApiRef } from '@backstage/plugin-kubernetes';
 import { useApi } from '@backstage/core-plugin-api';
 import useAsync from 'react-use/lib/useAsync';
-import { AppGraph } from '@radapp.io/rad-components';
+import { AppGraph, AppGraphData } from '@radapp.io/rad-components';
 import { makeStyles } from '@material-ui/core';
 import { radiusApiRef } from '../../plugin';
 
-export interface AppGraphData {
-  name: string;
-  resources: ResourceData[];
-}
-
-export interface ResourceData {
-  id: string;
-  name: string;
-  type: string;
-  provider: string;
-  provisioningState: string;
-  resources?: ResourceData[];
-  connections?: Connection[];
-}
-
-export interface Connection {
-  id: string;
-  name: string;
-  type: string;
-  provider: string;
-  direction: Direction;
-}
-
-export type Direction = 'Outbound' | 'Inbound';
+export type {
+  AppGraphData,
+  Resource as ResourceData,
+  Connection,
+  Direction,
+} from '@radapp.io/rad-components';
 
 const useStyles = makeStyles({
   container: {
@@ -99,6 +81,13 @@ export const ApplicationTab = ({ application }: { application: string }) => {
           mode: 'cors',
           cache: 'no-cache',
           method: 'POST',
+          ...(namespace.toLowerCase() === 'radius.core' &&
+          apiVersionString >= '2025-08-01-preview'
+            ? {
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ includeIcons: true }),
+              }
+            : {}),
           signal: controller.signal,
         },
       });
