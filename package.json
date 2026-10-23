@@ -59,7 +59,9 @@
     "@backstage/backend-common": "^0.25.0",
     "esbuild": "^0.27.4",
     "jsonpath-plus": "^10.3.0",
-    "mysql2": "^3"
+    "mysql2": "^3",
+    "adm-zip@npm:0.6.0": "0.6.1",
+    "undici@npm:7.29.0": "7.29.1"
   },
   "prettier": "@spotify/prettier-config",
   "lint-staged": {
