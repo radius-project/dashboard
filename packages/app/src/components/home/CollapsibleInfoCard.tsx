@@ -1,5 +1,5 @@
 import { InfoCard } from '@backstage/core-components';
-import { storageApiRef, useApi } from '@backstage/core-plugin-api';
+import { errorApiRef, storageApiRef, useApi } from '@backstage/core-plugin-api';
 import { IconButton } from '@material-ui/core';
 import ExpandLessIcon from '@material-ui/icons/ExpandLess';
 import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
@@ -23,6 +23,7 @@ export const useCardCollapsed = (
   cardId: string,
 ): [boolean, (collapsed: boolean) => void] => {
   const storageApi = useApi(storageApiRef);
+  const errorApi = useApi(errorApiRef);
   const bucket = useMemo(
     () => storageApi.forBucket(HOME_CARDS_STORAGE_BUCKET),
     [storageApi],
@@ -44,12 +45,17 @@ export const useCardCollapsed = (
   const setCollapsed = useCallback(
     (value: boolean) => {
       setCollapsedState(value);
-      bucket.set(cardId, value).catch(() => {
-        // Persisting is best effort: when storage is unavailable the card
-        // still toggles for the rest of this visit.
+      // The card still toggles for the rest of this visit when storage is
+      // unavailable, but the user is told the choice won't be remembered.
+      bucket.set(cardId, value).catch(error => {
+        errorApi.post(
+          new Error(
+            `Could not save the collapsed state of this card, so it may reset after a refresh: ${error?.message ?? error}`,
+          ),
+        );
       });
     },
-    [bucket, cardId],
+    [bucket, cardId, errorApi],
   );
 
   return [collapsed, setCollapsed];

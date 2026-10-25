@@ -1,5 +1,10 @@
 import React from 'react';
-import { storageApiRef, StorageApi } from '@backstage/core-plugin-api';
+import {
+  ErrorApi,
+  errorApiRef,
+  storageApiRef,
+  StorageApi,
+} from '@backstage/core-plugin-api';
 import {
   mockApis,
   renderInTestApp,
@@ -38,9 +43,15 @@ const Card = ({
 const renderWithStorage = (
   storage: StorageApi,
   element: React.ReactElement = <Card />,
+  errorApi: ErrorApi = { post: jest.fn(), error$: jest.fn() },
 ) =>
   renderInTestApp(
-    <TestApiProvider apis={[[storageApiRef, storage]]}>
+    <TestApiProvider
+      apis={[
+        [storageApiRef, storage],
+        [errorApiRef, errorApi],
+      ]}
+    >
       {element}
     </TestApiProvider>,
   );
@@ -145,16 +156,17 @@ describe('CollapsibleInfoCard', () => {
     ).toBeInTheDocument();
   });
 
-  it('CIC-07: still toggles for the current visit when storage rejects the write', async () => {
+  it('CIC-07: keeps the toggled state and reports one error when storage rejects the write', async () => {
     const storage = mockApis.storage();
     const bucket = storage.forBucket(HOME_CARDS_STORAGE_BUCKET);
     const set = jest
       .spyOn(bucket, 'set')
       .mockRejectedValue(new Error('QuotaExceededError'));
+    const errorApi: ErrorApi = { post: jest.fn(), error$: jest.fn() };
     const unhandled = jest.fn();
     process.on('unhandledRejection', unhandled);
     try {
-      await renderWithStorage(storage);
+      await renderWithStorage(storage, <Card />, errorApi);
 
       fireEvent.click(
         screen.getByRole('button', { name: 'Collapse Learn more' }),
@@ -164,6 +176,12 @@ describe('CollapsibleInfoCard', () => {
 
       expect(set).toHaveBeenCalledWith('learn', true);
       expect(unhandled).not.toHaveBeenCalled();
+      expect(errorApi.post).toHaveBeenCalledTimes(1);
+      expect(errorApi.post).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining('QuotaExceededError'),
+        }),
+      );
       expect(
         screen.getByRole('button', { name: 'Expand Learn more' }),
       ).toBeInTheDocument();
