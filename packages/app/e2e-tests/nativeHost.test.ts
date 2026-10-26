@@ -103,6 +103,15 @@ test.describe('standalone frontend contracts', () => {
   test('FS-11: installed catalog entity page and graph resolve the same entity', async ({
     page,
   }) => {
+    const catalogErrors: string[] = [];
+    page.on('response', response => {
+      if (
+        response.status() >= 400 &&
+        response.url().includes('/api/catalog/')
+      ) {
+        catalogErrors.push(`${response.status()} ${response.url()}`);
+      }
+    });
     const entity = {
       apiVersion: 'backstage.io/v1alpha1',
       kind: 'Component',
@@ -126,11 +135,23 @@ test.describe('standalone frontend contracts', () => {
     await page.route('**/api/catalog/entities/by-refs', route =>
       route.fulfill({ json: { items: [entity] } }),
     );
+    await page.route(
+      '**/api/catalog/entities/by-name/component/default/standalone-component/ancestry',
+      route =>
+        route.fulfill({
+          json: {
+            rootEntityRef: 'component:default/standalone-component',
+            items: [{ entity, parentEntityRefs: [] }],
+          },
+        }),
+    );
     await page.goto('/catalog/default/component/standalone-component');
     await expect(
       page.getByRole('heading', { name: 'standalone-component', exact: true }),
     ).toBeVisible({ timeout: 20_000 });
-    await expect(page.getByText(entity.metadata.description)).toBeVisible();
+    await expect(page.getByText(entity.metadata.description)).toBeVisible({
+      timeout: 15_000,
+    });
     await page.reload();
     await expect(
       page.getByRole('heading', { name: 'standalone-component', exact: true }),
@@ -144,5 +165,6 @@ test.describe('standalone frontend contracts', () => {
     await expect(
       page.locator('svg').getByText('standalone-component', { exact: true }),
     ).toBeVisible();
+    expect(catalogErrors).toEqual([]);
   });
 });

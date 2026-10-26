@@ -17,6 +17,7 @@ async function listen(server: Server) {
 async function close(server: Server) {
   await new Promise<void>((resolve, reject) => {
     server.close(error => (error ? reject(error) : resolve()));
+    server.closeAllConnections();
   });
 }
 
