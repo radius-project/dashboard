@@ -19,8 +19,11 @@ import { test, expect } from '@playwright/test';
 test('App should render the home page', async ({ page }) => {
   await page.goto('/');
 
-  await expect(page.getByText('Learn more')).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByText('Join the community')).toBeVisible();
+  if (process.env.STANDALONE_ROLLBACK === 'true') {
+    await page.getByRole('button', { name: 'Enter', exact: true }).click();
+  }
+  await expect(page.getByText(/Learn more/i)).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText(/Join the community/i)).toBeVisible();
   await expect(page.getByText('Get help with Radius')).toBeVisible();
   await expect(
     page.getByRole('button', { name: 'Enter', exact: true }),

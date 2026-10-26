@@ -84,16 +84,56 @@ after the journeys. `yarn test:package` checks both Radius entries from the same
 
 The pre-cutover source base is `9d295b5097c62d9c3fa9dab136172f34c1b912bf`.
 Its lockfile Git blob is `7d8981bda1ac345fcbdea29a7f36d992cc559769`.
-An immutable rollback image and a successful image restore test are still required for FS-16.
-A source build or a mutable `latest` tag does not satisfy that gate.
-FS-16 remains open until a previous qualified image can be restored and checked.
-The native built host and backend pass the browser journeys, but this is not a completed rollback
-qualification or approval to publish a stable package.
 The candidate lockfile SHA-256 is
 `d6c5282e6d0b8e1bf61385c6273f6186d411d3531369679f7214ad6a5ad7171f`.
 Its backend uses `@backstage/backend-defaults` 0.18.0 and `@backstage/plugin-app-backend` 0.5.18.
 The candidate frontend uses React 18.3.1. Keep this source revision and lockfile together when
 building a candidate image; do not substitute dependencies from a later install.
+
+### Image restore qualification (FS-16)
+
+On 2026-10-26, the native candidate passed all nine browser journeys in its container.
+The check then stopped that container and restored the previous qualified image on the same
+address. All six previous-host journeys passed, including all eight Radius routes, graph
+navigation, direct refresh, and failure/timeout states. Both containers used the same temporary
+configuration, in-memory databases and controlled Kubernetes upstream. This is an application
+image restore check, not a persistent database migration or a stable package release approval.
+
+The restored image was published by the successful
+[Build run 40371034010](https://github.com/radius-project/dashboard/actions/runs/40371034010).
+That run passed its six container browser tests before publishing the digest below.
+Its source revision includes later dependency updates than the implementation branch's original
+base. The image revision label and included lockfile were checked; the original base was not
+rebuilt and presented as a prior published image.
+
+| Record | Qualified identity |
+| --- | --- |
+| Previous source revision | `4f243cc02166e1330fe5769683d2a70aca23ded1` |
+| Previous lockfile Git blob | `858e8c64a07fc43c8dc52a526eb5cb07c30865fb` |
+| Previous image lockfile SHA-256 | `4d89b7d1f7329763297c97c583c3dd798578ad2bdcb52c5d17a6e9176c5a74a8` |
+| Previous registry image | `ghcr.io/radius-project/dashboard@sha256:166dcc84f8399b6c7b2e060c22eda390763d9379001e24695a961154679daa44` |
+| Candidate source revision | `811d2f002813c98ce6df552e2543543abcb511cf` |
+| Candidate local image ID | `sha256:99a7e44f59c6d4964d7198d0f9a626bca5fc7a147b9cfbde59f3038e7d88a71c` |
+
+The candidate image remains local; it was not published. Its included lockfile matches the
+candidate SHA-256 above. Both image checks used `linux/amd64` on Docker Desktop.
+The standard Dockerfile's dependency fetch failed with a public-registry TLS error on this
+machine. The successful local build used a temporary copy of that Dockerfile with only the
+configured registry supplied through a BuildKit secret mount during dependency installation.
+No credentials or registry override were stored in the image.
+
+To repeat the recorded check while the candidate image is available locally:
+
+```bash
+yarn test:e2e:rollback ghcr.io/radius-project/dashboard@sha256:166dcc84f8399b6c7b2e060c22eda390763d9379001e24695a961154679daa44 sha256:99a7e44f59c6d4964d7198d0f9a626bca5fc7a147b9cfbde59f3038e7d88a71c
+```
+
+The runner accepts immutable image identities, not mutable tags. It runs all current journeys
+against the candidate, then the previous host's six journeys against the restored image.
+`STANDALONE_ROLLBACK` selects the previous host's explicit guest sign-in in the shared home
+test; the native candidate must still sign in without that step. The runner removes only its
+own containers, network and temporary configuration. It does not stop Docker Desktop or other
+containers. Legacy root-entry artifact tests remain required until an approved retirement.
 
 ## Developing: rad-components
 
