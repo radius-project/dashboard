@@ -76,9 +76,15 @@ jobs:
           GRAPH_RECORD_BASE_REF: ${{ github.event.pull_request.base.sha }}
         run: yarn run test:all
 
-      - name: Run E2E Tests
+      - name: Install Playwright browser
         if: ${{ env.CI_TEST == 'true' }}
-        run: yarn run test:e2e
+        run: yarn exec playwright install --with-deps chromium
+
+      - name: Qualify Built Standalone Host
+        if: ${{ env.CI_TEST == 'true' }}
+        env:
+          NODE_ENV: production
+        run: yarn run test:e2e:standalone
 
       - name: Run Component Browser Tests
         if: ${{ env.CI_TEST == 'true' }}

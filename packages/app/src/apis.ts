@@ -13,6 +13,13 @@ import {
 import { CatalogClient } from '@backstage/catalog-client';
 import { catalogApiRef } from '@backstage/plugin-catalog-react';
 
+export const catalogApiFactory = createApiFactory({
+  api: catalogApiRef,
+  deps: { discoveryApi: discoveryApiRef, fetchApi: fetchApiRef },
+  factory: ({ discoveryApi, fetchApi }) =>
+    new CatalogClient({ discoveryApi, fetchApi }),
+});
+
 export const apis: AnyApiFactory[] = [
   createApiFactory({
     api: scmIntegrationsApiRef,
@@ -20,10 +27,5 @@ export const apis: AnyApiFactory[] = [
     factory: ({ configApi }) => ScmIntegrationsApi.fromConfig(configApi),
   }),
   ScmAuth.createDefaultApiFactory(),
-  createApiFactory({
-    api: catalogApiRef,
-    deps: { discoveryApi: discoveryApiRef, fetchApi: fetchApiRef },
-    factory: ({ discoveryApi, fetchApi }) =>
-      new CatalogClient({ discoveryApi, fetchApi }),
-  }),
+  catalogApiFactory,
 ];

@@ -1,73 +1,160 @@
 import React from 'react';
-import { renderWithEffects } from '@backstage/test-utils';
-import App from './App';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { renderTestApp } from '@backstage/frontend-test-utils';
+import {
+  AppRootElementBlueprint,
+  appThemeApiRef,
+  appTreeApiRef,
+  featureFlagsApiRef,
+  useApi,
+  type AppTree,
+  alertApiRef,
+  dialogApiRef,
+} from '@backstage/frontend-plugin-api';
+import { kubernetesApiRef } from '@backstage/plugin-kubernetes';
+import { features } from './App';
 
-jest.mock('@backstage/plugin-catalog', () => ({
-  catalogPlugin: { externalRoutes: {} },
-}));
+const kubernetes = {
+  getClusters: jest
+    .fn()
+    .mockResolvedValue([
+      { name: 'app-test-cluster', authProvider: 'serviceAccount' },
+    ]),
+  proxy: jest
+    .fn()
+    .mockResolvedValue(new Response(JSON.stringify({ value: [] }))),
+};
+const config = {
+  app: {
+    baseUrl: 'http://localhost:3000',
+    extensions: [{ 'sign-in-page:app': false }],
+  },
+  backend: { baseUrl: 'http://localhost:7007' },
+};
 
-jest.mock('@backstage/plugin-catalog-graph', () => ({
-  CatalogGraphPage: () => <div>Catalog Graph</div>,
-}));
-
-jest.mock('@backstage/app-defaults', () => ({
-  createApp: () => ({
-    createRoot: () =>
-      function MockAppRoot() {
-        return <div>Mock App</div>;
-      },
-  }),
-}));
-
-jest.mock('@backstage/plugin-home', () => ({
-  HomepageCompositionRoot: ({ children }: { children?: React.ReactNode }) => (
-    <>{children}</>
-  ),
-}));
-
-jest.mock('@backstage/plugin-user-settings', () => ({
-  UserSettingsPage: () => <div>User Settings</div>,
-}));
-
-jest.mock('@backstage/plugin-kubernetes', () => ({
-  kubernetesPlugin: {},
-}));
-
-jest.mock('./apis', () => ({
-  apis: [],
-}));
-
-jest.mock('@internal/plugin-radius', () => ({
-  radiusPlugin: { externalRoutes: {} },
-  ApplicationListPage: () => <div>Applications</div>,
-  EnvironmentListPage: () => <div>Environments</div>,
-  EnvironmentPage: () => <div>Environment</div>,
-  RecipeListPage: () => <div>Recipes</div>,
-  ResourceListPage: () => <div>Resources</div>,
-  ResourcePage: () => <div>Resource</div>,
-  ResourceTypesListPage: () => <div>Resource Types</div>,
-  ResourceTypeDetailPage: () => <div>Resource Type Detail</div>,
-}));
-
-describe('App', () => {
-  it('should render', async () => {
-    process.env = {
-      NODE_ENV: 'test',
-      APP_CONFIG: [
-        {
-          data: {
-            app: { title: 'Test' },
-            backend: { baseUrl: 'http://localhost:7007' },
-            techdocs: {
-              storageUrl: 'http://localhost:7007/api/techdocs/static/docs',
-            },
-          },
-          context: 'test',
-        },
-      ] as unknown as string,
+describe('standalone native host', () => {
+  it('FS-09/10: installs one Radius page/API set and keeps default alerts and dialogs', async () => {
+    const observed = jest.fn<void, [AppTree, string[], string[]]>();
+    const Probe = () => {
+      const tree = useApi(appTreeApiRef);
+      const themes = useApi(appThemeApiRef);
+      const flags = useApi(featureFlagsApiRef);
+      React.useEffect(() => {
+        observed(
+          tree.getTree().tree,
+          themes.getInstalledThemes().map(theme => theme.id),
+          flags
+            .getRegisteredFlags()
+            .filter(flag => flag.name === 'radius-catalog')
+            .map(flag => flag.name),
+        );
+      }, [tree, themes, flags]);
+      return null;
     };
+    renderTestApp({
+      features,
+      config,
+      initialRouteEntries: ['/applications'],
+      apis: [[kubernetesApiRef, kubernetes]],
+      extensions: [
+        AppRootElementBlueprint.make({
+          name: 'host-probe',
+          params: { element: <Probe /> },
+        }),
+      ],
+    });
+    expect(
+      await screen.findByRole('heading', { name: 'Applications', level: 1 }),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(observed).toHaveBeenCalled());
+    const [tree, themes, flags] = observed.mock.calls[0];
+    const nodes = [...tree.nodes.values()].filter(node => node.instance);
+    expect(
+      nodes.filter(node => node.spec.id.startsWith('page:radius/')),
+    ).toHaveLength(8);
+    expect(
+      nodes.filter(node => node.spec.id === 'api:radius/radius'),
+    ).toHaveLength(1);
+    expect(flags).toEqual(['radius-catalog']);
+    expect(themes.sort()).toEqual(['dark', 'light']);
+    expect(nodes.map(node => node.spec.id)).toEqual(
+      expect.arrayContaining([
+        'app-root-element:app/alert-display',
+        'app-root-element:app/oauth-request-dialog',
+        'app-root-element:app/dialog-display',
+      ]),
+    );
+  });
 
-    const rendered = await renderWithEffects(<App />);
-    expect(rendered.baseElement).toBeInTheDocument();
+  it('FS-11: preserves the home cards and sidebar through installed composition', async () => {
+    renderTestApp({
+      features,
+      config,
+      initialRouteEntries: ['/'],
+      apis: [[kubernetesApiRef, kubernetes]],
+    });
+    expect(await screen.findByText('Learn more')).toBeInTheDocument();
+    expect(screen.getByText('Join the community')).toBeInTheDocument();
+    expect(screen.getByText('Get help with Radius')).toBeInTheDocument();
+    expect(screen.getAllByText('Applications', { exact: true })).toHaveLength(
+      2,
+    );
+    expect(screen.getAllByText('Environments', { exact: true })).toHaveLength(
+      2,
+    );
+    for (const name of [
+      'Resource Types',
+      'Environments',
+      'Applications',
+      'Resources',
+      'Recipes',
+    ]) {
+      expect(screen.getByRole('link', { name })).toBeInTheDocument();
+    }
+  });
+
+  it('FS-09: delivers alerts and dialogs through the default app extensions', async () => {
+    const Controls = () => {
+      const alerts = useApi(alertApiRef);
+      const dialogs = useApi(dialogApiRef);
+      return (
+        <button
+          onClick={() => {
+            alerts.post({
+              message: 'Host alert reached the display',
+              severity: 'info',
+            });
+            dialogs.open(
+              <div role="dialog" aria-label="Host dialog">
+                Host dialog reached the display
+              </div>,
+            );
+          }}
+        >
+          Exercise host displays
+        </button>
+      );
+    };
+    renderTestApp({
+      features,
+      config,
+      initialRouteEntries: ['/applications'],
+      apis: [[kubernetesApiRef, kubernetes]],
+      extensions: [
+        AppRootElementBlueprint.make({
+          name: 'host-controls',
+          params: { element: <Controls /> },
+        }),
+      ],
+    });
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Exercise host displays' }),
+    );
+    expect(
+      await screen.findByText('Host alert reached the display'),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByRole('dialog', { name: 'Host dialog' }),
+    ).toHaveTextContent('Host dialog reached the display');
   });
 });

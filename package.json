@@ -23,6 +23,7 @@
     "test:all": "yarn test:release-images && backstage-cli repo test --coverage",
     "test:release-images": "node --test scripts/release-image.test.ts",
     "test:e2e": "playwright test",
+    "test:e2e:standalone": "node scripts/qualify-standalone-host.ts",
     "test:e2e:components": "playwright test --config playwright.components.config.ts",
     "test:package": "node scripts/test-package.js",
     "fix": "backstage-cli repo fix",

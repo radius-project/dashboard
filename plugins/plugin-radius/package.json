@@ -3,6 +3,11 @@
   "version": "0.1.0",
   "main": "src/index.ts",
   "types": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./alpha": "./src/alpha.tsx",
+    "./package.json": "./package.json"
+  },
   "license": "Apache-2.0",
   "private": true,
   "publishConfig": {
@@ -15,7 +20,10 @@
     "pluginId": "radius",
     "pluginPackages": [
       "@internal/plugin-radius"
-    ]
+    ],
+    "features": {
+      "./alpha": "@backstage/FrontendPlugin"
+    }
   },
   "sideEffects": false,
   "scripts": {
@@ -28,8 +36,10 @@
     "postpack": "backstage-cli package postpack"
   },
   "dependencies": {
+    "@backstage/core-compat-api": "0.5.15",
     "@backstage/core-components": "^0.18.14",
     "@backstage/core-plugin-api": "^1.12.10",
+    "@backstage/frontend-plugin-api": "0.18.1",
     "@backstage/plugin-kubernetes": "^0.12.23",
     "@backstage/theme": "^0.7.3",
     "@date-io/core": "^3.2.0",
@@ -46,10 +56,14 @@
     "react-router-dom": "^6.3.0"
   },
   "devDependencies": {
+    "@backstage/app-defaults": "1.7.12",
     "@backstage/cli": "^0.36.6",
     "@backstage/cli-defaults": "^0.1.6",
+    "@backstage/config": "1.3.9",
     "@backstage/core-app-api": "^1.20.5",
     "@backstage/dev-utils": "^1.1.27",
+    "@backstage/frontend-defaults": "0.5.6",
+    "@backstage/frontend-test-utils": "0.6.4",
     "@backstage/plugin-kubernetes-common": "^0.9.13",
     "@backstage/test-utils": "^1.7.22",
     "@testing-library/dom": "^10.4.2",
@@ -58,6 +72,7 @@
     "@testing-library/user-event": "^14.6.8",
     "@types/jest": "^30.0.0",
     "@types/react": "^18",
+    "esbuild": "0.27.7",
     "jest": "^30.5.2",
     "jest-canvas-mock": "^2.5.8",
     "msw": "^3.0.3",

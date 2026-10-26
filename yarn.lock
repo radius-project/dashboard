@@ -3556,7 +3556,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@backstage/app-defaults@npm:^1.7.12":
+"@backstage/app-defaults@npm:1.7.12, @backstage/app-defaults@npm:^1.7.12":
   version: 1.7.12
   resolution: "@backstage/app-defaults@npm:1.7.12"
   dependencies:
@@ -3715,7 +3715,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@backstage/backend-plugin-api@npm:^1.10.1":
+"@backstage/backend-plugin-api@npm:1.10.1, @backstage/backend-plugin-api@npm:^1.10.1":
   version: 1.10.1
   resolution: "@backstage/backend-plugin-api@npm:1.10.1"
   dependencies:
@@ -3733,6 +3733,50 @@ __metadata:
     luxon: "npm:^3.0.0"
     zod: "npm:^3.25.76 || ^4.0.0"
   checksum: 10c0/1fbe06b34ded2a4f4223db2be8eb7d987db5b73925b3bb630648f9501ffec39f09c1c5de423c6da7c3b4730af382895478457f376ded7bffced46df6b3290c0d
+  languageName: node
+  linkType: hard
+
+"@backstage/backend-test-utils@npm:1.11.7":
+  version: 1.11.7
+  resolution: "@backstage/backend-test-utils@npm:1.11.7::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2F%40backstage%2Fbackend-test-utils%2F-%2Fbackend-test-utils-1.11.7.tgz"
+  dependencies:
+    "@backstage/backend-app-api": "npm:^1.7.4"
+    "@backstage/backend-defaults": "npm:^0.18.0"
+    "@backstage/backend-plugin-api": "npm:^1.10.1"
+    "@backstage/config": "npm:^1.3.9"
+    "@backstage/errors": "npm:^1.3.1"
+    "@backstage/plugin-auth-node": "npm:^0.7.6"
+    "@backstage/plugin-events-node": "npm:^0.4.26"
+    "@backstage/plugin-permission-common": "npm:^0.9.11"
+    "@backstage/types": "npm:^1.2.2"
+    "@keyv/memcache": "npm:^2.0.1"
+    "@keyv/redis": "npm:^4.0.1"
+    "@keyv/valkey": "npm:^1.0.1"
+    "@types/express": "npm:^4.17.6"
+    "@types/express-serve-static-core": "npm:^4.17.5"
+    "@types/keyv": "npm:^4.2.0"
+    "@types/qs": "npm:^6.9.6"
+    better-sqlite3: "npm:^12.0.0"
+    cookie: "npm:^0.7.0"
+    express: "npm:^4.22.0"
+    fs-extra: "npm:^11.0.0"
+    keyv: "npm:^5.2.1"
+    knex: "npm:^3.0.0"
+    lodash: "npm:^4.17.21"
+    mysql2: "npm:^3.0.0"
+    pg: "npm:^8.11.3"
+    pg-connection-string: "npm:^2.3.0"
+    testcontainers: "npm:^11.9.0"
+    text-extensions: "npm:^2.4.0"
+    yn: "npm:^4.0.0"
+    zod: "npm:^3.25.76 || ^4.0.0"
+    zod-to-json-schema: "npm:^3.25.1"
+  peerDependencies:
+    "@types/jest": "*"
+  peerDependenciesMeta:
+    "@types/jest":
+      optional: true
+  checksum: 10c0/3e4b51cfb3e66b787e0cf8336b4c84dc6863b317c48c560ceb83a41d71ac02dac2cf772c01ba7b5f4fbf38cca2af5a357832af613ea3f184bc5f39c1e9075e81
   languageName: node
   linkType: hard
 
@@ -4235,7 +4279,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@backstage/config@npm:^1.3.9":
+"@backstage/config@npm:1.3.9, @backstage/config@npm:^1.3.9":
   version: 1.3.9
   resolution: "@backstage/config@npm:1.3.9"
   dependencies:
@@ -4287,7 +4331,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@backstage/core-compat-api@npm:^0.5.15":
+"@backstage/core-compat-api@npm:0.5.15, @backstage/core-compat-api@npm:^0.5.15":
   version: 0.5.15
   resolution: "@backstage/core-compat-api@npm:0.5.15"
   dependencies:
@@ -4471,7 +4515,56 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@backstage/frontend-plugin-api@npm:^0.18.1":
+"@backstage/frontend-app-api@npm:^0.16.8":
+  version: 0.16.8
+  resolution: "@backstage/frontend-app-api@npm:0.16.8::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2F%40backstage%2Ffrontend-app-api%2F-%2Ffrontend-app-api-0.16.8.tgz"
+  dependencies:
+    "@backstage/config": "npm:^1.3.9"
+    "@backstage/core-app-api": "npm:^1.20.5"
+    "@backstage/core-plugin-api": "npm:^1.12.10"
+    "@backstage/errors": "npm:^1.3.1"
+    "@backstage/filter-predicates": "npm:^0.1.5"
+    "@backstage/frontend-defaults": "npm:^0.5.6"
+    "@backstage/frontend-plugin-api": "npm:^0.18.1"
+    "@backstage/types": "npm:^1.2.2"
+    "@backstage/version-bridge": "npm:^1.0.12"
+    lodash: "npm:^4.17.21"
+  peerDependencies:
+    "@types/react": ^17.0.0 || ^18.0.0
+    react: ^17.0.0 || ^18.0.0
+    react-dom: ^17.0.0 || ^18.0.0
+    react-router-dom: ^6.30.2
+  peerDependenciesMeta:
+    "@types/react":
+      optional: true
+  checksum: 10c0/0ec8b26c0771e1cde3f4d42abbef70ba07323be56a9bd32e5ca6d166e9e848575698c5b5c9dec8d79e4be1e8fd7a008318b7bb91a3f025f5a685a9b0efdf2ab2
+  languageName: node
+  linkType: hard
+
+"@backstage/frontend-defaults@npm:0.5.6, @backstage/frontend-defaults@npm:^0.5.6":
+  version: 0.5.6
+  resolution: "@backstage/frontend-defaults@npm:0.5.6::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2F%40backstage%2Ffrontend-defaults%2F-%2Ffrontend-defaults-0.5.6.tgz"
+  dependencies:
+    "@backstage/config": "npm:^1.3.9"
+    "@backstage/core-components": "npm:^0.18.14"
+    "@backstage/errors": "npm:^1.3.1"
+    "@backstage/frontend-app-api": "npm:^0.16.8"
+    "@backstage/frontend-plugin-api": "npm:^0.18.1"
+    "@backstage/plugin-app": "npm:^0.5.3"
+    "@react-hookz/web": "npm:^24.0.0"
+  peerDependencies:
+    "@types/react": ^17.0.0 || ^18.0.0
+    react: ^17.0.0 || ^18.0.0
+    react-dom: ^17.0.0 || ^18.0.0
+    react-router-dom: ^6.30.2
+  peerDependenciesMeta:
+    "@types/react":
+      optional: true
+  checksum: 10c0/666ad2b00e3804091e60d1b60732afee85e48d1860cd6a9e2e57e43605f637d59c8939c4ca6287abbc83df01ce7a09ff9576848855414856905241c5127f6c65
+  languageName: node
+  linkType: hard
+
+"@backstage/frontend-plugin-api@npm:0.18.1, @backstage/frontend-plugin-api@npm:^0.18.1":
   version: 0.18.1
   resolution: "@backstage/frontend-plugin-api@npm:0.18.1"
   dependencies:
@@ -4490,6 +4583,43 @@ __metadata:
     "@types/react":
       optional: true
   checksum: 10c0/ccab18cceede3ed64e0bedc27d745913fedbfa57e4372fed1449b6cd743762aada81cf532ee9d61f143012530c3956c97d6483f87b301e5f307625fd2313d285
+  languageName: node
+  linkType: hard
+
+"@backstage/frontend-test-utils@npm:0.6.4":
+  version: 0.6.4
+  resolution: "@backstage/frontend-test-utils@npm:0.6.4::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2F%40backstage%2Ffrontend-test-utils%2F-%2Ffrontend-test-utils-0.6.4.tgz"
+  dependencies:
+    "@backstage/config": "npm:^1.3.9"
+    "@backstage/core-app-api": "npm:^1.20.5"
+    "@backstage/core-plugin-api": "npm:^1.12.10"
+    "@backstage/filter-predicates": "npm:^0.1.5"
+    "@backstage/frontend-app-api": "npm:^0.16.8"
+    "@backstage/frontend-plugin-api": "npm:^0.18.1"
+    "@backstage/plugin-app": "npm:^0.5.3"
+    "@backstage/plugin-app-react": "npm:^0.2.7"
+    "@backstage/plugin-permission-common": "npm:^0.9.11"
+    "@backstage/plugin-permission-react": "npm:^0.5.5"
+    "@backstage/test-utils": "npm:^1.7.22"
+    "@backstage/types": "npm:^1.2.2"
+    "@backstage/version-bridge": "npm:^1.0.12"
+    i18next: "npm:^22.4.15"
+    zen-observable: "npm:^0.10.0"
+    zod: "npm:^3.25.76 || ^4.0.0"
+  peerDependencies:
+    "@testing-library/dom": ^10.0.0
+    "@testing-library/react": ^16.0.0
+    "@types/jest": "*"
+    "@types/react": ^17.0.0 || ^18.0.0
+    react: ^17.0.0 || ^18.0.0
+    react-dom: ^17.0.0 || ^18.0.0
+    react-router-dom: ^6.30.2
+  peerDependenciesMeta:
+    "@types/jest":
+      optional: true
+    "@types/react":
+      optional: true
+  checksum: 10c0/49728249bb17bf9eae0908b0c4d26922e70f19a375bbdcb204fb9d249fd5abf170eaa2b53155e3e9210a636b733b23c2f7910c4d6030af83617c76a25667c76b
   languageName: node
   linkType: hard
 
@@ -4611,7 +4741,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@backstage/plugin-app-react@npm:^0.2.7":
+"@backstage/plugin-app-react@npm:0.2.7, @backstage/plugin-app-react@npm:^0.2.7":
   version: 0.2.7
   resolution: "@backstage/plugin-app-react@npm:0.2.7"
   dependencies:
@@ -4627,6 +4757,44 @@ __metadata:
     "@types/react":
       optional: true
   checksum: 10c0/7bff8501e8ebf957b6168b6de2cb352a05dcc0bbac937400e8cdac997eecd860c395f34035ae643f200b46fefb21c5d4deda2f1f78888b47ada2062eb3d192e9
+  languageName: node
+  linkType: hard
+
+"@backstage/plugin-app@npm:^0.5.3":
+  version: 0.5.3
+  resolution: "@backstage/plugin-app@npm:0.5.3::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2F%40backstage%2Fplugin-app%2F-%2Fplugin-app-0.5.3.tgz"
+  dependencies:
+    "@backstage/core-components": "npm:^0.18.14"
+    "@backstage/core-plugin-api": "npm:^1.12.10"
+    "@backstage/filter-predicates": "npm:^0.1.5"
+    "@backstage/frontend-plugin-api": "npm:^0.18.1"
+    "@backstage/integration-react": "npm:^1.2.22"
+    "@backstage/plugin-app-react": "npm:^0.2.7"
+    "@backstage/plugin-permission-react": "npm:^0.5.5"
+    "@backstage/theme": "npm:^0.7.3"
+    "@backstage/types": "npm:^1.2.2"
+    "@backstage/ui": "npm:^0.18.0"
+    "@backstage/version-bridge": "npm:^1.0.12"
+    "@material-ui/core": "npm:^4.9.13"
+    "@material-ui/icons": "npm:^4.9.1"
+    "@material-ui/lab": "npm:^4.0.0-alpha.61"
+    "@react-hookz/web": "npm:^24.0.0"
+    "@remixicon/react": "npm:>=4.6.0 <4.9.0"
+    motion: "npm:^12.0.0"
+    react-aria: "npm:~3.48.0"
+    react-stately: "npm:~3.46.0"
+    react-use: "npm:^17.2.4"
+    zen-observable: "npm:^0.10.0"
+    zod: "npm:^4.0.0"
+  peerDependencies:
+    "@types/react": ^17.0.0 || ^18.0.0
+    react: ^17.0.0 || ^18.0.0
+    react-dom: ^17.0.0 || ^18.0.0
+    react-router-dom: ^6.30.2
+  peerDependenciesMeta:
+    "@types/react":
+      optional: true
+  checksum: 10c0/4e86d3c98e660b5b270d501bb7eed75101af210f127eda632a92a8751fa94b25807efb977e8a93bdacffa7740bbeaacd316163f60b9c964e83c0ab5e6622cd43
   languageName: node
   linkType: hard
 
@@ -4920,7 +5088,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@backstage/plugin-home-react@npm:^0.1.42":
+"@backstage/plugin-home-react@npm:0.1.42, @backstage/plugin-home-react@npm:^0.1.42":
   version: 0.1.42
   resolution: "@backstage/plugin-home-react@npm:0.1.42"
   dependencies:
@@ -5448,6 +5616,13 @@ __metadata:
     "@types/react":
       optional: true
   checksum: 10c0/1dc2d45ccef8287bd7bf0ed0f8f87ce742e207ab7fb2d17ec25defb4dd93240ba0a63365f627cc17b97423a0a0e043ab433cfe9e7772eb178dc84983d4a03104
+  languageName: node
+  linkType: hard
+
+"@balena/dockerignore@npm:^1.0.2":
+  version: 1.0.2
+  resolution: "@balena/dockerignore@npm:1.0.2::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2F%40balena%2Fdockerignore%2F-%2Fdockerignore-1.0.2.tgz"
+  checksum: 10c0/0bcb067e86f6734ab943ce4ce9a7c8611f2e983a70bccebf9d2309db57695c09dded7faf5be49c929c4c9e9a9174ae55fc625626de0fb9958823c37423d12f4e
   languageName: node
   linkType: hard
 
@@ -6302,6 +6477,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@grpc/grpc-js@npm:^1.11.1":
+  version: 1.14.6
+  resolution: "@grpc/grpc-js@npm:1.14.6::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2F%40grpc%2Fgrpc-js%2F-%2Fgrpc-js-1.14.6.tgz"
+  dependencies:
+    "@grpc/proto-loader": "npm:^0.8.0"
+    "@js-sdsl/ordered-map": "npm:^4.4.2"
+  checksum: 10c0/13aab26913ef9eb7723df5586700c3a32d8cbea1fb6867e7e42fa4748fabb378c302a61da7fcf01493cc8de36c9738db2caaa3eacf2b2e670b4dd79acd891ad3
+  languageName: node
+  linkType: hard
+
 "@grpc/proto-loader@npm:^0.7.13":
   version: 0.7.15
   resolution: "@grpc/proto-loader@npm:0.7.15"
@@ -6475,21 +6660,26 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@internal/app@workspace:packages/app"
   dependencies:
-    "@backstage/app-defaults": "npm:^1.7.12"
     "@backstage/catalog-client": "npm:^1.16.2"
     "@backstage/catalog-model": "npm:^1.10.1"
     "@backstage/cli": "npm:^0.36.6"
     "@backstage/cli-defaults": "npm:^0.1.6"
     "@backstage/config": "npm:^1.3.9"
     "@backstage/core-app-api": "npm:^1.20.5"
+    "@backstage/core-compat-api": "npm:0.5.15"
     "@backstage/core-components": "npm:^0.18.14"
     "@backstage/core-plugin-api": "npm:^1.12.10"
+    "@backstage/frontend-defaults": "npm:0.5.6"
+    "@backstage/frontend-plugin-api": "npm:0.18.1"
+    "@backstage/frontend-test-utils": "npm:0.6.4"
     "@backstage/integration-react": "npm:^1.2.22"
+    "@backstage/plugin-app-react": "npm:0.2.7"
     "@backstage/plugin-catalog": "npm:^2.0.9"
     "@backstage/plugin-catalog-common": "npm:^1.2.0"
     "@backstage/plugin-catalog-graph": "npm:^0.6.8"
     "@backstage/plugin-catalog-react": "npm:^3.2.3"
     "@backstage/plugin-home": "npm:^0.9.10"
+    "@backstage/plugin-home-react": "npm:0.1.42"
     "@backstage/plugin-kubernetes": "npm:^0.12.23"
     "@backstage/plugin-permission-react": "npm:^0.5.5"
     "@backstage/plugin-user-settings": "npm:^0.9.7"
@@ -6523,8 +6713,11 @@ __metadata:
   resolution: "@internal/backend@workspace:packages/backend"
   dependencies:
     "@backstage/backend-defaults": "npm:^0.18.0"
+    "@backstage/backend-plugin-api": "npm:1.10.1"
+    "@backstage/backend-test-utils": "npm:1.11.7"
     "@backstage/cli": "npm:^0.36.6"
     "@backstage/cli-defaults": "npm:^0.1.6"
+    "@backstage/config": "npm:1.3.9"
     "@backstage/plugin-app-backend": "npm:^0.5.18"
     "@backstage/plugin-auth-backend": "npm:^0.30.1"
     "@backstage/plugin-auth-backend-module-guest-provider": "npm:^0.2.23"
@@ -6561,12 +6754,18 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@internal/plugin-radius@workspace:plugins/plugin-radius"
   dependencies:
+    "@backstage/app-defaults": "npm:1.7.12"
     "@backstage/cli": "npm:^0.36.6"
     "@backstage/cli-defaults": "npm:^0.1.6"
+    "@backstage/config": "npm:1.3.9"
     "@backstage/core-app-api": "npm:^1.20.5"
+    "@backstage/core-compat-api": "npm:0.5.15"
     "@backstage/core-components": "npm:^0.18.14"
     "@backstage/core-plugin-api": "npm:^1.12.10"
     "@backstage/dev-utils": "npm:^1.1.27"
+    "@backstage/frontend-defaults": "npm:0.5.6"
+    "@backstage/frontend-plugin-api": "npm:0.18.1"
+    "@backstage/frontend-test-utils": "npm:0.6.4"
     "@backstage/plugin-kubernetes": "npm:^0.12.23"
     "@backstage/plugin-kubernetes-common": "npm:^0.9.13"
     "@backstage/test-utils": "npm:^1.7.22"
@@ -6582,6 +6781,7 @@ __metadata:
     "@testing-library/user-event": "npm:^14.6.8"
     "@types/jest": "npm:^30.0.0"
     "@types/react": "npm:^18"
+    esbuild: "npm:0.27.7"
     jest: "npm:^30.5.2"
     jest-canvas-mock: "npm:^2.5.8"
     msw: "npm:^3.0.3"
@@ -7551,6 +7751,15 @@ __metadata:
     tar-fs: "npm:^3.0.9"
     ws: "npm:^8.18.2"
   checksum: 10c0/060bd78ee976c3af65319c2d0881adc25981d295d5ff585dad31b68dcf91c9b85f8f2c6ce6a43771cf6276a2fd3146421304f75467060183f5cf5e87bae7ff17
+  languageName: node
+  linkType: hard
+
+"@kwsites/file-exists@npm:^1.1.1":
+  version: 1.1.1
+  resolution: "@kwsites/file-exists@npm:1.1.1::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2F%40kwsites%2Ffile-exists%2F-%2Ffile-exists-1.1.1.tgz"
+  dependencies:
+    debug: "npm:^4.1.1"
+  checksum: 10c0/39e693239a72ccd8408bb618a0200e4a8d61682057ca7ae2c87668d7e69196e8d7e2c9cde73db6b23b3b0230169a15e5f1bfe086539f4be43e767b2db68e8ee4
   languageName: node
   linkType: hard
 
@@ -12462,6 +12671,27 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/docker-modem@npm:*":
+  version: 3.0.6
+  resolution: "@types/docker-modem@npm:3.0.6::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2F%40types%2Fdocker-modem%2F-%2Fdocker-modem-3.0.6.tgz"
+  dependencies:
+    "@types/node": "npm:*"
+    "@types/ssh2": "npm:*"
+  checksum: 10c0/d3ffd273148bc883ff9b1a972b1f84c1add6d9a197d2f4fc9774db4c814f39c2e51cc649385b55d781c790c16fb0bf9c1f4c62499bd0f372a4b920190919445d
+  languageName: node
+  linkType: hard
+
+"@types/dockerode@npm:^4.0.1":
+  version: 4.0.2
+  resolution: "@types/dockerode@npm:4.0.2::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2F%40types%2Fdockerode%2F-%2Fdockerode-4.0.2.tgz"
+  dependencies:
+    "@types/docker-modem": "npm:*"
+    "@types/node": "npm:*"
+    "@types/ssh2": "npm:*"
+  checksum: 10c0/562af199716c0e219501d9b80fa82ceedd2d99d45e653f00b4a61e2c4baad68114bd4400da87cbba45cd24db133e336e3cddc12c9753b0e9d5b722cd02d325a4
+  languageName: node
+  linkType: hard
+
 "@types/doctrine@npm:^0.0.9":
   version: 0.0.9
   resolution: "@types/doctrine@npm:0.0.9"
@@ -12740,6 +12970,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/keyv@npm:^4.2.0":
+  version: 4.2.0
+  resolution: "@types/keyv@npm:4.2.0::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2F%40types%2Fkeyv%2F-%2Fkeyv-4.2.0.tgz"
+  dependencies:
+    keyv: "npm:*"
+  checksum: 10c0/ad626918f1843035b732b582263890a67d73dc3ff80da97e51fbe0ae3f2fe7a1ada2eef1bd89605c5fb739444110e696c0e0703d9b49a842a2f924c6e9164faa
+  languageName: node
+  linkType: hard
+
 "@types/linkify-it@npm:^5":
   version: 5.0.0
   resolution: "@types/linkify-it@npm:5.0.0"
@@ -12866,6 +13105,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/node@npm:^18.11.18":
+  version: 18.19.130
+  resolution: "@types/node@npm:18.19.130::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2F%40types%2Fnode%2F-%2Fnode-18.19.130.tgz"
+  dependencies:
+    undici-types: "npm:~5.26.4"
+  checksum: 10c0/22ba2bc9f8863101a7e90a56aaeba1eb3ebdc51e847cef4a6d188967ab1acbce9b4f92251372fd0329ecb924bbf610509e122c3dfe346c04dbad04013d4ad7d0
+  languageName: node
+  linkType: hard
+
 "@types/node@npm:^24.0.0":
   version: 24.12.0
   resolution: "@types/node@npm:24.12.0"
@@ -12909,6 +13157,13 @@ __metadata:
   version: 6.15.0
   resolution: "@types/qs@npm:6.15.0"
   checksum: 10c0/1b104cac50e655fc41d7fc1de2c2aba2908c4cf833a555b6808fb4c96752662b439238f2392a15d2590a7a6ca75dbd40e42d9378ac2be0d548ee484954363688
+  languageName: node
+  linkType: hard
+
+"@types/qs@npm:^6.9.6":
+  version: 6.15.1
+  resolution: "@types/qs@npm:6.15.1::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2F%40types%2Fqs%2F-%2Fqs-6.15.1.tgz"
+  checksum: 10c0/1dfdbcb4cf2a8f66d57f0b9a9fe6b1c7091cb816687b6698c1351eaf31f62e412cea9b7453a9637b570cd5fad8dced527e5a9e69b4fcc6e318daacd8b749f094
   languageName: node
   linkType: hard
 
@@ -13081,6 +13336,34 @@ __metadata:
   dependencies:
     "@types/node": "npm:*"
   checksum: 10c0/b20b7820ee813f22de4f2ce98bdd12c68c930e016a8912b1ed967595ac0d8a4cbbff44f4d486dd97f77f5927e7b5725bdac7472c9ec5b27f53a5a13179f0612f
+  languageName: node
+  linkType: hard
+
+"@types/ssh2-streams@npm:*":
+  version: 0.1.13
+  resolution: "@types/ssh2-streams@npm:0.1.13::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2F%40types%2Fssh2-streams%2F-%2Fssh2-streams-0.1.13.tgz"
+  dependencies:
+    "@types/node": "npm:*"
+  checksum: 10c0/c0734417ae1d964bcc0681e4cd45f6d25d49e87c1eba54a934dc9a78c40bf76ba4935a414561b6dec5fe0c9c42fe7ad94ef79a4e1592940d934f9c75a704ebb0
+  languageName: node
+  linkType: hard
+
+"@types/ssh2@npm:*":
+  version: 1.15.6
+  resolution: "@types/ssh2@npm:1.15.6::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2F%40types%2Fssh2%2F-%2Fssh2-1.15.6.tgz"
+  dependencies:
+    "@types/node": "npm:^18.11.18"
+  checksum: 10c0/67bf0ba6a2a793e5319b5ea2cbe936624a63f5081db26b9c9a49e5283b9c59b5af00eb4d59032e1ad612b462aca4b9995e1bd84aad96ce55395354524c3d7cba
+  languageName: node
+  linkType: hard
+
+"@types/ssh2@npm:^0.5.48":
+  version: 0.5.52
+  resolution: "@types/ssh2@npm:0.5.52::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2F%40types%2Fssh2%2F-%2Fssh2-0.5.52.tgz"
+  dependencies:
+    "@types/node": "npm:*"
+    "@types/ssh2-streams": "npm:*"
+  checksum: 10c0/95c52fd3438dedae6a59ca87b6558cb36568db6b9144c6c8a28c168739e04c51e27c02908aae14950b7b5020e1c40fea039b1203ae2734c356a40a050fd51c84
   languageName: node
   linkType: hard
 
@@ -14217,6 +14500,21 @@ __metadata:
   languageName: node
   linkType: hard
 
+"archiver@npm:^7.0.1":
+  version: 7.0.1
+  resolution: "archiver@npm:7.0.1::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2Farchiver%2F-%2Farchiver-7.0.1.tgz"
+  dependencies:
+    archiver-utils: "npm:^5.0.2"
+    async: "npm:^3.2.4"
+    buffer-crc32: "npm:^1.0.0"
+    readable-stream: "npm:^4.0.0"
+    readdir-glob: "npm:^1.1.2"
+    tar-stream: "npm:^3.0.0"
+    zip-stream: "npm:^6.0.1"
+  checksum: 10c0/02afd87ca16f6184f752db8e26884e6eff911c476812a0e7f7b26c4beb09f06119807f388a8e26ed2558aa8ba9db28646ebd147a4f99e46813b8b43158e1438e
+  languageName: node
+  linkType: hard
+
 "argparse@npm:^1.0.7":
   version: 1.0.10
   resolution: "argparse@npm:1.0.10"
@@ -14404,6 +14702,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"asn1@npm:^0.2.6":
+  version: 0.2.6
+  resolution: "asn1@npm:0.2.6::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2Fasn1%2F-%2Fasn1-0.2.6.tgz"
+  dependencies:
+    safer-buffer: "npm:~2.1.0"
+  checksum: 10c0/00c8a06c37e548762306bcb1488388d2f76c74c36f70c803f0c081a01d3bdf26090fc088cd812afc5e56a6d49e33765d451a5f8a68ab9c2b087eba65d2e980e0
+  languageName: node
+  linkType: hard
+
 "asn1js@npm:^3.0.6":
   version: 3.0.7
   resolution: "asn1js@npm:3.0.7"
@@ -14471,6 +14778,13 @@ __metadata:
   version: 1.0.0
   resolution: "async-generator-function@npm:1.0.0"
   checksum: 10c0/2c50ef856c543ad500d8d8777d347e3c1ba623b93e99c9263ecc5f965c1b12d2a140e2ab6e43c3d0b85366110696f28114649411cbcd10b452a92a2318394186
+  languageName: node
+  linkType: hard
+
+"async-lock@npm:^1.4.1":
+  version: 1.4.1
+  resolution: "async-lock@npm:1.4.1::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2Fasync-lock%2F-%2Fasync-lock-1.4.1.tgz"
+  checksum: 10c0/f696991c7d894af1dc91abc81cc4f14b3785190a35afb1646d8ab91138238d55cabd83bfdd56c42663a008d72b3dc39493ff83797e550effc577d1ccbde254af
   languageName: node
   linkType: hard
 
@@ -14823,10 +15137,30 @@ __metadata:
   languageName: node
   linkType: hard
 
+"bcrypt-pbkdf@npm:^1.0.2":
+  version: 1.0.2
+  resolution: "bcrypt-pbkdf@npm:1.0.2::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2Fbcrypt-pbkdf%2F-%2Fbcrypt-pbkdf-1.0.2.tgz"
+  dependencies:
+    tweetnacl: "npm:^0.14.3"
+  checksum: 10c0/ddfe85230b32df25aeebfdccfbc61d3bc493ace49c884c9c68575de1f5dcf733a5d7de9def3b0f318b786616b8d85bad50a28b1da1750c43e0012c93badcc148
+  languageName: node
+  linkType: hard
+
 "before-after-hook@npm:^2.2.0":
   version: 2.2.3
   resolution: "before-after-hook@npm:2.2.3"
   checksum: 10c0/0488c4ae12df758ca9d49b3bb27b47fd559677965c52cae7b335784724fb8bf96c42b6e5ba7d7afcbc31facb0e294c3ef717cc41c5bc2f7bd9e76f8b90acd31c
+  languageName: node
+  linkType: hard
+
+"better-sqlite3@npm:^12.0.0":
+  version: 12.11.1
+  resolution: "better-sqlite3@npm:12.11.1::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2Fbetter-sqlite3%2F-%2Fbetter-sqlite3-12.11.1.tgz"
+  dependencies:
+    bindings: "npm:^1.5.0"
+    node-gyp: "npm:latest"
+    prebuild-install: "npm:^7.1.1"
+  checksum: 10c0/162d3fa6c19a68191d09537bd113bd54a636c9fb38b0fc0796f4f270032770695ef35a1bca041a0a0fa9bfa47e20b9e17c94484a3899c31f38881af4d12b7fa5
   languageName: node
   linkType: hard
 
@@ -15220,6 +15554,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"buildcheck@npm:~0.0.6":
+  version: 0.0.7
+  resolution: "buildcheck@npm:0.0.7::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2Fbuildcheck%2F-%2Fbuildcheck-0.0.7.tgz"
+  checksum: 10c0/987c605267b1b6311bb2ac0638b073d322370267445a6d059da27985fce0b41f85a59d3a9aa9af839e8ac2d63da8af07be6dc737f8bd5323e1dfe6779ad67228
+  languageName: node
+  linkType: hard
+
 "builtin-status-codes@npm:^3.0.0":
   version: 3.0.0
   resolution: "builtin-status-codes@npm:3.0.0"
@@ -15242,6 +15583,13 @@ __metadata:
   dependencies:
     streamsearch: "npm:^1.1.0"
   checksum: 10c0/fa7e836a2b82699b6e074393428b91ae579d4f9e21f5ac468e1b459a244341d722d2d22d10920cdd849743dbece6dca11d72de939fb75a7448825cf2babfba1f
+  languageName: node
+  linkType: hard
+
+"byline@npm:^5.0.0":
+  version: 5.0.0
+  resolution: "byline@npm:5.0.0::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2Fbyline%2F-%2Fbyline-5.0.0.tgz"
+  checksum: 10c0/33fb64cd84440b3652a99a68d732c56ef18a748ded495ba38e7756a242fab0d4654b9b8ce269fd0ac14c5f97aa4e3c369613672b280a1f60b559b34223105c85
   languageName: node
   linkType: hard
 
@@ -16331,6 +16679,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"cpu-features@npm:~0.0.10":
+  version: 0.0.10
+  resolution: "cpu-features@npm:0.0.10::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2Fcpu-features%2F-%2Fcpu-features-0.0.10.tgz"
+  dependencies:
+    buildcheck: "npm:~0.0.6"
+    nan: "npm:^2.19.0"
+    node-gyp: "npm:latest"
+  checksum: 10c0/0c4a12904657b22477ffbcfd2b4b2bdd45b174f283616b18d9e1ade495083f9f6098493feb09f4ae2d0b36b240f9ecd32cfb4afe210cf0d0f8f0cc257bd58e54
+  languageName: node
+  linkType: hard
+
 "crc-32@npm:^1.2.0":
   version: 1.2.2
   resolution: "crc-32@npm:1.2.2"
@@ -17251,6 +17610,42 @@ __metadata:
   dependencies:
     "@leichtgewicht/ip-codec": "npm:^2.0.1"
   checksum: 10c0/8948d3d03063fb68e04a1e386875f8c3bcc398fc375f535f2b438fad8f41bf1afa6f5e70893ba44f4ae884c089247e0a31045722fa6ff0f01d228da103f1811d
+  languageName: node
+  linkType: hard
+
+"docker-compose@npm:^1.4.2":
+  version: 1.5.0
+  resolution: "docker-compose@npm:1.5.0::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2Fdocker-compose%2F-%2Fdocker-compose-1.5.0.tgz"
+  dependencies:
+    yaml: "npm:^2.2.2"
+  checksum: 10c0/b814480957c6e32c375f3ccb07d86a93c1b52f49fb8f170ef998d22248d2f2f25bdb4921dc200bccec779fcb34f34347d1e0b781cebba59bc2f6c190dd35058c
+  languageName: node
+  linkType: hard
+
+"docker-modem@npm:^5.0.7":
+  version: 5.0.7
+  resolution: "docker-modem@npm:5.0.7::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2Fdocker-modem%2F-%2Fdocker-modem-5.0.7.tgz"
+  dependencies:
+    debug: "npm:^4.1.1"
+    readable-stream: "npm:^3.5.0"
+    split-ca: "npm:^1.0.1"
+    ssh2: "npm:^1.15.0"
+  checksum: 10c0/987dd7b04de57241d4e0fbdb5c44d41f898f5f520a3f6dbc6542c27cf9e84c91c44bf0c1bee2469be83096cb2941ea5e4a1bd3f57f60eb508c1d790d27ada8f9
+  languageName: node
+  linkType: hard
+
+"dockerode@npm:^4.0.10":
+  version: 4.0.12
+  resolution: "dockerode@npm:4.0.12::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2Fdockerode%2F-%2Fdockerode-4.0.12.tgz"
+  dependencies:
+    "@balena/dockerignore": "npm:^1.0.2"
+    "@grpc/grpc-js": "npm:^1.11.1"
+    "@grpc/proto-loader": "npm:^0.7.13"
+    docker-modem: "npm:^5.0.7"
+    protobufjs: "npm:^7.3.2"
+    tar-fs: "npm:^2.1.4"
+    uuid: "npm:^10.0.0"
+  checksum: 10c0/7bd7eae9c399f481964be0068118b0cb24a6baa24c69cb7fab27b1f5bbf7e171c25b2fc7793f401bb8caa0f61be5810656606614befe12d9ae36c5ffbbd1f7e7
   languageName: node
   linkType: hard
 
@@ -19084,6 +19479,28 @@ __metadata:
   languageName: node
   linkType: hard
 
+"framer-motion@npm:^12.43.0":
+  version: 12.43.0
+  resolution: "framer-motion@npm:12.43.0::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2Fframer-motion%2F-%2Fframer-motion-12.43.0.tgz"
+  dependencies:
+    motion-dom: "npm:^12.43.0"
+    motion-utils: "npm:^12.39.0"
+    tslib: "npm:^2.4.0"
+  peerDependencies:
+    "@emotion/is-prop-valid": "*"
+    react: ^18.0.0 || ^19.0.0
+    react-dom: ^18.0.0 || ^19.0.0
+  peerDependenciesMeta:
+    "@emotion/is-prop-valid":
+      optional: true
+    react:
+      optional: true
+    react-dom:
+      optional: true
+  checksum: 10c0/cce3c1daf8f53da4d9299e6bdd2a1e9f08a30e13d84ce1e468cf25285f9ec2a900c812e0aa3dce79e7453a2a3cf328a717451beef9bf0a6175a3d3794116e36a
+  languageName: node
+  linkType: hard
+
 "fresh@npm:^2.0.0":
   version: 2.0.0
   resolution: "fresh@npm:2.0.0"
@@ -19350,6 +19767,13 @@ __metadata:
   version: 5.1.1
   resolution: "get-port@npm:5.1.1"
   checksum: 10c0/2873877a469b24e6d5e0be490724a17edb39fafc795d1d662e7bea951ca649713b4a50117a473f9d162312cb0e946597bd0e049ed2f866e79e576e8e213d3d1c
+  languageName: node
+  linkType: hard
+
+"get-port@npm:^7.2.0":
+  version: 7.2.0
+  resolution: "get-port@npm:7.2.0::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2Fget-port%2F-%2Fget-port-7.2.0.tgz"
+  checksum: 10c0/4ed741d9008ad15a24e2098c8971918025cc8241624245e704ecc62bb65160db5c79de5d7112acdaabccbe0714cd0704008c74d43a1f7a24a5875e58b84621be
   languageName: node
   linkType: hard
 
@@ -20054,6 +20478,13 @@ __metadata:
   version: 1.15.1
   resolution: "hookified@npm:1.15.1"
   checksum: 10c0/6b691374fa97ae57169fb29f90e723499fda5e85494654fbe55c4768b3ccbf3e14c0adc8d0f365f32c503b60d7c06f907781f5966c03d41c423575eb5e16860c
+  languageName: node
+  linkType: hard
+
+"hookified@npm:^3.0.3":
+  version: 3.0.4
+  resolution: "hookified@npm:3.0.4::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2Fhookified%2F-%2Fhookified-3.0.4.tgz"
+  checksum: 10c0/451b49dfe35a69191cf7b868d92e54a44373c85a63b4c2a0b7bb9f669d3dc58e1af6989ac9728521a152b44075cef336995baba4453a584f6b09ce351e9d49e5
   languageName: node
   linkType: hard
 
@@ -22359,6 +22790,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"keyv@npm:*":
+  version: 6.1.0
+  resolution: "keyv@npm:6.1.0::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2Fkeyv%2F-%2Fkeyv-6.1.0.tgz"
+  dependencies:
+    hookified: "npm:^3.0.3"
+  checksum: 10c0/a7b09cd953ae7dcbecb06df25515077562d9cb1155ed6ae166444ba67157993decae7dee813458f2f98f72ddff785f76db1ee909a82a9dd57f8cc73772b52201
+  languageName: node
+  linkType: hard
+
 "keyv@npm:^4.0.0, keyv@npm:^4.5.3":
   version: 4.5.4
   resolution: "keyv@npm:4.5.4"
@@ -24103,6 +24543,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"mkdirp@npm:^3.0.1":
+  version: 3.0.1
+  resolution: "mkdirp@npm:3.0.1::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2Fmkdirp%2F-%2Fmkdirp-3.0.1.tgz"
+  bin:
+    mkdirp: ./dist/cjs/src/bin.js
+  checksum: 10c0/9f2b975e9246351f5e3a40dcfac99fcd0baa31fbfab615fe059fb11e51f10e4803c63de1f384c54d656e4db31d000e4767e9ef076a22e12a641357602e31d57d
+  languageName: node
+  linkType: hard
+
 "mockttp@npm:^3.13.0":
   version: 3.17.1
   resolution: "mockttp@npm:3.17.1"
@@ -24168,6 +24617,43 @@ __metadata:
   version: 0.5.3
   resolution: "moo@npm:0.5.3"
   checksum: 10c0/5c5e00d7c57a69ce1cc2f21a90655ff10556481cc10fa70528c01e91f00deff8a65fa8da6dc7b27d136d66085055aab238fd1b19a75070263e0028e8f07c8213
+  languageName: node
+  linkType: hard
+
+"motion-dom@npm:^12.43.0":
+  version: 12.43.0
+  resolution: "motion-dom@npm:12.43.0::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2Fmotion-dom%2F-%2Fmotion-dom-12.43.0.tgz"
+  dependencies:
+    motion-utils: "npm:^12.39.0"
+  checksum: 10c0/ef7d3f6eaa6cfeb1a939847a8b2581d119f2efc054948921ece0e2b1091f0969c15ca7707b87a46dddac7f156a714878f168e7b9f6ea189eeb7d5d9fbbb99d26
+  languageName: node
+  linkType: hard
+
+"motion-utils@npm:^12.39.0":
+  version: 12.39.0
+  resolution: "motion-utils@npm:12.39.0::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2Fmotion-utils%2F-%2Fmotion-utils-12.39.0.tgz"
+  checksum: 10c0/6d7a2a2cc0797b72410a666a9cc1c201c8e39bf9669670464e433fe1e72af5f0217154c869867b34fbadf3664cf222c0d022bbc4eed7927f201ae971918e7440
+  languageName: node
+  linkType: hard
+
+"motion@npm:^12.0.0":
+  version: 12.43.0
+  resolution: "motion@npm:12.43.0::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2Fmotion%2F-%2Fmotion-12.43.0.tgz"
+  dependencies:
+    framer-motion: "npm:^12.43.0"
+    tslib: "npm:^2.4.0"
+  peerDependencies:
+    "@emotion/is-prop-valid": "*"
+    react: ^18.0.0 || ^19.0.0
+    react-dom: ^18.0.0 || ^19.0.0
+  peerDependenciesMeta:
+    "@emotion/is-prop-valid":
+      optional: true
+    react:
+      optional: true
+    react-dom:
+      optional: true
+  checksum: 10c0/15544ecc71d356661a959c78c4f84b3ca91728f5d17265b68912d2bbcf86f20409ebf5acf2f6c82e0c0425d1024267b04abd5b786177a3694bf706f7a3a529d6
   languageName: node
   linkType: hard
 
@@ -24303,6 +24789,15 @@ __metadata:
   dependencies:
     lru.min: "npm:^1.1.0"
   checksum: 10c0/65b7ffaf932a371602e4153808601e8f377d7fc85fa15b491ee821418e52ab4950155b840803a6eaf3d5b94d6e8aedc1bee723475541cb4713feb3544dca9336
+  languageName: node
+  linkType: hard
+
+"nan@npm:^2.19.0, nan@npm:^2.23.0":
+  version: 2.29.0
+  resolution: "nan@npm:2.29.0::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2Fnan%2F-%2Fnan-2.29.0.tgz"
+  dependencies:
+    node-gyp: "npm:latest"
+  checksum: 10c0/c90586afb3f101f64c2997e7481f7c2c5528e196399a1c2653e4fff7354a01f35009e10fd43aa567a4b68be0ac8ed45a60794f5ca0a863120b74aecf4a45ad2c
   languageName: node
   linkType: hard
 
@@ -26584,6 +27079,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"properties-reader@npm:^3.0.1":
+  version: 3.0.1
+  resolution: "properties-reader@npm:3.0.1::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2Fproperties-reader%2F-%2Fproperties-reader-3.0.1.tgz"
+  dependencies:
+    "@kwsites/file-exists": "npm:^1.1.1"
+    mkdirp: "npm:^3.0.1"
+  checksum: 10c0/271fae77b717e25aa5773ab1e769f416ccfdc3606a62f25cd76b2cceeb04278f2ee0e4d671ff2c06391a5e093b4b1097f9ce3916fddd4de34077a4a6e92ccb48
+  languageName: node
+  linkType: hard
+
 "property-information@npm:^5.0.0":
   version: 5.6.0
   resolution: "property-information@npm:5.6.0"
@@ -28441,6 +28946,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"safer-buffer@npm:~2.1.0":
+  version: 2.1.2
+  resolution: "safer-buffer@npm:2.1.2::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2Fsafer-buffer%2F-%2Fsafer-buffer-2.1.2.tgz"
+  checksum: 10c0/7e3c8b2e88a1841c9671094bbaeebd94448111dd90a81a1f606f3f67708a6ec57763b3b47f06da09fc6054193e0e6709e77325415dc8422b04497a8070fa02d4
+  languageName: node
+  linkType: hard
+
 "sax@npm:^1.5.0":
   version: 1.6.0
   resolution: "sax@npm:1.6.0"
@@ -29056,6 +29568,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"split-ca@npm:^1.0.1":
+  version: 1.0.1
+  resolution: "split-ca@npm:1.0.1::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2Fsplit-ca%2F-%2Fsplit-ca-1.0.1.tgz"
+  checksum: 10c0/f339170b84c6b4706fcf4c60cc84acb36574c0447566bd713301a8d9b4feff7f4627efc8c334bec24944a3e2f35bc596bd58c673c9980d6bfe3137aae1116ba7
+  languageName: node
+  linkType: hard
+
 "split2@npm:^4.1.0, split2@npm:^4.2.0":
   version: 4.2.0
   resolution: "split2@npm:4.2.0"
@@ -29074,6 +29593,33 @@ __metadata:
   version: 1.5.2
   resolution: "sql-escaper@npm:1.5.2"
   checksum: 10c0/44a3dec22687b25b4f2866dbf736dbf85397475ab0ece65e0e0cd7da002cd1e9c8e45325e0e64c373278a77e23aa734f8b168e3a0b08dd824ab6675b77895aa1
+  languageName: node
+  linkType: hard
+
+"ssh-remote-port-forward@npm:^1.0.4":
+  version: 1.0.4
+  resolution: "ssh-remote-port-forward@npm:1.0.4::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2Fssh-remote-port-forward%2F-%2Fssh-remote-port-forward-1.0.4.tgz"
+  dependencies:
+    "@types/ssh2": "npm:^0.5.48"
+    ssh2: "npm:^1.4.0"
+  checksum: 10c0/33a441af12817577ea30d089b03c19f980d2fb2370933123a35026dc6be40f2dfce067e4dfc173e23d745464537ff647aa1bb7469be5571cc21f7cdb25181c09
+  languageName: node
+  linkType: hard
+
+"ssh2@npm:^1.15.0, ssh2@npm:^1.4.0":
+  version: 1.17.0
+  resolution: "ssh2@npm:1.17.0::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2Fssh2%2F-%2Fssh2-1.17.0.tgz"
+  dependencies:
+    asn1: "npm:^0.2.6"
+    bcrypt-pbkdf: "npm:^1.0.2"
+    cpu-features: "npm:~0.0.10"
+    nan: "npm:^2.23.0"
+  dependenciesMeta:
+    cpu-features:
+      optional: true
+    nan:
+      optional: true
+  checksum: 10c0/637c1b7e8070fc8a3027f8abf771cd98419f56eaf3817171180e768004d4dea26c65fb3763294ed2f784429857f196c83c4f6889d2c31cc0e2648ea5ad730665
   languageName: node
   linkType: hard
 
@@ -29791,6 +30337,18 @@ __metadata:
   languageName: node
   linkType: hard
 
+"tar-fs@npm:^2.1.4":
+  version: 2.1.5
+  resolution: "tar-fs@npm:2.1.5::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2Ftar-fs%2F-%2Ftar-fs-2.1.5.tgz"
+  dependencies:
+    chownr: "npm:^1.1.1"
+    mkdirp-classic: "npm:^0.5.2"
+    pump: "npm:^3.0.0"
+    tar-stream: "npm:^2.1.4"
+  checksum: 10c0/b987429214c3ab3be1f439b4e097dc310acf449c35f355956d801f59ef4cfde3b9827797ab2d2f087ed024e459eedc9b3cd860c9190b86e356ba348ade928684
+  languageName: node
+  linkType: hard
+
 "tar-fs@npm:^3.0.9":
   version: 3.1.2
   resolution: "tar-fs@npm:3.1.2"
@@ -29805,6 +30363,23 @@ __metadata:
     bare-path:
       optional: true
   checksum: 10c0/9dcbbbef9cdfc27f47651fe679f15952a6a8e6b3c9761c4bf3f416ace41cf462fb6292519bd3e041cadfcc0b89043a6bdecb46ff19f770b6864b77dcde7bad46
+  languageName: node
+  linkType: hard
+
+"tar-fs@npm:^3.1.2":
+  version: 3.1.3
+  resolution: "tar-fs@npm:3.1.3::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2Ftar-fs%2F-%2Ftar-fs-3.1.3.tgz"
+  dependencies:
+    bare-fs: "npm:^4.0.1"
+    bare-path: "npm:^3.0.0"
+    pump: "npm:^3.0.0"
+    tar-stream: "npm:^3.1.5"
+  dependenciesMeta:
+    bare-fs:
+      optional: true
+    bare-path:
+      optional: true
+  checksum: 10c0/f3bccfb0ec332411d68a26fdd93fcdc8ed82437a3d5e1aef5bfbf5013193238eff0228d1e2ee5dedbed3ab60c084f41f1e558c786d91d6ff05620a4afdd2e32c
   languageName: node
   linkType: hard
 
@@ -29937,12 +30512,42 @@ __metadata:
   languageName: node
   linkType: hard
 
+"testcontainers@npm:^11.9.0":
+  version: 11.14.0
+  resolution: "testcontainers@npm:11.14.0::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2Ftestcontainers%2F-%2Ftestcontainers-11.14.0.tgz"
+  dependencies:
+    "@balena/dockerignore": "npm:^1.0.2"
+    "@types/dockerode": "npm:^4.0.1"
+    archiver: "npm:^7.0.1"
+    async-lock: "npm:^1.4.1"
+    byline: "npm:^5.0.0"
+    debug: "npm:^4.4.3"
+    docker-compose: "npm:^1.4.2"
+    dockerode: "npm:^4.0.10"
+    get-port: "npm:^7.2.0"
+    proper-lockfile: "npm:^4.1.2"
+    properties-reader: "npm:^3.0.1"
+    ssh-remote-port-forward: "npm:^1.0.4"
+    tar-fs: "npm:^3.1.2"
+    tmp: "npm:^0.2.5"
+    undici: "npm:^7.24.5"
+  checksum: 10c0/a94294bb5f51a05c01252b7e0cdaa321696bed92a42d5d72e1467ae27d2a6547a63e287d8153b748dda3578df1ee08c1bf882919e6223ed3a26fefe91da88326
+  languageName: node
+  linkType: hard
+
 "text-decoder@npm:^1.1.0":
   version: 1.2.7
   resolution: "text-decoder@npm:1.2.7"
   dependencies:
     b4a: "npm:^1.6.4"
   checksum: 10c0/929938ed154fbadb660a7f3d1aca30b7e53649a731af7583168fcfba0c158046325d35d945926e2a512bb62d1a49a7818151c987ea38b48853f01e1615722fc5
+  languageName: node
+  linkType: hard
+
+"text-extensions@npm:^2.4.0":
+  version: 2.4.0
+  resolution: "text-extensions@npm:2.4.0::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2Ftext-extensions%2F-%2Ftext-extensions-2.4.0.tgz"
+  checksum: 10c0/6790e7ee72ad4d54f2e96c50a13e158bb57ce840dddc770e80960ed1550115c57bdc2cee45d5354d7b4f269636f5ca06aab4d6e0281556c841389aa837b23fcb
   languageName: node
   linkType: hard
 
@@ -30112,6 +30717,13 @@ __metadata:
   bin:
     tldts: bin/cli.js
   checksum: 10c0/de7df3cfb03517afa09c3f3ad08d5e68d1735d5a65af83d978a4032a5784bbd4171f3d4b029575981f9a3045620152b55fb3c24445d76f7735a5c18f3b0d9c69
+  languageName: node
+  linkType: hard
+
+"tmp@npm:^0.2.5":
+  version: 0.2.7
+  resolution: "tmp@npm:0.2.7::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2Ftmp%2F-%2Ftmp-0.2.7.tgz"
+  checksum: 10c0/59eb55584f2f07210d3231b6a1f6b5c2b9794d8a7b509c8ee867ed2acad6d2245ee2448b7937b676ffbff3155a70077edde8a69f9d7cf0f90c86a62e8910c357
   languageName: node
   linkType: hard
 
@@ -30413,6 +31025,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"tweetnacl@npm:^0.14.3":
+  version: 0.14.5
+  resolution: "tweetnacl@npm:0.14.5::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2Ftweetnacl%2F-%2Ftweetnacl-0.14.5.tgz"
+  checksum: 10c0/4612772653512c7bc19e61923fbf42903f5e0389ec76a4a1f17195859d114671ea4aa3b734c2029ce7e1fa7e5cc8b80580f67b071ecf0b46b5636d030a0102a2
+  languageName: node
+  linkType: hard
+
 "typanion@npm:^3.8.0":
   version: 3.14.0
   resolution: "typanion@npm:3.14.0"
@@ -30652,6 +31271,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"undici-types@npm:~5.26.4":
+  version: 5.26.5
+  resolution: "undici-types@npm:5.26.5::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2Fundici-types%2F-%2Fundici-types-5.26.5.tgz"
+  checksum: 10c0/bb673d7876c2d411b6eb6c560e0c571eef4a01c1c19925175d16e3a30c4c428181fb8d7ae802a261f283e4166a0ac435e2f505743aa9e45d893f9a3df017b501
+  languageName: node
+  linkType: hard
+
 "undici-types@npm:~7.16.0":
   version: 7.16.0
   resolution: "undici-types@npm:7.16.0"
@@ -30676,6 +31302,13 @@ __metadata:
 "undici@npm:^7.24.0, undici@npm:^7.25.0":
   version: 7.30.1
   resolution: "undici@npm:7.30.1"
+  checksum: 10c0/c838089b010e8e28a9a5358d4bf4621e0c8d7bb70058b23e819667349c4c0b6791a7c8bc9bbe94ff0923db132faae0d9d9592b9743eda4f2b49466fa57482213
+  languageName: node
+  linkType: hard
+
+"undici@npm:^7.24.5":
+  version: 7.30.1
+  resolution: "undici@npm:7.30.1::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2Fundici%2F-%2Fundici-7.30.1.tgz"
   checksum: 10c0/c838089b010e8e28a9a5358d4bf4621e0c8d7bb70058b23e819667349c4c0b6791a7c8bc9bbe94ff0923db132faae0d9d9592b9743eda4f2b49466fa57482213
   languageName: node
   linkType: hard
@@ -31058,6 +31691,15 @@ __metadata:
   version: 1.0.1
   resolution: "utils-merge@npm:1.0.1"
   checksum: 10c0/02ba649de1b7ca8854bfe20a82f1dfbdda3fb57a22ab4a8972a63a34553cf7aa51bc9081cf7e001b035b88186d23689d69e71b510e610a09a4c66f68aa95b672
+  languageName: node
+  linkType: hard
+
+"uuid@npm:^10.0.0":
+  version: 10.0.0
+  resolution: "uuid@npm:10.0.0::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2Fuuid%2F-%2Fuuid-10.0.0.tgz"
+  bin:
+    uuid: dist/bin/uuid
+  checksum: 10c0/eab18c27fe4ab9fb9709a5d5f40119b45f2ec8314f8d4cf12ce27e4c6f4ffa4a6321dc7db6c515068fa373c075b49691ba969f0010bf37f44c37ca40cd6bf7fe
   languageName: node
   linkType: hard
 
@@ -31865,6 +32507,15 @@ __metadata:
   bin:
     yaml: bin.mjs
   checksum: 10c0/703e4dc1e34b324aa66876d63618dcacb9ed49f7e7fe9b70f1e703645be8d640f68ab84f12b86df8ac960bac37acf5513e115de7c970940617ce0343c8c9cd96
+  languageName: node
+  linkType: hard
+
+"yaml@npm:^2.2.2":
+  version: 2.9.1
+  resolution: "yaml@npm:2.9.1::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2Fyaml%2F-%2Fyaml-2.9.1.tgz"
+  bin:
+    yaml: ./bin.mjs
+  checksum: 10c0/9d06676ef02b89559a8b10a71882bd2cdae81e8393dc8dbc871615c3259475d9609ad973d19cb3c9e71e72d6206e3d1e7aa241c7e55f3d16fd2e77db305827d6
   languageName: node
   linkType: hard
 

@@ -11,7 +11,7 @@ import { Grid } from '@material-ui/core';
 import { Progress, ResponseErrorPanel } from '@backstage/core-components';
 import { useApi } from '@backstage/core-plugin-api';
 import useAsync from 'react-use/lib/useAsync';
-import { radiusApiRef } from '../../plugin';
+import { radiusApiRef } from '../../api/ref';
 
 export const EnvironmentOverviewTab = (props: {
   environment: Resource<EnvironmentProperties>;
