@@ -24539,7 +24539,7 @@ __metadata:
   version: 3.0.1
   resolution: "mkdirp@npm:3.0.1"
   bin:
-    mkdirp: ./dist/cjs/src/bin.js
+    mkdirp: dist/cjs/src/bin.js
   checksum: 10c0/9f2b975e9246351f5e3a40dcfac99fcd0baa31fbfab615fe059fb11e51f10e4803c63de1f384c54d656e4db31d000e4767e9ef076a22e12a641357602e31d57d
   languageName: node
   linkType: hard
@@ -32492,7 +32492,7 @@ __metadata:
   version: 2.9.1
   resolution: "yaml@npm:2.9.1"
   bin:
-    yaml: ./bin.mjs
+    yaml: bin.mjs
   checksum: 10c0/9d06676ef02b89559a8b10a71882bd2cdae81e8393dc8dbc871615c3259475d9609ad973d19cb3c9e71e72d6206e3d1e7aa241c7e55f3d16fd2e77db305827d6
   languageName: node
   linkType: hard
