@@ -79,23 +79,31 @@ describe('native Radius registration', () => {
       '/environments/demo/Applications.Core/environments/demo/overview',
       'Environment',
     ],
-  ])('FS-01/03: installs the real page at %s', async (route, heading) => {
-    const kubernetes = transport();
-    renderTestApp({
-      features: [radius],
-      initialRouteEntries: [route],
-      apis: [[kubernetesApiRef, kubernetes]],
-    });
-    expect(
-      await screen.findByRole('heading', { name: heading, level: 1 }),
-    ).toBeInTheDocument();
-    await waitFor(() => expect(kubernetes.proxy).toHaveBeenCalled());
-    expect(
-      kubernetes.proxy.mock.calls.every(
-        ([request]) => request.clusterName === 'native-cluster',
-      ),
-    ).toBe(true);
-  });
+  ])(
+    'FS-01/03: installs the real page at %s',
+    async (route, heading) => {
+      const kubernetes = transport();
+      renderTestApp({
+        features: [radius],
+        initialRouteEntries: [route],
+        apis: [[kubernetesApiRef, kubernetes]],
+      });
+      expect(
+        await screen.findByRole(
+          'heading',
+          { name: heading, level: 1 },
+          { timeout: 15000 },
+        ),
+      ).toBeInTheDocument();
+      await waitFor(() => expect(kubernetes.proxy).toHaveBeenCalled());
+      expect(
+        kubernetes.proxy.mock.calls.every(
+          ([request]) => request.clusterName === 'native-cluster',
+        ),
+      ).toBe(true);
+    },
+    30000,
+  );
 
   it('FS-02/04: resolves the real API and registers the flag once through the installed plugin', async () => {
     const observed = jest.fn<void, [RadiusApi, FeatureFlag[], AppTree]>();

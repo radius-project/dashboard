@@ -34,6 +34,9 @@ function verifyTuple(label: string, image: string, revision: string) {
   if (!/^[0-9a-f]{40}$/.test(revision)) {
     throw new Error(`${label} revision must be a full Git commit ID`);
   }
+  if (image.includes('@sha256:')) {
+    docker('pull', '--platform', 'linux/amd64', '--quiet', image);
+  }
   const actualRevision = docker(
     'image',
     'inspect',
