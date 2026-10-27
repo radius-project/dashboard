@@ -18,7 +18,7 @@ Keep the dashboard workspace. Move reusable graph code from `packages/rad-compon
 
 ## Backstage changes and delivery decision
 
-Backstage still uses plugins. The new backend system reduces installation and service-wiring code, so plugin dependencies can change with fewer host edits. The new frontend system replaces manual app composition with plugins, modules, and an extension tree. Neither migration requires a paid plugin. Spotify sells premium plugins alongside open-source Backstage; hosts can choose them separately [B7]-[B11].
+Backstage still uses plugins. The new backend system reduces installation and service-wiring code, so plugin dependencies can change with fewer host edits. The new frontend system replaces manual app composition with plugins, modules, and an extension tree [B7]-[B10].
 
 Dashboard commit [`9d295b5`](https://github.com/radius-project/dashboard/commit/9d295b5097c62d9c3fa9dab136172f34c1b912bf) has the code listed below. The later extraction assessment records an older revision. Neither source review proves that a migration or dependency upgrade passes.
 
@@ -40,13 +40,13 @@ A host must list each converted page and check its name, path, and route binding
 
 Backend plugins have a separate migration path [B9], [B10]. Check the supported backend adapter for any legacy dependency in an external host. The dashboard already uses the native backend system and needs no backend wrapper. `core-compat-api` does not supply one.
 
-### Support and commercial boundaries
+### Supported frontend entries
 
 The first stable plugin release must run natively in the new frontend system. Keep the legacy package root for the approved support window. Export the native plugin by default from a documented subpath, proposed as `/alpha` to follow Backstage's migration guide [B12]. That export does not exist yet, and each supported Backstage release needs its own tests. Both entries use the same pages, API implementation, and domain contracts.
 
 In P0, maintainers select exact Backstage versions, lockfiles, compilers, supported entries, and a milestone for retiring the legacy entry. Assign each temporary third-party adapter an owner, an upstream issue or migration reference, and a removal condition. Do not assume an upstream removal date. The standalone app must complete its native migration before stable release. If a required third-party feature has no native replacement, that milestone remains blocked. Do not drop the feature.
 
-Radius installation and CI must work with open-source Backstage without a Spotify subscription, license token, or premium registry. Spotify's Soundcheck, Insights, RBAC, and Skill Exchange plugins are optional [B11]. Do not make them migration dependencies or require Spotify RBAC for Radius authorization. A host that buys a plugin must check its license and compatibility. It must still enforce the Radius proxy policy.
+Test installation and CI on open-source Backstage. The host must enforce the Radius proxy access policy for both resource reads and graph queries.
 
 ## Terms and definitions
 
@@ -429,7 +429,7 @@ Proposed paths name additions, not existing packages or workflows. Each delivery
 
 | Unit                                               | Owning repository/package and deliverable                                                                                                                                                | Prerequisites/dependencies                                                                                                          | Concrete acceptance and mandatory tests                                                                                                                                                                                                                                            | Effort   |
 | -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
-| P0. Approve contracts and support policy           | Both maintainers: approved contracts, extraction inventory, public names/licenses, host/Radius/auth matrix, frontend dependency/adapter inventory, CI and pin owners.                    | Design review; no package publication.                                                                                              | Pin exact native and legacy host versions/entries; map all eight pages, API, flag, cards, shell and backend services; assign adapter owners/exit conditions and legacy retirement milestone. Confirm no paid dependency.                                                           | 2-3 days |
+| P0. Approve contracts and support policy           | Both maintainers: approved contracts, extraction inventory, public names/licenses, host/Radius/auth matrix, frontend dependency/adapter inventory, CI and pin owners.                    | Design review; no package publication.                                                                                              | Pin exact native and legacy host versions/entries; map all eight pages, API, flag, cards, shell and backend services; assign adapter owners/exit conditions and legacy retirement milestone.                                                                                       | 2-3 days |
 | P1. Establish dashboard parity journeys            | Dashboard `plugins/plugin-radius`, `packages/app/e2e-tests`, existing test/CI configuration; external-host fixture location proposed and chosen in this PR.                              | P0; must precede domain/renderer extraction.                                                                                        | Real renderer with fake upstream data covers current impacted read/inspect journeys and both namespaces; stylesheet/renderer removal demonstrably fails; existing request tests remain. Record passing immutable baseline and known first/last-cluster defect without blessing it. | 4-6 days |
 | P2. Add artifact-consumer harness                  | Dashboard test/install seam plus ai-extensions required compatibility workflow (proposed). Reuse dashboard suites, not copies.                                                           | P1; approved workflow/consumer identities and no-secret runner policy.                                                              | Known-good package probe establishes artifact installation/resolution reporting; deliberately wrong identities and failed/missing results fail closed. Bootstrap probes do not count as real shared-library consumer coverage; P3/P5 exercise actual candidates through the seam.  | 3-5 days |
 | P3a. Publishable core contracts                    | Ai-extensions `packages/core`: browser-safe identity/graph contracts, compiled exports/declarations and pack target; canonical contract tests.                                           | P0-P2; settle live/modeled variants before adapting callers.                                                                        | No React/HTTP/SDK/DOM/Node runtime in public browser closure; both namespaces, missing live hashes and strict modeled hashes pass; declarations consume under dashboard TS6 and approved external compiler. Pinned host integration uses the actual core tarball.                  | 2-3 days |
@@ -497,7 +497,6 @@ Keep previous known-good plugin/component/core versions and pins for rollback. E
 - **Publish the existing private plugin with only a name change:** insufficient; connection selection, nested navigation, public contracts, publication, and access assumptions still belong to the standalone host.
 - **Wrap Radius permanently with `convertLegacyPlugin`:** Backstage recommends this helper for third-party plugins. We own Radius and can implement native extensions without duplicating pages or domain logic.
 - **Keep the standalone app in hybrid mode indefinitely:** leaves required compatibility code in place with no exit. Use hybrid mode as a measured transition, then remove its helpers. A retained legacy public plugin entry is a separate support obligation.
-- **Buy premium plugins to complete migration:** not required. Spotify's commercial plugins extend open-source Backstage; they do not replace its frontend or backend migration APIs.
 - **Iframe the dashboard:** avoids an initial source copy but does not provide native host authentication/navigation or solve the shared-library requirement.
 - **Build new product pages around the shared graph library:** unnecessary for dashboard parity. Reuse the existing Backstage pages and replace only their shared graph dependency.
 - **Add a backend plugin immediately:** unnecessary for existing functionality because Backstage's Kubernetes backend already supplies transport. Add one only when a demonstrated authorization/transport requirement cannot be met safely.
@@ -513,7 +512,7 @@ On September 10, 2026, Nicole asked to host common components in `ai-extensions`
 
 The delivery review kept the draft's architecture and scope. It added the React 19 source/dependency finding, separated dashboard tooling from upstream templates, and required real-renderer baselines and pinned cross-repository consumer CI. Work is split into PR-sized units with contract, test, dependency, publication, and rollback gates. That document review did not upgrade dependencies, run a migration, publish packages, or create an issue or pull request.
 
-The October 23, 2026 revision addresses Backstage's frontend and backend systems. Source inspection found a native backend and a legacy frontend. The plan now requires native Radius extensions, staged app migration, compatibility removal, and open-source-only installation. The review checked official guidance for app migration, plugin conversion, native plugin development, backend migration, and Spotify premium plugins. It did not run a migration or establish new support.
+The October 23, 2026 revision addresses Backstage's frontend and backend systems. Source inspection found a native backend and a legacy frontend. The plan now requires native Radius extensions, staged app migration, compatibility removal, and open-source Backstage installation. The review checked official guidance for app migration, plugin conversion, native plugin development, and backend migration. It did not run a migration or establish new support.
 
 The October 27, 2026 revision limits cross-repository scope to the shared domain and graph libraries. Dashboard retains its Backstage integration, host tests, and release process. The shared libraries retain their own contracts, tests, and package releases.
 
@@ -553,7 +552,6 @@ Dashboard and ai-extensions links pin the source revisions reviewed. Backstage d
 [B8]: https://backstage.io/docs/frontend-system/building-apps/plugin-conversion/
 [B9]: https://backstage.io/docs/backend-system/building-backends/migrating/
 [B10]: https://backstage.io/docs/backend-system/building-plugins-and-modules/migrating/
-[B11]: https://backstage.spotify.com/docs/plugins/
 [B12]: https://backstage.io/docs/frontend-system/building-plugins/migrating/
 [B13]: https://backstage.io/docs/tooling/package-metadata/
 

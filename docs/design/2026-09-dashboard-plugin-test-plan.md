@@ -61,9 +61,8 @@ relevant plugin's supported converter or a native blueprint for cards. Temporary
 (`convertLegacyAppOptions`, `convertLegacyAppRoot`) preserve app composition while the app moves
 to `@backstage/frontend-defaults`. They do not replace native Radius support.
 
-Run required installs and CI on open-source Backstage without a Spotify subscription, premium
-plugin, or license credential. Hosts may choose paid plugins, but Radius must install without them.
-Their presence does not prove that Radius access control works.
+Run required installs and CI on open-source Backstage. Test the Radius proxy access policy for
+resource reads and graph queries.
 
 ## Current state
 
@@ -957,7 +956,7 @@ distinguish a test-system failure from a product failure and must prove cleanup.
 
 Complete when every host case passes before release. Skipped or simulated runs do not count.
 Also require the native standalone and external-host matrix, no required temporary compatibility
-code, and installation without Spotify premium packages or license credentials. Record both
+code, and installation on open-source Backstage. Record both
 frontend entry and backend package set in the release/rollback tuple.
 
 ### Phase 9: migrate the test corpus from `Applications.Core` to `Radius.*`
@@ -1134,7 +1133,7 @@ The decisions themselves still have to be made before anything is published:
       subpath, retirement milestone for the legacy entry, and owners/exit conditions for temporary
       third-party adapters. Passing old Phase 3 tests does not close this decision.
 - [ ] **Native migration completion.** Require 3C before stable standalone release. Confirm that
-      required installs do not need Spotify premium plugins or license credentials.
+      required installs and builds pass on open-source Backstage.
 
 For #356, pass the same two-cluster list to both paths before moving the graph request. The test
 records that `RadiusApi` chooses the first and `ApplicationTab` the last. Extraction must then
@@ -1203,8 +1202,6 @@ The companion design settled these decisions after the first draft:
    its router and lifecycle, but remain explicitly outside the release gates.
 7. **Backend system.** The host and Radius scaffold already use the new backend APIs. Audit and
    test them; do not schedule a legacy backend rewrite or install the scaffold without a need.
-8. **Commercial plugins.** Spotify premium plugins are optional host choices. The required matrix
-   must pass on open-source Backstage without paid dependencies or license credentials.
 
 ## Open decisions
 
@@ -1411,7 +1408,7 @@ entry; native IDs and exports have a separate reviewed inventory.
 | FS-12 | Host-owned auth is preserved; unauthenticated and forbidden responses stay distinct, both themes work, and external installation does not enable automatic guest sign-in.                                                                                              | 3B    |
 | FS-13 | Built standalone app runs all required journeys without required legacy app helpers or third-party converters; a source scan is paired with actual native runtime evidence.                                                                                            | 3C    |
 | FS-14 | Removing old app routes/imports does not lose home cards, links, feature flags, theme selection, API overrides, or direct-link refresh.                                                                                                                                | 3C    |
-| FS-15 | Required installs/builds run with no Spotify premium packages or license credentials. Optional host premium plugins do not replace Radius proxy authorization checks.                                                                                                  | 3C    |
+| FS-15 | Required installs/builds run on open-source Backstage. The host enforces Radius proxy authorization for resource reads and graph queries.                                                                                                                              | 3C    |
 | FS-16 | Cutover records the previous qualified app revision/lockfile/image and the new frontend/backend tuple; restoring the prior tuple passes its journeys. Legacy public entry stays tested until approved retirement.                                                      | 3C    |
 
 #### Native backend regression: BS-01-BS-04
