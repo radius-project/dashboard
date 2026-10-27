@@ -138,11 +138,12 @@ yarn test:e2e:rollback ghcr.io/radius-project/dashboard@sha256:166dcc84f8399b6c7
 ```
 
 The runner accepts immutable image identities, not mutable tags. It runs all current journeys
-against the candidate, then the previous host's six journeys against the restored image.
-`STANDALONE_ROLLBACK` selects the previous host's explicit guest sign-in in the shared home
-test; the native candidate must still sign in without that step. The runner removes only its
-own containers, network and temporary configuration. It does not stop Docker Desktop or other
-containers. Legacy root-entry artifact tests remain required until an approved retirement.
+against the candidate. Then it runs the previous revision's own journeys, taken with
+`git archive`, against the restored image. A restored image therefore does not need fixes that
+were made after it. The previous revision must exist in the local Git object store. The runner
+removes only its own containers, network and temporary files. It does not stop Docker Desktop
+or other containers. Legacy root-entry artifact tests remain required until an approved
+retirement.
 
 ## Developing: rad-components
 

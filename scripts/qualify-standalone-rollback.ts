@@ -1,12 +1,14 @@
 import { spawnSync } from 'node:child_process';
 import { createServer } from 'node:net';
 import { once } from 'node:events';
-import { mkdtemp, writeFile, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
 
 const revisionLabel = 'org.opencontainers.image.revision';
+const root = fileURLToPath(new URL('..', import.meta.url));
 
 function command(name: string, args: string[]) {
   const result = spawnSync(name, args, { encoding: 'utf8' });
@@ -93,7 +95,33 @@ async function main() {
   );
   const baseUrl = `http://127.0.0.1:${port}`;
   const directory = await mkdtemp(join(tmpdir(), 'radius-rollback-'));
+  // The restored image runs the journeys from its own revision. They stay under the
+  // repository so that their @playwright/test import resolves.
+  await mkdir(join(root, 'logs'), { recursive: true });
+  const previousJourneys = await mkdtemp(join(root, 'logs', 'rollback-'));
   try {
+    const archive = join(directory, 'previous-e2e.tar');
+    command('git', [
+      'archive',
+      '--output',
+      archive,
+      previousRevision,
+      'packages/app/e2e-tests',
+    ]);
+    command('tar', ['-xf', archive, '-C', previousJourneys]);
+    const previousConfig = join(previousJourneys, 'playwright.config.ts');
+    await writeFile(
+      previousConfig,
+      `import { defineConfig } from '@playwright/test';
+export default defineConfig({
+  testDir: './packages/app/e2e-tests',
+  timeout: 60_000,
+  expect: { timeout: 5_000 },
+  outputDir: './results',
+  use: { baseURL: process.env.PLAYWRIGHT_URL, channel: 'chromium', screenshot: 'only-on-failure' },
+});
+`,
+    );
     const network = docker(
       'network',
       'create',
@@ -205,9 +233,7 @@ async function main() {
               'test',
               '--workers=1',
               '--reporter=line',
-              ...(label === 'restored'
-                ? ['app.test.ts', 'radiusGraph.test.ts']
-                : []),
+              ...(label === 'restored' ? ['--config', previousConfig] : []),
             ],
             {
               stdio: 'inherit',
@@ -217,7 +243,6 @@ async function main() {
                 PLAYWRIGHT_DISABLE_WEBSERVER: 'true',
                 PLAYWRIGHT_BROWSER_CHANNEL: 'chromium',
                 STANDALONE_QUALIFICATION: 'true',
-                STANDALONE_ROLLBACK: label === 'restored' ? 'true' : '',
               },
             },
           );
@@ -239,6 +264,7 @@ async function main() {
       bestEffort(() => docker('network', 'rm', network));
     }
   } finally {
+    await rm(previousJourneys, { recursive: true, force: true });
     await rm(directory, { recursive: true, force: true });
   }
 }
