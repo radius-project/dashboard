@@ -92,7 +92,7 @@ building a candidate image; do not substitute dependencies from a later install.
 
 ### Image restore qualification (FS-16)
 
-On 2026-10-26, the native candidate passed all nine browser journeys in its container.
+On 2026-10-27, the native candidate passed all nine browser journeys in its container.
 The check then stopped that container and restored the previous qualified image on the same
 address. All six previous-host journeys passed, including all eight Radius routes, graph
 navigation, direct refresh, and failure/timeout states. Both containers used the same temporary
@@ -112,20 +112,28 @@ rebuilt and presented as a prior published image.
 | Previous lockfile Git blob | `858e8c64a07fc43c8dc52a526eb5cb07c30865fb` |
 | Previous image lockfile SHA-256 | `4d89b7d1f7329763297c97c583c3dd798578ad2bdcb52c5d17a6e9176c5a74a8` |
 | Previous registry image | `ghcr.io/radius-project/dashboard@sha256:166dcc84f8399b6c7b2e060c22eda390763d9379001e24695a961154679daa44` |
-| Candidate source revision | `811d2f002813c98ce6df552e2543543abcb511cf` |
-| Candidate local image ID | `sha256:99a7e44f59c6d4964d7198d0f9a626bca5fc7a147b9cfbde59f3038e7d88a71c` |
+| Candidate source revision | `4d94a3a7ecb39220195b69f727b77a3bff4e1aee` |
+| Candidate lockfile Git blob | `3ca86978b5cbbcc3f6ebdc2894bbd150a7044640` |
+| Candidate local image ID | `sha256:327e762ded68ac3b0408223f31b767d1b784e94e4e3fdb968c0c40a8c7ccc3f0` |
 
-The candidate image remains local; it was not published. Its included lockfile matches the
-candidate SHA-256 above. Both image checks used `linux/amd64` on Docker Desktop.
-The standard Dockerfile's dependency fetch failed with a public-registry TLS error on this
-machine. The successful local build used a temporary copy of that Dockerfile with only the
-configured registry supplied through a BuildKit secret mount during dependency installation.
-No credentials or registry override were stored in the image.
+Before any journey runs, the runner reads each image's `org.opencontainers.image.revision`
+label and the Git blob ID of its included `yarn.lock`. Both values must match the revision
+given on the command line and that revision's `yarn.lock` in Git, or the check fails.
 
-To repeat the recorded check while the candidate image is available locally:
+The candidate was built with `yarn build-image` from the checked-in
+`packages/backend/Dockerfile` at the candidate revision. The public package registry failed
+with a TLS error on this machine, so the build set `IMAGE_NPM_REGISTRY_SERVER`. That value
+reaches dependency installation only through a BuildKit secret; it is not in the image layers,
+history or configuration. Release builds reject this override.
+
+The candidate image is local and was not published. Anyone with the candidate revision can
+rebuild it and repeat the check, but the image ID above is not durable registry evidence.
+Durable FS-16 evidence needs a CI-built candidate digest qualified with this runner.
+
+To repeat the check with a local or registry candidate:
 
 ```bash
-yarn test:e2e:rollback ghcr.io/radius-project/dashboard@sha256:166dcc84f8399b6c7b2e060c22eda390763d9379001e24695a961154679daa44 sha256:99a7e44f59c6d4964d7198d0f9a626bca5fc7a147b9cfbde59f3038e7d88a71c
+yarn test:e2e:rollback ghcr.io/radius-project/dashboard@sha256:166dcc84f8399b6c7b2e060c22eda390763d9379001e24695a961154679daa44 4f243cc02166e1330fe5769683d2a70aca23ded1 <candidate image ID or image@digest> <candidate revision>
 ```
 
 The runner accepts immutable image identities, not mutable tags. It runs all current journeys

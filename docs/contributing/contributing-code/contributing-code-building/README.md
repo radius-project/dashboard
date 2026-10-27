@@ -130,6 +130,10 @@ The `build-image` command uses `packages/backend/Dockerfile`. Its Docker build r
 not `GITHUB_SHA`) and `org.opencontainers.image.version` from `REL_VERSION`, defaulting to
 `edge` for local builds. A Git checkout is required to produce this provenance.
 
+For a local build only, set `IMAGE_NPM_REGISTRY_SERVER` to use a different npm registry for
+dependency installation. The value reaches Docker only as a BuildKit secret, and release
+builds reject it.
+
 #### Release image staging
 
 The Build workflow stages release images under full-version tags. It does not publish
