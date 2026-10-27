@@ -1061,7 +1061,6 @@ its issue is fixed, and that failure is the signal the fix landed, not a regress
 | #368  | The graph has no explicit empty state or degraded layout-failure state        | GU-15, GU-17         |
 | #369  | Partial namespace failures are silently presented as complete inventory      | ER-08                |
 | #370  | The graph request error state has no retry action                             | GU-16                |
-| #373  | Fixed: container layout and gateway edge direction match `Applications.Core` and `Radius.Compute` built-in types | AppGraph unit tests, graph-model integration tests, E2E-03 |
 
 Six notes on reading this table.
 

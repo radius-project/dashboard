@@ -68,7 +68,7 @@ describe('user-defined graph types', () => {
   it.each([
     'Contoso.Net/gateways',
     'Contoso.Net/routes',
-    'Radius.Core/gateways',
+    'Radius.Networking/gateways',
     'Applications.Core/mygateways',
   ])('does not reverse an Inbound connection to %s', type => {
     const owner = resource('Radius.Compute/containers', 'webapp');
@@ -88,7 +88,7 @@ describe('user-defined graph types', () => {
     ]);
   });
 
-  it.each(['Contoso.Net/containers', 'Radius.Core/containers'])(
+  it.each(['Contoso.Net/containers', 'Radius.Networking/containers'])(
     'does not lead the layout with %s',
     type => {
       const { nodes } = initialNodes({
