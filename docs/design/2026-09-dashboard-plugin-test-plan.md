@@ -2,11 +2,9 @@
 
 - **Author**: Nicole James (@nicolejms)
 - **Date**: 2026-09
-- **Revised**: 2026-10-23
+- **Revised**: 2026-10-27
 - **Status**: Draft
 - **Companion design**: [Radius Dashboard as a distributable Backstage plugin](./2026-09-radius-backstage-plugin.md)
-- **Related**: [`radius-project/ai-extensions` canvas test plan](https://github.com/radius-project/ai-extensions/blob/2c789d2e2a309d94e4164a1719c64dda580be36c/docs/design/2026-08-radius-canvas-test-plan.md),
-  [canvas test architecture](https://github.com/radius-project/ai-extensions/blob/2c789d2e2a309d94e4164a1719c64dda580be36c/docs/design/2026-08-radius-canvas-test-architecture.md)
 
 ## Purpose
 
@@ -16,9 +14,9 @@ Backstage plugin, proposed as `@radius-project/backstage-plugin-radius`. The
 [companion design](./2026-09-radius-backstage-plugin.md) sets that ownership. Extraction changes
 two things the tests must protect:
 
-1. The dashboard and Canvas must use one graph implementation. Move the renderer and layout from
-   `packages/rad-components` into `graph-react`, combine them with Canvas's renderer, and switch the
-   dashboard to that package. Delete the old implementation. Tests compare the rendered result
+1. The dashboard must use the shared graph implementation. Move reusable rendering and layout from
+   `packages/rad-components` into `graph-react`, then switch the dashboard to that package.
+   Delete the old implementation. Tests compare the rendered result
    with a frozen baseline, not with a second dashboard copy of the model.
 2. The plugin becomes a published contract. `packages/app` must use the same package entry points
    as an external Backstage host fixture, without privileged access to workspace source.
@@ -279,15 +277,15 @@ reproducibility, while CI continues to exercise its configured default.
 
 No new test framework is introduced. The existing runners are:
 
-| Concern                | Tool                                                          |
-| ---------------------- | ------------------------------------------------------------- |
-| Unit and component     | Jest 30 with the jsdom environment                            |
-| Rendering and queries  | React Testing Library, `@testing-library/jest-dom`, `user-event` |
-| Backstage harnesses    | `@backstage/test-utils`                                       |
-| HTTP boundary          | `msw`                                                         |
-| Canvas APIs under jsdom | `jest-canvas-mock`                                           |
-| Browser                | Playwright 1.62, Chromium                                     |
-| Visual                 | Storybook, screenshotted through Playwright                   |
+| Concern                      | Tool                                                             |
+| ---------------------------- | ---------------------------------------------------------------- |
+| Unit and component           | Jest 30 with the jsdom environment                               |
+| Rendering and queries        | React Testing Library, `@testing-library/jest-dom`, `user-event` |
+| Backstage harnesses          | `@backstage/test-utils`                                          |
+| HTTP boundary                | `msw`                                                            |
+| HTML canvas APIs under jsdom | `jest-canvas-mock`                                               |
+| Browser                      | Playwright 1.62, Chromium                                        |
+| Visual                       | Storybook, screenshotted through Playwright                      |
 
 The Backstage CLI supplies Jest configuration, transforms, and environment. The original tree had
 no `jest.config.js` or workspace `jest` key. Add floors through a `jest` key that the CLI merges,
@@ -347,7 +345,7 @@ The graph tests use Playwright and gain nothing from that switch. Reconsider Vit
 change after Phase 4, or sooner if the CLI adds supported integration. The requirement is a stable
 runner during extraction, not permanent use of Jest.
 
-React Flow calls canvas APIs missing from jsdom, so tests use `jest-canvas-mock`. A stubbed canvas
+React Flow calls HTML canvas APIs missing from jsdom, so tests use `jest-canvas-mock`. A stubbed canvas
 can pass a render assertion without laying out a graph. Run Tier B and C tests in real Chromium.
 Keep jsdom for request handling and states without a graph.
 
@@ -464,7 +462,7 @@ Regenerate them in the extraction PR and compare old and new in CI:
 - **A difference that is not listed in the expected-change manifest fails the check.**
 - The manifest is a committed file. Each entry names the fixture, the record field, the old value,
   the new value, and the reason. A reviewer approves the manifest, not a wall of snapshot churn.
-- Entries whose reason is "consolidating on the Canvas renderer" are legitimate. Entries that
+- Entries that explain a deliberate shared-renderer behavior change are legitimate. Entries that
   cannot be explained are the bugs this whole exercise exists to catch.
 - The manifest is emptied at the end of each extraction phase, so it never becomes a permanent
   allowlist.
@@ -1361,11 +1359,11 @@ never appear as "no resources." Do not retry authorization failures or switch cl
 
 | ID    | Requirement                                                                          |
 | ----- | ------------------------------------------------------------------------------------ |
-| PB-01 | The plugin imports only the public entry points of `core` and `graph-react`           |
-| PB-02 | No plugin file imports Canvas or another adapter's private source                     |
-| PB-03 | Browser code imports browser-safe subpaths, never a root barrel that reads `process`  |
-| PB-04 | No file under `packages/app/src` imports a path inside the plugin beyond its entry    |
-| PB-05 | No dashboard package re-declares a contract that `core` owns                          |
+| PB-01 | The plugin imports only the public entry points of `core` and `graph-react`          |
+| PB-02 | No plugin file imports a host adapter's private source                               |
+| PB-03 | Browser code imports browser-safe subpaths, never a root barrel that reads `process` |
+| PB-04 | No file under `packages/app/src` imports a path inside the plugin beyond its entry   |
+| PB-05 | No dashboard package re-declares a contract that `core` owns                         |
 
 PB-04 currently guards the internal package entry; extend its allowlist to the approved public root
 and native subpath during 3A, while rejecting private source imports. PB-01a and PB-02a provide non-vacuous

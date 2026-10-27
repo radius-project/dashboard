@@ -1,20 +1,20 @@
 # Radius Dashboard as a distributable Backstage plugin
 
-- **Author**: Nicole James (@nicolejms), with Copilot
+- **Author**: Nicole James (@nicolejms)
 - **Date**: 2026-09
-- **Revised**: 2026-10-23
+- **Revised**: 2026-10-27
 - **Status**: Draft
 - **Companion test plan**: [Radius Dashboard test plan](./2026-09-dashboard-plugin-test-plan.md)
 
-The dashboard repository owns the Backstage plugin and this design. `radius-project/ai-extensions` owns the common libraries and components. Moving the design did not move the packages or change their delivery plan.
+The dashboard repository owns the Backstage plugin and this design. `radius-project/ai-extensions` owns the shared domain and graph libraries. This plan covers those libraries and their use in Backstage, not other products in that repository.
 
 ## Overview
 
 Keep the Radius Backstage plugin in `radius-project/dashboard`. Add native support for the new frontend system, then migrate the standalone app in stages. The dashboard is already a branded Backstage app: its backend uses the new system, but its app and Radius plugin use the legacy frontend. Plugins remain part of Backstage. Their contracts must change; the product does not need a new Backstage port.
 
-The standalone dashboard and external Backstage hosts must use the same plugin. Radius Canvas and the plugin must share graph contracts, transformations, and components wherever their behavior overlaps. Keep those libraries in `radius-project/ai-extensions`. Before release, switch callers to the shared code and delete the old implementations. Publishing a library while callers keep their copies leaves the duplication in place.
+The standalone dashboard and external Backstage hosts must use the same plugin. The plugin consumes shared graph contracts, transformations, and components from `radius-project/ai-extensions`. Before release, switch the dashboard to those libraries and delete its old implementations.
 
-Preserve the dashboard workspace and Canvas architecture. Combine the graph in `packages/rad-components` with Canvas's renderer in the proposed `packages/graph-react`. Keep dashboard on React 18 and test the shared graph separately on React 18 and 19. Before extracting code, record passing dashboard browser journeys with the real renderer. Run those journeys for later common-code changes. Frontend migration can start before the shared packages are published. This design proposes the work; it does not implement or publish the plugin.
+Keep the dashboard workspace. Move reusable graph code from `packages/rad-components` into the proposed `packages/graph-react` library. Keep dashboard on React 18 and test the shared graph separately on React 18 and 19. Before extracting code, record passing dashboard browser journeys with the real renderer. Run those journeys for later shared-library changes. Frontend migration can start before the shared packages are published. This design proposes the work; it does not implement or publish the plugin.
 
 ## Backstage changes and delivery decision
 
@@ -51,10 +51,9 @@ Radius installation and CI must work with open-source Backstage without a Spotif
 ## Terms and definitions
 
 | Term                   | Meaning                                                                                                                                                   |
-|------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------|
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Dashboard              | The standalone Backstage application in `radius-project/dashboard`, including its branded shell and container deployment.                                 |
 | Radius plugin          | The existing Backstage-aware Radius pages, API registration, routes, and cards in the dashboard repository.                                               |
-| Canvas                 | The Radius canvas extension for the GitHub Copilot app, implemented by `packages/adapter-canvas` and distributed in the Copilot plugin artifact.          |
 | UCP                    | The Radius control-plane API reached by the dashboard through the Backstage Kubernetes proxy and Kubernetes aggregated API prefix.                        |
 | Connection             | An explicit configured Kubernetes cluster plus Radius plane identity; not a browser-supplied URL or the first discovered cluster.                         |
 | Shared graph           | Common resource/edge contracts and rendering primitives, with distinct live, modeled, planned, deployed-projection, and diff semantics.                   |
@@ -70,16 +69,16 @@ Radius installation and CI must work with open-source Backstage without a Spotif
 
 - Deliver the current dashboard's read/inspect functionality as an installable Backstage plugin, without requiring the standalone dashboard container.
 - Maintain one implementation of the Radius Backstage product pages for both standalone and embedded installations.
-- Consolidate overlapping graph behavior across the dashboard and Canvas into common libraries/components owned and published by `ai-extensions`, with explicit host adapters.
+- Use shared graph libraries owned and published by `ai-extensions`; keep Backstage integration in dashboard.
 - Support host-owned authentication, explicit connection selection, nested mounting, light/dark themes, and actionable failure states.
 - Ship compiled packages, public contracts, installation documentation, release automation, and installed-artifact integration coverage.
-- Preserve existing Canvas behavior, single-extension packaging, source-reference handling, and deployment workflows during extraction.
+- Preserve the shared libraries' existing graph contracts during extraction.
 - Prevent a common-code PR from merging when its packed artifacts break the supported dashboard consumer, rather than finding the break only during a later dependency update.
 - Support the new frontend system natively, keep a tested legacy entry during the agreed transition, and remove temporary app compatibility code before the stable standalone release.
 
 ### Non-goals
 
-- Porting Canvas modeling, deployment, environment creation, credential management, or deletion into the first Backstage release. These are not features of the current dashboard.
+- Adding modeling, deployment, environment creation, credential management, or deletion to the first Backstage release. These are not features of the current dashboard.
 - Embedding a dashboard iframe, copying the frontend into `ai-extensions`, or creating another standalone backend service.
 - Rewriting all pages into a universal UI framework. Both dashboard distributions are Backstage hosts and can share Backstage-aware pages directly.
 - Automatic catalog ingestion, Scaffolder actions, entity-level Radius authorization, or Red Hat Developer Hub dynamic-plugin packaging in the first release.
@@ -94,7 +93,7 @@ A platform operator installs Radius packages into an existing Backstage deployme
 
 #### User story 2
 
-A developer browses applications, environments, resources, recipes, and resource types, opens an application's live graph, and follows resource links without leaving the selected connection. A graph rendering fix is implemented once and reaches the standalone dashboard, embedded plugin, and Canvas through their shared component dependency.
+A developer browses applications, environments, resources, recipes, and resource types, opens an application's live graph, and follows resource links without leaving the selected connection. A rendering fix in the shared graph library reaches both standalone and embedded installations through the same dependency.
 
 ## User experience (if applicable)
 
@@ -106,7 +105,7 @@ Show a connection selector when the operator has approved more than one connecti
 
 **Sample output:** A developer opens Radius, selects `production`, opens an application, and sees its live graph and linked resources. A missing connection produces setup guidance; forbidden access produces an access error; an unavailable control plane produces a retryable failure, not an empty successful list.
 
-The current dashboard graph only supplies name/type nodes, edges, layout, and zoom controls. Canvas-specific source links, deployment badges, output-resource projection, and diff styling must remain supported in the shared graph library without being enabled by default in the dashboard.
+The current dashboard graph supplies name/type nodes, edges, layout, and zoom controls. The shared graph library can also support source links, deployment badges, output-resource projection, and diff styling. Enable these capabilities only when the caller supplies the required data; do not enable them by default in the dashboard.
 
 ## Design
 
@@ -115,30 +114,30 @@ The current dashboard graph only supplies name/type nodes, edges, layout, and zo
 Keep shared domain logic and UI in `ai-extensions`, and Backstage product code in dashboard:
 
 - **`ai-extensions` owns shared UI-independent logic:** publish selected `packages/core` subpaths for resource identity, graph contracts, normalization, and extracted Radius domain operations.
-- **`ai-extensions` owns common React components:** introduce `packages/graph-react` (proposed package name `@radius-project/graph-react`) and consolidate Canvas's graph renderer with the useful parts of dashboard's existing `rad-components`. This becomes the one graph component implementation, with no Backstage or Copilot dependency.
+- **`ai-extensions` owns common React components:** introduce `packages/graph-react` (proposed package name `@radius-project/graph-react`) for shared rendering and layout, including reusable code from dashboard's `rad-components`. The library has no host dependency.
 - **`dashboard` owns the Backstage product:** keep the existing Radius plugin as the single Backstage product UI. It consumes the published core and graph packages instead of maintaining shared implementations.
-- **Each host owns its integration:** keep dashboard app composition, Backstage authentication/Kubernetes transport, and Canvas SDK/loopback/source-opening behavior in their host adapters.
+- **Backstage owns its integration:** keep app composition, authentication, Kubernetes transport, and navigation outside the shared libraries.
 
-Core has no adapter dependency. Graph-react depends on core; the plugin depends on both. Canvas depends on both and its Node adapter. Core and graph components never import the plugin or Canvas. Canvas uses workspace dependencies so one `ai-extensions` change can update contracts, components, and integration together. Dashboard installs versioned npm packages. `ai-extensions` has no production dependency on dashboard packages; its isolated compatibility tests check out dashboard only to run consumer tests.
+Core has no host dependency. Graph-react depends on core; the plugin depends on both. Neither library imports the Backstage plugin. Dashboard installs versioned npm packages. `ai-extensions` has no production dependency on dashboard packages; its isolated compatibility tests check out dashboard only to run consumer tests.
 
 #### Review baseline and findings
 
 The extraction review examined dashboard commit [`8a04d30`](https://github.com/radius-project/dashboard/commit/8a04d30c35cd95fa4eb65a48ee1a36157f2091cb), committed September 8, 2026. The original ai-extensions draft used [`9c86b40`](https://github.com/radius-project/ai-extensions/commit/9c86b4005f67010c5559bb24433a56fa6f4893d4). Backstage research used official documentation and release [`v1.54.6`](https://github.com/backstage/backstage/releases/tag/v1.54.6). These source and dependency checks do not establish support for that release or report a successful migration, build, or test run.
 
 | Area                | Observed implementation                                                                                                                                                                                            | Delivery consequence                                                                                                   |
-|---------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------|
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
 | Dashboard frontend  | Existing `createPlugin`, API factories, routable extensions, route refs, and cards; standalone app imports the plugin's pages. [D1], [D2]                                                                          | Release and adapt this plugin rather than build another one.                                                           |
 | Dashboard backend   | Running backend registers Kubernetes/auth/catalog and other Backstage plugins. The Radius backend scaffold only has a health route and is not registered. [D3], [D11]                                              | Do not publish a health-only backend as though it supplies Radius functionality.                                       |
 | Radius reads        | `RadiusApiImpl` delegates to `KubernetesApi.proxy`, supports `Applications.Core` and `Radius.Core`, and performs resource-group/resource fan-out. [D4]                                                             | Extract common domain operations, retain a thin Kubernetes transport adapter, and bound concurrency.                   |
 | Graph retrieval     | `ApplicationTab` makes its own `getGraph` POST with a ten-second abort timeout. API calls choose the first cluster; graph code chooses the last. [D4], [D5]                                                        | Move graph retrieval behind the same explicit connection-aware API as resource reads.                                  |
-| Graph UI            | Dashboard uses React Flow 11 and `@dagrejs/dagre`; Canvas uses React Flow 11 and `dagre`, with a richer renderer. [D6], [A1]                                                                                       | Consolidate the actual renderer and layout, not just similarly named types.                                            |
-| Duplicated code     | Dashboard has duplicate resource-ID parsers and repeated graph interfaces. Canvas also has separate graph resource/view types. [D7], [A2]                                                                          | Establish canonical contracts with source-specific adapters; remove copies as callers migrate.                         |
+| Graph UI            | Dashboard uses React Flow 11 and `@dagrejs/dagre`. [D6]                                                                                                                                                            | Move rendering and layout into the shared graph library, not just similarly named types.                               |
+| Duplicated code     | Dashboard has duplicate resource-ID parsers and repeated graph interfaces at the reviewed revision. [D7]                                                                                                           | Use shared contracts; remove copies as callers migrate.                                                                |
 | Host coupling       | Hard-coded root navigation, `radius/local` assumptions, guest-auth standalone configuration, and first-cluster selection. [D2], [D4], [D8]                                                                         | Use route refs, explicit connection context, and the host's authentication configuration.                              |
 | Packaging           | Dashboard plugin manifests use private `@internal/*` names; `ai-extensions`'s core/shared packages are private source exports ignored by Changesets. [D9], [A3]                                                    | Neither current packaging scheme is sufficient for public npm consumers.                                               |
 | React compatibility | Dashboard is locked to React/DOM 18.3.1 with React type resolutions on 18; Backstage dependencies and MUI v4 block a simple supported React 19 host upgrade. [D13], [D14], [B6], [M1]                              | Keep dashboard 18; independently qualify shared graph 18/19.                                                           |
 | Test evidence       | ApplicationTab covers requests/errors/timeouts and both namespaces but mocks AppGraph; graph test checks attribution; browser smoke checks three home cards, including in container CI. [D10], [D15], [D16], [D17] | Add real-renderer dashboard journeys before extraction; existing green checks alone cannot establish migration safety. |
 
-The products have different data sources. The dashboard reads the live Radius control plane. Canvas builds modeled graphs using `rad`, computes graph diffs, and projects deployment status from workflow artifacts onto modeled topology. [`applicationGraphToResources`](https://github.com/radius-project/ai-extensions/blob/2c789d2e2a309d94e4164a1719c64dda580be36c/packages/core/src/graph/appgraph.ts) requires valid modeled diff hashes; [`projectDeployedGraph`](https://github.com/radius-project/ai-extensions/blob/2c789d2e2a309d94e4164a1719c64dda580be36c/packages/core/src/graph/deployed.ts) deliberately retains modeled topology. Neither is a drop-in live-UCP graph adapter.
+The dashboard reads the live Radius control plane. Shared graph functions also support modeled graphs, diffs, and deployment projections. [`applicationGraphToResources`](https://github.com/radius-project/ai-extensions/blob/2c789d2e2a309d94e4164a1719c64dda580be36c/packages/core/src/graph/appgraph.ts) requires valid modeled diff hashes; [`projectDeployedGraph`](https://github.com/radius-project/ai-extensions/blob/2c789d2e2a309d94e4164a1719c64dda580be36c/packages/core/src/graph/deployed.ts) retains modeled topology. Neither is a drop-in adapter for live UCP data.
 
 ### Architecture diagram
 
@@ -154,9 +153,6 @@ flowchart TD
     subgraph SharedRepo["radius-project/ai-extensions"]
         ReactUI["packages/graph-react - proposed"]
         Core["packages/core"]
-        Canvas["Canvas browser adapter"]
-        CanvasServer["Canvas runtime and server"]
-        Node["Existing adapter-shared rad execution"]
     end
     Standalone --> Plugin
     Host["External Backstage host"] --> Plugin
@@ -166,22 +162,17 @@ flowchart TD
     Transport --> Kube["Host Kubernetes backend and access policy"]
     Kube --> UCP["Radius UCP"]
     ReactUI -->|workspace dependency| Core
-    Canvas -->|workspace dependency| ReactUI
-    Canvas -->|workspace dependency| Core
-    CanvasServer -->|workspace dependency| Core
-    CanvasServer --> Node
-    Node --> Core
 ```
 
 ### Detailed design
 
 #### Option 1: Common libraries in ai-extensions; Backstage plugin in dashboard
 
-Publish core and graph-react from `ai-extensions`. Combine both graph implementations there and make Canvas use the workspace package. Keep the Backstage plugin in dashboard and make it use the published libraries.
+Publish core and graph-react from `ai-extensions`. Keep one shared graph implementation there. Keep the Backstage plugin in dashboard and make it use the published libraries.
 
 ##### Advantages
 
-One `ai-extensions` change can update domain contracts, the richer Canvas renderer, and Canvas integration together. Dashboard keeps its Backstage build, app, plugin, and container tooling. Both Backstage hosts use one UI. `ai-extensions` needs no Backstage release toolchain, and Canvas needs no dashboard-owned component.
+One `ai-extensions` change can update shared domain contracts and graph components together. Dashboard keeps its Backstage build, app, plugin, and container tooling. Both Backstage hosts use one UI. The shared libraries need no Backstage release toolchain.
 
 ##### Disadvantages
 
@@ -197,39 +188,38 @@ One repository can change core, UI, and adapters together. It could eventually o
 
 ##### Disadvantages
 
-Maintainers must coordinate the source move, add Backstage build/TSX tooling and a host fixture, publish npm packages, and transfer dashboard ownership and release dependencies. Ai-extensions currently discovers and publishes Copilot artifacts, not npm Backstage packages. Copying the plugin without deleting the old implementation would leave forbidden duplication.
+Maintainers must coordinate the source move, add Backstage build/TSX tooling and a host fixture, publish npm packages, and transfer dashboard ownership and release dependencies. Shared-library tooling alone does not build or publish a Backstage plugin. Copying the plugin without deleting the old implementation would leave duplication.
 
 #### Proposed option
 
-Choose Option 1. Keep core, graph components, and Canvas together in `ai-extensions`; dashboard uses their published contracts. Keep the existing Backstage plugin and its host-specific tooling in dashboard. This replaces the earlier proposal to leave common components in dashboard, which made the initial move easier but separated shared-library ownership.
+Choose Option 1. Keep core and graph components together in `ai-extensions`; dashboard uses their published contracts. Keep the existing Backstage plugin and its host-specific tooling in dashboard.
 
 #### Canonical ownership and extraction map
 
 The new export names below are proposed; they do not exist yet.
 
-| Source today                                                                                   | Canonical destination                                                                                                               | Required consumer migration                                                                                                          |
-|------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------|
-| Dashboard's two `resourceId.ts` files and resource/graph interfaces                            | `packages/core`, proposed Radius domain exports                                                                                     | Both dashboard packages use one parser and contracts; temporary forwarding exports contain no logic.                                 |
-| Radius API compatibility, recipe aggregation, schema interpretation mixed into dashboard pages | `packages/core`, proposed Radius domain use cases behind a typed transport port                                                     | Plugin pages call the common use cases; UI does not import parsers from a visual package.                                            |
-| Graph request in `ApplicationTab` and resource requests in `RadiusApiImpl`                     | One shared Radius client/use-case boundary plus Backstage transport adapter                                                         | All reads use the same explicit connection, version policy, timeout/cancellation, and error contract.                                |
-| Canvas graph model/build/layout plus dashboard graph layout                                    | `ai-extensions/packages/core` for domain semantics; proposed `packages/graph-react` in `ai-extensions` for graph view models/layout | One layout implementation and tested compatibility handling; neither host retains a separate graph builder with equivalent behavior. |
-| Canvas node/view/details/legend and dashboard `AppGraph`/`ResourceNode`                        | Proposed `ai-extensions/packages/graph-react`, with typed data, callbacks, and view options                                         | Dashboard plugin consumes the npm package; Canvas consumes the workspace package; shell-specific source opening stays in Canvas.     |
-| Dashboard Backstage pages, tables, recipe/type detail UI                                       | Existing Radius frontend plugin                                                                                                     | Standalone app and external host consume exactly the same exports.                                                                   |
-| Canvas workflows, managed binaries, worktree access, local auth, SDK lifecycle                 | Existing Canvas and shared Node adapters                                                                                            | No transplantation into a browser plugin or the dashboard client.                                                                    |
+| Source today                                                                                   | Canonical destination                                                                                          | Required consumer migration                                                                           |
+| ---------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Dashboard's two `resourceId.ts` files and resource/graph interfaces                            | `packages/core`, proposed Radius domain exports                                                                | Both dashboard packages use one parser and contracts; temporary forwarding exports contain no logic.  |
+| Radius API compatibility, recipe aggregation, schema interpretation mixed into dashboard pages | `packages/core`, proposed Radius domain use cases behind a typed transport port                                | Plugin pages call the common use cases; UI does not import parsers from a visual package.             |
+| Graph request in `ApplicationTab` and resource requests in `RadiusApiImpl`                     | One shared Radius client/use-case boundary plus Backstage transport adapter                                    | All reads use the same explicit connection, version policy, timeout/cancellation, and error contract. |
+| Graph contracts, transformations, and dashboard layout                                         | `ai-extensions/packages/core` for domain semantics; proposed `packages/graph-react` for view models and layout | Dashboard uses one shared layout implementation with tested compatibility handling.                   |
+| Dashboard `AppGraph`/`ResourceNode` rendering, details, and legend                             | Proposed `ai-extensions/packages/graph-react`, with typed data, callbacks, and view options                    | Dashboard consumes the npm package; host navigation and source opening remain injected callbacks.     |
+| Dashboard Backstage pages, tables, recipe/type detail UI                                       | Existing Radius frontend plugin                                                                                | Standalone app and external host consume exactly the same exports.                                    |
 
-Complete the graph migration before stable release. First record dashboard journeys with the real renderer. Extract contracts and pure transformations, then combine the React node/edge/details renderer and layout in `ai-extensions` graph-react. Switch both consumers and delete the old implementations. If rad-components has external consumers, keep only a temporary forwarding package with a documented removal policy. Canvas's server-rendered shell and inline browser entry can mount the shared graph with injected callbacks; the whole page needs no rewrite. Run the existing boundary suites to preserve Canvas behavior.
+Complete graph migration before stable release. First record dashboard journeys with the real renderer. Extract contracts and pure transformations, then move reusable rendering and layout into graph-react. Switch dashboard to the library and delete its old implementation. If rad-components has external consumers, keep only a temporary forwarding package with a documented removal policy.
 
-Give each layout and graph instance its own Dagre state instead of sharing a module-level graph. Run both graph fixture sets before choosing one Dagre implementation. Do not keep two layout engines. Use a named fixture to preserve the legacy gateway-direction workaround only for the input shape that needs it.
+Give each layout and graph instance its own Dagre state instead of sharing a module-level graph. Run the dashboard and shared-library fixtures before choosing one Dagre implementation. Do not keep two layout engines. Use a named fixture to preserve the legacy gateway-direction workaround only for the input shape that needs it.
 
-Keep React and ReactDOM as compatible peer dependencies; do not bundle a second React into Backstage. Test the same components under dashboard/Backstage React 18 and Canvas React 19 before declaring support. Pass theme tokens, node presentation, source opening, selection, and details actions as inputs. The shared graph package must not import Backstage, read Canvas globals, call `/api/open-source`, or reset application-wide CSS.
+Keep React and ReactDOM as peer dependencies; do not bundle a second React into Backstage. Test the shared components separately on React 18 and 19 before declaring support. Pass theme tokens, node presentation, source opening, selection, and details actions as inputs. The shared graph package must not import host APIs, read host globals, call host endpoints, or reset application-wide CSS.
 
 #### Shared data semantics
 
 Use full resource identity, connection, and plane for lookups and caches. Application names alone are not unique. Keep live UCP inputs separate from modeled `rad` inputs. Use explicit variants or optional capabilities for source metadata. A live graph need not have a `diffHash`, definition file, or workflow status.
 
-Share stable edge normalization and identity handling, but keep product-specific projections explicit. Canvas filtering and modeled-topology deployment projection must not hide live dashboard resources or invent successful provisioning status. Shared normalization must preserve both application namespaces, recipe packs and legacy recipes, resource-type API versions, and raw status values.
+Share stable edge normalization and identity handling, but keep graph projections explicit. Filtering and modeled-topology deployment projection must not hide live dashboard resources or invent successful provisioning status. Shared normalization must preserve both application namespaces, recipe packs and legacy recipes, resource-type API versions, and raw status values.
 
-Extract the dashboard's schema interpretation into pure view-model functions; do not add another schema engine. Canvas resolves recipes, while dashboard lists them. Share identity handling and compatible transformations, not unrelated orchestration.
+Extract the dashboard's schema interpretation into pure view-model functions; do not add another schema engine. Keep recipe listing separate from recipe resolution. Share identity handling and compatible transformations, not unrelated orchestration.
 
 #### Backstage integration
 
@@ -245,7 +235,7 @@ Use the existing Kubernetes proxy for the first release. Do not add a Radius bac
 
 ### API design (if applicable)
 
-The proposed public API includes resource identity/types, `RadiusConnection`, an injected `RadiusTransport` port, and operations to list/get applications, environments, resources, recipes, resource types, and application graphs. Core defines Radius behavior. The adapter handles HTTP, Backstage credentials, cluster access, and response decoding. Validate public inputs; do not publish Canvas's permissive `any` shapes as a stable SDK.
+The proposed public API includes resource identity/types, `RadiusConnection`, an injected `RadiusTransport` port, and operations to list/get applications, environments, resources, recipes, resource types, and application graphs. Core defines Radius behavior. The adapter handles HTTP, Backstage credentials, cluster access, and response decoding. Validate public inputs and replace permissive `any` shapes with explicit types before publishing a stable SDK.
 
 Pass the connection to every operation and support cancellation. Graph requests must use the same cluster and plane as application-detail requests. Keep the existing upstream operation, `POST /apis/api.ucp.dev/v1alpha3/{application-resource-id}/getGraph?api-version=...`. This POST queries a graph; it does not grant deployment permission.
 
@@ -282,31 +272,19 @@ These fields refer to operator-controlled Kubernetes configuration. They contain
 
 #### Core package - packages/core
 
-Export selected domain/graph subpaths and move shared logic with its tests. Core must not depend on React, Backstage, HTTP implementations, the filesystem, DOM, or Copilot. Publish compiled JavaScript and declarations so consumers need not transpile `ai-extensions` TypeScript. Keep unrelated modeling/workflow internals private.
+Export selected domain/graph subpaths and move shared logic with its tests. Core must not depend on React, Backstage, HTTP implementations, the filesystem, DOM, or host SDKs. Publish compiled JavaScript and declarations so consumers need not transpile `ai-extensions` TypeScript. Keep unrelated modeling/workflow internals private.
 
 Do not rewrite unrelated core code. Strengthen types and error handling where extraction changes code or makes it a shared contract, and test the before/after behavior. The exported subpaths and all their dependencies must be browser-safe. The current root barrel makes no such promise.
 
 #### Common React components - packages/graph-react (proposed)
 
-Put shared graph rendering, layout, nodes, edges, details, legends, and scoped styles in this `ai-extensions` package. Combine Canvas's graph modules with dashboard's AppGraph/ResourceNode behavior. Move their tests and retain source attribution and license notices. Each host must use this renderer, not keep its own.
+Put shared graph rendering, layout, nodes, edges, details, legends, and scoped styles in this `ai-extensions` package. Preserve dashboard's AppGraph/ResourceNode behavior. Move tests with the code and retain source attribution and license notices. Dashboard must use this renderer, not keep its own.
 
-Import browser-safe core subpaths through a workspace dependency. Accept graph data, presentation options, theme tokens, and callbacks. Do not fetch Radius data, import host APIs, manage Backstage routes, or control Copilot lifecycle. Use ai-extensions' TypeScript, Vitest, and browser tooling. Add React/TSX and library packaging support where needed; do not add a second Backstage toolchain.
+Import browser-safe core subpaths through a workspace dependency. Accept graph data, presentation options, theme tokens, and callbacks. Do not fetch Radius data, import host APIs, or manage host routes or lifecycle. Use ai-extensions' TypeScript, Vitest, and browser tooling. Add React/TSX and library packaging support where needed; do not add a second Backstage toolchain.
 
-Publish compiled JavaScript, TypeScript declarations, and scoped CSS, with React/ReactDOM as external peer dependencies. Canvas builds the workspace source; dashboard installs published artifacts. Both builds must use the same implementation and exports without runtime package downloads. Emit JSX and types compatible with both React majors. Passing isolated library tests does not qualify a React 19 Backstage app.
+Publish compiled JavaScript, TypeScript declarations, and scoped CSS, with React/ReactDOM as external peer dependencies. Dashboard installs published artifacts without runtime package downloads. Emit JSX and types compatible with both React majors. Passing isolated library tests does not qualify a React 19 Backstage app.
 
-#### Canvas adapter - packages/adapter-canvas
-
-Replace Canvas's graph internals with graph-react through a workspace dependency. Preserve browser entry registration, initialization/teardown, page state, focus, source opening, themes, and modeled/planned/deployed/diff features. Bundle the shared component into the existing self-contained inline scripts.
-
-Keep the artifact layout in [plugin packaging and publishing](https://github.com/radius-project/ai-extensions/blob/2c789d2e2a309d94e4164a1719c64dda580be36c/docs/architecture/plugin-packaging-and-publishing.md): local output under `.artifacts/radius` and the published entry at `com.github.copilot/extensions/radius/extension.mjs`. Do not fetch `ai-extensions` browser modules at runtime or add a second plugin bundle.
-
-#### Shared adapter - packages/adapter-shared
-
-The first Backstage release needs no managed `rad`/Bicep dependency. Keep graph compilation and process lifecycle in `ai-extensions`. A future modeled/planned view would use a separately designed backend. It must not spawn tools from the frontend or import Canvas server routes.
-
-#### Plugin - Copilot radius distribution
-
-Distribute the Copilot plugin separately. The original draft names `plugins/radius`, but the inspected [manifest](https://github.com/radius-project/ai-extensions/blob/2c789d2e2a309d94e4164a1719c64dda580be36c/extensions/radius/package.json) is in `extensions/radius`. Its manifest, skills, deployment tools, and marketplace discovery stay outside the Backstage package. This migration changes only the rebuilt Canvas graph and the dependency notices that follow from it.
+The first Backstage release needs no managed `rad` or Bicep dependency. A future modeled/planned view would need a separately designed backend; it must not spawn tools from the frontend.
 
 #### Dashboard repository
 
@@ -320,11 +298,11 @@ Do not include the [Radius backend scaffold][D11] in the first public distributi
 
 Confirm npm scope ownership before publishing the proposed `@radius-project/core` and `@radius-project/graph-react` from `ai-extensions`, and `@radius-project/backstage-plugin-radius` from dashboard. Find external consumers of `@radapp.io/rad-components` before migration. Provide temporary forwarding exports and a deprecation plan if needed, but move the shared implementation to graph-react. Check the registry; repository documentation alone does not prove that a package is published.
 
-The ai-extensions [core manifest](https://github.com/radius-project/ai-extensions/blob/2c789d2e2a309d94e4164a1719c64dda580be36c/packages/core/package.json) is private, points at source, and requires Node 24. Its [Changesets config](https://github.com/radius-project/ai-extensions/blob/2c789d2e2a309d94e4164a1719c64dda580be36c/.changeset/config.json) ignores core and uses restricted access. Add an npm library release path with compiled exports/declarations, public access, file allowlists, dependency rewriting, Changesets, provenance, and immutable versions. Do not use Copilot's `scripts/plugins.mjs` discovery or generated release branches for these libraries. Keep Copilot versioning independent. Add Changesets when implementation changes released behavior.
+The reviewed ai-extensions [core manifest](https://github.com/radius-project/ai-extensions/blob/2c789d2e2a309d94e4164a1719c64dda580be36c/packages/core/package.json) is private, points at source, and requires Node 24. Its [Changesets config](https://github.com/radius-project/ai-extensions/blob/2c789d2e2a309d94e4164a1719c64dda580be36c/.changeset/config.json) ignores core and uses restricted access. Add an npm library release path with compiled exports/declarations, public access, file allowlists, dependency rewriting, Changesets, provenance, and immutable versions. Version the libraries independently and add Changesets when implementation changes released behavior.
 
-Build and publish core and graph-react through that library release path, with independent versions and dependency-aware Changesets. Graph-react uses workspace core locally; packing rewrites the dependency to a published version range. Canvas uses both workspace packages and bundles them into its Copilot artifact. It can therefore use a local graph change before an external package release.
+Build and publish core and graph-react through that library release path, with independent versions and dependency-aware Changesets. Graph-react uses workspace core locally; packing rewrites the dependency to a published version range.
 
-Add a plugin publication job to dashboard alongside its container build. Build and pack the plugin against published common libraries, then test the installed tarballs. Publish core first, graph-react second, and the Backstage plugin last. Update dashboard's lockfile to tested versions. Release Canvas through its existing pipeline after its integration gates pass. Use prereleases before stable versions; stable publication requires passing cross-consumer gates.
+Add a plugin publication job to dashboard alongside its container build. Build and pack the plugin against published common libraries, then test the installed tarballs. Publish core first, graph-react second, and the Backstage plugin last. Update dashboard's lockfile to tested versions. Use prereleases before stable versions; stable publication requires passing consumer compatibility checks.
 
 Build and pack JavaScript and declarations for the legacy root and native subpath. Use Backstage's source `exports` and `typesVersions` conventions, and check that packing rewrites them to shipped output rather than `src` [B13]. Test native discovery metadata in the selected host. Test the native import separately from the legacy root. Keep frontend converters in host fixtures or temporary app composition, outside the native Radius implementation.
 
@@ -355,27 +333,26 @@ Record a reviewed passing baseline before extraction. Label existing defects rat
 
 ### Required suites
 
-| Layer                                   | Required evidence                                                                                                                                                                                                                                                                                            |
-| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Domain unit                             | Full resource identity, dual namespaces, malformed IDs/payloads, live versus modeled graphs, missing hashes, recipe aggregation, schema interpretation, version fallback, explicit partial failures, connection-scoped cache behavior, cancellation and fan-out bounds.                                      |
-| Shared graph unit/component             | Deterministic edges/layout, gateway compatibility, simultaneous graphs without state leakage, output-resource handling, source/detail callbacks, all Canvas graph modes, empty/error states, and update/unmount cleanup.                                                                                     |
-| Backstage integration                   | Real plugin/API registration with controlled Kubernetes responses; authenticated and forbidden requests; two clusters where the old first/last behavior would disagree; plane selection; GET and graph POST policy; nested routes and non-root app base paths.                                               |
-| Browser functional and critical journey | Lists to resource/environment detail to real graph; recipes and resource-type schemas affected by extraction; connection change during requests; visible partial failure/retry; direct-link refresh; dashboard and external-host mounting.                                                                   |
-| Accessibility and keyboard              | Light/dark material states, graph controls/details, focus restoration, loading/error announcements, keyboard-only navigation, and accessible non-graph resource information.                                                                                                                                 |
-| Installed artifact                      | Install packed public dependencies into a clean Backstage fixture without source aliases; compile declarations, build frontend/backend, load CSS, register the plugin, and exercise real host routes with fake upstream data.                                                                                |
-| Frontend migration                      | Run the same page, API, route, feature-flag, optional-card, theme, auth, and real-graph journeys in legacy, hybrid, and native hosts. Assert one registration per extension/API, test packed native exports/discovery, and fail when a required native page or API extension is removed.                     |
-| Backend-system regression               | Start the existing native backend with controlled services; verify plugin initialization, missing-dependency/startup failures, authenticated Kubernetes GET and graph POST policy, and that the unused Radius health scaffold is not required.                                                               |
-| Canvas regression                       | Existing applicable unit, runtime integration, HTTP integration, built-extension smoke, browser component, browser functional, critical journey, accessibility, and keyboard gates. Scheduled visual/reliability and real-host qualification follow the current test plan, not a newly invented gate status. |
+| Layer                                   | Required evidence                                                                                                                                                                                                                                                                        |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Domain unit                             | Full resource identity, dual namespaces, malformed IDs/payloads, live versus modeled graphs, missing hashes, recipe aggregation, schema interpretation, version fallback, explicit partial failures, connection-scoped cache behavior, cancellation and fan-out bounds.                  |
+| Shared graph unit/component             | Deterministic edges/layout, gateway compatibility, simultaneous graphs without state leakage, output-resource handling, source/detail callbacks, supported graph modes, empty/error states, and update/unmount cleanup.                                                                  |
+| Backstage integration                   | Real plugin/API registration with controlled Kubernetes responses; authenticated and forbidden requests; two clusters where the old first/last behavior would disagree; plane selection; GET and graph POST policy; nested routes and non-root app base paths.                           |
+| Browser functional and critical journey | Lists to resource/environment detail to real graph; recipes and resource-type schemas affected by extraction; connection change during requests; visible partial failure/retry; direct-link refresh; dashboard and external-host mounting.                                               |
+| Accessibility and keyboard              | Light/dark material states, graph controls/details, focus restoration, loading/error announcements, keyboard-only navigation, and accessible non-graph resource information.                                                                                                             |
+| Installed artifact                      | Install packed public dependencies into a clean Backstage fixture without source aliases; compile declarations, build frontend/backend, load CSS, register the plugin, and exercise real host routes with fake upstream data.                                                            |
+| Frontend migration                      | Run the same page, API, route, feature-flag, optional-card, theme, auth, and real-graph journeys in legacy, hybrid, and native hosts. Assert one registration per extension/API, test packed native exports/discovery, and fail when a required native page or API extension is removed. |
+| Backend-system regression               | Start the existing native backend with controlled services; verify plugin initialization, missing-dependency/startup failures, authenticated Kubernetes GET and graph POST policy, and that the unused Radius health scaffold is not required.                                           |
 
-Target 100% meaningful changed-code coverage and never lower existing repository/package baselines. Preserve the Canvas browser coverage floor and use its existing [test architecture](https://github.com/radius-project/ai-extensions/blob/2c789d2e2a309d94e4164a1719c64dda580be36c/docs/design/2026-08-radius-canvas-test-architecture.md) and [test plan](https://github.com/radius-project/ai-extensions/blob/2c789d2e2a309d94e4164a1719c64dda580be36c/docs/design/2026-08-radius-canvas-test-plan.md) to select the exact requirements affected by renderer extraction.
+Target 100% meaningful changed-code coverage and never lower existing repository/package baselines. Run the shared libraries' unit, component, and browser tests for each changed graph contract.
 
-Enforce package boundaries: core cannot import hosts, common components cannot import Backstage/Canvas, and host code cannot import another adapter's private source. Review the extraction inventory at each phase. Before acceptance, delete every parallel implementation of the migrated parser, graph request policy, layout, and renderer. Type-only re-exports can preserve access to shared contracts; copied implementations cannot serve as compatibility code.
+Enforce package boundaries: core cannot import hosts, common components cannot import host APIs, and the plugin cannot import private adapter source. Review the extraction inventory at each phase. Before acceptance, delete every parallel dashboard implementation of the migrated parser, graph request policy, layout, and renderer. Type-only re-exports can preserve access to shared contracts; copied implementations cannot serve as compatibility code.
 
-Browser code must import browser-safe domain/graph subpaths. The [Canvas graph builder](https://github.com/radius-project/ai-extensions/blob/2c789d2e2a309d94e4164a1719c64dda580be36c/packages/adapter-canvas/src/browser/graph/build.ts) already avoids the core root barrel because it re-exports workflow code that reads `process.env`. Extend browser build checks to every new public dependency, including packed installs. Do not assume all core exports are browser-safe.
+Browser code must import browser-safe domain/graph subpaths. Do not import a root barrel that exposes Node-only workflow code or reads `process.env`. Check every new public dependency through browser builds and packed installs; do not assume all core exports are browser-safe.
 
 ### Mandatory common-code consumer CI
 
-Every PR that changes public core/graph behavior, components, styles, declarations, exports, dependencies, build/pack inputs, or this gate must run dashboard compatibility CI alongside ai-extensions' shared suites and applicable Canvas gates. Even a core-only change must pack graph-react against the candidate. Neither source-only tests nor a later dashboard update can replace this check.
+Every PR that changes public core/graph behavior, components, styles, declarations, exports, dependencies, build/pack inputs, or this gate must run dashboard compatibility CI alongside the shared-library suites. Even a core-only change must pack graph-react against the candidate. Neither source-only tests nor a later dashboard update can replace this check.
 
 | Step                    | Required execution and evidence                                                                                                                                                                                                                                                                                                                                                |
 |-------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -387,7 +364,7 @@ Every PR that changes public core/graph behavior, components, styles, declaratio
 | Exercise external host  | From the dashboard-owned fixture, install the packed Radius plugin and candidate common dependencies with the same transitive-resolution checks. Run the shared dashboard journey implementation via host-specific setup against nested mounting and the approved legacy/new frontend entries. No page, graph, or test-implementation copy.                                    |
 | Report and gate         | Attach identities, dependency evidence, results, and bounded browser traces/screenshots to the exact tested revision. Build/type/runtime/style/journey failures, missing evidence, skipped/cancelled/timed-out jobs, unavailable consumer checkout, and stale-SHA results all block merge and publication.                                                                     |
 
-Run the same shared graph unit/component and packed-library suites with React/DOM 18.3.1 and the selected Canvas 19 version, currently 19.2.8 in `ai-extensions`. Match the type major to each runtime. Dashboard and external Backstage jobs use tested React 18 hosts. Canvas keeps its React 19 integration gates. Isolated graph results do not establish support for the whole dashboard on React 19.
+Run the same shared graph unit/component and packed-library suites with React/DOM 18.3.1 and a pinned React 19 version, recorded as 19.2.8 at the reviewed shared-library revision. Match the type major to each runtime. Dashboard and external Backstage jobs use tested React 18 hosts. Isolated graph results do not establish support for the whole dashboard on React 19.
 
 Define the gate and supported-consumer pins in reviewed default-branch CI configuration. Pin actions and reusable workflows to immutable revisions. Treat PR packages, install scripts, and checked-out code as untrusted executable input. Run candidates on temporary isolated runners with read-only access. Give them no cloud/registry/signing secrets, inherited developer credentials, privileged self-hosted environment, or write-capable token. Do not execute privileged PR code through `pull_request_target`. Fetch public dashboard source at the approved immutable commit, never a contributor's checkout URL or moving branch.
 
@@ -417,7 +394,7 @@ Before distribution, review dependencies and licenses, verify package provenance
 
 ### React 19 assessment and delivery decision
 
-Dashboard cannot currently reach supported React 19 operation through a simple dependency upgrade. The source and dependency review found blockers; it did not run a failed migration. Keep dashboard on React 18 and test shared graph components separately for Canvas React 19.
+Dashboard cannot currently reach supported React 19 operation through a simple dependency upgrade. The source and dependency review found blockers; it did not run a failed migration. Keep dashboard on React 18 and test shared graph components separately on React 19.
 
 | Evidence at the reviewed revisions                                                                                                                                                                                                                                 | Consequence                                                                                                                                                                                          |
 |--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -434,7 +411,7 @@ A later React 19 upgrade must address Backstage support, transitive MUI v4 remov
 
 The [dashboard root manifest][D13] uses Node 24, Yarn 4.17.1, and TypeScript 6.0.3. The researched Backstage `v1.54.6` [app template][B4] uses React 18, while its [root template][B5] supports Node 22/24 with TypeScript 5.8. Those template versions do not describe dashboard's compiler. `ai-extensions` uses Node 24, pnpm, and TypeScript 7. Test emitted declarations with every supported host/compiler; consumers need not adopt ai-extensions' tooling.
 
-Test the dashboard baseline after prerequisite test work, the selected external Backstage release and frontend entries, and Canvas's React 19 renderer. Backstage `v1.54.6` remains a candidate, not a supported release. Declare only tested peer ranges. Start with Node 24 for builds and runtime; test wider Node support before adding an `engines` promise.
+Test the dashboard baseline after prerequisite test work, the selected external Backstage release and frontend entries, and the shared graph library's React 19 build. Backstage `v1.54.6` remains a candidate, not a supported release. Declare only tested peer ranges. Start with Node 24 for builds and runtime; test wider Node support before adding an `engines` promise.
 
 Test frontend systems separately from React versions. Include a legacy host during its support window, a hybrid standalone host during migration, and a native host with the existing native backend. Test the native plugin before switching the standalone app. Retire the hybrid row after its native replacement passes without required compatibility helpers. Keep the legacy row until the published support policy permits retirement.
 
@@ -457,10 +434,10 @@ Proposed paths name additions, not existing packages or workflows. Each delivery
 | P2. Add artifact-consumer harness                  | Dashboard test/install seam plus ai-extensions required compatibility workflow (proposed). Reuse dashboard suites, not copies.                                                           | P1; approved workflow/consumer identities and no-secret runner policy.                                                              | Known-good package probe establishes artifact installation/resolution reporting; deliberately wrong identities and failed/missing results fail closed. Bootstrap probes do not count as real shared-library consumer coverage; P3/P5 exercise actual candidates through the seam.  | 3-5 days |
 | P3a. Publishable core contracts                    | Ai-extensions `packages/core`: browser-safe identity/graph contracts, compiled exports/declarations and pack target; canonical contract tests.                                           | P0-P2; settle live/modeled variants before adapting callers.                                                                        | No React/HTTP/SDK/DOM/Node runtime in public browser closure; both namespaces, missing live hashes and strict modeled hashes pass; declarations consume under dashboard TS6 and approved external compiler. Pinned host integration uses the actual core tarball.                  | 2-3 days |
 | P3b. Extract core domain use cases                 | Ai-extensions `packages/core`: typed transport port, query/version/error policy, recipe aggregation and schema transformations with canonical tests.                                     | P3a; P1 impacted page baseline.                                                                                                     | Fake-port tests cover compatibility/partial errors, cancellation and bounds; real dashboard journeys through pinned integration use candidate operations, not legacy implementations.                                                                                              | 2-3 days |
-| P3c. Enable protected library prereleases          | Ai-extensions npm-library workflow (proposed): Changesets scope, public package allowlists, dependency rewriting, provenance and protected prerelease publication.                       | P3a packing and P0 scope/license approvals; qualified package revision before each publication.                                     | Core prerelease can unblock P4; graph-react joins the same dependency-ordered publisher once added. Candidate CI has no publication credentials; independent Copilot versioning/release gates remain intact.                                                                       | 1-2 days |
+| P3c. Enable protected library prereleases          | Ai-extensions npm-library workflow (proposed): Changesets scope, public package allowlists, dependency rewriting, provenance and protected prerelease publication.                       | P3a packing and P0 scope/license approvals; qualified package revision before each publication.                                     | Core prerelease can unblock P4; graph-react joins the same dependency-ordered publisher once added. Candidate CI has no publication credentials. Library versions and release checks are independent of host releases.                                                             | 1-2 days |
 | P4. Centralize dashboard client and connection     | Dashboard `plugins/plugin-radius` and current graph consumer: use core prerelease, one connection/plane context and shared query policy; remove duplicate parser/domain implementations. | P3a-P3c and qualified core prerelease; P1 regression baseline.                                                                      | Resource GET and graph POST target the same selected cluster/plane; two-cluster ordering, cancellation/late responses, timeout, partial failures and authorization-context isolation pass; real dashboard journeys and core candidate override are gating.                         | 4-6 days |
-| P5a. Consolidate graph library                     | Ai-extensions proposed `packages/graph-react`: one renderer/layout, scoped CSS, callbacks and core dependency; transfer relevant graph tests/notices.                                    | P3a-P3b; P4 consumer contract; license approval before source transfer.                                                             | React18/19 component and packed declaration/browser matrix passes, no host/fetch dependency, one Dagre engine; live fixtures and Canvas modes preserve semantics. Pinned dashboard integration proves real candidate rendering/CSS and fails when either is removed.               | 4-6 days |
-| P5b. Migrate Canvas atomically                     | Ai-extensions `packages/adapter-canvas`: replace graph internals with workspace graph-react; remove superseded Canvas implementation in this same PR.                                    | P5a; no stable shared-renderer release before this migration.                                                                       | Preserve shell/SDK/server/source/deploy behavior and every graph mode; pass applicable existing Canvas unit/component/browser, runtime/HTTP and artifact gates, plus mandatory dashboard candidate CI.                                                                             | 3-4 days |
+| P5a. Consolidate graph library                     | Ai-extensions proposed `packages/graph-react`: one renderer/layout, scoped CSS, callbacks and core dependency; transfer relevant graph tests/notices.                                    | P3a-P3b; P4 consumer contract; license approval before source transfer.                                                             | React18/19 component and packed declaration/browser matrix passes; no host/fetch dependency; one Dagre engine. Live, modeled, projected, and diff fixtures preserve their semantics. Pinned dashboard integration proves candidate rendering/CSS and fails when either is removed. | 4-6 days |
+| P5b. Qualify shared graph contracts                | Ai-extensions shared-library suites: verify supported graph modes and remove replaced shared implementations.                                                                            | P5a; complete before stable shared-renderer release.                                                                                | Unit, component, browser, and packed-artifact tests preserve supported graph contracts. Mandatory dashboard candidate CI passes.                                                                                                                                                   | 3-4 days |
 | P6. Replace dashboard graph implementation         | Dashboard `plugins/plugin-radius` and `packages/rad-components`: consume qualified core/graph-react prereleases and retire old implementation/tests moved to ai-extensions in P5a.       | P5a-P5b candidates pass P2 harness, then protected core -> graph-react prerelease publication via P3c.                              | Real graph journeys load exact npm artifacts with transitive core/CSS evidence; no duplicate parser/layout/renderer; forwarding-only package exists solely if P0 confirms external users, with removal owner/version.                                                              | 3-5 days |
 | P7. Productize legacy host surface                 | Dashboard `plugins/plugin-radius`: public API override/config schema, nested route refs and optional cards; keep standalone shell/auth out of plugin.                                    | P4; may overlap P5-P6.                                                                                                              | Packed plugin mounts under non-root app and plugin paths, links/history/refresh and same-connection details work; missing/forbidden connections are explicit; external fixture and standalone reuse product exports.                                                               | 3-5 days |
 | P8a. Add native frontend support and audit backend | Dashboard `plugins/plugin-radius` native subpath and external fixture; existing backend registration audit.                                                                              | P0-P1; selected native API versions. Can start before P3-P6 publication; integrate P7 route/config changes before final acceptance. | Native page/API blueprints, route refs, flag and optional cards use existing product code; packed legacy/native entries and native backend startup pass. No Radius plugin converter and no new health-only backend dependency.                                                     | 3-5 days |
@@ -479,15 +456,15 @@ Track each moved source path, destination/export, migrated consumer, test destin
 
 ### Release and rollback
 
-Publish additive core/graph-react prereleases from `ai-extensions`, then update dashboard branches to exact versions. Canvas adopts workspace dependencies in the same repository changes and releases after its integration gates pass. The Backstage plugin must not depend on an unpublished workspace package. Publish stable common libraries first, then the plugin. Release standalone dashboard and Canvas independently after their compatibility gates pass.
+Publish additive core/graph-react prereleases from `ai-extensions`, then update dashboard branches to exact versions. The Backstage plugin must not depend on an unpublished workspace package. Publish stable common libraries first, then the plugin. Release the standalone dashboard after its compatibility checks pass.
 
-Record common package versions/digests, graph-react's core range, plugin version, dashboard lockfile/image, supported consumer/fixture commits, and Canvas artifact version as one release tuple. Add Changesets for each affected published unit; do not tie npm libraries to the Copilot release branch. Rerun qualification if version rewriting or dependency resolution changes the artifacts that passed candidate CI.
+Record shared package versions/digests, graph-react's core range, plugin version, dashboard lockfile/image, and supported consumer/fixture commits as one tested release set. Add Changesets for each affected published package. Rerun qualification if version rewriting or dependency resolution changes the artifacts that passed candidate CI.
 
 Include the Backstage release, frontend entry/subpath, backend package set, and temporary third-party adapter versions. Keep the previous tested app revision and lockfile/image together at each cutover. Restore them if native registration, deep links, auth, or API lookup fails. Do not install both entries as a fallback or silently resume hybrid mode. Remove the legacy public entry only under the agreed breaking-release and migration policy.
 
 If core publication fails, stop before graph-react. If graph-react publication fails, stop before updating plugin/dashboard. An immutable published library can remain unused while publication resumes; never overwrite its version. A failed stable gate leaves consumers on their previous compatible tuple. Deprecate a defective version where appropriate and publish a corrected version. Do not alter the existing artifact.
 
-Keep previous known-good plugin/component/core versions and pins for rollback. External hosts restore the prior lockfile; standalone dashboard restores its prior image. Canvas uses its existing release mechanism. Avoid database/state migrations in this read-only first release. To undo an extraction, restore a matching consumer revision and dependency set, not a permanent second implementation. Rolling back the shared-library consumer pin needs a reviewed policy change with the matching tuple and passing gates.
+Keep previous known-good plugin/component/core versions and pins for rollback. External hosts restore the prior lockfile; standalone dashboard restores its prior image. Avoid database/state migrations in this read-only first release. To undo an extraction, restore a matching consumer revision and dependency set, not a permanent second implementation. Rolling back the shared-library consumer pin needs a reviewed policy change with matching versions and passing checks.
 
 ## Open questions
 
@@ -505,15 +482,15 @@ Keep previous known-good plugin/component/core versions and pins for rollback. E
 
 **Q: Can common graph components support both React 18 and 19 without host-specific forks, and which Dagre implementation should remain?**
 
-**A:** The dependency metadata permits isolated tests, but no migration trial has proved support. P5 must test both majors with the same implementation, automatic-JSX-compatible output and types, and both fixture sets using one layout engine. Fix concrete blockers in separate reviewed changes. Do not widen peers without evidence or ship two renderers. Adopt React Flow 12 only if a demonstrated blocker requires it.
+**A:** The dependency metadata permits isolated tests, but no migration trial has proved support. P5 must test both React majors with the same implementation, compatible JSX output and types, and the dashboard and shared-library fixtures using one layout engine. Fix concrete blockers in separate reviewed changes. Do not widen peers without evidence or ship two renderers. Adopt React Flow 12 only if a demonstrated blocker requires it.
 
 **Q: Does rad-components require a compatibility package, and can its code be transferred under the intended license metadata?**
 
 **A:** Find external users and confirm ISC/Apache metadata and source notices with maintainers before transfer/publication. Retire the package after dashboard migration if it has no external users. Otherwise define forwarding exports, a deprecation period, an owner, and a removal version. Keep no second implementation.
 
-**Q: Is full catalog integration or Canvas deployment/modeling required for the initial release?**
+**Q: Is full catalog integration or deployment/modeling required for the initial release?**
 
-**A:** No. The first release preserves dashboard reads and inspection. Entity annotations, tabs, and discovery need a separate identity/access contract. Modeling/deployment also needs server authorization, durable jobs, repository identity, and explicit mutation contracts. That later work could reuse core and shared Node adapters.
+**A:** No. The first release preserves dashboard reads and inspection. Entity annotations, tabs, and discovery need a separate identity/access contract. Modeling/deployment also needs server authorization, durable jobs, repository identity, and explicit mutation contracts. Design that work separately.
 
 ## Alternatives considered
 
@@ -522,11 +499,11 @@ Keep previous known-good plugin/component/core versions and pins for rollback. E
 - **Keep the standalone app in hybrid mode indefinitely:** leaves required compatibility code in place with no exit. Use hybrid mode as a measured transition, then remove its helpers. A retained legacy public plugin entry is a separate support obligation.
 - **Buy premium plugins to complete migration:** not required. Spotify's commercial plugins extend open-source Backstage; they do not replace its frontend or backend migration APIs.
 - **Iframe the dashboard:** avoids an initial source copy but does not provide native host authentication/navigation or solve the shared-library requirement.
-- **Build a new plugin from Canvas pages:** the wrong starting point for dashboard parity; Canvas has different data sources, workflows, and host assumptions.
+- **Build new product pages around the shared graph library:** unnecessary for dashboard parity. Reuse the existing Backstage pages and replace only their shared graph dependency.
 - **Add a backend plugin immediately:** unnecessary for existing functionality because Backstage's Kubernetes backend already supplies transport. Add one only when a demonstrated authorization/transport requirement cannot be met safely.
 - **Move every product page into a framework-neutral React package:** premature. Both dashboard hosts already use Backstage; share only components needed by non-Backstage consumers, beginning with the graph.
 - **Share types but keep two renderers:** reduces superficial duplication while leaving layout, node behavior, fixes, and tests duplicated. Rejected under the explicit requirement.
-- **Keep common components in dashboard:** minimizes the initial source move but makes Canvas depend on a dashboard-owned package and separates core/component changes across repositories. Superseded by co-locating common libraries in ai-extensions; moving the Backstage plugin is not necessary.
+- **Keep common components in dashboard:** reduces the initial source move but separates core and graph-component changes across repositories. Keep the shared libraries together in ai-extensions; the Backstage plugin need not move.
 - **Upgrade all of dashboard to React 19 first:** expands this delivery into an unsupported Backstage/transitive-MUI migration. Qualify the host-neutral graph separately instead.
 - **Rely only on ai-extensions unit tests or later dashboard dependency PRs:** misses packed declarations, CSS, transitive resolution and real host integration at the point a common-code break merges. Require both common-code candidate CI and subsequent actual dependency-update gates, using dashboard's one canonical host suite.
 
@@ -537,6 +514,8 @@ On September 10, 2026, Nicole asked to host common components in `ai-extensions`
 The delivery review kept the draft's architecture and scope. It added the React 19 source/dependency finding, separated dashboard tooling from upstream templates, and required real-renderer baselines and pinned cross-repository consumer CI. Work is split into PR-sized units with contract, test, dependency, publication, and rollback gates. That document review did not upgrade dependencies, run a migration, publish packages, or create an issue or pull request.
 
 The October 23, 2026 revision addresses Backstage's frontend and backend systems. Source inspection found a native backend and a legacy frontend. The plan now requires native Radius extensions, staged app migration, compatibility removal, and open-source-only installation. The review checked official guidance for app migration, plugin conversion, native plugin development, backend migration, and Spotify premium plugins. It did not run a migration or establish new support.
+
+The October 27, 2026 revision limits cross-repository scope to the shared domain and graph libraries. Dashboard retains its Backstage integration, host tests, and release process. The shared libraries retain their own contracts, tests, and package releases.
 
 The design still needs review. These document edits implement or publish no packages and change no released behavior, so they need no Changeset. The pull request must carry `pr:standard`.
 
@@ -565,8 +544,6 @@ Dashboard and ai-extensions links pin the source revisions reviewed. Backstage d
 [D19]: https://github.com/radius-project/dashboard/blob/8a04d30c35cd95fa4eb65a48ee1a36157f2091cb/packages/app/src/index.tsx
 [D20]: https://github.com/radius-project/dashboard/blob/8a04d30c35cd95fa4eb65a48ee1a36157f2091cb/tsconfig.json
 [D21]: https://github.com/radius-project/dashboard/blob/8a04d30c35cd95fa4eb65a48ee1a36157f2091cb/plugins/plugin-radius/src/components/environments/EnvironmentOverviewTab.tsx
-[A1]: https://github.com/radius-project/ai-extensions/blob/2c789d2e2a309d94e4164a1719c64dda580be36c/packages/adapter-canvas/package.json
-[A2]: https://github.com/radius-project/ai-extensions/blob/2c789d2e2a309d94e4164a1719c64dda580be36c/packages/adapter-canvas/src/browser/graph/model.ts
 [A3]: https://github.com/radius-project/ai-extensions/blob/2c789d2e2a309d94e4164a1719c64dda580be36c/packages/core/package.json
 [B4]: https://github.com/backstage/backstage/blob/0e67bc1fc88fba3a8cb716d3584cef05ecbcf9a8/packages/create-app/templates/default-app/packages/app/package.json.hbs
 [B5]: https://github.com/backstage/backstage/blob/0e67bc1fc88fba3a8cb716d3584cef05ecbcf9a8/packages/create-app/templates/default-app/package.json.hbs
