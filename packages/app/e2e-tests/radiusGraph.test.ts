@@ -42,6 +42,23 @@ const resourceType = (namespace: string) => ({
   APIVersionList: ['2025-01-01'],
 });
 
+const radiusTypes: [RegExp, string][] = [
+  [/Applications\.Core\/containers/g, 'Radius.Compute/containers'],
+  [/Applications\.Core\/gateways/g, 'Radius.Compute/routes'],
+  [/Applications\.Datastores\/redisCaches/g, 'Radius.Data/redisCaches'],
+];
+
+const graphTypes = (namespace: string) =>
+  namespace === 'Radius.Core'
+    ? {
+        container: 'Radius.Compute/containers',
+        gateway: 'Radius.Compute/routes',
+      }
+    : {
+        container: 'Applications.Core/containers',
+        gateway: 'Applications.Core/gateways',
+      };
+
 async function fulfillRadiusRequest(route: Route) {
   const url = decodeURIComponent(route.request().url());
 
@@ -60,7 +77,13 @@ async function fulfillRadiusRequest(route: Route) {
   }
 
   if (url.includes('/getGraph?')) {
-    await route.fulfill({ json: multiTier });
+    const graph = url.includes('/Radius.Core/')
+      ? radiusTypes.reduce(
+          (body, [legacy, current]) => body.replace(legacy, current),
+          JSON.stringify(multiTier),
+        )
+      : JSON.stringify(multiTier);
+    await route.fulfill({ body: graph, contentType: 'application/json' });
     return;
   }
 
@@ -169,6 +192,20 @@ test.describe('Radius application graph journey', () => {
           name: /^Edge from .*backend.* to .*frontend/,
         }),
       ).toBeVisible();
+      const { container, gateway } = graphTypes(item.type.split('/')[0]);
+      const providers = '/planes/radius/local/resourceGroups/demo/providers';
+      await expect(
+        page.getByRole('button', {
+          name: `Edge from ${providers}/${gateway}/edge to ${providers}/${container}/frontend`,
+          exact: true,
+        }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole('button', {
+          name: `Edge from ${providers}/${container}/frontend to ${providers}/${gateway}/edge`,
+          exact: true,
+        }),
+      ).toHaveCount(0);
 
       await page.goto('/applications');
     }

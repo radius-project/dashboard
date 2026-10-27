@@ -75,6 +75,22 @@ function AppGraph(props: AppGraphProps) {
   );
 }
 
+// Built-in Radius types that get special handling. Both the legacy and the current
+// namespaces are listed so that user-defined types with the same name do not match.
+const CONTAINER_TYPES = new Set([
+  'applications.core/containers',
+  'radius.compute/containers',
+]);
+// Radius.Compute/routes replaces Applications.Core/gateways for ingress.
+const GATEWAY_TYPES = new Set([
+  'applications.core/gateways',
+  'radius.compute/routes',
+]);
+
+// Radius resource types are case-insensitive.
+const isResourceType = (type: string, types: Set<string>) =>
+  types.has(type.toLowerCase());
+
 export function initialNodes(graph: AppGraphData): {
   nodes: Node<Resource>[];
   edges: Edge[];
@@ -90,7 +106,7 @@ export function initialNodes(graph: AppGraphData): {
     // This is computed based on the number of inbound connections (or whether it's a container).
     const order =
       resource.connections?.filter(c => c.direction === 'Inbound').length ||
-      resource.type === 'Applications.Core/containers'
+      isResourceType(resource.type, CONTAINER_TYPES)
         ? 0
         : 3;
 
@@ -119,7 +135,7 @@ export function initialNodes(graph: AppGraphData): {
 
         if (
           connection.direction === 'Inbound' &&
-          parsedConnection.type === 'Applications.Core/gateways'
+          isResourceType(parsedConnection.type, GATEWAY_TYPES)
         ) {
           connection.direction = 'Outbound';
         }
