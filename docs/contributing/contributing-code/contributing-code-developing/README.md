@@ -68,6 +68,8 @@ The catalog client override belongs to the `catalog` module. Registering it a se
 `app` causes an API factory conflict in the installed frontend. Its discovery and fetch dependencies
 are unchanged. The standalone uses `ProxiedSignInPage` for the guest provider: in this exact
 Backstage set, `SignInPage auto` does not auto-select the string guest provider.
+The guest backend must be available. If sign-in fails, the standalone displays an error instead
+of offering the old guest component's legacy-token fallback.
 
 Build and test the real standalone host:
 
@@ -82,13 +84,17 @@ It does not read local cluster credentials. Playwright Chromium must be installe
 (`yarn exec playwright install --with-deps chromium`). The runner stops the backend and upstream
 after the journeys. `yarn test:package` checks both Radius entries from the same packed artifact.
 
-The pre-cutover source base is `9d295b5097c62d9c3fa9dab136172f34c1b912bf`.
-Its lockfile Git blob is `7d8981bda1ac345fcbdea29a7f36d992cc559769`.
-The candidate lockfile SHA-256 is
-`d6c5282e6d0b8e1bf61385c6273f6186d411d3531369679f7214ad6a5ad7171f`.
-Its backend uses `@backstage/backend-defaults` 0.18.0 and `@backstage/plugin-app-backend` 0.5.18.
-The candidate frontend uses React 18.3.1. Keep this source revision and lockfile together when
-building a candidate image; do not substitute dependencies from a later install.
+The initial pre-cutover source base was `9d295b5097c62d9c3fa9dab136172f34c1b912bf`,
+with lockfile Git blob `7d8981bda1ac345fcbdea29a7f36d992cc559769`. This is a historical
+source record, not the current candidate. For each candidate, use the source revision and
+lockfile recorded together by its successful CI image restore check. Do not substitute
+dependencies from a later install. The qualified backend uses `@backstage/backend-defaults`
+0.18.0 and `@backstage/plugin-app-backend` 0.5.18; the frontend uses React 18.3.1.
+
+The backend test tools add Dockerode, which requests UUID 10. The root resolution selects
+UUID 11.1.1 to address [GHSA-w5hq-g745-h8pq](https://github.com/advisories/GHSA-w5hq-g745-h8pq)
+without changing the qualified Backstage versions. This version retains the CommonJS `v4`
+API used by Dockerode.
 
 ### Image restore qualification (FS-16)
 
@@ -112,9 +118,9 @@ rebuilt and presented as a prior published image.
 | Previous lockfile Git blob | `858e8c64a07fc43c8dc52a526eb5cb07c30865fb` |
 | Previous image lockfile SHA-256 | `4d89b7d1f7329763297c97c583c3dd798578ad2bdcb52c5d17a6e9176c5a74a8` |
 | Previous registry image | `ghcr.io/radius-project/dashboard@sha256:166dcc84f8399b6c7b2e060c22eda390763d9379001e24695a961154679daa44` |
-| Candidate source revision | `4d94a3a7ecb39220195b69f727b77a3bff4e1aee` |
-| Candidate lockfile Git blob | `3ca86978b5cbbcc3f6ebdc2894bbd150a7044640` |
-| Candidate local image ID | `sha256:327e762ded68ac3b0408223f31b767d1b784e94e4e3fdb968c0c40a8c7ccc3f0` |
+| Historical local candidate source revision | `4d94a3a7ecb39220195b69f727b77a3bff4e1aee` |
+| Historical local candidate lockfile Git blob | `3ca86978b5cbbcc3f6ebdc2894bbd150a7044640` |
+| Historical local candidate image ID | `sha256:327e762ded68ac3b0408223f31b767d1b784e94e4e3fdb968c0c40a8c7ccc3f0` |
 
 Before any journey runs, the runner reads each image's `org.opencontainers.image.revision`
 label and the Git blob ID of its included `yarn.lock`. Both values must match the revision

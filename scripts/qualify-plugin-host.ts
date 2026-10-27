@@ -3,7 +3,7 @@ import { once } from 'node:events';
 import fs from 'node:fs';
 import path from 'node:path';
 import { build } from 'esbuild';
-import { chromium, expect } from '@playwright/test';
+import { chromium, expect, type Browser } from '@playwright/test';
 
 async function main() {
   const consumerRoot = process.argv[2];
@@ -98,18 +98,20 @@ async function main() {
       `<!doctype html><html><head><link rel="stylesheet" href="/${system}.css"></head><body><div id="root"></div><script type="module" src="/${system}.js"></script></body></html>`,
     );
   });
-  server.listen(0, '127.0.0.1');
-  await once(server, 'listening');
-  const address = server.address();
-  if (!address || typeof address === 'string')
-    throw new Error('Expected a TCP fixture server');
-  const origin = `http://127.0.0.1:${address.port}`;
-  const browser = await chromium.launch({
-    ...(process.env.PLAYWRIGHT_BROWSER_CHANNEL
-      ? { channel: process.env.PLAYWRIGHT_BROWSER_CHANNEL }
-      : {}),
-  });
+  let browser: Browser | undefined;
+  const failures: unknown[] = [];
   try {
+    server.listen(0, '127.0.0.1');
+    await once(server, 'listening');
+    const address = server.address();
+    if (!address || typeof address === 'string')
+      throw new Error('Expected a TCP fixture server');
+    const origin = `http://127.0.0.1:${address.port}`;
+    browser = await chromium.launch({
+      ...(process.env.PLAYWRIGHT_BROWSER_CHANNEL
+        ? { channel: process.env.PLAYWRIGHT_BROWSER_CHANNEL }
+        : {}),
+    });
     for (system of ['legacy', 'native']) {
       const context = await browser.newContext();
       const page = await context.newPage();
@@ -195,12 +197,31 @@ async function main() {
         `FS-03/08 PASS: packed ${system}, eight pages, nested paths, real graph, refresh and history`,
       );
     }
+  } catch (error) {
+    failures.push(error);
   } finally {
-    await browser.close();
-    await new Promise<void>((resolve, reject) => {
-      server.close(error => (error ? reject(error) : resolve()));
-    });
+    try {
+      await browser?.close();
+    } catch (error) {
+      failures.push(error);
+    }
+    try {
+      if (server.listening) {
+        await new Promise<void>((resolve, reject) => {
+          server.close(error => (error ? reject(error) : resolve()));
+          server.closeAllConnections();
+        });
+      }
+    } catch (error) {
+      failures.push(error);
+    }
   }
+  if (failures.length === 1) throw failures[0];
+  if (failures.length > 1)
+    throw new AggregateError(
+      failures,
+      'Packed host qualification and cleanup failed',
+    );
 }
 
 main().catch(error => {
