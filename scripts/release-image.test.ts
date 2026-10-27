@@ -813,9 +813,13 @@ test('the actual build chain, offline CI tests, validation gates, and latest pub
     rootPackage.scripts['test:release-images'],
     'node --test scripts/release-image.test.ts',
   );
+  assert.equal(
+    rootPackage.scripts['test:qualification-runners'],
+    'node --test scripts/qualify-plugin-host.test.ts',
+  );
   assert.match(
     rootPackage.scripts['test:all'],
-    /^yarn test:release-images && backstage-cli repo test --coverage$/,
+    /^yarn test:release-images && yarn test:qualification-runners && backstage-cli repo test --coverage$/,
   );
 
   const workflow = readFileSync(
