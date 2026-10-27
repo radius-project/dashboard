@@ -97,7 +97,7 @@ jobs:
   build-and-publish-container:
     name: Build and Publish Container
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 25
     concurrency:
       group: dashboard-container-${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && github.ref || github.run_id }}
       cancel-in-progress: false
@@ -168,6 +168,16 @@ jobs:
       - name: Stop test container
         if: ${{ always() }}
         run: docker stop dashboard-e2e || true
+
+      # FS-16: qualify the built candidate, then restore the previous qualified image.
+      - name: Qualify image rollback
+        env:
+          PREVIOUS_IMAGE: ghcr.io/radius-project/dashboard@sha256:166dcc84f8399b6c7b2e060c22eda390763d9379001e24695a961154679daa44
+          PREVIOUS_REVISION: 4f243cc02166e1330fe5769683d2a70aca23ded1
+        run: |
+          git fetch --no-tags --depth=1 origin "${PREVIOUS_REVISION}"
+          candidate="$(docker image inspect "${BUILT_IMAGE}" --format '{{.Id}}')"
+          yarn run test:e2e:rollback "${PREVIOUS_IMAGE}" "${PREVIOUS_REVISION}" "${candidate}" "$(git rev-parse HEAD)"
 
       - name: Analyze Image
         uses: ./.github/actions/analyze-image

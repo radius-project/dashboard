@@ -128,7 +128,8 @@ history or configuration. Release builds reject this override.
 
 The candidate image is local and was not published. Anyone with the candidate revision can
 rebuild it and repeat the check, but the image ID above is not durable registry evidence.
-Durable FS-16 evidence needs a CI-built candidate digest qualified with this runner.
+The Build workflow's container job therefore runs this check on each CI-built candidate image
+after its normal browser tests. That job's log is the durable FS-16 record for a revision.
 
 To repeat the check with a local or registry candidate:
 
