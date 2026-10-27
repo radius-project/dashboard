@@ -386,6 +386,41 @@ test('local builds stamp edge and the checkout revision without querying the reg
   assert.equal(dockerCalls(state, 'manifest').length, 0);
 });
 
+test('local builds pass an optional registry only as a BuildKit secret', () => {
+  const registry = 'https://registry.invalid/npm/';
+  const state = scenario('edge');
+  runReleaseImage(
+    'build',
+    { IMAGE_NPM_REGISTRY_SERVER: registry },
+    state.run,
+    state.log,
+  );
+  const [build] = dockerCalls(state, 'build');
+  assert.deepEqual(build.slice(-2), [
+    '--secret',
+    'id=npm_registry,env=IMAGE_NPM_REGISTRY_SERVER',
+  ]);
+  assert.equal(build.join(' ').includes(registry), false);
+});
+
+test('release builds reject a registry override before building', () => {
+  const state = scenario('0.60.0');
+  assert.throws(
+    () =>
+      runReleaseImage(
+        'build',
+        {
+          ...releaseEnv(),
+          IMAGE_NPM_REGISTRY_SERVER: 'https://registry.invalid/',
+        },
+        state.run,
+        state.log,
+      ),
+    /default package registry/,
+  );
+  assert.equal(dockerCalls(state, 'build').length, 0);
+});
+
 for (const version of ['0.60.0-rc.1', '0.60.0', '0.60.1']) {
   test(`${version}: reuse matching immutable output by digest, without rebuilding or comparing build IDs`, () => {
     const state = scenario(version, { present: true });

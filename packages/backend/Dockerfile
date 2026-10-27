@@ -45,7 +45,14 @@ RUN tar xzf skeleton.tar.gz && rm skeleton.tar.gz
 # so yarn can create both cache and index subdirectories.
 RUN mkdir -p /home/node/.yarn/berry
 
+# Local qualification builds may supply a reachable npm registry as a BuildKit secret.
+# The secret is absent from image layers; normal and release builds use the default registry.
 RUN --mount=type=cache,target=/home/node/.yarn/berry/cache,sharing=locked,uid=1000,gid=1000 \
+    --mount=type=secret,id=npm_registry,uid=1000 \
+    if [ -f /run/secrets/npm_registry ]; then \
+      YARN_NPM_REGISTRY_SERVER="$(cat /run/secrets/npm_registry)"; \
+      export YARN_NPM_REGISTRY_SERVER; \
+    fi; \
     yarn workspaces focus @internal/backend --production
 
 # Then copy the rest of the backend bundle, along with any other files we might want.
