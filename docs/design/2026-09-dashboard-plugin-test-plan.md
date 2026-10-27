@@ -5,6 +5,7 @@
 - **Revised**: 2026-10-27
 - **Status**: Draft
 - **Companion design**: [Radius Dashboard as a distributable Backstage plugin](./2026-09-radius-backstage-plugin.md)
+- **Decision record**: [Keep the Radius Backstage plugin in dashboard and use shared graph libraries](./2026-10-radius-backstage-plugin-adr.md)
 
 ## Purpose
 

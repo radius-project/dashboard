@@ -5,6 +5,7 @@
 - **Revised**: 2026-10-27
 - **Status**: Draft
 - **Companion test plan**: [Radius Dashboard test plan](./2026-09-dashboard-plugin-test-plan.md)
+- **Decision record**: [Keep the Radius Backstage plugin in dashboard and use shared graph libraries](./2026-10-radius-backstage-plugin-adr.md)
 
 The dashboard repository owns the Backstage plugin and this design. `radius-project/ai-extensions` owns the shared domain and graph libraries. This plan covers those libraries and their use in Backstage, not other products in that repository.
 
