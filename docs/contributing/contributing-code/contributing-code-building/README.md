@@ -173,6 +173,18 @@ this workflow; the Radius finalizer writes channel aliases instead. An existing
 conflicting release requires investigation, not deletion or an automatic overwrite.
 The independently published `main`/`latest` path remains unchanged.
 
+After staging, the separate `Attest Release Image` job signs SLSA build provenance
+for the full-version tag's digest with `actions/attest`. Only that job can request
+the OIDC signing token, so build and test dependencies never receive it. Rerunning a
+release build signs the same digest again, which is harmless. To verify a release:
+
+```bash
+gh attestation verify oci://ghcr.io/radius-project/dashboard:<version> \
+  --repo radius-project/dashboard \
+  --signer-workflow radius-project/dashboard/.github/workflows/build.yaml \
+  --source-ref refs/tags/v<version>
+```
+
 ### Formatting
 
 This project is configured to use `prettier` for code formatting. This is checked as part of the pull-request process.
