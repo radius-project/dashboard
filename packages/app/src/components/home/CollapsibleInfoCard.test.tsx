@@ -190,6 +190,33 @@ describe('CollapsibleInfoCard', () => {
     }
   });
 
+  it.each([
+    ['a plain string', 'disk full', 'disk full'],
+    ['no reason at all', undefined, 'undefined'],
+  ])(
+    'CIC-09: reports a write rejected with %s',
+    async (_name, reason, expected) => {
+      const storage = mockApis.storage();
+      jest
+        .spyOn(storage.forBucket(HOME_CARDS_STORAGE_BUCKET), 'set')
+        .mockRejectedValue(reason);
+      const errorApi: ErrorApi = { post: jest.fn(), error$: jest.fn() };
+      await renderWithStorage(storage, <Card />, errorApi);
+
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Collapse Learn more' }),
+      );
+      await act(() => new Promise(resolve => setTimeout(resolve, 0)));
+
+      expect(errorApi.post).toHaveBeenCalledTimes(1);
+      expect(errorApi.post).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining(expected),
+        }),
+      );
+    },
+  );
+
   it('CIC-08: shows the stored state of the new card when the card id changes', async () => {
     const storage = mockApis.storage({
       data: { [HOME_CARDS_STORAGE_BUCKET]: { support: true } },
