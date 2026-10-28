@@ -227,7 +227,7 @@ export function runReleaseImage(
 ): void {
   const release = env.CI_PUBLISH_RELEASE === 'true';
   const version = env.REL_VERSION ?? 'edge';
-  const builtImage = env.BUILT_IMAGE ?? `${repository}:latest`;
+  const builtImage = env.BUILT_IMAGE ?? `${repository}:edge`;
   if (!version || version.trim() !== version) {
     throw new Error(
       'REL_VERSION must be nonempty and have no surrounding whitespace',
