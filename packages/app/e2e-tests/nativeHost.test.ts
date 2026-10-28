@@ -1,6 +1,40 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('standalone frontend contracts', () => {
+  test('FS-09: guest sign-in failure shows an error without a legacy-token dialog', async ({
+    page,
+  }) => {
+    const dialogs: string[] = [];
+    page.on('dialog', async dialog => {
+      dialogs.push(dialog.message());
+      await dialog.dismiss();
+    });
+    await page.route('**/api/auth/guest/refresh*', route =>
+      route.fulfill({
+        status: 500,
+        json: {
+          error: {
+            name: 'Error',
+            message: 'Guest sign-in test failure',
+          },
+        },
+      }),
+    );
+
+    await page.goto('/');
+    const errorPanel = page.getByRole('alert');
+    const errorDetails = errorPanel.getByRole('button', {
+      name: /You do not appear to be signed in/,
+    });
+    await expect(errorDetails).toBeVisible({ timeout: 20_000 });
+    await errorDetails.click();
+    await expect(
+      errorPanel.getByText(/Guest sign-in test failure/).first(),
+    ).toBeVisible();
+    await expect(page.getByText('Learn more')).toHaveCount(0);
+    expect(dialogs).toEqual([]);
+  });
+
   test('FS-09/11/12: auto guest, cards, sidebar, settings, themes and native catalog pages', async ({
     page,
   }) => {

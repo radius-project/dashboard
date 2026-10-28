@@ -171,6 +171,7 @@ jobs:
 
       # FS-16: qualify the built candidate, then restore the previous qualified image.
       - name: Qualify image rollback
+        continue-on-error: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') }}
         env:
           PREVIOUS_IMAGE: ghcr.io/radius-project/dashboard@sha256:166dcc84f8399b6c7b2e060c22eda390763d9379001e24695a961154679daa44
           PREVIOUS_REVISION: 4f243cc02166e1330fe5769683d2a70aca23ded1

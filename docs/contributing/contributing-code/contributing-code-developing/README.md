@@ -137,6 +137,17 @@ rebuild it and repeat the check, but the image ID above is not durable registry 
 The Build workflow's container job therefore runs this check on each CI-built candidate image
 after its normal browser tests. That job's log is the durable FS-16 record for a revision.
 
+FS-16 failures block pull request and `main` builds. On release tag builds (`v*`), the
+check still runs and records failures, but a failed check does not block image analysis
+or publication. The other container checks remain required.
+
+The Radius Dashboard maintainers must remove the automatic FS-16 step and its pinned
+previous-image identity after the first native-frontend release is published, once they
+have recorded a successful candidate-and-restore CI run for that release's source revision.
+Keep the run link with the release record. Keep the manual runner for later cutovers;
+this one previous image must not become a permanent release requirement. This removal
+does not retire the legacy root-entry artifact tests.
+
 To repeat the check with a local or registry candidate:
 
 ```bash
