@@ -11,6 +11,7 @@ import { createApp } from '@backstage/frontend-defaults';
 import {
   createFrontendModule,
   ApiBlueprint,
+  type FrontendFeature,
 } from '@backstage/frontend-plugin-api';
 import {
   NavContentBlueprint,
@@ -138,7 +139,7 @@ const catalogApis = createFrontendModule({
   ],
 });
 
-export const features = [
+export const features: FrontendFeature[] = [
   radius,
   kubernetes,
   catalog,
