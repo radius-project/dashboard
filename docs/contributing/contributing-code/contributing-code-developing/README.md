@@ -37,7 +37,7 @@ The root entry remains available to legacy hosts. Neither entry changes the host
 Only the standalone app enables automatic guest sign-in.
 
 The current qualification set uses React 18, `@backstage/frontend-defaults` 0.5.6,
-`@backstage/frontend-plugin-api` 0.18.1, and `@backstage/core-compat-api` 0.5.15.
+`@backstage/frontend-plugin-api` 0.18.2, and `@backstage/core-compat-api` 0.5.16.
 These are exact local test versions, not a public support range.
 
 | Required surface | Native entry and pinned version | Host mapping |
@@ -56,8 +56,8 @@ plugin converter remains.
 | Removed adapter | Upstream API reference | Native replacement and checked exit |
 | --- | --- | --- |
 | `convertLegacyAppOptions` | [App migration](https://backstage.io/docs/frontend-system/building-apps/migrating/) | Native API, theme and sign-in blueprints; real guest sign-in and both themes pass |
-| `app/layout` wrapping `Root` | `NavContentBlueprint` in `@backstage/plugin-app-react` 0.2.7 | Native sidebar input; all six links and settings/avatar remain |
-| Home page replacement | `HomePageLayoutBlueprint` in `@backstage/plugin-home-react` 0.1.42 | Native home layout input; `/`, all five cards, links and logo remain |
+| `app/layout` wrapping `Root` | `NavContentBlueprint` in `@backstage/plugin-app-react` 0.2.8 | Native sidebar input; all six links and settings/avatar remain |
+| Home page replacement | `HomePageLayoutBlueprint` in `@backstage/plugin-home-react` 0.1.43 | Native home layout input; `/`, all five cards, links and logo remain |
 
 The home page path override sets the default to `/` without replacing native home registration.
 The shared Radius cards use `compatWrapper` only for their legacy route hooks. Radius uses the same
