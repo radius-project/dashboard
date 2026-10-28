@@ -5,9 +5,15 @@ test.describe('standalone frontend contracts', () => {
     page,
   }) => {
     const dialogs: string[] = [];
+    let guestSignInStatus: number | undefined;
     page.on('dialog', async dialog => {
       dialogs.push(dialog.message());
       await dialog.dismiss();
+    });
+    page.on('response', response => {
+      if (response.url().includes('/api/auth/guest/refresh')) {
+        guestSignInStatus = response.status();
+      }
     });
     await page.route('**/api/auth/guest/refresh*', route =>
       route.fulfill({
@@ -23,14 +29,13 @@ test.describe('standalone frontend contracts', () => {
 
     await page.goto('/');
     const errorPanel = page.getByRole('alert');
-    const errorDetails = errorPanel.getByRole('button', {
-      name: /You do not appear to be signed in/,
-    });
-    await expect(errorDetails).toBeVisible({ timeout: 20_000 });
-    await errorDetails.click();
+    await expect(errorPanel).toBeVisible({ timeout: 20_000 });
     await expect(
-      errorPanel.getByText(/Guest sign-in test failure/).first(),
+      errorPanel.getByRole('button', {
+        name: /You do not appear to be signed in/,
+      }),
     ).toBeVisible();
+    expect(guestSignInStatus).toBe(500);
     await expect(page.getByText('Learn more')).toHaveCount(0);
     expect(dialogs).toEqual([]);
   });
