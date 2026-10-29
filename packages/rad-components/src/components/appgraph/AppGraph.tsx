@@ -15,6 +15,8 @@ import { ResourceNode } from '../resourcenode/index';
 
 import 'reactflow/dist/style.css';
 import { parseResourceId } from '../../resourceId';
+import { ResourceNodeData } from '../resourcenode/ResourceNode';
+import { getTypedEdges } from './typedEdges';
 
 const nodeTypes = { default: ResourceNode };
 
@@ -51,8 +53,8 @@ const LayoutFlow = (props: { graph: AppGraphData }) => {
   return (
     <ReactFlow
       defaultNodes={nodes}
-      defaultEdges={edges}
-      defaultEdgeOptions={{ type: 'bezier', animated: true }}
+      defaultEdges={edges.map(edge => ({ animated: true, ...edge }))}
+      defaultEdgeOptions={{ type: 'bezier' }}
       nodeTypes={nodeTypes}
       onNodesChange={onNodesChange}
       onEdgesChange={onEdgesChange}
@@ -95,8 +97,8 @@ export function initialNodes(graph: AppGraphData): {
   nodes: Node<Resource>[];
   edges: Edge[];
 } {
-  const nodes: Node<Resource>[] = [];
-  const edges: Edge[] = [];
+  const nodes: Node<ResourceNodeData>[] = [];
+  const edges: Edge[] = getTypedEdges(graph);
 
   // Very simple layout scheme here for nodes.
   const orderData: { [order: number]: number } = {};
@@ -121,12 +123,16 @@ export function initialNodes(graph: AppGraphData): {
       position: { x: rank * 50, y: order * 50 },
       height: 250,
       width: 175,
-      data: resource,
+      data: {
+        ...resource,
+        icon: resource.iconHash ? graph.icons?.[resource.iconHash] : undefined,
+      },
       type: 'default',
     });
 
     if (resource.connections) {
-      for (const connection of resource.connections) {
+      const legacyConnections = resource.connections.filter(c => !c.kind);
+      for (const connection of legacyConnections) {
         // We have a bug where the connections have the wrong direction.
         const parsedConnection = parseResourceId(connection.id);
         if (!parsedConnection) {
@@ -141,7 +147,7 @@ export function initialNodes(graph: AppGraphData): {
         }
       }
 
-      for (const connection of resource.connections) {
+      for (const connection of legacyConnections) {
         if (connection.direction === 'Inbound') {
           edges.push({
             id: `${connection.id}-${resource.id}`,
