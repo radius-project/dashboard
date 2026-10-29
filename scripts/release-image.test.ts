@@ -10,7 +10,7 @@ import type { CommandResult, CommandRunner } from './release-image.ts';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const repository = 'ghcr.io/radius-project/dashboard';
-const builtImage = `${repository}:latest`;
+const builtImage = `${repository}:edge`;
 const revisionLabel = 'org.opencontainers.image.revision';
 const versionLabel = 'org.opencontainers.image.version';
 const digest = `sha256:${'d'.repeat(64)}`;
@@ -759,7 +759,7 @@ test('the CLI rejects unknown commands without attempting a build', () => {
   );
 });
 
-test('the actual build chain, offline CI tests, validation gates, and latest publishing remain wired', () => {
+test('the actual build chain, offline CI tests, validation gates, and edge publishing remain wired', () => {
   const rootPackage = JSON.parse(
     readFileSync(join(root, 'package.json'), 'utf8'),
   );
@@ -822,8 +822,14 @@ test('the actual build chain, offline CI tests, validation gates, and latest pub
   );
   assert.match(
     workflow,
-    /- name: Push Image to ghcr.io \(push to main\)\s+if: \$\{\{ env.CI_PUBLISH_LATEST == 'true' \}\}\s+run: \|\s+docker push "\$\{BUILT_IMAGE\}"/,
+    /- name: Push Image to ghcr.io \(push to main\)\s+if: \$\{\{ env.CI_PUBLISH_EDGE == 'true' \}\}\s+run: \|\s+docker push "\$\{BUILT_IMAGE\}"/,
   );
+  assert.match(
+    workflow,
+    /BUILT_IMAGE: ghcr\.io\/radius-project\/dashboard:edge/,
+  );
+  // `latest` names the newest stable release, promoted only by the Radius finalizer.
+  assert.doesNotMatch(workflow, /dashboard:latest|CI_PUBLISH_LATEST/);
   for (const command of ['test:e2e', 'test:e2e:components', 'test:package']) {
     assert.ok(workflow.includes(`run: yarn run ${command}`));
   }

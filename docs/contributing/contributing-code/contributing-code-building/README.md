@@ -140,11 +140,13 @@ stable `X.Y` channel aliases during a tag build:
 | `refs/tags/v0.60.0-rc.1` | `0.60.0-rc.1` | `0.60.0-rc.1` |
 | `refs/tags/v0.60.0` | `0.60.0` | `0.60.0` |
 | `refs/tags/v0.60.1` | `0.60.1` | `0.60.1` |
-| `refs/heads/main` | `edge` | `latest` (unchanged) |
+| `refs/heads/main` | `edge` | `edge` |
 | Pull request | `pr-<number>` | Not published |
 
-Radius's gated release finalizer promotes the stable `X.Y` aliases with ORAS after
-release qualification. Staging a dashboard image alone does not promote a release.
+Radius's gated release finalizer promotes the stable `X.Y` aliases, and `latest` for
+the newest stable release, with ORAS after release qualification. `latest` therefore
+always names a stable release; `main` builds publish only `edge`. Staging a dashboard
+image alone does not promote a release.
 Full release versions must match the source `v` tag and be valid Docker tags; SemVer
 build metadata containing `+` is rejected rather than silently rewritten.
 
@@ -165,9 +167,9 @@ After validation, staging checks the registry again before pushing a missing
 full-version tag and verifies the published metadata. Runs for the same release tag
 are serialized without cancellation. Registry tags do not support a client-side
 atomic create-only operation, so release-version writes must remain exclusive to
-this workflow; the Radius finalizer writes channel aliases instead. An existing
+this workflow; the Radius finalizer writes channel aliases and `latest` instead. An existing
 conflicting release requires investigation, not deletion or an automatic overwrite.
-The independently published `main`/`latest` path remains unchanged.
+The independently published `main`/`edge` path is outside the release transaction.
 
 After staging, the separate `Attest Release Image` job signs SLSA build provenance
 for the full-version tag's digest with `actions/attest`. Only that job can request

@@ -18,7 +18,7 @@ env:
   CI_LINT: ${{ github.event_name == 'pull_request' }}
   CI_TEST: ${{ github.event_name == 'pull_request' || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) }}
   CI_PUBLISH_RELEASE: ${{ github.repository == 'radius-project/dashboard' && startsWith(github.ref, 'refs/tags/v') && github.event_name == 'push' }}
-  CI_PUBLISH_LATEST: ${{ github.repository == 'radius-project/dashboard' && github.ref == 'refs/heads/main' && github.event_name == 'push' }}
+  CI_PUBLISH_EDGE: ${{ github.repository == 'radius-project/dashboard' && github.ref == 'refs/heads/main' && github.event_name == 'push' }}
 
 jobs:
   build:
@@ -96,7 +96,7 @@ jobs:
       group: dashboard-container-${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && github.ref || github.run_id }}
       cancel-in-progress: false
     env:
-      BUILT_IMAGE: ghcr.io/radius-project/dashboard:latest
+      BUILT_IMAGE: ghcr.io/radius-project/dashboard:edge
     permissions:
       contents: read
       packages: write
@@ -130,7 +130,7 @@ jobs:
         run: yarn run build:backend
 
       - name: Login to ghcr.io
-        if: ${{ env.CI_PUBLISH_LATEST == 'true' || env.CI_PUBLISH_RELEASE == 'true' }}
+        if: ${{ env.CI_PUBLISH_EDGE == 'true' || env.CI_PUBLISH_RELEASE == 'true' }}
         uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           registry: ghcr.io
@@ -171,7 +171,7 @@ jobs:
           image: ${{ env.BUILT_IMAGE }}
 
       - name: Push Image to ghcr.io (push to main)
-        if: ${{ env.CI_PUBLISH_LATEST == 'true' }}
+        if: ${{ env.CI_PUBLISH_EDGE == 'true' }}
         run: |
           docker push "${BUILT_IMAGE}"
 
