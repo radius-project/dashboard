@@ -135,7 +135,7 @@ const homeLayout = createFrontendModule({
     }),
   ],
 });
-const catalogApiFactory = createApiFactory({
+export const catalogApiFactory = createApiFactory({
   api: catalogApiRef,
   deps: { discoveryApi: discoveryApiRef, fetchApi: fetchApiRef },
   factory: ({ discoveryApi, fetchApi }) =>
@@ -162,13 +162,19 @@ export const features: FrontendFeature[] = [
   catalogApis,
 ];
 
+type BindRoutesParams = Parameters<
+  NonNullable<Parameters<typeof createApp>[0]['bindRoutes']>
+>[0];
+
+export const bindCatalogRoutes = ({ bind }: Pick<BindRoutesParams, 'bind'>) => {
+  bind(catalogGraph.externalRoutes, {
+    catalogEntity: catalog.routes.catalogEntity,
+  });
+};
+
 const app = createApp({
   features,
-  bindRoutes({ bind }) {
-    bind(catalogGraph.externalRoutes, {
-      catalogEntity: catalog.routes.catalogEntity,
-    });
-  },
+  bindRoutes: bindCatalogRoutes,
 });
 
 export default app.createRoot();
