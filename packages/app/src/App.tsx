@@ -1,18 +1,25 @@
 import React from 'react';
 import catalog from '@backstage/plugin-catalog/alpha';
 import settings from '@backstage/plugin-user-settings/alpha';
-import { apis, catalogApiFactory } from './apis';
+import { apis } from './apis';
 import home from '@backstage/plugin-home/alpha';
 import { RadiusSidebar } from './components/Root';
 import { HomePage } from './components/home/HomePage';
 
 import { ProxiedSignInPage } from '@backstage/core-components';
+import {
+  createApiFactory,
+  discoveryApiRef,
+  fetchApiRef,
+} from '@backstage/core-plugin-api';
+import { CatalogClient } from '@backstage/catalog-client';
 import { createApp } from '@backstage/frontend-defaults';
 import {
   createFrontendModule,
   ApiBlueprint,
   type FrontendFeature,
 } from '@backstage/frontend-plugin-api';
+import { catalogApiRef } from '@backstage/plugin-catalog-react';
 import {
   NavContentBlueprint,
   SignInPageBlueprint,
@@ -127,6 +134,12 @@ const homeLayout = createFrontendModule({
       params: { loader: async () => HomePage },
     }),
   ],
+});
+const catalogApiFactory = createApiFactory({
+  api: catalogApiRef,
+  deps: { discoveryApi: discoveryApiRef, fetchApi: fetchApiRef },
+  factory: ({ discoveryApi, fetchApi }) =>
+    new CatalogClient({ discoveryApi, fetchApi }),
 });
 const catalogApis = createFrontendModule({
   pluginId: 'catalog',
