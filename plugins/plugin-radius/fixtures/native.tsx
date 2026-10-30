@@ -13,6 +13,7 @@ const app = createApp({
         app: {
           title: 'External native host',
           baseUrl: `${window.location.origin}${window.location.pathname.startsWith('/nested/') ? '/nested' : ''}`,
+          extensions: [{ 'sign-in-page:app': false }],
         },
         backend: { baseUrl: window.location.origin },
       }),

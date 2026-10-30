@@ -163,18 +163,6 @@ async function main() {
           ],
         ]) {
           await page.goto(`${origin}${basePath}${route}`);
-          if (
-            system === 'native' &&
-            basePath === '' &&
-            route === '/applications'
-          ) {
-            const enter = page.getByRole('button', {
-              name: 'Enter',
-              exact: true,
-            });
-            await expect(enter).toBeVisible();
-            await enter.click();
-          }
           await expect(
             page.getByRole('heading', { name: title, level: 1 }),
           ).toBeVisible({ timeout: 15_000 });
