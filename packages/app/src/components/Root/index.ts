@@ -1,1 +1,1 @@
-export { Root } from './Root';
+export { RadiusSidebar } from './Root';

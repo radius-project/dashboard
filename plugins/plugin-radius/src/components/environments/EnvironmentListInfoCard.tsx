@@ -9,7 +9,7 @@ import {
 import { useApi, useRouteRef } from '@backstage/core-plugin-api';
 import React from 'react';
 import useAsync from 'react-use/lib/useAsync';
-import { radiusApiRef } from '../../plugin';
+import { radiusApiRef } from '../../api/ref';
 import { EnvironmentProperties, Resource, ResourceList } from '../../resources';
 import { ResourceLink } from '../resourcelink';
 import { environmentPageRouteRef } from '../../routes';

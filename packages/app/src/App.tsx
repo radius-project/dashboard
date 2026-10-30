@@ -1,33 +1,34 @@
 import React from 'react';
-import { Route } from 'react-router-dom';
-import { catalogPlugin, CatalogEntityPage } from '@backstage/plugin-catalog';
-import { UserSettingsPage } from '@backstage/plugin-user-settings';
+import catalog from '@backstage/plugin-catalog/alpha';
+import settings from '@backstage/plugin-user-settings/alpha';
 import { apis } from './apis';
-import { HomepageCompositionRoot } from '@backstage/plugin-home';
-import { Root } from './components/Root';
+import home from '@backstage/plugin-home/alpha';
+import { RadiusSidebar } from './components/Root';
 import { HomePage } from './components/home/HomePage';
 
+import { ProxiedSignInPage } from '@backstage/core-components';
 import {
-  AlertDisplay,
-  OAuthRequestDialog,
-  SignInPage,
-} from '@backstage/core-components';
-import CssBaseline from '@material-ui/core/CssBaseline';
-import { createApp } from '@backstage/app-defaults';
-import { AppRouter, FlatRoutes } from '@backstage/core-app-api';
-import { CatalogGraphPage } from '@backstage/plugin-catalog-graph';
+  createApiFactory,
+  discoveryApiRef,
+  fetchApiRef,
+} from '@backstage/core-plugin-api';
+import { CatalogClient } from '@backstage/catalog-client';
+import { createApp } from '@backstage/frontend-defaults';
 import {
-  ApplicationListPage,
-  EnvironmentListPage,
-  EnvironmentPage,
-  RecipeListPage,
-  ResourceListPage,
-  ResourceTypesListPage,
-  ResourceTypeDetailPage,
-  ResourcePage,
-  radiusPlugin,
-} from '@internal/plugin-radius';
-import { kubernetesPlugin } from '@backstage/plugin-kubernetes';
+  createFrontendModule,
+  ApiBlueprint,
+  type FrontendFeature,
+} from '@backstage/frontend-plugin-api';
+import { catalogApiRef } from '@backstage/plugin-catalog-react';
+import {
+  NavContentBlueprint,
+  SignInPageBlueprint,
+  ThemeBlueprint,
+} from '@backstage/plugin-app-react';
+import { HomePageLayoutBlueprint } from '@backstage/plugin-home-react/alpha';
+import catalogGraph from '@backstage/plugin-catalog-graph/alpha';
+import { default as radius } from '@internal/plugin-radius/alpha';
+import kubernetes from '@backstage/plugin-kubernetes/alpha';
 import {
   UnifiedThemeProvider,
   createBaseThemeOptions,
@@ -68,79 +69,112 @@ const darkTheme = createUnifiedTheme({
   },
 });
 
-const app = createApp({
-  apis,
-  components: {
-    // SignInPage with auto prop automatically signs in using the guest provider
-    // without showing a login page to the user
-    SignInPage: props => <SignInPage {...props} auto providers={['guest']} />,
-  },
-  themes: [
-    {
-      id: 'light',
-      title: 'Light',
-      variant: 'light',
-      Provider: ({ children }) => (
-        <UnifiedThemeProvider theme={lightTheme} children={children} />
-      ),
-    },
-    {
-      id: 'dark',
-      title: 'Dark',
-      variant: 'dark',
-      Provider: ({ children }) => (
-        <UnifiedThemeProvider theme={darkTheme} children={children} />
-      ),
-    },
+const host = createFrontendModule({
+  pluginId: 'app',
+  extensions: [
+    ...apis.map(factory =>
+      ApiBlueprint.make({
+        name: factory.api.id,
+        params: define => define(factory),
+      }),
+    ),
+    SignInPageBlueprint.make({
+      params: {
+        loader: async () => props => (
+          <ProxiedSignInPage {...props} provider="guest" />
+        ),
+      },
+    }),
+    ThemeBlueprint.make({
+      name: 'light',
+      params: {
+        theme: {
+          id: 'light',
+          title: 'Light',
+          variant: 'light',
+          Provider: ({ children }) => (
+            <UnifiedThemeProvider theme={lightTheme}>
+              {children}
+            </UnifiedThemeProvider>
+          ),
+        },
+      },
+    }),
+    ThemeBlueprint.make({
+      name: 'dark',
+      params: {
+        theme: {
+          id: 'dark',
+          title: 'Dark',
+          variant: 'dark',
+          Provider: ({ children }) => (
+            <UnifiedThemeProvider theme={darkTheme}>
+              {children}
+            </UnifiedThemeProvider>
+          ),
+        },
+      },
+    }),
+    NavContentBlueprint.make({
+      params: { component: RadiusSidebar },
+    }),
   ],
-  plugins: [
-    // Called for side-effect since we're not using their UI.
-    kubernetesPlugin,
-  ],
-  bindRoutes({ bind }) {
-    bind(radiusPlugin.externalRoutes, {});
-    bind(catalogPlugin.externalRoutes, {});
-  },
 });
 
-const routes = (
-  <FlatRoutes>
-    <Route path="/" element={<HomepageCompositionRoot />}>
-      <HomePage />
-    </Route>
-    <Route path="/settings" element={<UserSettingsPage />} />
-    <Route
-      path="/catalog/:namespace/:kind/:name"
-      element={<CatalogEntityPage />}
-    />
-    <Route path="/catalog-graph" element={<CatalogGraphPage />} />
-    <Route path="/applications" element={<ApplicationListPage />} />
-    <Route path="/environments" element={<EnvironmentListPage />} />
-    <Route path="/recipes" element={<RecipeListPage />} />
-    <Route path="/resource-types" element={<ResourceTypesListPage />} />
-    <Route
-      path="/resource-types/:namespace/:typeName"
-      element={<ResourceTypeDetailPage />}
-    />
-    <Route path="/resources" element={<ResourceListPage />} />
-    <Route
-      path="/resources/:group/:namespace/:type/:name"
-      element={<ResourcePage />}
-    />
-    <Route
-      path="/environments/:group/:namespace/:type/:name"
-      element={<EnvironmentPage />}
-    />
-  </FlatRoutes>
-);
+const homeLayout = createFrontendModule({
+  pluginId: 'home',
+  extensions: [
+    home.getExtension('page:home').override({
+      factory: (original, { config }) =>
+        original({
+          config: { ...config, path: config.path ?? '/' },
+        }),
+    }),
+    HomePageLayoutBlueprint.make({
+      params: { loader: async () => HomePage },
+    }),
+  ],
+});
+export const catalogApiFactory = createApiFactory({
+  api: catalogApiRef,
+  deps: { discoveryApi: discoveryApiRef, fetchApi: fetchApiRef },
+  factory: ({ discoveryApi, fetchApi }) =>
+    new CatalogClient({ discoveryApi, fetchApi }),
+});
+const catalogApis = createFrontendModule({
+  pluginId: 'catalog',
+  extensions: [
+    ApiBlueprint.make({
+      params: define => define(catalogApiFactory),
+    }),
+  ],
+});
 
-export default app.createRoot(
-  <>
-    <CssBaseline />
-    <AlertDisplay />
-    <OAuthRequestDialog />
-    <AppRouter>
-      <Root>{routes}</Root>
-    </AppRouter>
-  </>,
-);
+export const features: FrontendFeature[] = [
+  radius,
+  kubernetes,
+  catalog,
+  catalogGraph,
+  home,
+  settings,
+  host,
+  homeLayout,
+  catalogApis,
+];
+
+type CreateAppOptions = NonNullable<Parameters<typeof createApp>[0]>;
+type BindRoutes = NonNullable<CreateAppOptions['bindRoutes']>;
+type BindRoutesParams = Parameters<BindRoutes>[0];
+
+export const bindCatalogRoutes = ({ bind }: Pick<BindRoutesParams, 'bind'>) => {
+  bind(catalogGraph.externalRoutes, {
+    catalogEntity: catalog.routes.catalogEntity,
+  });
+};
+
+const app = createApp({
+  features,
+  bindRoutes: bindCatalogRoutes,
+});
+
+export default app.createRoot();

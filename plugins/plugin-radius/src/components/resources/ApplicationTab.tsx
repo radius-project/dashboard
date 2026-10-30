@@ -10,7 +10,7 @@ import { useApi } from '@backstage/core-plugin-api';
 import useAsync from 'react-use/lib/useAsync';
 import { AppGraph } from '@radapp.io/rad-components';
 import { makeStyles } from '@material-ui/core';
-import { radiusApiRef } from '../../plugin';
+import { radiusApiRef } from '../../api/ref';
 
 export interface AppGraphData {
   name: string;

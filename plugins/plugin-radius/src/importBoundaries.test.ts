@@ -51,7 +51,7 @@ const isPrivateReachIn = (specifier: string) => {
 };
 
 describe('current package import boundaries', () => {
-  it('PB-04: the app consumes the plugin only through its public package entry point', () => {
+  it('PB-04: the app consumes only the reviewed public root and native plugin entries', () => {
     const appRoot = path.join(repoRoot, 'packages/app/src');
     const pluginRoot = path.join(repoRoot, 'plugins/plugin-radius');
     const imports = importSpecifiers(appRoot);
@@ -64,7 +64,11 @@ describe('current package import boundaries', () => {
     expect(pluginImports.length).toBeGreaterThan(0);
     expect(
       pluginImports.filter(
-        ({ specifier }) => specifier !== '@internal/plugin-radius',
+        ({ specifier }) =>
+          ![
+            '@internal/plugin-radius',
+            '@internal/plugin-radius/alpha',
+          ].includes(specifier),
       ),
     ).toEqual([]);
   });

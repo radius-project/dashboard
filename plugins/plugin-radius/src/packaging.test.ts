@@ -86,6 +86,7 @@ describe('package contract', () => {
       role: 'frontend-plugin',
       pluginId: 'radius',
       pluginPackages: ['@internal/plugin-radius'],
+      features: { './alpha': '@backstage/FrontendPlugin' },
     });
   });
 
