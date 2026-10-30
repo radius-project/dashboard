@@ -1,7 +1,7 @@
 import React from 'react';
 import catalog from '@backstage/plugin-catalog/alpha';
 import settings from '@backstage/plugin-user-settings/alpha';
-import { apis, catalogApiFactory } from './apis';
+import { apis } from './apis';
 import home from '@backstage/plugin-home/alpha';
 import { RadiusSidebar } from './components/Root';
 import { HomePage } from './components/home/HomePage';
@@ -65,14 +65,12 @@ const darkTheme = createUnifiedTheme({
 const host = createFrontendModule({
   pluginId: 'app',
   extensions: [
-    ...apis
-      .filter(factory => factory !== catalogApiFactory)
-      .map(factory =>
-        ApiBlueprint.make({
-          name: factory.api.id,
-          params: define => define(factory),
-        }),
-      ),
+    ...apis.map(factory =>
+      ApiBlueprint.make({
+        name: factory.api.id,
+        params: define => define(factory),
+      }),
+    ),
     SignInPageBlueprint.make({
       params: {
         loader: async () => props => (

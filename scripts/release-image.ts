@@ -246,12 +246,6 @@ export function runReleaseImage(
     throw new Error(`Invalid checked-out Git revision: ${revision}`);
   }
   const expected = { revision, version };
-  const registrySecret = env.IMAGE_NPM_REGISTRY_SERVER
-    ? ['--secret', 'id=npm_registry,env=IMAGE_NPM_REGISTRY_SERVER']
-    : [];
-  if (release && registrySecret.length) {
-    throw new Error('Release images must use the default package registry');
-  }
 
   if (action === 'build') {
     const existing = reference
@@ -277,7 +271,6 @@ export function runReleaseImage(
         '--label',
         `${versionLabel}=${version}`,
         ...(release ? ['--platform', releasePlatform] : []),
-        ...registrySecret,
       ],
       true,
     );

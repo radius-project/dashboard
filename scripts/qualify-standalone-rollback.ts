@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { createServer } from 'node:net';
+import { createServer, type Server } from 'node:http';
 import { once } from 'node:events';
 import { mkdir, mkdtemp, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -9,6 +9,8 @@ import { fileURLToPath } from 'node:url';
 
 const revisionLabel = 'org.opencontainers.image.revision';
 const root = fileURLToPath(new URL('..', import.meta.url));
+const waitForConfiguration =
+  "const fs=require('node:fs');const {spawn}=require('node:child_process');const path='/tmp/qualification.json';const poll=setInterval(()=>{let config;try{config=JSON.parse(fs.readFileSync(path,'utf8'))}catch{}if(config?.app?.baseUrl){clearInterval(poll);const child=spawn(process.execPath,['packages/backend','--config',path],{stdio:'inherit'});child.on('error',error=>{console.error(error);process.exit(1)});child.on('exit',code=>process.exit(code??1))}},50)";
 
 function command(name: string, args: string[]) {
   const result = spawnSync(name, args, { encoding: 'utf8' });
@@ -20,6 +22,13 @@ function command(name: string, args: string[]) {
 }
 
 const docker = (...args: string[]) => command('docker', args);
+
+async function close(server: Server) {
+  await new Promise<void>((resolve, reject) => {
+    server.close(error => (error ? reject(error) : resolve()));
+    server.closeAllConnections();
+  });
+}
 
 function bestEffort(action: () => void) {
   try {
@@ -86,17 +95,6 @@ async function main() {
   verifyTuple('candidate', candidate, candidateRevision);
   verifyTuple('previous', previous, previousRevision);
 
-  const reservation = createServer();
-  reservation.listen(0, '127.0.0.1');
-  await once(reservation, 'listening');
-  const address = reservation.address();
-  if (!address || typeof address === 'string')
-    throw new Error('Expected TCP address');
-  const { port } = address;
-  await new Promise<void>((resolve, reject) =>
-    reservation.close(error => (error ? reject(error) : resolve())),
-  );
-  const baseUrl = `http://127.0.0.1:${port}`;
   const directory = await mkdtemp(join(tmpdir(), 'radius-rollback-'));
   // The restored image runs the journeys from its own revision. They stay under the
   // repository so that their @playwright/test import resolves.
@@ -130,83 +128,91 @@ export default defineConfig({
       'create',
       `radius-rollback-${process.pid}`,
     );
-    let upstream: string | undefined;
+    const upstream = createServer((request, response) => {
+      response.setHeader('content-type', 'application/json');
+      response.statusCode = request.url?.includes('/forbidden') ? 403 : 200;
+      response.end(JSON.stringify({ value: [] }));
+    });
     try {
-      upstream = docker(
-        'run',
-        '--detach',
-        '--platform',
-        'linux/amd64',
-        '--network',
-        network,
-        '--network-alias',
-        'qualification-upstream',
-        previous,
-        'node',
-        '-e',
-        "require('http').createServer((q,s)=>{s.setHeader('content-type','application/json');s.statusCode=q.url.includes('/forbidden')?403:200;s.end(JSON.stringify({value:[]}));}).listen(8080,'0.0.0.0')",
-      );
+      upstream.listen(0, '0.0.0.0');
+      await once(upstream, 'listening');
+      const upstreamAddress = upstream.address();
+      if (!upstreamAddress || typeof upstreamAddress === 'string')
+        throw new Error('Expected a TCP upstream address');
       const configuration = join(directory, 'qualification.json');
-      await writeFile(
-        configuration,
-        JSON.stringify({
-          app: {
-            baseUrl,
-            title: 'Radius Dashboard',
-            packageName: '@internal/app',
-          },
-          backend: {
-            baseUrl,
-            listen: { port: 7007, host: '0.0.0.0' },
-            database: { client: 'better-sqlite3', connection: ':memory:' },
-          },
-          auth: {
-            providers: { guest: { dangerouslyAllowOutsideDevelopment: true } },
-          },
-          catalog: { locations: [] },
-          kubernetes: {
-            serviceLocatorMethod: { type: 'multiTenant' },
-            clusterLocatorMethods: [
-              {
-                type: 'config',
-                clusters: [
-                  {
-                    name: 'standalone-test-cluster',
-                    url: 'http://qualification-upstream:8080',
-                    authProvider: 'serviceAccount',
-                    serviceAccountToken: 'standalone-test-token',
-                  },
-                ],
-              },
-            ],
-          },
-        }),
-      );
+      await writeFile(configuration, '{}');
       for (const [label, image] of [
         ['candidate', candidate],
         ['restored', previous],
       ]) {
-        // Without --rm, logs remain available if startup fails.
-        const container = docker(
-          'run',
-          '--detach',
-          '--platform',
-          'linux/amd64',
-          '--network',
-          network,
-          '--publish',
-          `127.0.0.1:${port}:7007`,
-          '--mount',
-          `type=bind,source=${configuration},target=/tmp/qualification.json,readonly`,
-          '--env',
-          'NODE_ENV=production',
-          image,
-          'node',
-          'packages/backend',
-          '--config',
-          '/tmp/qualification.json',
-        );
+        let container: string | undefined;
         try {
+          container = docker(
+            'create',
+            '--platform',
+            'linux/amd64',
+            '--network',
+            network,
+            '--add-host',
+            'host.docker.internal:host-gateway',
+            '--publish',
+            '127.0.0.1::7007',
+            '--mount',
+            `type=bind,source=${configuration},target=/tmp/qualification.json,readonly`,
+            '--env',
+            'NODE_ENV=production',
+            image,
+            'node',
+            '-e',
+            waitForConfiguration,
+          );
+          docker('start', container);
+          const port = docker(
+            'inspect',
+            '--format',
+            '{{(index (index .NetworkSettings.Ports "7007/tcp") 0).HostPort}}',
+            container,
+          );
+          if (!/^\d+$/.test(port))
+            throw new Error(`Docker returned an invalid host port: ${port}`);
+          const baseUrl = `http://127.0.0.1:${port}`;
+          await writeFile(
+            configuration,
+            JSON.stringify({
+              app: {
+                baseUrl,
+                title: 'Radius Dashboard',
+                packageName: '@internal/app',
+              },
+              backend: {
+                baseUrl,
+                listen: { port: 7007, host: '0.0.0.0' },
+                database: { client: 'better-sqlite3', connection: ':memory:' },
+              },
+              auth: {
+                providers: {
+                  guest: { dangerouslyAllowOutsideDevelopment: true },
+                },
+              },
+              catalog: { locations: [] },
+              kubernetes: {
+                serviceLocatorMethod: { type: 'multiTenant' },
+                clusterLocatorMethods: [
+                  {
+                    type: 'config',
+                    clusters: [
+                      {
+                        name: 'standalone-test-cluster',
+                        url: `http://host.docker.internal:${upstreamAddress.port}`,
+                        authProvider: 'serviceAccount',
+                        serviceAccountToken: 'standalone-test-token',
+                      },
+                    ],
+                  },
+                ],
+              },
+            }),
+          );
           let ready = false;
           for (let attempt = 0; attempt < 120; attempt++) {
             try {
@@ -253,17 +259,18 @@ export default defineConfig({
           if (result.status !== 0)
             throw new Error(`${label} journeys failed (${result.status})`);
         } catch (error) {
-          bestEffort(() => console.error(docker('logs', container)));
+          const containerId = container;
+          if (containerId)
+            bestEffort(() => console.error(docker('logs', containerId)));
           throw error;
         } finally {
-          bestEffort(() => docker('rm', '--force', container));
+          const containerId = container;
+          if (containerId)
+            bestEffort(() => docker('rm', '--force', containerId));
         }
       }
     } finally {
-      if (upstream) {
-        const id = upstream;
-        bestEffort(() => docker('rm', '--force', id));
-      }
+      if (upstream.listening) await close(upstream);
       bestEffort(() => docker('network', 'rm', network));
     }
   } finally {

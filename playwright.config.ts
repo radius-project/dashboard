@@ -19,7 +19,7 @@ import { generateProjects } from '@backstage/e2e-test-utils/playwright';
 
 // Set PLAYWRIGHT_DISABLE_WEBSERVER=true when the Backstage app is already served elsewhere, such as the built container the release workflow starts on port 7007 (paired with PLAYWRIGHT_URL=http://localhost:7007).
 const disableWebServer = process.env.PLAYWRIGHT_DISABLE_WEBSERVER === 'true';
-const browserChannel = process.env.PLAYWRIGHT_BROWSER_CHANNEL ?? 'chromium';
+const browserChannel = process.env.PLAYWRIGHT_BROWSER_CHANNEL;
 
 /**
  * See https://playwright.dev/docs/test-configuration.

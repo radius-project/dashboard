@@ -171,7 +171,7 @@ jobs:
         if: ${{ always() }}
         run: docker stop dashboard-e2e || true
 
-      # FS-16: qualify the built candidate, then restore the previous qualified image.
+      # TODO(#421): remove this gate and pinned image after the first native release restore run.
       - name: Qualify image rollback
         continue-on-error: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') }}
         env:

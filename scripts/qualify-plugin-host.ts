@@ -115,9 +115,12 @@ async function main() {
     for (system of ['legacy', 'native']) {
       const context = await browser.newContext();
       const page = await context.newPage();
-      page.on('dialog', dialog => dialog.accept());
       const errors: string[] = [];
       page.on('pageerror', error => errors.push(error.message));
+      page.on('dialog', async dialog => {
+        errors.push(`Unexpected dialog: ${dialog.message()}`);
+        await dialog.dismiss();
+      });
       await page.route('**/api/kubernetes/**', async route => {
         const url = decodeURIComponent(route.request().url());
         let json: unknown = { value: [] };

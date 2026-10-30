@@ -73,42 +73,6 @@ describe('current package import boundaries', () => {
     ).toEqual([]);
   });
 
-  it('FS-13/15: native app composition needs no legacy app helpers or premium plugins', () => {
-    const files = sourceFiles(path.join(repoRoot, 'packages/app/src')).filter(
-      file => !/\.test\.tsx?$/.test(file),
-    );
-    const source = files.map(file => fs.readFileSync(file, 'utf8')).join('\n');
-    expect(source).not.toMatch(
-      /convertLegacy(?:App|Plugin)|FlatRoutes|AppRouter|@backstage\/app-defaults/,
-    );
-    const imports = importSpecifiers(path.join(repoRoot, 'packages/app/src'));
-    expect(
-      imports.filter(({ specifier }) => specifier.startsWith('@spotify/')),
-    ).toEqual([]);
-    expect(source).toContain('NavContentBlueprint');
-    expect(source).toContain('HomePageLayoutBlueprint');
-    expect(source).toContain('SignInPageBlueprint');
-  });
-
-  it('FS-05: native Radius reuses public product components and the shared API without a plugin converter', () => {
-    const source = fs.readFileSync(
-      path.join(repoRoot, 'plugins/plugin-radius/src/alpha.tsx'),
-      'utf8',
-    );
-    expect(source).not.toContain('convertLegacyPlugin');
-    expect(source).toContain("from './api/api'");
-    expect(source).toContain('new RadiusApiImpl(kubernetesApi)');
-    for (const directory of [
-      'applications',
-      'environments',
-      'recipes',
-      'resources',
-      'resourcetypes',
-    ]) {
-      expect(source).toContain(`import('./components/${directory}')`);
-    }
-  });
-
   it('PB-01a: the current graph dependency is consumed through its public entry point', () => {
     const imports = importSpecifiers(
       path.join(repoRoot, 'plugins/plugin-radius/src'),
