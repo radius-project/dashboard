@@ -1,7 +1,7 @@
 import React from 'react';
 import catalog from '@backstage/plugin-catalog/alpha';
 import settings from '@backstage/plugin-user-settings/alpha';
-import { apis } from './apis';
+import { apis, catalogApiFactory } from './apis';
 import home from '@backstage/plugin-home/alpha';
 import { RadiusSidebar } from './components/Root';
 import { HomePage } from './components/home/HomePage';

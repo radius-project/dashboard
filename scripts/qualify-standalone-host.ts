@@ -89,7 +89,9 @@ async function startBackend(upstreamPort: number) {
       if (!isAddressInUse(error) || attempt === 4) throw error;
     }
   }
-  throw new Error('Could not start the standalone backend after port conflicts');
+  throw new Error(
+    'Could not start the standalone backend after port conflicts',
+  );
 }
 
 async function main() {

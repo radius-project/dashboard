@@ -75,7 +75,9 @@ describe('native backend composition', () => {
               database: { client: 'better-sqlite3', connection: ':memory:' },
             },
             auth: {
-              providers: { guest: { dangerouslyAllowOutsideDevelopment: true } },
+              providers: {
+                guest: { dangerouslyAllowOutsideDevelopment: true },
+              },
             },
             catalog: { locations: [] },
             kubernetes: {
@@ -113,7 +115,8 @@ describe('native backend composition', () => {
         if (!isAddressInUse(error) || attempt === 4) throw error;
       }
     }
-    if (!started) throw new Error('Backend startup failed after port conflicts');
+    if (!started)
+      throw new Error('Backend startup failed after port conflicts');
     const signIn = await fetch(`${baseUrl}/api/auth/guest/refresh`);
     if (signIn.status !== 200)
       throw new Error(`Guest sign-in failed: ${signIn.status}`);

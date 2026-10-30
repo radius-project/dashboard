@@ -1,7 +1,4 @@
-import {
-  AnyApiFactory,
-  configApiRef,
-} from '@backstage/core-plugin-api';
+import { AnyApiFactory, configApiRef } from '@backstage/core-plugin-api';
 import { scmIntegrationsApiRef } from '@backstage/integration-react';
 import { ConfigReader } from '@backstage/config';
 import { apis } from './apis';
