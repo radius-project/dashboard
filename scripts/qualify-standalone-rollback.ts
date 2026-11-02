@@ -1,6 +1,4 @@
 import { spawnSync } from 'node:child_process';
-import { createServer, type Server } from 'node:http';
-import { once } from 'node:events';
 import { mkdir, mkdtemp, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -32,22 +30,14 @@ const poll = setInterval(() => {
   child.on('exit', code => process.exit(code ?? 1));
 }, 50);
 `;
-
-async function listen(server: Server) {
-  server.listen(0, '0.0.0.0');
-  await once(server, 'listening');
-  const address = server.address();
-  if (!address || typeof address === 'string')
-    throw new Error('Expected a TCP server address');
-  return address.port;
-}
-
-async function close(server: Server) {
-  await new Promise<void>((resolve, reject) => {
-    server.close(error => (error ? reject(error) : resolve()));
-    server.closeAllConnections();
-  });
-}
+const upstreamServer = `
+const http = require('node:http');
+http.createServer((request, response) => {
+  response.setHeader('content-type', 'application/json');
+  response.statusCode = request.url?.includes('/forbidden') ? 403 : 200;
+  response.end(JSON.stringify({ value: [] }));
+}).listen(8080, '0.0.0.0');
+`;
 
 function command(name: string, args: string[]) {
   const result = spawnSync(name, args, { encoding: 'utf8' });
@@ -158,13 +148,22 @@ export default defineConfig({
       'create',
       `radius-rollback-${process.pid}`,
     );
-    const upstream = createServer((request, response) => {
-      response.setHeader('content-type', 'application/json');
-      response.statusCode = request.url?.includes('/forbidden') ? 403 : 200;
-      response.end(JSON.stringify({ value: [] }));
-    });
+    let upstream: string | undefined;
     try {
-      const upstreamPort = await listen(upstream);
+      upstream = docker(
+        'run',
+        '--detach',
+        '--platform',
+        'linux/amd64',
+        '--network',
+        network,
+        '--network-alias',
+        'qualification-upstream',
+        'node:24-bookworm-slim',
+        'node',
+        '-e',
+        upstreamServer,
+      );
       const configuration = join(directory, 'qualification.json');
       for (const [label, image] of [
         ['candidate', candidate],
@@ -179,8 +178,6 @@ export default defineConfig({
             'linux/amd64',
             '--network',
             network,
-            '--add-host',
-            'host.docker.internal:host-gateway',
             '--publish',
             '127.0.0.1::7007',
             '--mount',
@@ -229,7 +226,7 @@ export default defineConfig({
                     clusters: [
                       {
                         name: 'standalone-test-cluster',
-                        url: `http://host.docker.internal:${upstreamPort}`,
+                        url: 'http://qualification-upstream:8080',
                         authProvider: 'serviceAccount',
                         serviceAccountToken: 'standalone-test-token',
                       },
@@ -296,7 +293,8 @@ export default defineConfig({
         }
       }
     } finally {
-      if (upstream.listening) await close(upstream);
+      const upstreamId = upstream;
+      if (upstreamId) bestEffort(() => docker('rm', '--force', upstreamId));
       bestEffort(() => docker('network', 'rm', network));
     }
   } finally {
