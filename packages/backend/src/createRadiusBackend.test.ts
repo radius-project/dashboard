@@ -1,7 +1,6 @@
 import { createServer, type Server } from 'node:http';
 import { once } from 'node:events';
-import { mockServices } from '@backstage/backend-test-utils';
-import { createRadiusBackend } from './createRadiusBackend';
+import { startTestBackend } from '../testUtils';
 
 async function listen(server: Server) {
   server.listen(0, '127.0.0.1');
@@ -19,17 +18,9 @@ async function close(server: Server) {
   });
 }
 
-function isAddressInUse(error: unknown): boolean {
-  let current = error;
-  while (current && typeof current === 'object') {
-    if ('code' in current && current.code === 'EADDRINUSE') return true;
-    current = 'cause' in current ? current.cause : undefined;
-  }
-  return false;
-}
-
 describe('native backend composition', () => {
-  let backend: ReturnType<typeof createRadiusBackend> | undefined;
+  let backend:
+    Awaited<ReturnType<typeof startTestBackend>>['backend'] | undefined;
   let upstream: Server;
   let baseUrl = '';
   let token: string;
@@ -54,69 +45,16 @@ describe('native backend composition', () => {
       }
     });
     const upstreamPort = await listen(upstream);
-    let started = false;
-    for (let attempt = 0; attempt < 5; attempt++) {
-      const reservation = createServer();
-      const port = await listen(reservation);
-      await close(reservation);
-      const candidate = createRadiusBackend();
-      candidate.add(mockServices.rootLogger.factory({ level: 'error' }));
-      candidate.add(
-        mockServices.rootConfig.factory({
-          data: {
-            app: {
-              baseUrl: 'http://localhost:3000',
-              title: 'Radius Dashboard',
-              packageName: '@internal/app',
-            },
-            backend: {
-              baseUrl: `http://127.0.0.1:${port}`,
-              listen: { port, host: '127.0.0.1' },
-              database: { client: 'better-sqlite3', connection: ':memory:' },
-            },
-            auth: {
-              providers: {
-                guest: { dangerouslyAllowOutsideDevelopment: true },
-              },
-            },
-            catalog: { locations: [] },
-            kubernetes: {
-              serviceLocatorMethod: { type: 'multiTenant' },
-              clusterLocatorMethods: [
-                {
-                  type: 'config',
-                  clusters: ['one', 'two'].map(name => ({
-                    name,
-                    url: `http://127.0.0.1:${upstreamPort}/${name}`,
-                    authProvider: 'serviceAccount',
-                    serviceAccountToken: `test-cluster-${name}`,
-                  })),
-                },
-              ],
-            },
-          },
-        }),
-      );
-      try {
-        await candidate.start();
-        backend = candidate;
-        baseUrl = `http://127.0.0.1:${port}`;
-        started = true;
-        break;
-      } catch (error) {
-        try {
-          await candidate.stop();
-        } catch (cleanupError) {
-          throw new AggregateError(
-            [error, cleanupError],
-            'Backend startup and cleanup failed',
-          );
-        }
-        if (!isAddressInUse(error) || attempt === 4) throw error;
-      }
-    }
-    if (!started)
-      throw new Error('Backend startup failed after port conflicts');
+    const started = await startTestBackend(
+      ['one', 'two'].map(name => ({
+        name,
+        url: `http://127.0.0.1:${upstreamPort}/${name}`,
+        authProvider: 'serviceAccount' as const,
+        serviceAccountToken: `test-cluster-${name}`,
+      })),
+    );
+    backend = started.backend;
+    baseUrl = started.baseUrl;
     const signIn = await fetch(`${baseUrl}/api/auth/guest/refresh`);
     if (signIn.status !== 200)
       throw new Error(`Guest sign-in failed: ${signIn.status}`);

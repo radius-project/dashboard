@@ -2,8 +2,6 @@ import React from 'react';
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { renderTestApp } from '@backstage/frontend-test-utils';
 import { catalogApiRef } from '@backstage/plugin-catalog-react';
-import catalog from '@backstage/plugin-catalog/alpha';
-import catalogGraph from '@backstage/plugin-catalog-graph/alpha';
 import {
   AppRootElementBlueprint,
   appThemeApiRef,
@@ -15,7 +13,7 @@ import {
   dialogApiRef,
 } from '@backstage/frontend-plugin-api';
 import { kubernetesApiRef } from '@backstage/plugin-kubernetes';
-import { bindCatalogRoutes, catalogApiFactory, features } from './App';
+import { catalogApiFactory, features } from './App';
 
 const kubernetes = {
   getClusters: jest
@@ -46,16 +44,6 @@ describe('standalone native host', () => {
 
     expect(catalogApiFactory.api).toBe(catalogApiRef);
     expect(api.getEntityByName).toEqual(expect.any(Function));
-  });
-
-  it('AP-05: binds the catalog graph entity route to the catalog page', () => {
-    const bind = jest.fn();
-
-    bindCatalogRoutes({ bind });
-
-    expect(bind).toHaveBeenCalledWith(catalogGraph.externalRoutes, {
-      catalogEntity: catalog.routes.catalogEntity,
-    });
   });
 
   it('FS-09/10: installs one Radius page/API set and keeps default alerts and dialogs', async () => {

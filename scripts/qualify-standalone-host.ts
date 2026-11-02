@@ -2,8 +2,7 @@ import { createServer, type Server } from 'node:http';
 import { once } from 'node:events';
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { mockServices } from '@backstage/backend-test-utils';
-import { createRadiusBackend } from '../packages/backend/src/createRadiusBackend.ts';
+import { startTestBackend } from '../packages/backend/testUtils.ts';
 
 async function listen(server: Server) {
   server.listen(0, '127.0.0.1');
@@ -21,79 +20,6 @@ async function close(server: Server) {
   });
 }
 
-function isAddressInUse(error: unknown): boolean {
-  let current = error;
-  while (current && typeof current === 'object') {
-    if ('code' in current && current.code === 'EADDRINUSE') return true;
-    current = 'cause' in current ? current.cause : undefined;
-  }
-  return false;
-}
-
-async function startBackend(upstreamPort: number) {
-  for (let attempt = 0; attempt < 5; attempt++) {
-    const reservation = createServer();
-    const port = await listen(reservation);
-    await close(reservation);
-    const baseUrl = `http://127.0.0.1:${port}`;
-    const backend = createRadiusBackend();
-    backend.add(mockServices.rootLogger.factory({ level: 'error' }));
-    backend.add(
-      mockServices.rootConfig.factory({
-        data: {
-          app: {
-            baseUrl,
-            title: 'Radius Dashboard',
-            packageName: '@internal/app',
-          },
-          backend: {
-            baseUrl,
-            listen: { port, host: '127.0.0.1' },
-            database: { client: 'better-sqlite3', connection: ':memory:' },
-          },
-          auth: {
-            providers: { guest: { dangerouslyAllowOutsideDevelopment: true } },
-          },
-          catalog: { locations: [] },
-          kubernetes: {
-            serviceLocatorMethod: { type: 'multiTenant' },
-            clusterLocatorMethods: [
-              {
-                type: 'config',
-                clusters: [
-                  {
-                    name: 'standalone-test-cluster',
-                    url: `http://127.0.0.1:${upstreamPort}`,
-                    authProvider: 'serviceAccount',
-                    serviceAccountToken: 'standalone-test-token',
-                  },
-                ],
-              },
-            ],
-          },
-        },
-      }),
-    );
-    try {
-      await backend.start();
-      return { backend, baseUrl };
-    } catch (error) {
-      try {
-        await backend.stop();
-      } catch (cleanupError) {
-        throw new AggregateError(
-          [error, cleanupError],
-          'Backend startup and cleanup failed',
-        );
-      }
-      if (!isAddressInUse(error) || attempt === 4) throw error;
-    }
-  }
-  throw new Error(
-    'Could not start the standalone backend after port conflicts',
-  );
-}
-
 async function main() {
   const upstream = createServer((request, response) => {
     response.setHeader('content-type', 'application/json');
@@ -108,9 +34,17 @@ async function main() {
     response.end(JSON.stringify({ value: [] }));
   });
   const upstreamPort = await listen(upstream);
-  let backend: ReturnType<typeof createRadiusBackend> | undefined;
+  let backend:
+    Awaited<ReturnType<typeof startTestBackend>>['backend'] | undefined;
   try {
-    const started = await startBackend(upstreamPort);
+    const started = await startTestBackend([
+      {
+        name: 'standalone-test-cluster',
+        url: `http://127.0.0.1:${upstreamPort}`,
+        authProvider: 'serviceAccount',
+        serviceAccountToken: 'standalone-test-token',
+      },
+    ]);
     backend = started.backend;
     const { baseUrl } = started;
     const response = await fetch(baseUrl);

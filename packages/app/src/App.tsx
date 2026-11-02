@@ -162,19 +162,13 @@ export const features: FrontendFeature[] = [
   catalogApis,
 ];
 
-type CreateAppOptions = NonNullable<Parameters<typeof createApp>[0]>;
-type BindRoutes = NonNullable<CreateAppOptions['bindRoutes']>;
-type BindRoutesParams = Parameters<BindRoutes>[0];
-
-export const bindCatalogRoutes = ({ bind }: Pick<BindRoutesParams, 'bind'>) => {
-  bind(catalogGraph.externalRoutes, {
-    catalogEntity: catalog.routes.catalogEntity,
-  });
-};
-
 const app = createApp({
   features,
-  bindRoutes: bindCatalogRoutes,
+  bindRoutes({ bind }) {
+    bind(catalogGraph.externalRoutes, {
+      catalogEntity: catalog.routes.catalogEntity,
+    });
+  },
 });
 
 export default app.createRoot();
