@@ -4,6 +4,7 @@ import { mockServices } from '@backstage/backend-test-utils';
 import { createRadiusBackend } from './src/createRadiusBackend.ts';
 
 export interface TestCluster {
+  [key: string]: string;
   name: string;
   url: string;
   authProvider: 'serviceAccount';
