@@ -231,12 +231,27 @@ export function verifySharedLibraryCandidate(
     );
     verifyInstalledArchive(core, coreRoot, consumerRoot);
     verifyInstalledArchive(graph, graphRoot, consumerRoot);
+    const rendererDependencies = Object.keys(
+      graph.manifest.dependencies ?? {},
+    ).filter(name => name !== '@radius-project/core');
+    if (rendererDependencies.length === 0) {
+      throw new Error('Graph has no declared runtime renderer dependency');
+    }
+    const runtimeRequires = [
+      { name: 'Graph', require: graphRequire },
+      ...rendererDependencies.map(name => ({
+        name,
+        require: createRequire(graphRequire.resolve(name)),
+      })),
+    ];
     for (const peer of ['react', 'react-dom']) {
-      if (
-        fs.realpathSync(consumerRequire.resolve(peer)) !==
-        fs.realpathSync(graphRequire.resolve(peer))
-      ) {
-        throw new Error(`Graph resolves a second ${peer} instance`);
+      for (const runtime of runtimeRequires) {
+        if (
+          fs.realpathSync(consumerRequire.resolve(peer)) !==
+          fs.realpathSync(runtime.require.resolve(peer))
+        ) {
+          throw new Error(`${runtime.name} resolves a second ${peer} instance`);
+        }
       }
     }
   }

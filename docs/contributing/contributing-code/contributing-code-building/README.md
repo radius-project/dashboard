@@ -145,7 +145,8 @@ After an explicit candidate installation, run
 `yarn verify:shared-candidate <receipt.json> <consumer-directory>`.
 This also compares all installed package files with the pinned archives, rejects
 workspace package links, and checks that direct and graph-transitive core and React
-resolve to the same files. No package version alone proves artifact identity.
+resolve to the same files. React checks include each declared runtime renderer
+dependency, including `@xyflow/react`. No package version alone proves artifact identity.
 
 Both stages report `hostQualified: false`. They do not prove browser safety,
 compatibility, CSS loading, or host behavior, and do not approve publication.

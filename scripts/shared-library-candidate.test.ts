@@ -71,6 +71,13 @@ test('candidate verification checks archive, CSS, installed bytes and transitive
         'module.exports = {};',
       );
     }
+    const rendererRoot = path.join(
+      consumer,
+      'node_modules',
+      '@xyflow',
+      'react',
+    );
+    write(path.join(rendererRoot, 'index.js'), 'module.exports = {};');
     const core = archive(
       'core',
       {
@@ -101,7 +108,10 @@ test('candidate verification checks archive, CSS, installed bytes and transitive
           './base.css': './dist/base.css',
           './package.json': './package.json',
         },
-        dependencies: { '@radius-project/core': '0.1.0' },
+        dependencies: {
+          '@radius-project/core': '0.1.0',
+          '@xyflow/react': '12.12.0',
+        },
         peerDependencies: { react: '^18.3.1', 'react-dom': '^18.3.1' },
       },
       {
@@ -234,8 +244,6 @@ test('candidate verification checks archive, CSS, installed bytes and transitive
     );
     write(path.join(graphRoot, 'dist', 'styles.css'), styles);
 
-    const reactCopy = path.join(graphRoot, 'node_modules', 'react');
-    write(path.join(reactCopy, 'index.js'), 'module.exports = {};');
     const receipt = path.join(root, 'candidate.json');
     write(receipt, JSON.stringify(candidate));
     const verifyFreshConsumer = () =>
@@ -250,6 +258,17 @@ test('candidate verification checks archive, CSS, installed bytes and transitive
         ],
         { stdio: ['ignore', 'pipe', 'pipe'] },
       );
+    for (const peer of ['react', 'react-dom']) {
+      const peerCopy = path.join(rendererRoot, 'node_modules', peer);
+      write(path.join(peerCopy, 'index.js'), 'module.exports = {};');
+      assert.throws(
+        verifyFreshConsumer,
+        new RegExp(`@xyflow/react resolves a second ${peer} instance`),
+      );
+      fs.rmSync(peerCopy, { recursive: true });
+    }
+    const reactCopy = path.join(graphRoot, 'node_modules', 'react');
+    write(path.join(reactCopy, 'index.js'), 'module.exports = {};');
     assert.throws(
       verifyFreshConsumer,
       /Graph resolves a second react instance/,
