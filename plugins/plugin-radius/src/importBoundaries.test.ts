@@ -54,6 +54,9 @@ const isPrivateReachIn = (specifier: string) => {
 describe('current package import boundaries', () => {
   it('PB-03: persists exact development artifacts, source/build evidence and received licenses with no machine paths', () => {
     const directory = path.join(repoRoot, 'vendor/shared-libraries');
+    expect(
+      fs.readFileSync(path.join(directory, '.gitattributes'), 'utf8').trim(),
+    ).toBe('*.tgz binary');
     const receipt = JSON.parse(
       fs.readFileSync(path.join(directory, 'candidate.json'), 'utf8'),
     ) as {
