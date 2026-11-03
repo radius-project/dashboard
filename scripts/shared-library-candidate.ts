@@ -25,6 +25,7 @@ interface PackageManifest {
   exports: Record<string, unknown>;
   dependencies?: Record<string, string>;
   peerDependencies?: Record<string, string>;
+  peerDependenciesMeta?: Record<string, { optional?: boolean }>;
 }
 
 interface Archive {
@@ -181,6 +182,25 @@ export function verifySharedLibraryCandidate(
   }
   publicFile(graph, '.', 'types');
   publicFile(graph, '.', 'import');
+  const compatibilityEntries = ['./compat', './compat/reactflow11'];
+  const hasCompatibility = compatibilityEntries.some(subpath =>
+    Object.hasOwn(graph.manifest.exports, subpath),
+  );
+  if (hasCompatibility) {
+    for (const subpath of compatibilityEntries) {
+      publicFile(graph, subpath, 'types');
+      publicFile(graph, subpath, 'import');
+    }
+    if (
+      graph.manifest.dependencies?.reactflow ||
+      !graph.manifest.peerDependencies?.reactflow ||
+      graph.manifest.peerDependenciesMeta?.reactflow?.optional !== true
+    ) {
+      throw new Error(
+        'Legacy Flow11 must be an isolated optional peer dependency',
+      );
+    }
+  }
   const styles = publicFile(graph, './styles.css');
   const base = publicFile(graph, './base.css');
   assertDigest(
@@ -237,12 +257,49 @@ export function verifySharedLibraryCandidate(
     if (rendererDependencies.length === 0) {
       throw new Error('Graph has no declared runtime renderer dependency');
     }
+    const compatibilityRequires = hasCompatibility
+      ? compatibilityEntries.map(subpath => ({
+          name: `Graph${subpath.slice(1)}`,
+          require: createRequire(
+            consumerRequire.resolve(
+              `@radius-project/graph-react${subpath.slice(1)}`,
+            ),
+          ),
+        }))
+      : [];
+    for (const runtime of compatibilityRequires) {
+      if (
+        fs.realpathSync(coreEntry) !==
+        fs.realpathSync(runtime.require.resolve('@radius-project/core/graph'))
+      ) {
+        throw new Error(`${runtime.name} resolves a different core candidate`);
+      }
+    }
+    const legacyNode = compatibilityRequires.find(
+      runtime => runtime.name === 'Graph/compat/reactflow11',
+    );
+    const legacyRenderer = legacyNode
+      ? legacyNode.require.resolve('reactflow')
+      : undefined;
+    if (
+      legacyRenderer &&
+      fs.realpathSync(legacyRenderer) !==
+        fs.realpathSync(consumerRequire.resolve('reactflow'))
+    ) {
+      throw new Error(
+        'Legacy ResourceNode resolves a second Flow11 provider instance',
+      );
+    }
     const runtimeRequires = [
       { name: 'Graph', require: graphRequire },
+      ...compatibilityRequires,
       ...rendererDependencies.map(name => ({
         name,
         require: createRequire(graphRequire.resolve(name)),
       })),
+      ...(legacyRenderer
+        ? [{ name: 'reactflow', require: createRequire(legacyRenderer) }]
+        : []),
     ];
     for (const peer of ['react', 'react-dom']) {
       for (const runtime of runtimeRequires) {

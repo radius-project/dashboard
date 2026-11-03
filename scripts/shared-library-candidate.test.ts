@@ -285,6 +285,109 @@ test('candidate verification checks archive, CSS, installed bytes and transitive
     assert.throws(verifyFreshConsumer, /Direct and graph-transitive core/);
     fs.rmSync(nodeCopy, { recursive: true });
     fs.rmSync(reactCopy, { recursive: true });
+
+    const graphManifest = JSON.parse(
+      fs.readFileSync(path.join(graphRoot, 'package.json'), 'utf8'),
+    );
+    const compatibilityManifest = {
+      ...graphManifest,
+      exports: {
+        ...graphManifest.exports,
+        './compat': entry('./dist/compat/index'),
+        './compat/reactflow11': entry('./dist/compat/reactflow11/index'),
+      },
+      peerDependencies: {
+        ...graphManifest.peerDependencies,
+        reactflow: '^11.11.4',
+      },
+      peerDependenciesMeta: { reactflow: { optional: true } },
+    };
+    const compatibilityFiles = {
+      'dist/index.js': 'export {};',
+      'dist/index.d.ts': 'export {};',
+      'dist/compat/index.js': 'export {};',
+      'dist/compat/index.d.ts': 'export {};',
+      'dist/compat/reactflow11/index.js': 'export {};',
+      'dist/compat/reactflow11/index.d.ts': 'export {};',
+      'dist/styles.css': styles,
+      'dist/base.css': base,
+    };
+    const compatibilityGraph = archive(
+      'graph-compat',
+      compatibilityManifest,
+      compatibilityFiles,
+      graphRoot,
+    );
+    const compatibilityCandidate = {
+      ...candidate,
+      graphReact: { ...candidate.graphReact, ...compatibilityGraph },
+    };
+    write(receipt, JSON.stringify(compatibilityCandidate));
+    const legacyRendererRoot = path.join(consumer, 'node_modules', 'reactflow');
+    write(path.join(legacyRendererRoot, 'index.js'), 'module.exports = {};');
+    assert.match(
+      verifyFreshConsumer().toString(),
+      /"stage": "installed-bytes"/,
+    );
+    for (const peer of ['react', 'react-dom']) {
+      const peerCopy = path.join(legacyRendererRoot, 'node_modules', peer);
+      write(path.join(peerCopy, 'index.js'), 'module.exports = {};');
+      assert.throws(
+        verifyFreshConsumer,
+        new RegExp(`reactflow resolves a second ${peer} instance`),
+      );
+      fs.rmSync(peerCopy, { recursive: true });
+    }
+    const legacyEntryRoot = path.join(
+      graphRoot,
+      'dist',
+      'compat',
+      'reactflow11',
+    );
+    const nestedLegacy = path.join(
+      legacyEntryRoot,
+      'node_modules',
+      'reactflow',
+    );
+    write(path.join(nestedLegacy, 'index.js'), 'module.exports = {};');
+    assert.throws(verifyFreshConsumer, /second Flow11 provider instance/);
+    fs.rmSync(nestedLegacy, { recursive: true });
+    const compatibilityCore = path.join(
+      graphRoot,
+      'dist',
+      'compat',
+      'node_modules',
+      '@radius-project',
+      'core',
+    );
+    fs.mkdirSync(path.dirname(compatibilityCore), { recursive: true });
+    fs.cpSync(coreRoot, compatibilityCore, { recursive: true });
+    assert.throws(
+      verifyFreshConsumer,
+      /Graph\/compat resolves a different core candidate/,
+    );
+    fs.rmSync(compatibilityCore, { recursive: true });
+
+    const requiredLegacy = archive(
+      'required-legacy-peer',
+      {
+        ...compatibilityManifest,
+        peerDependenciesMeta: { reactflow: { optional: false } },
+      },
+      compatibilityFiles,
+      path.join(root, 'required-legacy-install'),
+    );
+    assert.throws(
+      () =>
+        verifySharedLibraryCandidate(
+          {
+            ...candidate,
+            graphReact: { ...candidate.graphReact, ...requiredLegacy },
+          },
+          root,
+        ),
+      /isolated optional peer/,
+    );
     const linkedCore = path.join(root, 'workspace-core');
     fs.renameSync(coreRoot, linkedCore);
     fs.symlinkSync(linkedCore, coreRoot, 'junction');

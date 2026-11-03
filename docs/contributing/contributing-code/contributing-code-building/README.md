@@ -118,7 +118,12 @@ yarn workspace @radapp.io/rad-components run build
 
 Use compiled core and graph-react tarballs from one identified producer revision.
 Do not use source aliases, registry fallback, or a rebuilt archive with an old digest.
-Create a receipt outside the repository with this shape. Paths are relative to the receipt:
+Use a temporary receipt outside the repository for intermediate candidates.
+For persistent development adoption, save the final compiled pair and its
+source/build/digest/license receipt under `vendor/shared-libraries`; use only
+repository-relative file resolutions. Do not commit intermediate candidates.
+This development path does not qualify registry or public package distribution.
+The byte-verification fields have this shape. Paths are relative to the receipt:
 
 ```json
 {
@@ -146,7 +151,14 @@ After an explicit candidate installation, run
 This also compares all installed package files with the pinned archives, rejects
 workspace package links, and checks that direct and graph-transitive core and React
 resolve to the same files. React checks include each declared runtime renderer
-dependency, including `@xyflow/react`. No package version alone proves artifact identity.
+dependency, including `@xyflow/react`. When compatibility entries are present,
+both public compatibility entries must resolve the same core and React/DOM files.
+The installed consumer must also provide the optional Flow11 peer: its renderer
+must use the host React/DOM files and the same Flow11 provider instance as the
+legacy ResourceNode entry. Archive checks reject a required or direct Flow11
+dependency in place of that isolated optional peer. These checks do not prove
+that a native browser bundle excludes Flow11; host qualification must prove that.
+No package version alone proves artifact identity.
 
 Both stages report `hostQualified: false`. They do not prove browser safety,
 compatibility, CSS loading, or host behavior, and do not approve publication.
