@@ -13,7 +13,7 @@ import { useApi, useRouteRefParams } from '@backstage/core-plugin-api';
 import { resourcePageRouteRef } from '../../routes';
 import { ApplicationTab } from './ApplicationTab';
 import { ApplicationResourcesTab } from './ApplicationResourcesTab';
-import { radiusApiRef } from '../../plugin';
+import { radiusApiRef } from '../../api/ref';
 import { isApplicationType } from '../../resources';
 
 export const ResourcePage = () => {

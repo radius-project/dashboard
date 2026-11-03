@@ -14,7 +14,7 @@ import {
   Progress,
   ResponseErrorPanel,
 } from '@backstage/core-components';
-import { radiusApiRef } from '../../plugin';
+import { radiusApiRef } from '../../api/ref';
 import {
   EnvironmentProperties,
   RecipePackProperties,

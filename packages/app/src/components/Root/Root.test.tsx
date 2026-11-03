@@ -9,10 +9,11 @@ import {
   resourceTypesListPageRouteRef,
 } from '@internal/plugin-radius';
 import { userSettingsPlugin } from '@backstage/plugin-user-settings';
-import { Root } from './Root';
+import { SidebarPage } from '@backstage/core-components';
+import { RadiusSidebar } from './Root';
 
 /**
- * `Root` is the host's navigation contract: the sidebar is the only way a user
+ * The sidebar is the host's navigation contract: it is the only way a user
  * reaches four of the five plugin pages, and every destination is a
  * hand-written path string that no route ref checks. A typo here produces a
  * sidebar that renders perfectly and navigates nowhere, which is exactly the
@@ -22,20 +23,26 @@ import { Root } from './Root';
  * are present in the DOM but the logo renders its square variant.
  */
 const renderRoot = async (children?: React.ReactNode) =>
-  renderInTestApp(<Root>{children}</Root>, {
-    mountedRoutes: {
-      '/applications': applicationListPageRouteRef,
-      '/environments': environmentListPageRouteRef,
-      '/recipes': recipeListPageRouteRef,
-      '/resources': resourceListPageRouteRef,
-      '/resource-types': resourceTypesListPageRouteRef,
-      // The sidebar's settings group renders the user-settings tabs, which
-      // resolve their own route ref. Without this the whole sidebar throws.
-      '/settings': userSettingsPlugin.routes.settingsPage,
+  renderInTestApp(
+    <SidebarPage>
+      <RadiusSidebar />
+      {children}
+    </SidebarPage>,
+    {
+      mountedRoutes: {
+        '/applications': applicationListPageRouteRef,
+        '/environments': environmentListPageRouteRef,
+        '/recipes': recipeListPageRouteRef,
+        '/resources': resourceListPageRouteRef,
+        '/resource-types': resourceTypesListPageRouteRef,
+        // The sidebar's settings group renders the user-settings tabs, which
+        // resolve their own route ref. Without this the whole sidebar throws.
+        '/settings': userSettingsPlugin.routes.settingsPage,
+      },
     },
-  });
+  );
 
-describe('Root', () => {
+describe('RadiusSidebar', () => {
   it('RR-01: renders the page content the host wraps', async () => {
     await renderRoot(<main>page body</main>);
 

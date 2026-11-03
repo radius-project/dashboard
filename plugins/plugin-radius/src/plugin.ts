@@ -1,12 +1,11 @@
 import {
   createApiFactory,
-  createApiRef,
   createPlugin,
   createRoutableExtension,
 } from '@backstage/core-plugin-api';
 import { KubernetesApi, kubernetesApiRef } from '@backstage/plugin-kubernetes';
 
-import type { RadiusApi } from './api';
+import { radiusApiRef } from './api/ref';
 import { RadiusApiImpl } from './api/api';
 import { featureRadiusCatalog as featureRadiusCatalog } from './features';
 import {
@@ -23,9 +22,7 @@ import {
 
 export type { RadiusApi } from './api';
 
-export const radiusApiRef = createApiRef<RadiusApi>({
-  id: 'radius-api',
-});
+export { radiusApiRef } from './api/ref';
 
 export const radiusPlugin = createPlugin({
   id: 'radius',

@@ -1,11 +1,5 @@
-import {
-  AnyApiFactory,
-  configApiRef,
-  discoveryApiRef,
-  fetchApiRef,
-} from '@backstage/core-plugin-api';
+import { AnyApiFactory, configApiRef } from '@backstage/core-plugin-api';
 import { scmIntegrationsApiRef } from '@backstage/integration-react';
-import { catalogApiRef } from '@backstage/plugin-catalog-react';
 import { ConfigReader } from '@backstage/config';
 import { apis } from './apis';
 
@@ -27,11 +21,10 @@ const factoryFor = (ref: { id: string }): AnyApiFactory => {
 };
 
 describe('apis', () => {
-  it('AP-01: registers the SCM integrations, SCM auth, and catalog APIs', async () => {
+  it('AP-01: registers the SCM integrations and SCM auth APIs', async () => {
     expect(apis.map(factory => factory.api.id).sort()).toEqual([
       'core.scmauth',
       'integration.scmintegrations',
-      'plugin.catalog.service',
     ]);
   });
 
@@ -49,23 +42,7 @@ describe('apis', () => {
     expect(api).toBeDefined();
   });
 
-  it('AP-03: builds the catalog client from discovery and fetch', async () => {
-    const factory = factoryFor(catalogApiRef);
-
-    expect(factory.deps).toEqual({
-      discoveryApi: discoveryApiRef,
-      fetchApi: fetchApiRef,
-    });
-
-    const api = factory.factory({
-      discoveryApi: { getBaseUrl: async () => 'http://localhost:7007/api' },
-      fetchApi: { fetch: async () => new Response('{}') },
-    });
-
-    expect(api).toBeDefined();
-  });
-
-  it('AP-04: declares no duplicate api ids, which would silently shadow one another', async () => {
+  it('AP-03: declares no duplicate api ids, which would silently shadow one another', async () => {
     const ids = apis.map(factory => factory.api.id);
 
     expect(new Set(ids).size).toBe(ids.length);

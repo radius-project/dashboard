@@ -130,6 +130,13 @@ The `build-image` command uses `packages/backend/Dockerfile`. Its Docker build r
 not `GITHUB_SHA`) and `org.opencontainers.image.version` from `REL_VERSION`, defaulting to
 `edge` for local builds. A Git checkout is required to produce this provenance.
 
+The Build workflow runs FS-16 on pull requests and `main`. Issue
+[radius-project/dashboard#421](https://github.com/radius-project/dashboard/issues/421)
+tracks removal of this automatic check and its pinned previous image. Remove them after the
+first native-frontend release is published and a successful candidate-and-restore run is
+recorded for that release's source revision. Keep the manual rollback runner and legacy
+root-entry artifact tests until their retirement is approved separately.
+
 #### Release image staging
 
 The Build workflow stages release images under full-version tags. It does not publish
@@ -232,6 +239,10 @@ validation, failure handling, and the absence of early channel publication.
 Attestation-bearing indexes are covered for both reuse and post-push verification,
 including rejection of malformed descriptors, extra runnable platforms, and
 attestation-only indexes.
+
+The native frontend qualification pins selected Backstage packages to a tested
+version set. These exact versions define the qualification set; they are not a
+public support range.
 
 **Run E2E tests:**
 

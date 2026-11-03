@@ -31,7 +31,7 @@ import {
 import type { Theme } from '@material-ui/core';
 import useAsync from 'react-use/lib/useAsync';
 import { useApi } from '@backstage/core-plugin-api';
-import { radiusApiRef } from '../../plugin';
+import { radiusApiRef } from '../../api/ref';
 
 /**
  * Keep GitHub-flavored colors on code surfaces while allowing the surrounding
