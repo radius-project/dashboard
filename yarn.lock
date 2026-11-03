@@ -631,7 +631,7 @@ __metadata:
 
 "@azure/identity@npm:^4.0.0":
   version: 4.14.1
-  resolution: "@azure/identity@npm:4.14.1::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2F%40azure%2Fidentity%2F-%2Fidentity-4.14.1.tgz"
+  resolution: "@azure/identity@npm:4.14.1"
   dependencies:
     "@azure/abort-controller": "npm:^2.0.0"
     "@azure/core-auth": "npm:^1.9.0"
@@ -677,7 +677,7 @@ __metadata:
 
 "@azure/msal-node@npm:^7.1.0":
   version: 7.1.2
-  resolution: "@azure/msal-node@npm:7.1.2::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2F%40azure%2Fmsal-node%2F-%2Fmsal-node-7.1.2.tgz"
+  resolution: "@azure/msal-node@npm:7.1.2"
   dependencies:
     "@azure/msal-common": "npm:16.15.0"
     jsonwebtoken: "npm:^9.0.0"
@@ -4737,182 +4737,182 @@ __metadata:
 
 "@esbuild/aix-ppc64@npm:0.28.2":
   version: 0.28.2
-  resolution: "@esbuild/aix-ppc64@npm:0.28.2::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2F%40esbuild%2Faix-ppc64%2F-%2Faix-ppc64-0.28.2.tgz"
+  resolution: "@esbuild/aix-ppc64@npm:0.28.2"
   conditions: os=aix & cpu=ppc64
   languageName: node
   linkType: hard
 
 "@esbuild/android-arm64@npm:0.28.2":
   version: 0.28.2
-  resolution: "@esbuild/android-arm64@npm:0.28.2::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2F%40esbuild%2Fandroid-arm64%2F-%2Fandroid-arm64-0.28.2.tgz"
+  resolution: "@esbuild/android-arm64@npm:0.28.2"
   conditions: os=android & cpu=arm64
   languageName: node
   linkType: hard
 
 "@esbuild/android-arm@npm:0.28.2":
   version: 0.28.2
-  resolution: "@esbuild/android-arm@npm:0.28.2::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2F%40esbuild%2Fandroid-arm%2F-%2Fandroid-arm-0.28.2.tgz"
+  resolution: "@esbuild/android-arm@npm:0.28.2"
   conditions: os=android & cpu=arm
   languageName: node
   linkType: hard
 
 "@esbuild/android-x64@npm:0.28.2":
   version: 0.28.2
-  resolution: "@esbuild/android-x64@npm:0.28.2::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2F%40esbuild%2Fandroid-x64%2F-%2Fandroid-x64-0.28.2.tgz"
+  resolution: "@esbuild/android-x64@npm:0.28.2"
   conditions: os=android & cpu=x64
   languageName: node
   linkType: hard
 
 "@esbuild/darwin-arm64@npm:0.28.2":
   version: 0.28.2
-  resolution: "@esbuild/darwin-arm64@npm:0.28.2::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2F%40esbuild%2Fdarwin-arm64%2F-%2Fdarwin-arm64-0.28.2.tgz"
+  resolution: "@esbuild/darwin-arm64@npm:0.28.2"
   conditions: os=darwin & cpu=arm64
   languageName: node
   linkType: hard
 
 "@esbuild/darwin-x64@npm:0.28.2":
   version: 0.28.2
-  resolution: "@esbuild/darwin-x64@npm:0.28.2::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2F%40esbuild%2Fdarwin-x64%2F-%2Fdarwin-x64-0.28.2.tgz"
+  resolution: "@esbuild/darwin-x64@npm:0.28.2"
   conditions: os=darwin & cpu=x64
   languageName: node
   linkType: hard
 
 "@esbuild/freebsd-arm64@npm:0.28.2":
   version: 0.28.2
-  resolution: "@esbuild/freebsd-arm64@npm:0.28.2::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2F%40esbuild%2Ffreebsd-arm64%2F-%2Ffreebsd-arm64-0.28.2.tgz"
+  resolution: "@esbuild/freebsd-arm64@npm:0.28.2"
   conditions: os=freebsd & cpu=arm64
   languageName: node
   linkType: hard
 
 "@esbuild/freebsd-x64@npm:0.28.2":
   version: 0.28.2
-  resolution: "@esbuild/freebsd-x64@npm:0.28.2::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2F%40esbuild%2Ffreebsd-x64%2F-%2Ffreebsd-x64-0.28.2.tgz"
+  resolution: "@esbuild/freebsd-x64@npm:0.28.2"
   conditions: os=freebsd & cpu=x64
   languageName: node
   linkType: hard
 
 "@esbuild/linux-arm64@npm:0.28.2":
   version: 0.28.2
-  resolution: "@esbuild/linux-arm64@npm:0.28.2::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2F%40esbuild%2Flinux-arm64%2F-%2Flinux-arm64-0.28.2.tgz"
+  resolution: "@esbuild/linux-arm64@npm:0.28.2"
   conditions: os=linux & cpu=arm64
   languageName: node
   linkType: hard
 
 "@esbuild/linux-arm@npm:0.28.2":
   version: 0.28.2
-  resolution: "@esbuild/linux-arm@npm:0.28.2::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2F%40esbuild%2Flinux-arm%2F-%2Flinux-arm-0.28.2.tgz"
+  resolution: "@esbuild/linux-arm@npm:0.28.2"
   conditions: os=linux & cpu=arm
   languageName: node
   linkType: hard
 
 "@esbuild/linux-ia32@npm:0.28.2":
   version: 0.28.2
-  resolution: "@esbuild/linux-ia32@npm:0.28.2::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2F%40esbuild%2Flinux-ia32%2F-%2Flinux-ia32-0.28.2.tgz"
+  resolution: "@esbuild/linux-ia32@npm:0.28.2"
   conditions: os=linux & cpu=ia32
   languageName: node
   linkType: hard
 
 "@esbuild/linux-loong64@npm:0.28.2":
   version: 0.28.2
-  resolution: "@esbuild/linux-loong64@npm:0.28.2::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2F%40esbuild%2Flinux-loong64%2F-%2Flinux-loong64-0.28.2.tgz"
+  resolution: "@esbuild/linux-loong64@npm:0.28.2"
   conditions: os=linux & cpu=loong64
   languageName: node
   linkType: hard
 
 "@esbuild/linux-mips64el@npm:0.28.2":
   version: 0.28.2
-  resolution: "@esbuild/linux-mips64el@npm:0.28.2::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2F%40esbuild%2Flinux-mips64el%2F-%2Flinux-mips64el-0.28.2.tgz"
+  resolution: "@esbuild/linux-mips64el@npm:0.28.2"
   conditions: os=linux & cpu=mips64el
   languageName: node
   linkType: hard
 
 "@esbuild/linux-ppc64@npm:0.28.2":
   version: 0.28.2
-  resolution: "@esbuild/linux-ppc64@npm:0.28.2::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2F%40esbuild%2Flinux-ppc64%2F-%2Flinux-ppc64-0.28.2.tgz"
+  resolution: "@esbuild/linux-ppc64@npm:0.28.2"
   conditions: os=linux & cpu=ppc64
   languageName: node
   linkType: hard
 
 "@esbuild/linux-riscv64@npm:0.28.2":
   version: 0.28.2
-  resolution: "@esbuild/linux-riscv64@npm:0.28.2::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2F%40esbuild%2Flinux-riscv64%2F-%2Flinux-riscv64-0.28.2.tgz"
+  resolution: "@esbuild/linux-riscv64@npm:0.28.2"
   conditions: os=linux & cpu=riscv64
   languageName: node
   linkType: hard
 
 "@esbuild/linux-s390x@npm:0.28.2":
   version: 0.28.2
-  resolution: "@esbuild/linux-s390x@npm:0.28.2::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2F%40esbuild%2Flinux-s390x%2F-%2Flinux-s390x-0.28.2.tgz"
+  resolution: "@esbuild/linux-s390x@npm:0.28.2"
   conditions: os=linux & cpu=s390x
   languageName: node
   linkType: hard
 
 "@esbuild/linux-x64@npm:0.28.2":
   version: 0.28.2
-  resolution: "@esbuild/linux-x64@npm:0.28.2::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2F%40esbuild%2Flinux-x64%2F-%2Flinux-x64-0.28.2.tgz"
+  resolution: "@esbuild/linux-x64@npm:0.28.2"
   conditions: os=linux & cpu=x64
   languageName: node
   linkType: hard
 
 "@esbuild/netbsd-arm64@npm:0.28.2":
   version: 0.28.2
-  resolution: "@esbuild/netbsd-arm64@npm:0.28.2::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2F%40esbuild%2Fnetbsd-arm64%2F-%2Fnetbsd-arm64-0.28.2.tgz"
+  resolution: "@esbuild/netbsd-arm64@npm:0.28.2"
   conditions: os=netbsd & cpu=arm64
   languageName: node
   linkType: hard
 
 "@esbuild/netbsd-x64@npm:0.28.2":
   version: 0.28.2
-  resolution: "@esbuild/netbsd-x64@npm:0.28.2::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2F%40esbuild%2Fnetbsd-x64%2F-%2Fnetbsd-x64-0.28.2.tgz"
+  resolution: "@esbuild/netbsd-x64@npm:0.28.2"
   conditions: os=netbsd & cpu=x64
   languageName: node
   linkType: hard
 
 "@esbuild/openbsd-arm64@npm:0.28.2":
   version: 0.28.2
-  resolution: "@esbuild/openbsd-arm64@npm:0.28.2::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2F%40esbuild%2Fopenbsd-arm64%2F-%2Fopenbsd-arm64-0.28.2.tgz"
+  resolution: "@esbuild/openbsd-arm64@npm:0.28.2"
   conditions: os=openbsd & cpu=arm64
   languageName: node
   linkType: hard
 
 "@esbuild/openbsd-x64@npm:0.28.2":
   version: 0.28.2
-  resolution: "@esbuild/openbsd-x64@npm:0.28.2::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2F%40esbuild%2Fopenbsd-x64%2F-%2Fopenbsd-x64-0.28.2.tgz"
+  resolution: "@esbuild/openbsd-x64@npm:0.28.2"
   conditions: os=openbsd & cpu=x64
   languageName: node
   linkType: hard
 
 "@esbuild/openharmony-arm64@npm:0.28.2":
   version: 0.28.2
-  resolution: "@esbuild/openharmony-arm64@npm:0.28.2::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2F%40esbuild%2Fopenharmony-arm64%2F-%2Fopenharmony-arm64-0.28.2.tgz"
+  resolution: "@esbuild/openharmony-arm64@npm:0.28.2"
   conditions: os=openharmony & cpu=arm64
   languageName: node
   linkType: hard
 
 "@esbuild/sunos-x64@npm:0.28.2":
   version: 0.28.2
-  resolution: "@esbuild/sunos-x64@npm:0.28.2::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2F%40esbuild%2Fsunos-x64%2F-%2Fsunos-x64-0.28.2.tgz"
+  resolution: "@esbuild/sunos-x64@npm:0.28.2"
   conditions: os=sunos & cpu=x64
   languageName: node
   linkType: hard
 
 "@esbuild/win32-arm64@npm:0.28.2":
   version: 0.28.2
-  resolution: "@esbuild/win32-arm64@npm:0.28.2::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2F%40esbuild%2Fwin32-arm64%2F-%2Fwin32-arm64-0.28.2.tgz"
+  resolution: "@esbuild/win32-arm64@npm:0.28.2"
   conditions: os=win32 & cpu=arm64
   languageName: node
   linkType: hard
 
 "@esbuild/win32-ia32@npm:0.28.2":
   version: 0.28.2
-  resolution: "@esbuild/win32-ia32@npm:0.28.2::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2F%40esbuild%2Fwin32-ia32%2F-%2Fwin32-ia32-0.28.2.tgz"
+  resolution: "@esbuild/win32-ia32@npm:0.28.2"
   conditions: os=win32 & cpu=ia32
   languageName: node
   linkType: hard
 
 "@esbuild/win32-x64@npm:0.28.2":
   version: 0.28.2
-  resolution: "@esbuild/win32-x64@npm:0.28.2::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2F%40esbuild%2Fwin32-x64%2F-%2Fwin32-x64-0.28.2.tgz"
+  resolution: "@esbuild/win32-x64@npm:0.28.2"
   conditions: os=win32 & cpu=x64
   languageName: node
   linkType: hard
@@ -7321,7 +7321,7 @@ __metadata:
 
 "@octokit/openapi-types@npm:^20.0.0":
   version: 20.0.0
-  resolution: "@octokit/openapi-types@npm:20.0.0::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2F%40octokit%2Fopenapi-types%2F-%2Fopenapi-types-20.0.0.tgz"
+  resolution: "@octokit/openapi-types@npm:20.0.0"
   checksum: 10c0/5176dcc3b9d182ede3d446750cfa5cf31139624785a73fcf3511e3102a802b4d7cc45e999c27ed91d73fe8b7d718c8c406facb48688926921a71fe603b7db95d
   languageName: node
   linkType: hard
@@ -7335,7 +7335,7 @@ __metadata:
 
 "@octokit/plugin-paginate-rest@npm:^9.2.2":
   version: 9.2.2
-  resolution: "@octokit/plugin-paginate-rest@npm:9.2.2::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2F%40octokit%2Fplugin-paginate-rest%2F-%2Fplugin-paginate-rest-9.2.2.tgz"
+  resolution: "@octokit/plugin-paginate-rest@npm:9.2.2"
   dependencies:
     "@octokit/types": "npm:^12.6.0"
   peerDependencies:
@@ -7410,7 +7410,7 @@ __metadata:
 
 "@octokit/types@npm:^12.6.0":
   version: 12.6.0
-  resolution: "@octokit/types@npm:12.6.0::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2F%40octokit%2Ftypes%2F-%2Ftypes-12.6.0.tgz"
+  resolution: "@octokit/types@npm:12.6.0"
   dependencies:
     "@octokit/openapi-types": "npm:^20.0.0"
   checksum: 10c0/0bea58bda46c93287f5a80a0e52bc60e7dc7136b8a38c3569d63d073fb9df4a56acdb9d9bdba9978f37c374a4a6e3e52886ef5b08cace048adb0012cacef942c
@@ -15261,7 +15261,7 @@ __metadata:
 
 "esbuild@npm:^0.28.1":
   version: 0.28.2
-  resolution: "esbuild@npm:0.28.2::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2Fesbuild%2F-%2Fesbuild-0.28.2.tgz"
+  resolution: "esbuild@npm:0.28.2"
   dependencies:
     "@esbuild/aix-ppc64": "npm:0.28.2"
     "@esbuild/android-arm": "npm:0.28.2"
@@ -27872,9 +27872,9 @@ __metadata:
 
 "uuid@npm:^11.1.1":
   version: 11.1.1
-  resolution: "uuid@npm:11.1.1::__archiveUrl=https%3A%2F%2Fms-feed-25.pkgs.visualstudio.com%2F1es-public%2F_packaging%2Fnpm-public%2Fnpm%2Fregistry%2Fuuid%2F-%2Fuuid-11.1.1.tgz"
+  resolution: "uuid@npm:11.1.1"
   bin:
-    uuid: ./dist/esm/bin/uuid
+    uuid: dist/esm/bin/uuid
   checksum: 10c0/9e3af58eba872ece5a5e76f4773a94fc78a0ef2c2444c38dbe6b42f41dadf76c01850fd783604f27986f6195e6286aef064d45987d401b2a33127b98ddf7c0c5
   languageName: node
   linkType: hard
