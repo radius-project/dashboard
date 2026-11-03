@@ -11,7 +11,7 @@ import { Resource, EnvironmentProperties } from '../../resources';
 import useAsync from 'react-use/lib/useAsync';
 import { useApi, useRouteRefParams } from '@backstage/core-plugin-api';
 import { environmentPageRouteRef } from '../../routes';
-import { radiusApiRef } from '../../plugin';
+import { radiusApiRef } from '../../api/ref';
 import { EnvironmentResourcesTab } from './EnvironmentResourcesTab';
 
 export const EnvironmentPage = () => {

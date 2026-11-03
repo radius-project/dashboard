@@ -20,7 +20,7 @@ import {
 import { ResourceTable } from '../resourcetable';
 import { useApi } from '@backstage/core-plugin-api';
 import useAsync from 'react-use/lib/useAsync';
-import { radiusApiRef } from '../../plugin';
+import { radiusApiRef } from '../../api/ref';
 import { ResourceList, Resource } from '../../resources';
 import { parseResourceId } from '@radapp.io/rad-components';
 
