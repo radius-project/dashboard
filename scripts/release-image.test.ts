@@ -780,7 +780,7 @@ test('the actual build chain, offline CI tests, validation gates, and edge publi
   );
   assert.equal(
     rootPackage.scripts['test:qualification-runners'],
-    'node --test scripts/qualify-plugin-host.test.ts',
+    'node --test scripts/qualify-plugin-host.test.ts scripts/shared-library-candidate.test.ts',
   );
   assert.match(
     rootPackage.scripts['test:all'],

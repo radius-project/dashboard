@@ -160,14 +160,47 @@ describe('RecipeListPage', () => {
     expect(screen.getByText('platform')).toBeInTheDocument();
   });
 
-  it('RE-06: tolerates a recipe pack that cannot be fetched', async () => {
-    // `Promise.allSettled` means one unreachable pack must not fail the page.
+  it('RE-06 / ER-08 / #369: shows an error when all recipe data is unavailable', async () => {
     await renderPage(apiReturning([packEnvironment], []));
 
-    expect(await screen.findByRole('table')).toBeInTheDocument();
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'No Radius inventory data is available',
+    );
+    expect(screen.getByRole('alert')).toHaveTextContent(PACK_ID);
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
     expect(
       screen.queryByText('Radius.Data/redisCaches'),
     ).not.toBeInTheDocument();
+  });
+
+  it('RE-06a / ER-08 / #369: retains inline recipes with a warning when a recipe pack fails', async () => {
+    await renderPage(
+      apiReturning([
+        {
+          ...legacyEnvironment,
+          properties: {
+            ...legacyEnvironment.properties,
+            recipePacks: [PACK_ID],
+          },
+        },
+      ]),
+    );
+
+    expect(await screen.findByRole('table')).toBeInTheDocument();
+    expect(
+      screen.getByText('Applications.Datastores/redisCaches'),
+    ).toBeVisible();
+    expect(screen.getByText(/Incomplete Radius inventory/)).toBeVisible();
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Warning: Incomplete Radius inventory',
+      }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByText(new RegExp(`no such resource: ${PACK_ID}`)),
+      ).toBeVisible(),
+    );
   });
 
   it('RE-07: requests each distinct pack id only once across environments', async () => {
