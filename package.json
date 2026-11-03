@@ -61,7 +61,13 @@
     "jsonpath-plus": "^10.3.0",
     "mysql2": "^3",
     "adm-zip@npm:0.6.0": "0.6.1",
-    "undici@npm:7.29.0": "7.29.1"
+    "undici@npm:7.29.0": "^7.30.1",
+    "undici@npm:7.29.1": "^7.30.1",
+    "prismjs@npm:~1.27.0": "^1.30.0",
+    "@octokit/request@npm:^6.0.0": "^8.4.1",
+    "@octokit/request@npm:^6.2.3": "^8.4.1",
+    "@octokit/request-error@npm:^3.0.0": "^5.1.1",
+    "@octokit/request-error@npm:^3.0.3": "^5.1.1"
   },
   "prettier": "@spotify/prettier-config",
   "lint-staged": {
