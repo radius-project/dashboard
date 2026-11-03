@@ -72,7 +72,7 @@
     "@testing-library/user-event": "^14.6.8",
     "@types/jest": "^30.0.0",
     "@types/react": "^18",
-    "esbuild": "0.27.7",
+    "esbuild": "0.28.1",
     "jest": "^30.5.2",
     "jest-canvas-mock": "^2.5.8",
     "msw": "^3.0.3",
