@@ -96,6 +96,8 @@ const expectedRelationships: Record<string, Relationship[]> = {
     ],
   ),
   'managed-cluster': [],
+  'missing-target': [],
+  'unparseable-connection': [],
   'deploy-status-matrix': [],
   'unknown-type': [],
   'duplicate-ids': [],
@@ -110,13 +112,8 @@ const expectedRelationships: Record<string, Relationship[]> = {
   ),
 };
 
-const defectConnectionFixtures = [
-  'missing-target',
-  'unparseable-connection',
-  'self-reference',
-];
 const retainedConnectionFixtures = allFixtures.filter(
-  ([name]) => !defectConnectionFixtures.includes(name),
+  ([name]) => name !== 'self-reference',
 );
 
 const assertRelationships = (model: GraphModel, expected: Relationship[]) => {
@@ -140,7 +137,7 @@ describe('graph invariants', () => {
   });
 
   describe('GU-02: every retained connection yields exactly one edge', () => {
-    // Invalid/self connections are defect pins below, not desired topology.
+    // Self connections remain a separate defect pin below.
     it.each(retainedConnectionFixtures)('%s', (name, fixture) => {
       expect(expectedRelationships).toHaveProperty(name);
       assertRelationships(
@@ -181,15 +178,7 @@ describe('graph invariants', () => {
   });
 
   describe('GU-03: every edge endpoint resolves to a node in the same graph', () => {
-    // `missing-target` and `unparseable-connection` are excluded and covered by
-    // GU-04 and GU-05a, which state the current behavior for endpoints that do
-    // not resolve.
-    const resolvable = allFixtures.filter(
-      ([name]) =>
-        name !== 'missing-target' && name !== 'unparseable-connection',
-    );
-
-    it.each(resolvable)('%s', (_name, fixture) => {
+    it.each(allFixtures)('%s', (_name, fixture) => {
       const model = buildGraphModel(load(fixture));
       const ids = new Set(model.nodes.map(node => node.id));
 
@@ -200,19 +189,10 @@ describe('graph invariants', () => {
     });
   });
 
-  /**
-   * KNOWN-DEFECT: a connection whose target is not in the graph produces an
-   * edge pointing at a node that does not exist. React Flow drops such an edge
-   * silently, so a real dependency simply vanishes from the diagram with no
-   * error anywhere. The requirement is that it is dropped or stubbed
-   * deliberately; today it is neither.
-   */
-  it('GU-04: KNOWN-DEFECT a connection to an absent resource leaves a dangling edge', () => {
+  it('GU-04: a connection to an absent resource produces no dangling edge', () => {
     const model = buildGraphModel(load(missingTarget));
-    const ids = new Set(model.nodes.map(node => node.id));
 
-    expect(model.edges).toHaveLength(1);
-    expect(ids.has(model.edges[0].source)).toBe(false);
+    expect(model.edges).toHaveLength(0);
   });
 
   it('GU-05: an unparseable connection id does not drop its owning node', () => {
@@ -222,20 +202,10 @@ describe('graph invariants', () => {
     expect(model.nodes[0].label).toBe('webapp');
   });
 
-  /**
-   * KNOWN-DEFECT: the parse result is used only to decide whether to rewrite the
-   * direction; the edge-building loop that follows runs over every connection
-   * regardless. So an unparseable connection id is *not* skipped — it produces
-   * an edge to a node that does not exist, and the dependency disappears from
-   * the diagram with no error. GU-05 protects the owning node; this test separately
-   * pins the incorrect connection handling until it is fixed.
-   */
-  it('GU-05a: KNOWN-DEFECT an unparseable connection still produces a dangling edge', () => {
+  it('GU-05a: an unparseable connection with no matching node produces no dangling edge', () => {
     const model = buildGraphModel(load(unparseableConnection));
-    const ids = new Set(model.nodes.map(node => node.id));
 
-    expect(model.edges).toHaveLength(1);
-    expect(ids.has(model.edges[0].source)).toBe(false);
+    expect(model.edges).toHaveLength(0);
   });
 
   /**

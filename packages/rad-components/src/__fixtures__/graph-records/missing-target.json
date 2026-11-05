@@ -8,11 +8,5 @@
       "statusBadge": "not-yet-populated"
     }
   ],
-  "edges": [
-    {
-      "source": "/planes/radius/local/resourceGroups/demo/providers/Applications.Datastores/redisCaches/absent",
-      "target": "/planes/radius/local/resourceGroups/demo/providers/Applications.Core/containers/webapp",
-      "direction": "source-to-target"
-    }
-  ]
+  "edges": []
 }
