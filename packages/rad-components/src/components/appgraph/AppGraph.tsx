@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   ReactFlow,
   Edge,
@@ -6,10 +6,17 @@ import {
   useReactFlow,
   useNodesState,
   useEdgesState,
+  useStore,
   ReactFlowProvider,
   Controls,
+  ControlButton,
+  Panel,
+  getNodesBounds,
 } from 'reactflow';
 import Dagre, { NodeLabel } from '@dagrejs/dagre';
+// Pinned to 1.11.11 in package.json: 1.11.12 and 1.11.13 leave React Flow's
+// SVG edges out of the image, so the export would show only the nodes.
+import { toPng } from 'html-to-image';
 import { AppGraph as AppGraphData, Resource } from '../../graph';
 import { ResourceNode } from '../resourcenode/index';
 
@@ -18,13 +25,79 @@ import { parseResourceId } from '../../resourceId';
 
 const nodeTypes = { default: ResourceNode };
 
+/** Blank space kept around the graph in an exported image, in pixels. */
+const EXPORT_PADDING = 32;
+
+/**
+ * Renders every node and edge of the graph, not just the part currently in
+ * view, to a PNG data URL at its natural size. The background is white so the
+ * image reads the same wherever it is shared.
+ */
+export async function exportGraphToPng(
+  viewport: HTMLElement,
+  nodes: Node[],
+): Promise<string> {
+  const bounds = getNodesBounds(nodes);
+  const width = Math.ceil(bounds.width + 2 * EXPORT_PADDING);
+  const height = Math.ceil(bounds.height + 2 * EXPORT_PADDING);
+
+  return toPng(viewport, {
+    backgroundColor: '#ffffff',
+    width,
+    height,
+    style: {
+      width: `${width}px`,
+      height: `${height}px`,
+      transform: `translate(${EXPORT_PADDING - bounds.x}px, ${
+        EXPORT_PADDING - bounds.y
+      }px) scale(1)`,
+    },
+  });
+}
+
+/** File name for an exported graph image, safe to use on any file system. */
+export function graphImageFileName(graphName?: string): string {
+  const base = (graphName ?? '').replace(/[^\w.-]+/g, '-') || 'application';
+  return `${base}-graph.png`;
+}
+
+const DownloadIcon = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+    <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
+  </svg>
+);
+
 const LayoutFlow = (props: { graph: AppGraphData }) => {
   const initial = initialNodes(props.graph);
   const layoutedNodes = getLayoutedElements(initial.nodes, initial.edges, {
     direction: 'TB',
   });
 
-  const { fitView } = useReactFlow();
+  const { fitView, getNodes } = useReactFlow();
+  const domNode = useStore(state => state.domNode);
+  const [exportFailed, setExportFailed] = useState(false);
+  const [exporting, setExporting] = useState(false);
+
+  const downloadImage = async () => {
+    setExportFailed(false);
+    setExporting(true);
+    const viewport = domNode?.querySelector<HTMLElement>(
+      '.react-flow__viewport',
+    );
+    try {
+      if (!viewport) {
+        throw new Error('The graph is not rendered.');
+      }
+      const link = document.createElement('a');
+      link.href = await exportGraphToPng(viewport, getNodes());
+      link.download = graphImageFileName(props.graph.name);
+      link.click();
+    } catch {
+      setExportFailed(true);
+    } finally {
+      setExporting(false);
+    }
+  };
   const [nodes, setNodes, onNodesChange] = useNodesState(layoutedNodes.nodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(layoutedNodes.edges);
 
@@ -58,7 +131,21 @@ const LayoutFlow = (props: { graph: AppGraphData }) => {
       onEdgesChange={onEdgesChange}
       fitView
     >
-      <Controls showInteractive={false} />
+      <Controls showInteractive={false}>
+        <ControlButton
+          onClick={downloadImage}
+          disabled={exporting || nodes.length === 0}
+          title="Download graph as PNG"
+          aria-label="Download graph as PNG"
+        >
+          <DownloadIcon />
+        </ControlButton>
+      </Controls>
+      {exportFailed && (
+        <Panel position="top-right" role="alert">
+          The graph image could not be exported.
+        </Panel>
+      )}
     </ReactFlow>
   );
 };

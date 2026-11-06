@@ -64,6 +64,7 @@
   "dependencies": {
     "@dagrejs/dagre": "^3.1.1",
     "dagre": "^0.8.5",
+    "html-to-image": "1.11.11",
     "reactflow": "^11.11.4"
   },
   "publishConfig": {
