@@ -1,6 +1,12 @@
 import React from 'react';
-import { renderInTestApp, TestApiProvider } from '@backstage/test-utils';
-import { screen, waitFor } from '@testing-library/react';
+import {
+  mockApis,
+  renderInTestApp,
+  TestApiProvider,
+} from '@backstage/test-utils';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { storageApiRef } from '@backstage/core-plugin-api';
+import type { StorageApi } from '@backstage/core-plugin-api';
 import {
   applicationListPageRouteRef,
   environmentListPageRouteRef,
@@ -24,9 +30,17 @@ type HomeApiStub = {
   listEnvironments: () => Promise<{ value: unknown[] }>;
 };
 
-const renderHome = async (api: HomeApiStub): Promise<void> => {
-  await renderInTestApp(
-    <TestApiProvider apis={[[radiusApiRef, api as unknown as RadiusApi]]}>
+const renderHome = (
+  api: HomeApiStub,
+  storage: StorageApi = mockApis.storage(),
+) =>
+  renderInTestApp(
+    <TestApiProvider
+      apis={[
+        [radiusApiRef, api as unknown as RadiusApi],
+        [storageApiRef, storage],
+      ]}
+    >
       <HomePage />
     </TestApiProvider>,
     {
@@ -38,7 +52,6 @@ const renderHome = async (api: HomeApiStub): Promise<void> => {
       },
     },
   );
-};
 
 const empty: HomeApiStub = {
   listApplications: async () => ({ value: [] }),
@@ -153,5 +166,26 @@ describe('HomePage', () => {
       ).toBeGreaterThan(0);
     });
     expect(screen.getByText('Environments')).toBeInTheDocument();
+  });
+
+  it('HP-08: keeps a collapsed card collapsed when the page is visited again', async () => {
+    const storage = mockApis.storage();
+    const { unmount } = await renderHome(empty, storage);
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Collapse Learn more' }),
+    );
+    unmount();
+    await renderHome(empty, storage);
+
+    expect(
+      screen.getByRole('button', { name: 'Expand Learn more' }),
+    ).toHaveAttribute('aria-expanded', 'false');
+    expect(
+      screen.getByRole('button', { name: 'Collapse Join the community' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Collapse Get help with Radius' }),
+    ).toBeInTheDocument();
   });
 });

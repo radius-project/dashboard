@@ -71,12 +71,15 @@ describe('CommunityCard', () => {
     expect(discord).not.toHaveAttribute('target', '_blank');
   });
 
-  it('CC-06: offers exactly the three documented actions', async () => {
+  it('CC-06: offers the collapse toggle and exactly the three documented actions', async () => {
     await renderInTestApp(<CommunityCard />);
 
     expect(
-      screen.getAllByRole('button').map(button => button.textContent),
+      screen
+        .getAllByRole('button')
+        .map(button => button.getAttribute('aria-label') ?? button.textContent),
     ).toEqual([
+      'Collapse Join the community',
       'Visit on Github, Opens in a new window',
       'Good first issues, Opens in a new window',
       // No hint, because CC-05 leaves this one pointing inside the app.

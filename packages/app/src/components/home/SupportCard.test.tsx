@@ -50,12 +50,15 @@ describe('SupportCard', () => {
     );
   });
 
-  it('SC-05: offers exactly the two documented actions, each marked as leaving the app', async () => {
+  it('SC-05: offers the collapse toggle and exactly the two documented actions, each marked as leaving the app', async () => {
     await renderInTestApp(<SupportCard />);
 
     expect(
-      screen.getAllByRole('button').map(button => button.textContent),
+      screen
+        .getAllByRole('button')
+        .map(button => button.getAttribute('aria-label') ?? button.textContent),
     ).toEqual([
+      'Collapse Get help with Radius',
       'Ask a Question, Opens in a new window',
       'Report an Issue, Opens in a new window',
     ]);
