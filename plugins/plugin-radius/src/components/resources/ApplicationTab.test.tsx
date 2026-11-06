@@ -10,7 +10,9 @@ import { radiusApiRef } from '../../plugin';
 jest.mock('@radapp.io/rad-components', () => ({
   ...jest.requireActual('@radapp.io/rad-components'),
   AppGraph: ({ graph }: { graph: { name: string } }) => (
-    <div data-testid="app-graph">{graph.name}</div>
+    <div data-testid="app-graph" data-graph={JSON.stringify(graph)}>
+      {graph.name}
+    </div>
   ),
 }));
 
@@ -91,6 +93,65 @@ const radiusCoreApplication =
 // Tests -----------------------------------------------------------------------
 
 describe('ApplicationTab', () => {
+  it.each([
+    ['Radius.Core', '2025-08-01-preview', true],
+    ['Radius.Core', '2026-01-01', true],
+    ['Radius.Core', '2025-01-01', false],
+    ['Applications.Core', '2023-10-01-preview', false],
+  ])(
+    'requests supported graph icons for %s at %s',
+    async (namespace, version, includeIcons) => {
+      const response = {
+        icons: { icon: '<svg xmlns="http://www.w3.org/2000/svg"/>' },
+        resources: [
+          {
+            id: 'consumer',
+            name: 'consumer',
+            type: 'Radius.Compute/containers',
+            provisioningState: 'Succeeded',
+            iconHash: 'icon',
+            connections: [
+              { id: 'queue', direction: 'Outbound', kind: 'Dependency' },
+            ],
+          },
+        ],
+      };
+      const proxy = jest
+        .fn()
+        .mockResolvedValue(
+          new Response(JSON.stringify(response), { status: 200 }),
+        );
+      const api = {
+        getResourceType: jest.fn().mockResolvedValue({
+          APIVersionList: [version],
+        }),
+      };
+      await renderInTestApp(
+        <TestApiProvider
+          apis={[
+            [kubernetesApiRef, createMockKubernetesApi(proxy)],
+            [radiusApiRef, api],
+          ]}
+        >
+          <ApplicationTab
+            application={`/planes/radius/local/resourceGroups/test-group/providers/${namespace}/applications/test-app`}
+          />
+        </TestApiProvider>,
+      );
+
+      const graph = await screen.findByTestId('app-graph');
+      expect(JSON.parse(graph.getAttribute('data-graph')!)).toEqual(response);
+      const request = proxy.mock.calls[0][0];
+      expect(request.path).toContain(`api-version=${version}`);
+      expect(request.init.headers).toEqual(
+        includeIcons ? { 'Content-Type': 'application/json' } : undefined,
+      );
+      expect(request.init.body).toBe(
+        includeIcons ? JSON.stringify({ includeIcons: true }) : undefined,
+      );
+    },
+  );
+
   it('should show the application graph on successful response', async () => {
     const mockProxy = jest
       .fn()
