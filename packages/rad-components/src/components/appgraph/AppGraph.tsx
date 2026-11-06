@@ -49,17 +49,46 @@ const LayoutFlow = (props: { graph: AppGraphData }) => {
   // - We're using Dagre for layout: https://reactflow.dev/learn/layouting/layouting#dagre
 
   return (
-    <ReactFlow
-      defaultNodes={nodes}
-      defaultEdges={edges}
-      defaultEdgeOptions={{ type: 'bezier', animated: true }}
-      nodeTypes={nodeTypes}
-      onNodesChange={onNodesChange}
-      onEdgesChange={onEdgesChange}
-      fitView
-    >
-      <Controls showInteractive={false} />
-    </ReactFlow>
+    <>
+      {initial.unresolvedConnections.length > 0 && (
+        <div
+          role="alert"
+          style={{
+            maxHeight: '30%',
+            overflow: 'auto',
+            overflowWrap: 'anywhere',
+          }}
+        >
+          <strong>Some connections cannot be shown.</strong> Their target
+          resources are not in this graph. The graph is incomplete.
+          <details>
+            <summary>Show unresolved connections</summary>
+            <ul>
+              {initial.unresolvedConnections.map((connection, index) => (
+                <li key={index}>
+                  Resource: <code>{connection.resourceId}</code>
+                  <br />
+                  Connection target: <code>{connection.connectionId}</code>
+                </li>
+              ))}
+            </ul>
+          </details>
+        </div>
+      )}
+      <div style={{ flex: 1, minHeight: 0 }}>
+        <ReactFlow
+          defaultNodes={nodes}
+          defaultEdges={edges}
+          defaultEdgeOptions={{ type: 'bezier', animated: true }}
+          nodeTypes={nodeTypes}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          fitView
+        >
+          <Controls showInteractive={false} />
+        </ReactFlow>
+      </div>
+    </>
   );
 };
 
@@ -67,7 +96,15 @@ export type AppGraphProps = { graph: AppGraphData };
 
 function AppGraph(props: AppGraphProps) {
   return (
-    <div {...props} style={{ height: '100%', width: '100%' }}>
+    <div
+      {...props}
+      style={{
+        height: '100%',
+        width: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
       <ReactFlowProvider>
         <LayoutFlow graph={props.graph} />
       </ReactFlowProvider>
@@ -94,9 +131,13 @@ const isResourceType = (type: string, types: Set<string>) =>
 export function initialNodes(graph: AppGraphData): {
   nodes: Node<Resource>[];
   edges: Edge[];
+  unresolvedConnections: { resourceId: string; connectionId: string }[];
 } {
   const nodes: Node<Resource>[] = [];
   const edges: Edge[] = [];
+  const unresolvedConnections: { resourceId: string; connectionId: string }[] =
+    [];
+  const resourceIds = new Set(graph.resources.map(resource => resource.id));
 
   // Very simple layout scheme here for nodes.
   const orderData: { [order: number]: number } = {};
@@ -142,6 +183,14 @@ export function initialNodes(graph: AppGraphData): {
       }
 
       for (const connection of resource.connections) {
+        if (!resourceIds.has(connection.id)) {
+          unresolvedConnections.push({
+            resourceId: resource.id,
+            connectionId: connection.id,
+          });
+          continue;
+        }
+
         if (connection.direction === 'Inbound') {
           edges.push({
             id: `${connection.id}-${resource.id}`,
@@ -159,7 +208,7 @@ export function initialNodes(graph: AppGraphData): {
     }
   }
 
-  return { nodes, edges };
+  return { nodes, edges, unresolvedConnections };
 }
 
 export function getLayoutedElements(

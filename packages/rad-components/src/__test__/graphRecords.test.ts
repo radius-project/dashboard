@@ -508,14 +508,6 @@ describe('graph records', () => {
     });
 
     expect(
-      byFixture('missing-target').isPresent({
-        ...healthy,
-        edges: [
-          { source: 'a', target: 'absent', direction: 'source-to-target' },
-        ],
-      }),
-    ).toBe(true);
-    expect(
       byFixture('self-reference').isPresent({
         ...healthy,
         edges: [{ source: 'a', target: 'a', direction: 'source-to-target' }],
@@ -601,7 +593,16 @@ describe('graph records', () => {
     ).not.toEqual([]);
   });
 
-  it('GU-24: keeps the checked-in expected-change manifest empty', () => {
-    expect(parseManifest(fs.readFileSync(manifestPath, 'utf8'))).toEqual([]);
+  it('GU-24: limits expected changes to the missing endpoint fixes for #353', () => {
+    expect(parseManifest(fs.readFileSync(manifestPath, 'utf8'))).toEqual(
+      ['missing-target', 'unparseable-connection'].map(fixture => ({
+        fixture,
+        field: 'edges.0',
+        oldValue: expect.any(String),
+        newValue: '<absent>',
+        reason:
+          '#353: Omit the edge with a missing endpoint and report the connection in the graph warning.',
+      })),
+    );
   });
 });

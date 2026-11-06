@@ -686,9 +686,9 @@ The semantic normalizer is `packages/rad-components/src/graphRecord.ts`. It emit
 and edge meaning: ids, labels, types, the currently unpopulated icon/status semantics recorded as
 the explicit `not-yet-populated` sentinel, resolved endpoints, and direction. It records no layout
 coordinates. All fourteen records are committed under
-`src/__fixtures__/graph-records/`; `graph-expected-changes.md` is empty. GU-22 rejects undeclared
+`src/__fixtures__/graph-records/`; `graph-expected-changes.md` declares the two edge removals for #353. GU-22 rejects undeclared
 record changes, GU-23 reports known defects whose own invariant is still violated as carried
-forward, and GU-24 keeps the manifest empty between extraction phases.
+forward, and GU-24 limits the manifest to these two corrections.
 
 GU-22 alone is not sufficient, because it compares generated records against the committed ones: a
 change that edits a record file and the renderer together satisfies it without consulting the
@@ -743,8 +743,10 @@ which is the argument for doing this before the extraction rather than after:
 - An **unparseable connection id is not skipped**. The parse result only gates the direction
   rewrite; the edge-building loop that follows runs over every connection regardless, so the
   connection becomes an edge to a node that does not exist and the dependency vanishes from the
-  diagram silently (GU-05a).
-- A **connection to a resource absent from the graph** produces the same dangling edge (GU-04).
+  diagram silently (GU-05a). Fixed for #353: connections with no matching node are omitted,
+  and the graph shows a warning with the owning resource and target IDs.
+- A **connection to a resource absent from the graph** produced the same dangling edge (GU-04).
+  Fixed for #353 with the same endpoint check and visible warning.
 - A **self-referential connection** produces a self-loop (GU-06a), and **duplicate resource ids**
   produce duplicate node ids, one of which React Flow silently discards.
 
@@ -1043,7 +1045,7 @@ its issue is fixed, and that failure is the signal the fix landed, not a regress
 | #41   | Selecting a graph node does not reveal dismissible resource details       | GU-18                |
 | #89   | Graph nodes do not expose deployment status                               | GU-21, GU-23         |
 | #352  | `parseResourceId` rejects legal names and types; `ResourceLink` then throws | RU-02, AC-08, EC-08  |
-| #353  | Graph silently drops connections whose target cannot be resolved            | GU-04, GU-05a        |
+| #353  | Graph silently drops connections whose target cannot be resolved — **fixed; omitted connections are reported in the graph** | GU-04, GU-05a |
 | #354  | `initialNodes` mutates the graph payload it is given                        | GU-05b               |
 | #355  | Graph layout state leaks between applications via a module-level Dagre graph — **fixed in this PR at maintainer request; GU-08 is now a positive invariant, not a characterization pin** | GU-08 (regression) |
 | #356  | Cluster selection disagrees between `RadiusApi` and the graph request        | CN-03, CN-04         |
@@ -1491,9 +1493,9 @@ expected-change manifest.
 | GU-02 | A    | Retained connections exactly match fixture-owned source/target multisets — **done**; invalid/self connections are separate defect pins |
 | GU-02a | A   | Redirected, reversed, missing, and extra edges fail the topology assertions — **done**              |
 | GU-03 | A    | Every edge endpoint resolves to a node present in the same graph — **done**                         |
-| GU-04 | A    | A connection to a resource absent from the graph is dropped or stubbed, never left dangling — **done, KNOWN-DEFECT** |
+| GU-04 | A    | A connection to a resource absent from the graph is omitted and reported, never left dangling — **done, regression test for #353** |
 | GU-05 | A    | An unparseable connection does not drop its owning node — **done**                                |
-| GU-05a | A   | Unparseable connections should be skipped; today's dangling edge is a **KNOWN-DEFECT pin**, not desired behavior |
+| GU-05a | A   | A connection with an unparseable ID and no matching node is omitted and reported — **done, regression test for #353** |
 | GU-05b| A    | Building the model does not mutate the caller's graph — **done, KNOWN-DEFECT**                      |
 | GU-06 | A    | A self-referential connection produces no duplicate node and no self-loop — **done, KNOWN-DEFECT**  |
 | GU-07 | A    | Building the same fixture twice yields the same model — **done**, including rendered remount determinism |
@@ -1518,7 +1520,7 @@ expected-change manifest.
 | GU-23a | C   | A defect clears only when its own invariant is repaired, not when an unrelated one is — **done** |
 | GU-23b | C   | Each defect predicate detects its own condition and reports repair on a healthy record — **done** |
 | GU-23c | C   | A defect naming a fixture with no record is rejected rather than silently ignored — **done**     |
-| GU-24 | C    | The manifest is empty at the end of each extraction phase — **done**                                 |
+| GU-24 | C    | The manifest contains only the two missing-endpoint corrections for #353 — **done**                 |
 | GU-25 | C    | A committed record edited relative to the base branch maps to a manifest entry — **done**            |
 | GU-25a | C   | A mutated committed record is reported as an unapproved change — **done**                            |
 
@@ -1582,7 +1584,7 @@ names, element nesting, or coordinates of any kind.
 
 The records are frozen under `packages/rad-components/src/__fixtures__/graph-records/` and diffed
 in Phase 4 against `packages/rad-components/src/__fixtures__/graph-expected-changes.md`. The
-manifest is currently empty. Fixtures tagged `KNOWN-DEFECT` declare the invariant they violate
+manifest declares the two missing-endpoint edge removals for #353. Fixtures tagged `KNOWN-DEFECT` declare the invariant they violate
 through `knownGraphDefects` in `graphRecord.ts`; GU-23 reports every defect whose invariant is still
 violated, so only an actual repair retires an entry.
 

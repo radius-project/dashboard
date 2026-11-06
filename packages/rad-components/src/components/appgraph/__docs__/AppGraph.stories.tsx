@@ -8,6 +8,8 @@ import containerToDatabase from '../../../__fixtures__/graph/container-to-databa
 import multiTier from '../../../__fixtures__/graph/multi-tier.json';
 import deployStatusMatrix from '../../../__fixtures__/graph/deploy-status-matrix.json';
 import bothNamespaces from '../../../__fixtures__/graph/both-namespaces.json';
+import missingTarget from '../../../__fixtures__/graph/missing-target.json';
+import unparseableConnection from '../../../__fixtures__/graph/unparseable-connection.json';
 
 const meta: Meta<typeof Example> = {
   title: 'AppGraph',
@@ -29,6 +31,18 @@ export const Empty: Story = {
 export const SingleNode: Story = {
   args: {
     graph: singleNode,
+  } as AppGraphProps,
+};
+
+export const MissingTarget: Story = {
+  args: {
+    graph: missingTarget,
+  } as AppGraphProps,
+};
+
+export const UnparseableConnection: Story = {
+  args: {
+    graph: unparseableConnection,
   } as AppGraphProps,
 };
 

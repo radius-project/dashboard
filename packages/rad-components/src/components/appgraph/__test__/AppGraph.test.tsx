@@ -1,10 +1,12 @@
 import React from 'react';
 import '@testing-library/jest-dom';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import Dagre from '@dagrejs/dagre';
 import AppGraph, { initialNodes } from '../AppGraph';
 import { AppGraph as AppGraphData, Direction } from '../../../graph';
 import * as sampledata from '../../../sampledata';
+import missingTarget from '../../../__fixtures__/graph/missing-target.json';
+import unparseableConnection from '../../../__fixtures__/graph/unparseable-connection.json';
 
 const resource = (type: string, name: string) => ({
   id: `/planes/radius/local/resourceGroups/demo/providers/${type}/${name}`,
@@ -137,6 +139,26 @@ describe('AppGraph component', () => {
     // that the UI rendered.
     const name = screen.getByRole('link', { name: 'React Flow attribution' });
     expect(name).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ['missing target', missingTarget],
+    ['unparseable connection', unparseableConnection],
+  ])('reports a %s without hiding the graph', (_name, fixture) => {
+    const graph = JSON.parse(JSON.stringify(fixture)) as AppGraphData;
+    render(<AppGraph graph={graph} />);
+
+    const warning = screen.getByRole('alert');
+    expect(warning).toHaveTextContent('The graph is incomplete.');
+    fireEvent.click(within(warning).getByText('Show unresolved connections'));
+    expect(within(warning).getByText(graph.resources[0].id)).toBeVisible();
+    expect(
+      within(warning).getByText(graph.resources[0].connections![0].id),
+    ).toBeVisible();
+    expect(
+      screen.getByRole('link', { name: 'React Flow attribution' }),
+    ).toBeInTheDocument();
   });
 
   /**
@@ -151,5 +173,72 @@ describe('AppGraph component', () => {
     expect(() =>
       render(<AppGraph graph={sampledata.DemoApplication} />),
     ).toThrow('layout failed');
+  });
+});
+
+describe('unresolved graph connections', () => {
+  it.each(['Inbound', 'Outbound'] as const)(
+    'reports a missing %s endpoint and retains valid connections',
+    direction => {
+      const owner = resource('Radius.Compute/containers', 'webapp');
+      const dependency = resource(
+        'Applications.Datastores/redisCaches',
+        'cache',
+      );
+      const absent = resource('Applications.Datastores/redisCaches', 'absent');
+      const { nodes, edges, unresolvedConnections } = initialNodes({
+        name: 'mixed',
+        resources: [
+          {
+            ...owner,
+            connections: [
+              { ...dependency, direction },
+              { ...absent, direction },
+              { ...absent, id: 'not-a-resource-id', direction },
+            ],
+          },
+          dependency,
+        ],
+      });
+
+      expect(nodes.map(node => node.id)).toEqual([owner.id, dependency.id]);
+      expect(edges).toEqual([
+        expect.objectContaining({
+          source: direction === 'Inbound' ? owner.id : dependency.id,
+          target: direction === 'Inbound' ? dependency.id : owner.id,
+        }),
+      ]);
+      expect(unresolvedConnections).toEqual([
+        { resourceId: owner.id, connectionId: absent.id },
+        { resourceId: owner.id, connectionId: 'not-a-resource-id' },
+      ]);
+      const ids = new Set(nodes.map(node => node.id));
+      expect(
+        edges.every(edge => ids.has(edge.source) && ids.has(edge.target)),
+      ).toBe(true);
+    },
+  );
+
+  it('retains a connection when its exact ID exists even if it cannot be parsed', () => {
+    const owner = resource('Radius.Compute/containers', 'webapp');
+    const dependency = {
+      ...resource('Unknown', 'mystery'),
+      id: 'not-a-resource-id',
+    };
+    const { edges, unresolvedConnections } = initialNodes({
+      name: 'matching-id',
+      resources: [
+        {
+          ...owner,
+          connections: [{ ...dependency, direction: 'Outbound' }],
+        },
+        dependency,
+      ],
+    });
+
+    expect(edges).toEqual([
+      expect.objectContaining({ source: dependency.id, target: owner.id }),
+    ]);
+    expect(unresolvedConnections).toEqual([]);
   });
 });
