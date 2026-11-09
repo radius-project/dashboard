@@ -792,6 +792,11 @@ test('the actual build chain, offline CI tests, validation gates, and edge publi
     'utf8',
   );
   assert.match(workflow, /run: yarn run test:all/);
+  const browserInstall = workflow.indexOf(
+    'run: yarn exec playwright install --with-deps chromium',
+  );
+  assert.ok(browserInstall >= 0);
+  assert.ok(browserInstall < workflow.indexOf('- name: Run Tests'));
   assert.match(workflow, /- name: Build Image\s+run: yarn run build-image/);
   assert.match(workflow, /run: node scripts\/release-image.ts stage/);
   assert.doesNotMatch(workflow, /REL_CHANNEL/);
