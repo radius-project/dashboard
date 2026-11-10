@@ -1,0 +1,82 @@
+{
+  "status": "Development-only vendored artifacts. Not a published release.",
+  "sourceRevision": "f6c06db599a297854d23f4992811f206597cab3a",
+  "core": {
+    "path": "radius-project-core-0.1.0.tgz",
+    "sha256": "073ed89e37ac0bea717a49302e94d51afc9b2bb1cec5a7ed2bee017cb88fd344",
+    "bytes": 27814
+  },
+  "graphReact": {
+    "path": "radius-project-graph-react-0.1.0.tgz",
+    "sha256": "d95f7f9ce425ee05697adc32e4371876788d2473da61b7d885019168a3e73ba4",
+    "bytes": 91338,
+    "stylesSha256": "b0f6a0ccaab445ded3cefdaf35f2921b9b5f212cbab9c30e3ee8f380ae8e83ff",
+    "baseSha256": "f325487e77a8c9c22f1e9197302161b03c4a04fb149cdd2ff899fa7283c64380"
+  },
+  "source": {
+    "repository": "https://github.com/radius-project/ai-extensions",
+    "tree": "227913d04dcd51c967030608e9c2e0fa6d9b3837",
+    "lockFile": "pnpm-lock.yaml",
+    "lockSha256": "76c419c863f4b468b881a46a9e24fce2a7aa053c2d3c94553ab8730a2e67697c",
+    "lockGitBlob": "b205be90e4816e112a6b86d3be32f219766f5987",
+    "openPgpFingerprint": "062546FF1256CE6A7E60647035907BBA96F09526",
+    "signatureVerifiedByConsumer": true
+  },
+  "build": {
+    "evidence": "Producer-reported clean build, build manifests, offline exact-byte React 18/19 checks and equal-hash repack. Not an independent consumer source rebuild.",
+    "sourceStatusBeforeBuild": "",
+    "node": "24.22.0",
+    "pnpm": "12.15.0",
+    "platform": "linux-arm64",
+    "commands": [
+      {
+        "command": "pnpm install --frozen-lockfile",
+        "result": "passed"
+      },
+      {
+        "command": "pnpm run test:integration:libraries",
+        "result": "passed: compiled JS, declarations, CSS and isolated offline React 18.3.1/19.3.1 qualification"
+      },
+      {
+        "command": "pnpm --dir packages/core pack --pack-destination \"$PWD/.artifacts/libraries/corrected-f6c06db5\"",
+        "result": "passed: hash equals the qualified archive"
+      },
+      {
+        "command": "pnpm --dir packages/graph-react pack --pack-destination \"$PWD/.artifacts/libraries/corrected-f6c06db5\"",
+        "result": "passed: hash equals the qualified archive"
+      }
+    ],
+    "manifestSha256": {
+      "core": "8ed4caa5da41e1ac7838bfd19ed516dededbac321524b0b3538ba525cfd9dc35",
+      "graphReact": "58482860bc615575897ea030d3339d1c330e53901e9e4a428908bba928515fe1"
+    }
+  },
+  "licenses": [
+    {
+      "package": "@radius-project/core",
+      "archivePath": "dist/LICENSE",
+      "file": "licenses/core.LICENSE",
+      "sha256": "b7158de9a675ab1dda091e6df12dec985ca9e245e4df44b2326b0123fac327c8"
+    },
+    {
+      "package": "@radius-project/graph-react",
+      "archivePath": "dist/LICENSE",
+      "file": "licenses/graph-react.LICENSE",
+      "sha256": "b7158de9a675ab1dda091e6df12dec985ca9e245e4df44b2326b0123fac327c8"
+    },
+    {
+      "package": "@radius-project/graph-react",
+      "archivePath": "dist/THIRD_PARTY_NOTICES.txt",
+      "file": "licenses/graph-react.THIRD_PARTY_NOTICES.txt",
+      "sha256": "cf578734ce26b0dca3d578e381b543e958abdde9838f664a2e8650536c1da8c3"
+    }
+  ],
+  "limits": [
+    "Version 0.1.0 is package metadata, not a claim of registry publication.",
+    "Repository-relative resolutions select both exact archives, including graph-react's core dependency.",
+    "Package licenses are retained as received. This does not change the dashboard or forwarding package license.",
+    "Archive verification alone does not qualify a real host or approve graph record changes.",
+    "Public naming, release, support and distribution policy remain unqualified.",
+    "Producer-wide Canvas smoke has timeout limitations; it is not dashboard-host evidence."
+  ]
+}

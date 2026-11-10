@@ -4,7 +4,7 @@ import { InfoCard, StructuredMetadataTable } from '@backstage/core-components';
 import { Box } from '@material-ui/core';
 import { ResourceLink } from '../resourcelink/ResourceLink';
 import { ResourceBreadcrumbs } from '../resourcebreadcrumbs';
-import { parseResourceId } from '@radapp.io/rad-components';
+import { parseLegacyResourceId as parseResourceId } from '@radius-project/core/domain';
 import { RecipeTable } from '../recipes/RecipeTable';
 import { aggregateRecipesFromPack } from '../recipes/recipeAggregation';
 

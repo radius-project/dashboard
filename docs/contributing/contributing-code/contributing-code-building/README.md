@@ -114,6 +114,60 @@ yarn run build:all
 yarn workspace @radapp.io/rad-components run build
 ```
 
+#### Shared-library candidate preflight
+
+Use compiled core and graph-react tarballs from one identified producer revision.
+Do not use source aliases, registry fallback, or a rebuilt archive with an old digest.
+Use a temporary receipt outside the repository for intermediate candidates.
+For persistent development adoption, save the final compiled pair and its
+source/build/digest/license receipt under `vendor/shared-libraries`; use only
+repository-relative file resolutions. Do not commit intermediate candidates.
+This development path does not qualify registry or public package distribution.
+The byte-verification fields have this shape. Paths are relative to the receipt:
+
+```json
+{
+  "sourceRevision": "<full 40-character producer commit>",
+  "core": {
+    "path": "radius-project-core-0.1.0.tgz",
+    "sha256": "<archive SHA-256>"
+  },
+  "graphReact": {
+    "path": "radius-project-graph-react-0.1.0.tgz",
+    "sha256": "<archive SHA-256>",
+    "stylesSha256": "<dist/styles.css SHA-256 from this archive>",
+    "baseSha256": "<dist/base.css SHA-256 from this archive>"
+  }
+}
+```
+
+Run `yarn verify:shared-candidate <receipt.json>` before installation. It checks
+archive identity, shipped public JavaScript and declarations, stylesheet bytes,
+the exact graph-to-core dependency, and React peer declarations. This command
+does not download packages, extract files, run package code, or change manifests.
+
+After an explicit candidate installation, run
+`yarn verify:shared-candidate <receipt.json> <consumer-directory>`.
+This also compares all installed package files with the pinned archives, rejects
+workspace package links, and checks that direct and graph-transitive core and React
+resolve to the same files. React checks include each declared runtime renderer
+dependency, including `@xyflow/react`. When compatibility entries are present,
+both public compatibility entries must resolve the same core and React/DOM files.
+The installed consumer must also provide the optional Flow11 peer: its renderer
+must use the host React/DOM files and the same Flow11 provider instance as the
+legacy ResourceNode entry. Archive checks reject a required or direct Flow11
+dependency in place of that isolated optional peer. These checks do not prove
+that a native browser bundle excludes Flow11; host qualification must prove that.
+No package version alone proves artifact identity.
+
+Both stages report `hostQualified: false`. They do not prove browser safety,
+compatibility, CSS loading, or host behavior, and do not approve publication.
+Producer evidence must bind the declared source revision to the archive digests;
+the preflight does not verify that source relationship.
+Phase 4 still requires candidate-backed root/native host journeys, browser
+renderer/CSS negative checks, and reviewed graph record differences against the base.
+Run the preflight regression tests with `yarn test:qualification-runners`.
+
 **Build the dashboard container**
 
 ```bash

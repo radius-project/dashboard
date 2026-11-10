@@ -780,7 +780,7 @@ test('the actual build chain, offline CI tests, validation gates, and edge publi
   );
   assert.equal(
     rootPackage.scripts['test:qualification-runners'],
-    'node --test scripts/qualify-plugin-host.test.ts',
+    'node --test scripts/qualify-plugin-host.test.ts scripts/shared-library-candidate.test.ts',
   );
   assert.match(
     rootPackage.scripts['test:all'],
@@ -791,6 +791,11 @@ test('the actual build chain, offline CI tests, validation gates, and edge publi
     join(root, '.github', 'workflows', 'build.yaml'),
     'utf8',
   );
+  const browserInstall = workflow.indexOf(
+    'run: yarn exec playwright install --with-deps chromium',
+  );
+  assert.ok(browserInstall >= 0);
+  assert.ok(browserInstall < workflow.indexOf('- name: Run Tests'));
   assert.match(
     workflow,
     /run: yarn run test:all --coverageDirectory=coverage --coverageReporters=lcov --coverageReporters=text\r?\n/,

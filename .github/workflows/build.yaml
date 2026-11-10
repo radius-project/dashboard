@@ -69,6 +69,9 @@ jobs:
       - name: Build Storybook
         run: yarn workspace @radapp.io/rad-components run build-storybook
 
+      - name: Install Playwright browser
+        run: yarn exec playwright install --with-deps chromium
+
       - name: Run Tests
         env:
           # Empty on push builds, where GU-25 falls back to origin/main.
@@ -83,10 +86,6 @@ jobs:
           files: ./coverage/lcov.info
           disable_search: true
           fail_ci_if_error: true
-
-      - name: Install Playwright browser
-        if: ${{ env.CI_TEST == 'true' }}
-        run: yarn exec playwright install --with-deps chromium
 
       - name: Qualify Built Standalone Host
         if: ${{ env.CI_TEST == 'true' }}

@@ -1,214 +1,117 @@
 import { KubernetesApi } from '@backstage/plugin-kubernetes';
+import type { GraphContext } from '@radius-project/core/graph';
 import {
+  createRadiusQueryClient,
+  ApplicationGraphResponse,
   ApplicationProperties,
   EnvironmentProperties,
+  QueryFailure,
+  QueryOptions,
+  RadiusQueryClient,
+  RadiusQueryContext,
+  RadiusQueryRequest,
   Resource,
   ResourceList,
-  getEquivalentTypes,
-} from '../resources';
+  ResourceListOptions,
+  ResourceType,
+  ResourceTypeProperties,
+} from '@radius-project/core/domain';
+
+// Existing host overrides can still return the original { value } envelope.
+export interface RadiusListResult<
+  T = Record<string, unknown>,
+> extends ResourceList<T> {
+  readonly complete?: boolean;
+  readonly errors?: readonly QueryFailure[];
+}
+
+export interface RadiusApplicationGraph {
+  graph: ApplicationGraphResponse;
+  context: GraphContext;
+}
 
 export interface RadiusApi {
-  getResourceById<T = { [key: string]: unknown }>(opts: {
-    id: string;
-  }): Promise<Resource<T>>;
-  listApplications<T = ApplicationProperties>(opts?: {
-    resourceGroup?: string;
-  }): Promise<ResourceList<T>>;
-  listEnvironments<T = EnvironmentProperties>(opts?: {
-    resourceGroup?: string;
-  }): Promise<ResourceList<T>>;
-
-  // List available resource types from System.Resources provider for a given plane and provider
+  getResourceById<T = Record<string, unknown>>(
+    opts: { id: string } & QueryOptions,
+  ): Promise<Resource<T>>;
+  listApplications<T = ApplicationProperties>(
+    opts?: Omit<ResourceListOptions, 'resourceType'>,
+  ): Promise<RadiusListResult<T>>;
+  listEnvironments<T = EnvironmentProperties>(
+    opts?: Omit<ResourceListOptions, 'resourceType'>,
+  ): Promise<RadiusListResult<T>>;
   listResourceTypes(opts?: {
     planeName?: string;
     resourceProviderName?: string;
-  }): Promise<
-    ResourceList<{
-      namespace: string;
-      type: string;
-      apiVersion: string;
-      apiVersions?: string[];
-    }>
-  >;
-
+    signal?: AbortSignal;
+  }): Promise<ResourceList<ResourceTypeProperties>>;
   getResourceType(opts: {
     namespace: string;
     typeName: string;
     planeName?: string;
     clusterName?: string;
-  }): Promise<{
-    Name: string;
-    Description: string;
-    ResourceProviderNamespace: string;
-    APIVersions: Record<string, { Schema?: unknown }>;
-    APIVersionList: string[];
-  }>;
-
-  listResources<T = { [key: string]: unknown }>(opts?: {
-    resourceType?: string;
-    resourceGroup?: string;
-  }): Promise<ResourceList<T>>;
+    signal?: AbortSignal;
+  }): Promise<ResourceType>;
+  listResources<T = Record<string, unknown>>(
+    opts?: ResourceListOptions,
+  ): Promise<RadiusListResult<T>>;
+  getApplicationGraph?(
+    opts: { applicationId: string } & QueryOptions,
+  ): Promise<RadiusApplicationGraph>;
 }
 
-const pathPrefix = '/apis/api.ucp.dev/v1alpha3';
-const apiVersion = '?api-version=2023-10-01-preview';
-
-export const makePathForId = (id: string, customApiVersion?: string) => {
-  const version = customApiVersion
-    ? `?api-version=${customApiVersion}`
-    : apiVersion;
-  return `${pathPrefix}${id}${version}`;
-};
-
-export const makePath = ({
-  scopes,
-  type,
-  name,
-  action,
-  customApiVersion,
-}: {
-  scopes: { type: string; value?: string }[];
-  type?: string;
-  name?: string;
-  action?: string;
-  customApiVersion?: string;
-}) => {
-  const scopePart = scopes
-    .map(s => {
-      if (s.value) {
-        return `${s.type}/${s.value}`;
-      }
-
-      return s.type;
-    })
-    .join('/');
-  const typePart = type ? `/providers/${type}` : '';
-  const namePart = name ? `/${name}` : '';
-  const actionPart = action ? `/${action}` : '';
-  const id = `/planes/${scopePart}${typePart}${namePart}${actionPart}`;
-  return makePathForId(id, customApiVersion);
-};
-
 export class RadiusApiImpl implements RadiusApi {
+  private contextPromise?: Promise<RadiusQueryContext>;
+  private defaultClient?: RadiusQueryClient;
+  private readonly suppliedContext?: RadiusQueryContext;
+
   constructor(
     private readonly kubernetesApi: Pick<
       KubernetesApi,
       'getClusters' | 'proxy'
     >,
-  ) {}
-
-  async listResources<T = { [key: string]: unknown }>(
-    opts?: { resourceType?: string; resourceGroup?: string } | undefined,
-  ): Promise<ResourceList<T>> {
-    const cluster = await this.selectCluster();
-
-    // Fast path for listing resources of a specific type.
-    if (opts?.resourceType) {
-      const equivalentTypes = getEquivalentTypes(opts.resourceType);
-      if (equivalentTypes) {
-        // Query all equivalent types and merge results
-        return this.listMultipleTypes<T>(cluster, opts, equivalentTypes);
-      }
-
-      const resourceApiVersion = await this.getBestApiVersion(
-        opts.resourceType,
-        cluster,
-      );
-      const path = makePath({
-        scopes: this.makeScopes(opts),
-        type: opts.resourceType,
-        customApiVersion: resourceApiVersion,
-      });
-      return this.makeRequest<ResourceList<T>>(cluster, path);
+    context?: RadiusQueryContext,
+  ) {
+    if (context) {
+      this.suppliedContext = {
+        connectionId: context.connectionId,
+        plane: { ...context.plane },
+      };
     }
-
-    // no way to list resources in all groups yet :-/. Let's do the O(n) thing for now.
-    const groups = await this.makeRequest<ResourceList<Record<string, never>>>(
-      cluster,
-      makePath({
-        scopes: [
-          { type: 'radius', value: 'local' },
-          {
-            type: 'resourceGroups',
-          },
-        ],
-      }),
-    );
-    const resources: Resource<T>[] = [];
-    for (const group of groups.value) {
-      // Unfortunately we don't include all of the relevant properties in tracked resources.
-      // This is inefficient, but we'll have to do it for now.
-      const path = makePath({
-        scopes: [
-          { type: 'radius', value: 'local' },
-          {
-            type: 'resourceGroups',
-            value: group.name,
-          },
-        ],
-        action: 'resources',
-      });
-      const groupResources = await this.makeRequest<
-        ResourceList<Record<string, never>>
-      >(cluster, path);
-      if (groupResources.value) {
-        for (const resource of groupResources.value) {
-          // Deployments show up in tracked resources, but the RP may not hold onto them.
-          // There's limited value here so skip them for now.
-          if (resource.type === 'Microsoft.Resources/deployments') {
-            continue;
-          }
-          resources.push(await this.getResourceById<T>({ id: resource.id }));
-        }
-      }
-    }
-    return { value: resources };
   }
 
-  async getResourceById<T = { [key: string]: unknown }>(opts: {
-    id: string;
-  }): Promise<Resource<T>> {
-    const cluster = await this.selectCluster();
-
-    // Extract resource type from ID to determine appropriate API version
-    const resourceType = this.extractResourceTypeFromId(opts.id);
-
-    if (resourceType) {
-      const resourceApiVersion = await this.getBestApiVersion(
-        resourceType,
-        cluster,
-      );
-      const path = makePathForId(opts.id, resourceApiVersion);
-      const resource = await this.makeRequest<Resource<T>>(cluster, path);
-      return await this.fixupResource(resource);
-    }
-
-    // Fallback to existing behavior if resource type can't be extracted
-    const path = makePathForId(opts.id);
-    const resource = await this.makeRequest<Resource<T>>(cluster, path);
-    return await this.fixupResource(resource);
+  async getResourceById<T = Record<string, unknown>>(
+    opts: { id: string } & QueryOptions,
+  ): Promise<Resource<T>> {
+    return (await this.client()).getResourceById<T>(opts);
   }
 
-  async listApplications<T = ApplicationProperties>(opts?: {
-    resourceGroup?: string;
-  }): Promise<ResourceList<T>> {
-    const cluster = await this.selectCluster();
-
-    return this.listMultipleTypes<T>(cluster, opts, [
-      'Applications.Core/applications',
-      'Radius.Core/applications',
-    ]);
+  async listResources<T = Record<string, unknown>>(
+    opts?: ResourceListOptions,
+  ): Promise<RadiusListResult<T>> {
+    return (await this.client()).listResources<T>(opts);
   }
 
-  async listEnvironments<T = EnvironmentProperties>(opts?: {
-    resourceGroup?: string;
-  }): Promise<ResourceList<T>> {
-    const cluster = await this.selectCluster();
+  async listApplications<T = ApplicationProperties>(
+    opts?: Omit<ResourceListOptions, 'resourceType'>,
+  ): Promise<RadiusListResult<T>> {
+    return (await this.client()).listApplications<T>(opts);
+  }
 
-    return this.listMultipleTypes<T>(cluster, opts, [
-      'Applications.Core/environments',
-      'Radius.Core/environments',
-    ]);
+  async listEnvironments<T = EnvironmentProperties>(
+    opts?: Omit<ResourceListOptions, 'resourceType'>,
+  ): Promise<RadiusListResult<T>> {
+    return (await this.client()).listEnvironments<T>(opts);
+  }
+
+  async listResourceTypes(opts?: {
+    planeName?: string;
+    resourceProviderName?: string;
+    signal?: AbortSignal;
+  }): Promise<ResourceList<ResourceTypeProperties>> {
+    return (await this.client(opts)).listResourceTypes({
+      signal: opts?.signal,
+    });
   }
 
   async getResourceType(opts: {
@@ -216,308 +119,98 @@ export class RadiusApiImpl implements RadiusApi {
     typeName: string;
     planeName?: string;
     clusterName?: string;
-  }): Promise<{
-    Name: string;
-    Description: string;
-    ResourceProviderNamespace: string;
-    APIVersions: Record<string, { Schema?: unknown }>;
-    APIVersionList: string[];
-  }> {
-    const cluster = opts.clusterName || (await this.selectCluster());
-    const plane = opts?.planeName || 'local';
+    signal?: AbortSignal;
+  }): Promise<ResourceType> {
+    return (await this.client(opts)).getResourceType(opts);
+  }
 
-    // Try to get specific resource type details from UCP API
-    // This endpoint should match what 'rad resource-type show' calls
-    const specificPath = makePath({
-      scopes: [{ type: 'radius', value: plane }],
-      action: `providers/${opts.namespace}/resourceTypes/${opts.typeName}`,
-    });
+  async getApplicationGraph(
+    opts: { applicationId: string } & QueryOptions,
+  ): Promise<RadiusApplicationGraph> {
+    const context = await this.resolveContext();
+    const graph = await (await this.client()).getApplicationGraph(opts);
+    return {
+      graph,
+      context: {
+        connectionId: context.connectionId,
+        plane: { ...context.plane },
+        applicationId: opts.applicationId,
+      },
+    };
+  }
 
-    try {
-      // Try the specific resource type endpoint first
-      const specificData = await this.makeRequest<{
-        Name: string;
-        Description?: string;
-        ResourceProviderNamespace: string;
-        APIVersions: Record<string, { Schema?: unknown }>;
-        APIVersionList: string[];
-      }>(cluster, specificPath);
-
-      return {
-        Name: specificData.Name,
-        Description:
-          specificData.Description ||
-          'No description available for this resource type.',
-        ResourceProviderNamespace: specificData.ResourceProviderNamespace,
-        APIVersions: specificData.APIVersions,
-        APIVersionList: specificData.APIVersionList,
-      };
-    } catch (error) {
-      // Fallback to the providers endpoint if specific endpoint fails
-      const providersPath = makePath({
-        scopes: [{ type: 'radius', value: plane }],
-        action: 'providers',
+  private async resolveContext(): Promise<RadiusQueryContext> {
+    if (this.suppliedContext) {
+      return this.suppliedContext;
+    }
+    if (!this.contextPromise) {
+      this.contextPromise = this.kubernetesApi.getClusters().then(clusters => {
+        const first = clusters[0];
+        if (!first) {
+          throw new Error('No kubernetes clusters found');
+        }
+        return {
+          connectionId: first.name,
+          plane: { type: 'radius', name: 'local' },
+        };
       });
-
-      const data = await this.makeRequest<{ [key: string]: unknown }>(
-        cluster,
-        providersPath,
-      );
-      const providers =
-        (
-          data as {
-            value?: Array<{
-              name: string;
-              resourceTypes: Record<
-                string,
-                {
-                  apiVersions: Record<string, unknown>;
-                  description?: string;
-                }
-              >;
-            }>;
-          }
-        ).value || [];
-
-      // Find the specific resource type in providers list
-      for (const provider of providers) {
-        if (provider.name === opts.namespace) {
-          const resourceTypes = provider.resourceTypes || {};
-          const resourceType = resourceTypes[opts.typeName];
-
-          if (resourceType) {
-            const apiVersions = Object.keys(resourceType.apiVersions || {});
-
-            return {
-              Name: `${opts.namespace}/${opts.typeName}`,
-              Description:
-                resourceType.description ||
-                `This is the ${opts.typeName} resource type from the ${opts.namespace} provider. It allows you to define and manage ${opts.typeName} resources within your Radius applications.`,
-              ResourceProviderNamespace: opts.namespace,
-              APIVersions: resourceType.apiVersions as Record<
-                string,
-                { Schema?: unknown }
-              >,
-              APIVersionList: apiVersions,
-            };
-          }
-        }
+    }
+    const pending = this.contextPromise;
+    try {
+      return await pending;
+    } catch (error) {
+      if (this.contextPromise === pending) {
+        this.contextPromise = undefined;
       }
-
-      throw new Error(
-        `Resource type ${opts.namespace}/${opts.typeName} not found`,
-      );
+      throw error;
     }
   }
 
-  async listResourceTypes(opts?: {
+  private async client(override?: {
     planeName?: string;
-    resourceProviderName?: string;
-  }): Promise<
-    ResourceList<{
-      namespace: string;
-      type: string;
-      apiVersion: string;
-      apiVersions?: string[];
-    }>
-  > {
-    const cluster = await this.selectCluster();
-
-    const plane = opts?.planeName || 'local';
-
-    // Use the ListResourceProviderSummaries endpoint: /planes/radius/{planeName}/providers
-    const path = makePath({
-      scopes: [{ type: 'radius', value: plane }],
-      action: 'providers',
-    });
-
-    // Get the resource provider summaries
-    const data = await this.makeRequest<{ [key: string]: unknown }>(
-      cluster,
-      path,
-    );
-
-    const items: Array<{
-      id: string;
-      name: string;
-      type: string;
-      systemData: Record<string, never>;
-      properties: {
-        namespace: string;
-        type: string;
-        apiVersion: string;
-        apiVersions?: string[];
-      };
-    }> = [];
-
-    // Parse the providers response structure
-    const providers =
-      (
-        data as {
-          value?: Array<{
-            name: string;
-            resourceTypes: Record<
-              string,
-              {
-                apiVersions: Record<string, unknown>;
-              }
-            >;
-          }>;
+    clusterName?: string;
+  }): Promise<RadiusQueryClient> {
+    const context = override?.clusterName
+      ? {
+          connectionId: override.clusterName,
+          plane: this.suppliedContext?.plane ?? {
+            type: 'radius',
+            name: 'local',
+          },
         }
-      ).value || [];
-
-    // Extract resource types from each provider, filtering for Radius namespaces
-    for (const provider of providers) {
-      const namespace = provider.name;
-      const resourceTypes = provider.resourceTypes || {};
-
-      // Include all namespaces - filtering will be done on the frontend
-      // This includes Applications.*, Microsoft.Resources, etc.
-
-      for (const [typeName, typeInfo] of Object.entries(resourceTypes)) {
-        const apiVersions = Object.keys(typeInfo.apiVersions || {});
-        const fullName = `${namespace}/${typeName}`;
-
-        // Create a single entry with all API versions
-        if (apiVersions.length > 0) {
-          items.push({
-            id: fullName,
-            name: fullName,
-            type: 'System.Resources/resourceTypes',
-            systemData: {},
-            properties: {
-              namespace,
-              type: typeName, // Show only the type name without namespace
-              apiVersions: apiVersions, // Store all API versions
-              apiVersion: apiVersions.join('\n'), // Display versions separated by newlines
-            },
-          });
-        }
-      }
+      : await this.resolveContext();
+    const port = {
+      request: <T>(request: RadiusQueryRequest) => this.request<T>(request),
+    };
+    if (override?.planeName || override?.clusterName) {
+      return createRadiusQueryClient(port, {
+        connectionId: override.clusterName || context.connectionId,
+        plane: {
+          ...context.plane,
+          name: override.planeName || context.plane.name,
+        },
+      });
     }
-
-    return { value: items };
+    this.defaultClient ??= createRadiusQueryClient(port, context);
+    return this.defaultClient;
   }
 
-  private async listMultipleTypes<T>(
-    cluster: string,
-    opts: { resourceGroup?: string } | undefined,
-    types: string[],
-  ): Promise<ResourceList<T>> {
-    const results = await Promise.allSettled(
-      types.map(async type => {
-        const resourceApiVersion = await this.getBestApiVersion(type, cluster);
-        const path = makePath({
-          scopes: this.makeScopes(opts),
-          type,
-          customApiVersion: resourceApiVersion,
-        });
-        return this.makeRequest<ResourceList<T>>(cluster, path);
-      }),
-    );
-
-    const allResources: Resource<T>[] = [];
-    const seenIds = new Set<string>();
-    for (const result of results) {
-      if (result.status === 'fulfilled' && result.value?.value) {
-        for (const resource of result.value.value) {
-          if (!seenIds.has(resource.id)) {
-            seenIds.add(resource.id);
-            allResources.push(resource);
-          }
-        }
-      }
-    }
-
-    // If all requests failed, throw the first error
-    const hasAnyFulfilledResult = results.some(r => r.status === 'fulfilled');
-    if (!hasAnyFulfilledResult) {
-      const firstError = results.find(r => r.status === 'rejected');
-      if (firstError && firstError.status === 'rejected') {
-        throw firstError.reason;
-      }
-    }
-
-    return { value: allResources };
-  }
-
-  private async selectCluster(): Promise<string> {
-    const clusters = await this.kubernetesApi.getClusters();
-    for (const cluster of clusters) {
-      return cluster.name;
-    }
-
-    throw new Error('No kubernetes clusters found');
-  }
-
-  private makeScopes(opts?: {
-    resourceGroup?: string;
-  }): { type: string; value?: string }[] {
-    const scopes = [{ type: 'radius', value: 'local' }];
-    if (opts?.resourceGroup) {
-      scopes.push({ type: 'resourceGroups', value: opts.resourceGroup });
-    }
-    return scopes;
-  }
-
-  private async makeRequest<T>(cluster: string, path: string): Promise<T> {
+  private async request<T>(request: RadiusQueryRequest): Promise<T> {
     const response = await this.kubernetesApi.proxy({
-      clusterName: cluster,
-      path: path,
+      clusterName: request.connectionId,
+      path: request.path,
       init: {
-        referrerPolicy: 'no-referrer', // See https://github.com/radius-project/radius/issues/6983
+        referrerPolicy: 'no-referrer',
         mode: 'cors',
         cache: 'no-cache',
-        method: 'GET',
+        method: request.method,
+        signal: request.signal,
       },
     });
-
     if (!response.ok) {
       const text = await response.text();
       throw new Error(`Request failed: ${response.status}:\n\n${text}`);
     }
-
-    const data = (await response.json()) as T;
-    return data;
-  }
-
-  private async fixupResource<T>(resource: Resource<T>): Promise<Resource<T>> {
-    const p = resource.properties as { [key: string]: string };
-    if (p.application && !p.environment) {
-      const app = await this.getResourceById<ApplicationProperties>({
-        id: p.application,
-      });
-      p.environment = app.properties.environment;
-    }
-
-    resource.properties = p as T;
-    return resource;
-  }
-
-  private async getBestApiVersion(
-    resourceType: string,
-    clusterName?: string,
-  ): Promise<string> {
-    try {
-      const [namespace, typeName] = resourceType.split('/');
-      const typeInfo = await this.getResourceType({
-        namespace,
-        typeName,
-        clusterName,
-      });
-
-      // Use first available version (assumes they're ordered sensibly)
-      return typeInfo.APIVersionList[0] || '2023-10-01-preview';
-    } catch {
-      // Fallback to default on any error
-      return '2023-10-01-preview';
-    }
-  }
-
-  private extractResourceTypeFromId(id: string): string | null {
-    // Parse resource ID to extract resource type
-    // Example: /planes/radius/local/resourceGroups/my-group/providers/Radius.Data/postgreSqlDatabases/postgresql
-    const match = id.match(/\/providers\/([^/]+\/[^/]+)/);
-    return match ? match[1] : null;
+    return (await response.json()) as T;
   }
 }
