@@ -173,6 +173,31 @@ describe('RecipeListPage', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('RE-06b / ER-08 / #369: keeps an environment with a loaded empty pack visible when another pack fails', async () => {
+    const emptyPack = {
+      ...pack,
+      id: PACK_ID.toUpperCase(),
+      properties: { recipes: {} },
+    };
+    const failing = {
+      ...packEnvironment,
+      id: `${packEnvironment.id}-failing`,
+      name: 'failing',
+      properties: {
+        ...packEnvironment.properties,
+        recipePacks: [`${PACK_ID}-missing`],
+      },
+    };
+    await renderPage(apiReturning([packEnvironment, failing], [emptyPack]));
+
+    expect(
+      await screen.findByText(/Incomplete Radius inventory/),
+    ).toBeVisible();
+    expect(
+      screen.queryByText('No Radius inventory data is available'),
+    ).not.toBeInTheDocument();
+  });
+
   it('RE-06a / ER-08 / #369: retains inline recipes with a warning when a recipe pack fails', async () => {
     await renderPage(
       apiReturning([

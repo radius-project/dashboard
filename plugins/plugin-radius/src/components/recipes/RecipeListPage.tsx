@@ -135,6 +135,10 @@ export const RecipeListPageContent = () => {
     throw new Error('This should not happen.');
   }
 
+  const loadedPackIds = new Set(
+    Object.keys(value.packsById).map(id => id.toLowerCase()),
+  );
+
   return (
     <ResourceQueryResult
       result={{
@@ -144,6 +148,9 @@ export const RecipeListPageContent = () => {
         value: value.environments.value.filter(
           environment =>
             !environment.properties?.recipePacks?.length ||
+            environment.properties.recipePacks.some(id =>
+              loadedPackIds.has(id.toLowerCase()),
+            ) ||
             aggregateRecipesFromEnvironment(environment, value.packsById)
               .length > 0,
         ),
