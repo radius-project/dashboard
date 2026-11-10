@@ -47,8 +47,10 @@ The shared native card shows resource-type icons and the raw provisioning text.
 It does not infer deployment success. It shortens the visible type label but
 retains the original full type and ID in the DOM. Legend and details popup remain
 disabled by default. The separate public `rad-components` compatibility exports
-keep compact cards and forward to the same shared renderer; only the optional
-data-only `ResourceNode` entry uses the host's Flow11 provider.
+keep compact cards and forward to the same shared renderer; only the data-only
+`ResourceNode` entry uses the host's Flow11 provider. Its root barrel exports
+`ResourceNode`, so `rad-components` keeps `reactflow` as a required peer, as before.
+Only the shared graph package treats Flow11 as an optional peer.
 The plugin and forwarding package now declare React/ReactDOM `^18.3.1`, matching
 the dashboard and shared renderer. The old React 16/17 peer ranges are not carried
 forward as unsupported claims. This change does not add React 19 host support.

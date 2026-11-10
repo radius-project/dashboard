@@ -8651,9 +8651,6 @@ __metadata:
     react: ^18.3.1
     react-dom: ^18.3.1
     reactflow: ^11.11.4
-  peerDependenciesMeta:
-    reactflow:
-      optional: true
   languageName: unknown
   linkType: soft
 

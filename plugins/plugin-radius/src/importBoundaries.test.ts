@@ -230,7 +230,9 @@ describe('current package import boundaries', () => {
       '@radius-project/core': '0.1.0',
       '@radius-project/graph-react': '0.1.0',
     });
-    expect(manifest.peerDependenciesMeta.reactflow.optional).toBe(true);
+    // The root barrel statically loads the Flow11 ResourceNode entry.
+    expect(manifest.peerDependencies.reactflow).toBe('^11.11.4');
+    expect(manifest.peerDependenciesMeta?.reactflow).toBeUndefined();
     expect(fs.existsSync(path.join(directory, 'graphModel.ts'))).toBe(false);
     expect(fs.existsSync(path.join(directory, 'graphRecord.ts'))).toBe(false);
   });
