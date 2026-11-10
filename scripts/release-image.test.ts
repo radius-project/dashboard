@@ -791,12 +791,27 @@ test('the actual build chain, offline CI tests, validation gates, and edge publi
     join(root, '.github', 'workflows', 'build.yaml'),
     'utf8',
   );
-  assert.match(workflow, /run: yarn run test:all/);
   const browserInstall = workflow.indexOf(
     'run: yarn exec playwright install --with-deps chromium',
   );
   assert.ok(browserInstall >= 0);
   assert.ok(browserInstall < workflow.indexOf('- name: Run Tests'));
+  assert.match(
+    workflow,
+    /run: yarn run test:all --coverageDirectory=coverage --coverageReporters=lcov --coverageReporters=text\r?\n/,
+  );
+  const coverageUpload = workflow
+    .split('- name: Upload coverage to Codecov')[1]
+    ?.split('\n      - name:')[0];
+  assert.ok(coverageUpload, 'The workflow must upload coverage to Codecov');
+  assert.match(
+    coverageUpload,
+    /if: \$\{\{ github\.repository == 'radius-project\/dashboard' \}\}/,
+  );
+  assert.match(coverageUpload, /uses: codecov\/codecov-action@[a-f0-9]{40}/);
+  assert.match(coverageUpload, /files: \.\/coverage\/lcov\.info/);
+  assert.match(coverageUpload, /disable_search: true/);
+  assert.match(coverageUpload, /fail_ci_if_error: true/);
   assert.match(workflow, /- name: Build Image\s+run: yarn run build-image/);
   assert.match(workflow, /run: node scripts\/release-image.ts stage/);
   assert.doesNotMatch(workflow, /REL_CHANNEL/);
