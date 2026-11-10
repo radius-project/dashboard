@@ -2,7 +2,7 @@ import React from 'react';
 import { EnvironmentProperties, Resource } from '../../resources';
 import { InfoCard } from '@backstage/core-components';
 import { Box, Grid, Typography } from '@material-ui/core';
-import { parseResourceId } from '@radapp.io/rad-components';
+import { parseLegacyResourceId as parseResourceId } from '@radius-project/core/domain';
 
 export const EnvironmentDetailsTable = (props: {
   environment: Resource<EnvironmentProperties>;
