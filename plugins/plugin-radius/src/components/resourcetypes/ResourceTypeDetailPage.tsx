@@ -1911,7 +1911,7 @@ This should test whether copy buttons appear properly.`;
                           })
                       : [];
 
-                    // Function to extract nested properties from object type properties (same as regular Properties tab)
+                    // Expand only read-only children in the Output Properties tab.
                     const extractNestedProperties = (
                       propertySchema: unknown,
                     ): {
@@ -1958,7 +1958,7 @@ This should test whether copy buttons appear properly.`;
                               const typedNestedProp = nestedPropSchema as {
                                 readOnly?: boolean;
                               };
-                              return typedNestedProp.readOnly !== true;
+                              return typedNestedProp.readOnly === true;
                             },
                           )
                           .map(
@@ -2066,7 +2066,7 @@ This should test whether copy buttons appear properly.`;
                             const typedNestedProp = nestedPropSchema as {
                               readOnly?: boolean;
                             };
-                            return typedNestedProp.readOnly !== true;
+                            return typedNestedProp.readOnly === true;
                           })
                           .map(
                             ([nestedPropName, nestedPropSchema]: [
@@ -2168,7 +2168,7 @@ This should test whether copy buttons appear properly.`;
                                 const typedNestedProp = nestedPropSchema as {
                                   readOnly?: boolean;
                                 };
-                                return typedNestedProp.readOnly !== true;
+                                return typedNestedProp.readOnly === true;
                               },
                             )
                             .map(
