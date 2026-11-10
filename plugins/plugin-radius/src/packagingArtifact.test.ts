@@ -8,7 +8,8 @@
  *
  * The fixture resolves the local tarballs from an isolated node_modules tree
  * while repository dependencies remain available for declaration checking.
- * Phase 5 replaces this with a fully clean install and host build.
+ * The separate `test:e2e:installed` runner installs all frontend dependencies
+ * into a clean consumer. This faster suite remains a package smoke check.
  */
 /* eslint-disable no-restricted-imports */
 import { execFileSync } from 'child_process';

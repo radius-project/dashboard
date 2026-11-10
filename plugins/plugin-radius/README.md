@@ -106,4 +106,84 @@ not part of this extraction.
 `ResourceNode.test.tsx` remains as a public compatibility check. Parser and recipe
 tests also remain at their public input/output seams; only their implementations
 move upstream. No coverage threshold was reduced. Browser qualification does not
-run Docker, deploy a backend, or prove production authorization.
+run Docker by default or prove production authorization.
+
+## Phase 5 installed-host evidence
+
+Phase 5 is in progress. `yarn test:package` remains a linked-dependency smoke
+check. Do not use it to qualify a clean external host.
+
+Run `yarn test:e2e:installed` with `QUALIFICATION_EVIDENCE_DIRECTORY` set to a
+persistent absolute path outside the checkout. Each run builds new plugin and
+forwarding tarballs, installs all frontend dependencies in a new consumer, and
+uses the same production browser journeys for the packed root and `/alpha`
+entries. Native Radius uses explicit feature registration, not a Radius plugin
+converter. The fixture host owns navigation, external route bindings, and its
+test identity. No automatic guest sign-in is enabled.
+
+The runner retains `commands.json`, command logs, `tuple.json`, archives, an
+installed lockfile, production `browser/metafile.json`, HTTP evidence, and graph
+records. Only a successful run writes `qualification.json`. Without a container,
+its scope is `installed-external-frontend`; `phase5Complete` stays `false`. Its exact package
+versions and lockfile hashes are evidence of one tuple, not a support range or a
+decision on D2 or D5. The vendored shared candidates and graph records do not
+change. Publication remains out of scope.
+
+Set `QUALIFICATION_CONTAINER_IMAGE` to an already built local dashboard image
+to repeat the **same installed legacy/native journeys** through its real
+new-system backend and Kubernetes proxy. The controlled upstream verifies the
+selected cluster credential and serves the same fixture data. The browser
+uses the host-owned fixture identity; the backend accepts its controlled static
+token only for the Kubernetes plugin. This pins a test auth tuple, not a
+production identity provider. No browser request interception is used.
+
+Container mode also checks explicit startup failure when required Kubernetes
+initialization config is missing. Both resource GET and graph POST must reach
+the upstream when allowed and return 403 when denied. List and graph errors
+must remain visible. Missing authentication must return 401. Evidence includes
+the image ID/labels, config, backend stdout/stderr, startup failure, and upstream
+request results. The container runs with `NODE_ENV=production`, without source
+mounts, package pulls, or the health scaffold. It requires a Linux Docker daemon
+with host networking. The existing native standalone suite can also run against
+that image, but its four baseline tests do not close the full matrix.
+
+The table maps executable checks, not a claim that every gate has passed.
+Backend evidence below requires container mode.
+
+| Requirement | Executable evidence | Remaining scope |
+| --- | --- | --- |
+| HU-01 | `qualify-plugin-host.ts --installed`: actual legacy/native `createApp`, browser errors fail; optional real container backend | Full standalone/container frontend journeys |
+| HU-02 | Same journey visits all eight headings for each entry and base path | Standalone/container matrix |
+| HU-03 | Host binds its external applications ref to the plugin's real applications ref; browser follows that link | Standalone/container bindings |
+| HU-04 | Named host navigation links must exist and have exact accessible names | Full sidebar surfaces across the matrix |
+| HU-05 | Fixture links call `useRouteRef`; browser checks their computed destinations | Standalone/container navigation |
+| HU-06 | Installed journeys mount the plugin at `/plugins/radius`, also with the real container backend | Standalone/container frontend mounts |
+| HU-07 | The same nested mount runs with both root and `/nested` app base paths, also with the real backend | Standalone/container frontend base paths |
+| HU-08 | One candidate plugin archive supplies packed root and `/alpha` hosts | Standalone/container evidence |
+| HU-09 | Host-owned fixture identity supplies HTTP credentials; real backend rejects missing identity | Controlled fixture/static auth is not a production provider |
+| HU-10 | Real proxy GET/graph POST return upstream 403; list and graph errors are visible, not empty success | Two-connection isolation matrix |
+| HU-11 | Both external entries reuse one Phase 3/4 journey with HTTP-fixture or real-container backend setup | Share full journeys with standalone/container frontend setup |
+| HU-12 | Real native backend initializes app/proxy/auth/provider/catalog/Kubernetes without health scaffold; missing initialization config exits with error | Other missing-service combinations, two-connection isolation, full matrix |
+| IA-01 | New Yarn consumer installs four candidate tarballs; build inputs must remain inside that consumer | Installed backend consumer |
+| IA-02 | Repository build/pack, installed declaration and fixture compilation, production esbuild frontend bundles; separately built backend/container | Independent clean installed backend build; `skipLibCheck` is retained, not full dependency declaration checking |
+| IA-03 | Shared preflight checks graph-transitive core; `assertCandidateResolution` also checks plugin/forwarding resolution | Installed backend dependency tree |
+| IA-04 | Compiled shared inputs are required; workspace source and Flow11 browser inputs fail | Continue public forwarding-contract and import-boundary tests |
+| IA-05 | Full installed frontend tree must contain one React and one ReactDOM copy | Standalone/container installed tree |
+| IA-06 | Exact archive CSS bytes, CSS input in build metadata, built CSS, loaded browser rules and computed controls; altered installed CSS fails | Standalone/container production CSS |
+| IA-07 | Actual legacy/native registration/routes work through the real container Kubernetes proxy to fake upstream | Backend candidate/install closure and two-connection matrix |
+| IA-08 | Production bundles are served as files; actual installed graph renderers and built container backend | Complete standalone/container frontend journeys |
+| RX-01 | `assertInstalledReact18` rejects duplicate peers and any non-18 host React | Dashboard/container tree |
+| RX-02 | Both installed entry journeys use shared cards, edges, fit and zoom; graph observer checks the forwarding entry | Dashboard/container graph journeys |
+| RX-03 | A React 19 negative test fails the host tree check | No React 19 Backstage support claim |
+
+`scripts/installed-host.test.ts` checks duplicate resolution, duplicate React,
+React 19, missing shared/CSS build inputs, old renderer inputs, and inputs outside
+the clean host. `shared-library-candidate.test.ts` retains the exact-byte and
+missing-file checks. `observe-shared-graph.ts` retains actual missing-CSS and
+stub-renderer browser controls. These negative tests must not be replaced with
+successful imports or a placeholder graph.
+
+The native external host still needs installed API override, card, and theme
+journeys. The temporary hybrid host is not a permanent support requirement.
+Native standalone and built-container baseline evidence is not full host
+qualification. Do not mark Phase 5 complete until the listed gaps are closed.

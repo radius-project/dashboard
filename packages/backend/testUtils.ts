@@ -11,6 +11,50 @@ export interface TestCluster {
   serviceAccountToken: string;
 }
 
+export function testBackendConfig(
+  clusters: TestCluster[],
+  port: number,
+  installedFrontend = false,
+) {
+  const baseUrl = `http://127.0.0.1:${port}`;
+  return {
+    app: {
+      baseUrl,
+      title: 'Radius Dashboard',
+      packageName: '@internal/app',
+    },
+    backend: {
+      baseUrl,
+      listen: { port, host: '127.0.0.1' },
+      database: { client: 'better-sqlite3', connection: ':memory:' },
+      ...(installedFrontend
+        ? {
+            auth: {
+              externalAccess: [
+                {
+                  type: 'static',
+                  options: {
+                    token: 'radius-installed-host-fixture',
+                    subject: 'qualification-host',
+                  },
+                  accessRestrictions: [{ plugin: 'kubernetes' }],
+                },
+              ],
+            },
+          }
+        : {}),
+    },
+    auth: {
+      providers: { guest: { dangerouslyAllowOutsideDevelopment: true } },
+    },
+    catalog: { locations: [] },
+    kubernetes: {
+      serviceLocatorMethod: { type: 'multiTenant' },
+      clusterLocatorMethods: [{ type: 'config', clusters }],
+    },
+  };
+}
+
 function isAddressInUse(error: unknown): boolean {
   let current = error;
   while (current && typeof current === 'object') {
@@ -39,26 +83,7 @@ export async function startTestBackend(clusters: TestCluster[]) {
     backend.add(mockServices.rootLogger.factory({ level: 'error' }));
     backend.add(
       mockServices.rootConfig.factory({
-        data: {
-          app: {
-            baseUrl,
-            title: 'Radius Dashboard',
-            packageName: '@internal/app',
-          },
-          backend: {
-            baseUrl,
-            listen: { port, host: '127.0.0.1' },
-            database: { client: 'better-sqlite3', connection: ':memory:' },
-          },
-          auth: {
-            providers: { guest: { dangerouslyAllowOutsideDevelopment: true } },
-          },
-          catalog: { locations: [] },
-          kubernetes: {
-            serviceLocatorMethod: { type: 'multiTenant' },
-            clusterLocatorMethods: [{ type: 'config', clusters }],
-          },
-        },
+        data: testBackendConfig(clusters, port),
       }),
     );
 
