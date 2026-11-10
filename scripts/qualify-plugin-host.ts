@@ -45,6 +45,47 @@ async function main() {
       'Browser fixtures must use both packed entries, not workspace source',
     );
   }
+  for (const entry of ['native', 'legacy']) {
+    const outputs = bundle.metafile.outputs;
+    const start = Object.keys(outputs).find(
+      file => path.resolve(file) === path.join(output, `${entry}.js`),
+    );
+    if (!start) throw new Error(`Missing packed ${entry} output`);
+    const visited = new Set<string>();
+    const visit = (file: string) => {
+      if (visited.has(file)) return;
+      visited.add(file);
+      const metadata = outputs[file];
+      if (!metadata) throw new Error(`Missing bundled output ${file}`);
+      if (
+        Object.keys(metadata.inputs).some(input =>
+          /node_modules\/(?:reactflow|@reactflow)\//.test(
+            input.replaceAll('\\', '/'),
+          ),
+        )
+      ) {
+        throw new Error(
+          `Packed ${entry} plugin must not include legacy Flow11`,
+        );
+      }
+      for (const dependency of metadata.imports.filter(
+        item => !item.external,
+      )) {
+        const target = Object.keys(outputs).find(
+          candidate =>
+            path.resolve(candidate) ===
+              path.resolve(path.dirname(file), dependency.path) ||
+            path.resolve(candidate) === path.resolve(dependency.path),
+        );
+        if (!target)
+          throw new Error(
+            `Cannot trace packed output dependency ${dependency.path}`,
+          );
+        visit(target);
+      }
+    };
+    visit(start);
+  }
   const applicationId =
     '/planes/radius/local/resourceGroups/demo/providers/Applications.Core/applications/packed-app';
   const environmentId =
@@ -115,6 +156,7 @@ async function main() {
     for (system of ['legacy', 'native']) {
       const context = await browser.newContext();
       const page = await context.newPage();
+      await page.setViewportSize({ width: 1500, height: 1200 });
       const errors: string[] = [];
       page.on('pageerror', error => errors.push(error.message));
       page.on('dialog', async dialog => {
@@ -171,11 +213,170 @@ async function main() {
         await page.getByRole('link', { name: 'packed-app' }).click();
         await page.getByRole('tab', { name: 'App Graph' }).click();
         await expect(
-          page.getByRole('button', { name: /^frontend/ }),
+          page.getByRole('group', { name: 'frontend', exact: true }),
         ).toBeVisible({ timeout: 15_000 });
+        await page
+          .getByRole('button', { name: 'Fit View', exact: true })
+          .click();
+        await expect
+          .poll(() =>
+            page.locator('.react-flow').evaluate(flow => {
+              const viewport = flow.getBoundingClientRect();
+              return Array.from(
+                flow.querySelectorAll('.react-flow__node'),
+              ).every(node => {
+                const box = node.getBoundingClientRect();
+                return (
+                  box.width > 0 &&
+                  box.height > 0 &&
+                  box.left >= viewport.left &&
+                  box.top >= viewport.top &&
+                  box.right <= viewport.right &&
+                  box.bottom <= viewport.bottom
+                );
+              });
+            }),
+          )
+          .toBe(true);
+        for (const name of ['frontend', 'backend', 'edge', 'cache']) {
+          await expect(
+            page.getByRole('group', { name, exact: true }),
+          ).toBeInViewport({ ratio: 0.99999 });
+        }
+        const viewport = page.locator('.react-flow__viewport');
+        const fitted = await viewport.getAttribute('style');
+        const zoomLevel = () =>
+          viewport.evaluate(
+            element => new DOMMatrix(getComputedStyle(element).transform).a,
+          );
+        const fittedZoom = await zoomLevel();
+        await page
+          .getByRole('button', { name: 'Zoom In', exact: true })
+          .click();
+        await expect(viewport).not.toHaveAttribute('style', fitted ?? '');
+        await expect.poll(zoomLevel).toBeGreaterThan(fittedZoom + 0.01);
+        const zoomedIn = await zoomLevel();
+        await page
+          .getByRole('button', { name: 'Zoom Out', exact: true })
+          .click();
+        await expect.poll(zoomLevel).toBeLessThan(zoomedIn);
+        const zoomedOut = await zoomLevel();
+        await page
+          .getByRole('button', { name: 'Fit View', exact: true })
+          .click();
+        await expect
+          .poll(() =>
+            page.locator('.react-flow__node').evaluateAll(
+              nodes =>
+                nodes.length === 4 &&
+                nodes.every(node => {
+                  const box = node.getBoundingClientRect();
+                  return (
+                    box.top >= 0 &&
+                    box.left >= 0 &&
+                    box.right <= window.innerWidth &&
+                    box.bottom <= window.innerHeight
+                  );
+                }),
+            ),
+          )
+          .toBe(true);
+        const evidenceDirectory = process.env.QUALIFICATION_EVIDENCE_DIRECTORY;
+        if (evidenceDirectory && basePath === '') {
+          fs.mkdirSync(evidenceDirectory, { recursive: true });
+          await page.screenshot({
+            path: path.join(evidenceDirectory, `${system}-multi-tier.png`),
+            fullPage: true,
+            animations: 'disabled',
+          });
+          await page.locator('.react-flow').screenshot({
+            path: path.join(
+              evidenceDirectory,
+              `${system}-multi-tier-complete-graph.png`,
+            ),
+            animations: 'disabled',
+          });
+          const record = await page.evaluate(() => ({
+            nodes: Array.from(document.querySelectorAll('.react-flow__node'))
+              .map(element => {
+                const card = element.querySelector('[data-node-id]') ?? element;
+                return {
+                  id: element.getAttribute('data-id'),
+                  label: (
+                    card.querySelector('[data-radius-part="node-title"], h3')
+                      ?.textContent ?? ''
+                  ).trim(),
+                  typeText: (
+                    card.querySelector('[data-radius-part="node-type"], h6')
+                      ?.textContent ?? ''
+                  ).trim(),
+                  rawType: card.getAttribute('data-radius-resource-type'),
+                  icon: card.getAttribute('data-radius-icon'),
+                  badge: card.getAttribute('data-radius-badge'),
+                  provisioning: card.getAttribute('data-radius-provisioning'),
+                };
+              })
+              .sort((left, right) =>
+                (left.id ?? '').localeCompare(right.id ?? ''),
+              ),
+            edges: Array.from(document.querySelectorAll('.react-flow__edge'))
+              .map(element => {
+                const id = element.getAttribute('data-id');
+                if (id?.startsWith('[')) {
+                  const [source, target] = JSON.parse(id) as [string, string];
+                  return { source, target };
+                }
+                const label = element.getAttribute('aria-label') ?? '';
+                const match = /^Edge from (.*?) to (.*)$/.exec(label);
+                if (!match)
+                  throw new Error(
+                    'Rendered edge has no observable directed identity',
+                  );
+                return { source: match[1], target: match[2] };
+              })
+              .sort((left, right) =>
+                JSON.stringify(left).localeCompare(JSON.stringify(right)),
+              ),
+          }));
+          fs.writeFileSync(
+            path.join(evidenceDirectory, `${system}-multi-tier.json`),
+            `${JSON.stringify(record, null, 2)}\n`,
+          );
+          const visibility = await page.evaluate(() => {
+            const bounds = (element: Element) => {
+              const { left, top, right, bottom, width, height } =
+                element.getBoundingClientRect();
+              return { left, top, right, bottom, width, height };
+            };
+            const flow = document.querySelector('.react-flow');
+            if (!flow) throw new Error('Missing rendered graph');
+            return {
+              viewport: { width: innerWidth, height: innerHeight },
+              graph: bounds(flow),
+              nodes: Array.from(
+                document.querySelectorAll('.react-flow__node'),
+                element => ({
+                  id: element.getAttribute('data-id'),
+                  ...bounds(element),
+                }),
+              ),
+            };
+          });
+          fs.writeFileSync(
+            path.join(
+              evidenceDirectory,
+              `${system}-multi-tier-interactions.json`,
+            ),
+            `${JSON.stringify(
+              { fittedZoom, zoomedIn, zoomedOut, ...visibility },
+              null,
+              2,
+            )}\n`,
+          );
+        }
         await page.reload();
         await expect(
-          page.getByRole('button', { name: /^frontend/ }),
+          page.getByRole('group', { name: 'frontend', exact: true }),
         ).toBeVisible({ timeout: 15_000 });
         await page.goBack();
         await expect(
