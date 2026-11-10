@@ -295,13 +295,19 @@ async function main() {
       );
     }
   } finally {
-    await browser?.close();
-    await new Promise<void>((resolve, reject) => {
-      if (!server.listening) return resolve();
-      server.close(error => (error ? reject(error) : resolve()));
-      server.closeAllConnections();
-    });
-    fs.rmSync(output, { recursive: true, force: true });
+    try {
+      await browser?.close();
+    } finally {
+      try {
+        await new Promise<void>((resolve, reject) => {
+          if (!server.listening) return resolve();
+          server.close(error => (error ? reject(error) : resolve()));
+          server.closeAllConnections();
+        });
+      } finally {
+        fs.rmSync(output, { recursive: true, force: true });
+      }
+    }
   }
 }
 
