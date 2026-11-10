@@ -77,6 +77,7 @@ jobs:
         run: yarn run test:all --coverageDirectory=coverage --coverageReporters=lcov --coverageReporters=text
 
       - name: Upload coverage to Codecov
+        if: ${{ github.repository == 'radius-project/dashboard' }}
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           files: ./coverage/lcov.info
