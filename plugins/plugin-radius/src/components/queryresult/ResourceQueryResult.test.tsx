@@ -74,8 +74,8 @@ describe.each(consumers)('ER-08 / #369: %s', (_name, content) => {
     await renderResult([resource]);
 
     expect(
-      await screen.findAllByText(/Incomplete Radius inventory/),
-    ).not.toHaveLength(0);
+      await screen.findByText(/Incomplete Radius inventory/),
+    ).toBeVisible();
     expect(screen.getAllByText(/inventory unavailable/)).not.toHaveLength(0);
     expect(screen.getAllByText('available-env')).not.toHaveLength(0);
   });
@@ -145,6 +145,31 @@ describe.each(consumers)('ER-08 / #369: %s', (_name, content) => {
     expect(screen.queryByText('available-env')).not.toBeInTheDocument();
     expect(screen.getAllByText('second-context-env')).not.toHaveLength(0);
   });
+});
+
+it('keeps an environment without recipes visible with a warning instead of a fatal error', async () => {
+  const api = {
+    listEnvironments: jest.fn().mockResolvedValue({
+      value: [{ ...resource, properties: { provisioningState: 'Succeeded' } }],
+      complete: false,
+      errors: [
+        {
+          resourceType: 'Radius.Core/environments',
+          error: new Error('Request failed: 503: inventory unavailable'),
+        },
+      ],
+    }),
+    getResourceById: jest.fn(),
+  };
+  await renderInTestApp(
+    <TestApiProvider apis={[[radiusApiRef, api]]}>
+      <RecipeListPageContent />
+    </TestApiProvider>,
+  );
+  expect(await screen.findByText(/Incomplete Radius inventory/)).toBeVisible();
+  expect(
+    screen.queryByText(/No Radius inventory data is available/),
+  ).not.toBeInTheDocument();
 });
 
 it('preserves metadata-free override results without asserting completeness', async () => {

@@ -33,7 +33,7 @@ export const ResourceTypesTable = (props: { title: string }) => {
           value: RT[];
         }
       | undefined;
-  });
+  }, [radiusApi]);
 
   if (loading) return <Progress />;
   if (error) return <ResponseErrorPanel error={error} />;

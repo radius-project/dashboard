@@ -23,7 +23,6 @@ import useAsync from 'react-use/lib/useAsync';
 import { radiusApiRef } from '../../api/ref';
 import { Resource } from '../../resources';
 import { parseLegacyResourceId as parseResourceId } from '@radius-project/core/domain';
-import { ResourceQueryResult } from '../queryresult/ResourceQueryResult';
 
 const EnvironmentListPageContent = ({
   environments,
@@ -154,9 +153,7 @@ export const EnvironmentListPage = () => {
         subtitle="Displaying environments where applications can be deployed."
       />
       <Content>
-        <ResourceQueryResult result={value}>
-          <EnvironmentListPageContent environments={value?.value || []} />
-        </ResourceQueryResult>
+        <EnvironmentListPageContent environments={value?.value || []} />
       </Content>
     </Page>
   );

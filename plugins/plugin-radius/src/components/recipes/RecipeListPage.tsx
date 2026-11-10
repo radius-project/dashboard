@@ -139,8 +139,13 @@ export const RecipeListPageContent = () => {
     <ResourceQueryResult
       result={{
         ...value.environments,
-        value: value.environments.value.flatMap(environment =>
-          aggregateRecipesFromEnvironment(environment, value.packsById),
+        // Environments without recipes are still data. Only missing packs
+        // (no recipes can be shown) make the result unusable.
+        value: value.environments.value.filter(
+          environment =>
+            !environment.properties?.recipePacks?.length ||
+            aggregateRecipesFromEnvironment(environment, value.packsById)
+              .length > 0,
         ),
       }}
     >

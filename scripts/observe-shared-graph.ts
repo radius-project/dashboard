@@ -153,7 +153,11 @@ async function main() {
     await once(server, 'listening');
     const address = server.address();
     assert(address && typeof address !== 'string');
-    browser = await chromium.launch();
+    browser = await chromium.launch({
+      ...(process.env.PLAYWRIGHT_BROWSER_CHANNEL
+        ? { channel: process.env.PLAYWRIGHT_BROWSER_CHANNEL }
+        : {}),
+    });
     const page = await browser.newPage({
       viewport: { width: 1200, height: 900 },
     });
