@@ -70,11 +70,18 @@ jobs:
         run: yarn workspace @radapp.io/rad-components run build-storybook
 
       - name: Run Tests
-        if: ${{ env.CI_TEST == 'true' }}
         env:
           # Empty on push builds, where GU-25 falls back to origin/main.
           GRAPH_RECORD_BASE_REF: ${{ github.event.pull_request.base.sha }}
-        run: yarn run test:all
+        # main builds provide the baseline for Codecov pull request comparisons.
+        run: yarn run test:all --coverageDirectory=coverage --coverageReporters=lcov --coverageReporters=text
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          files: ./coverage/lcov.info
+          disable_search: true
+          fail_ci_if_error: true
 
       - name: Install Playwright browser
         if: ${{ env.CI_TEST == 'true' }}

@@ -218,6 +218,25 @@ yarn run lint:all
 
 ### Testing
 
+#### Coverage reports
+
+`yarn run test:all` runs the unit tests with coverage and checks the coverage
+limits in the root `package.json`. Jest writes the reports to `coverage/`.
+Open `coverage/lcov-report/index.html` to view the local report.
+
+The Build workflow uploads `coverage/lcov.info` to
+[Codecov](https://app.codecov.io/gh/radius-project/dashboard) after the unit tests
+pass. It runs these tests on pull requests, pushes to `main`, and release tags.
+Reports from `main` provide the baseline for pull request comparisons. Upload
+errors fail the build; the existing Jest coverage limits remain in place.
+
+Before the first upload, a Codecov organization administrator must enable uploads
+without a token under **Settings > Global Upload Token** for
+[radius-project](https://app.codecov.io/gh/radius-project). This supports public
+repositories, fork pull requests, and Dependabot builds without shared secrets.
+No `CODECOV_TOKEN` secret is required. Enable the Codecov GitHub App for this
+repository to receive pull request checks and comments.
+
 **Run offline release image regressions:**
 
 ```bash
