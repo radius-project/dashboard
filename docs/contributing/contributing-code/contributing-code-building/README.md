@@ -218,15 +218,37 @@ yarn run lint:all
 
 ### Testing
 
+#### Coverage reports
+
+`yarn run test:all` runs the unit tests with coverage and checks the coverage
+limits in the root `package.json`. Jest writes the reports to `coverage/`.
+Open `coverage/lcov-report/index.html` to view the local report.
+
+The Build workflow uploads `coverage/lcov.info` to
+[Codecov](https://app.codecov.io/gh/radius-project/dashboard) after the unit tests
+pass in `radius-project/dashboard`. Fork builds skip the upload, but pull requests
+from forks to `radius-project/dashboard` still upload coverage. The workflow runs
+these tests on pull requests, pushes to `main`, and release tags.
+Reports from `main` provide the baseline for pull request comparisons. Upload
+errors fail the build; the existing Jest coverage limits remain in place.
+
+The [radius-project](https://app.codecov.io/gh/radius-project) Codecov organization
+allows uploads without a token. Organization administrators manage this setting
+under **Settings > Global Upload Token**. This supports public
+repositories, fork pull requests, and Dependabot builds without shared secrets.
+No `CODECOV_TOKEN` secret is required. The Codecov GitHub App is enabled for this
+repository and provides pull request checks and comments.
+
 **Run offline release image regressions:**
 
 ```bash
 yarn run test:release-images
 ```
 
-This suite is also part of `yarn run test:all`, which CI runs for pull requests and
-release tags. It requires Node.js 24, Git, and Python, but no installed dependencies,
-Docker daemon, registry credentials, or network access. To run without Yarn:
+This suite is also part of `yarn run test:all`, which CI runs for pull requests,
+pushes to `main`, and release tags. It requires Node.js 24, Git, and Python, but no
+installed dependencies, Docker daemon, registry credentials, or network access.
+To run without Yarn:
 
 ```bash
 node --test scripts/release-image.test.ts
