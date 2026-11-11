@@ -496,8 +496,13 @@ afterAll(() => {
         path.join(repoRoot, 'scripts', 'qualify-plugin-host.ts'),
         consumerRoot,
       ]);
-      expect(result).toContain('FS-03/08 PASS: packed legacy');
-      expect(result).toContain('FS-03/08 PASS: packed native');
+      for (const system of ['legacy', 'native']) {
+        for (const basePath of ['/', '/nested']) {
+          expect(result).toContain(
+            `FS-03/08 PASS: packed ${system}, app base ${basePath}`,
+          );
+        }
+      }
     } catch (error) {
       if (error instanceof Error && 'stderr' in error) {
         throw new Error(String(error.stderr), { cause: error });

@@ -362,9 +362,7 @@ async function main() {
       try {
         for (basePath of standaloneOrigin
           ? [process.env.QUALIFICATION_APP_BASE_PATH ?? '']
-          : installed
-            ? ['', '/nested']
-            : ['']) {
+          : ['', '/nested']) {
           const prefix = `${basePath}${mountPath}`;
           for (const [route, title] of [
             ['/applications', 'Applications'],
@@ -690,6 +688,9 @@ async function main() {
               await setForbidden(false);
             }
           }
+          console.log(
+            `FS-03/08 PASS: packed ${system}, app base ${basePath || '/'}`,
+          );
         }
         if (installed && system === 'native') {
           const prefix = `${basePath}${mountPath}`;

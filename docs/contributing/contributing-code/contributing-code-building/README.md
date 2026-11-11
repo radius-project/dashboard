@@ -223,10 +223,36 @@ test implementation. The container mounts only the generated config, not source
 or dependencies. These baseline tests do not cover the full eight-route,
 nested-mount, base-path, and graph matrix in the container frontend.
 
-The installed-host result always has `phase5Complete: false`.
+#### Full installed-host matrix
+
+To qualify all active hosts, enable the full matrix and the container row:
+
+```bash
+QUALIFICATION_FULL_HOST_MATRIX=true \
+QUALIFICATION_CONTAINER_IMAGE=ghcr.io/radius-project/dashboard:edge \
+QUALIFICATION_EVIDENCE_DIRECTORY=/absolute/persistent/evidence \
+QUALIFICATION_WORK_DIRECTORY=/absolute/native/work \
+QUALIFICATION_SOURCE_REVISION="$(git rev-parse HEAD)" \
+yarn test:e2e:installed
+```
+
+This mode builds the actual app and backend in the clean installed consumer.
+It runs the native standalone and container baseline tests, then the shared
+eight-route, nested-plugin-mount, root and `/nested` app-base, and graph journeys.
+It also checks backend service requirements and two-connection authorization
+and credential isolation against the declared fake upstream.
+
+In full-matrix mode, the image setting enables the container row. The runner
+builds a new local `radius-phase5-installed:<plugin-digest>` image from the clean
+consumer; it does not use the supplied image as the candidate. No image is
+published. Docker and Linux host networking are required.
+
+A successful full-matrix run with the container writes `phase5Complete: true`
+and an empty `openGates` list. Without full-matrix mode or the container row,
+the result has `phase5Complete: false` and lists the open gates.
 See the [requirement map](../../../../plugins/plugin-radius/README.md#phase-5-installed-host-evidence)
-for the remaining backend, standalone, and container gates. The shared candidate
-preflight still reports `hostQualified: false`.
+for the executable checks and evidence limits. The shared candidate preflight
+still reports `hostQualified: false`.
 
 **Build the dashboard container**
 
