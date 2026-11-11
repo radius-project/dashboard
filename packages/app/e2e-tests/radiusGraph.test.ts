@@ -1,4 +1,5 @@
 import { expect, Page, Route, test } from '@playwright/test';
+import { createHash } from 'node:crypto';
 import multiTier from './fixtures/multi-tier.json';
 
 const applicationId = (
@@ -243,6 +244,118 @@ test.describe('Radius application graph journey', () => {
         exact: true,
       }),
     ).toBeVisible();
+  });
+
+  test('renders a registered resource-type SVG and retains nodes with missing or invalid icons', async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width: 1600, height: 900 });
+    const definition = {
+      name: 'widgets',
+      properties: {
+        icon: '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><path fill="#2874a6" d="M4 4h24v24H4z"/><circle fill="#f1c40f" cx="16" cy="16" r="8"/></svg>',
+      },
+    };
+    const hash = (svg: string) =>
+      createHash('sha256').update(svg).digest('hex');
+    const registeredHash = hash(definition.properties.icon);
+    const invalidSvg = '<svg not-valid-image';
+    const invalidHash = hash(invalidSvg);
+    const iconHashes = {
+      registered: registeredHash,
+      missing: hash('missing'),
+      invalid: invalidHash,
+    };
+    await page.route(/\/resourceTypes\/applications\?/, route =>
+      route.fulfill({
+        json: {
+          ...resourceType('Radius.Core'),
+          APIVersions: { '2025-08-01-preview': {} },
+          APIVersionList: ['2025-08-01-preview'],
+        },
+      }),
+    );
+    await page.route(
+      /\/api\/kubernetes\/proxy\/.*\/getGraph\?/,
+      async route => {
+        expect(route.request().postDataJSON()).toEqual({ includeIcons: true });
+        await route.fulfill({
+          json: {
+            resources: Object.entries(iconHashes).map(([name, iconHash]) => ({
+              id: `/planes/radius/local/resourceGroups/demo/providers/Radius.Test/widgets/${name}`,
+              name,
+              type: 'Radius.Test/widgets',
+              iconHash,
+              connections: [],
+            })),
+            icons: {
+              [registeredHash]: definition.properties.icon,
+              [invalidHash]: invalidSvg,
+            },
+          },
+        });
+      },
+    );
+    await enterDashboard(page);
+    await page.goto(
+      '/resources/demo/Radius.Core/applications/radius-app/application',
+    );
+    const registered = page.getByRole('group', {
+      name: 'registered',
+      exact: true,
+    });
+    const image = registered.locator('img');
+    await expect(image).toBeVisible();
+    await expect
+      .poll(() =>
+        image.evaluate(
+          (element: HTMLImageElement) =>
+            element.complete && element.naturalWidth > 0,
+        ),
+      )
+      .toBe(true);
+    const source = await image.getAttribute('src');
+    expect(source).toMatch(/^data:image\/svg\+xml/);
+    expect(decodeURIComponent(source!.slice(source!.indexOf(',') + 1))).toBe(
+      definition.properties.icon,
+    );
+    for (const name of ['missing', 'invalid']) {
+      const node = page.getByRole('group', { name, exact: true });
+      await expect(node).toBeVisible();
+      await expect(node).toContainText('widgets');
+      const fallback = node.locator('img[data-radius-part="icon"]');
+      await expect(fallback).toBeVisible();
+      await expect
+        .poll(() =>
+          fallback.evaluate(
+            (element: HTMLImageElement) =>
+              element.complete && element.naturalWidth > 0,
+          ),
+        )
+        .toBe(true);
+    }
+    const missingIcon = page
+      .getByRole('group', { name: 'missing', exact: true })
+      .locator('img[data-radius-part="icon"]');
+    const invalidIcon = page
+      .getByRole('group', { name: 'invalid', exact: true })
+      .locator('img[data-radius-part="icon"]');
+    expect(await invalidIcon.getAttribute('src')).toBe(
+      await missingIcon.getAttribute('src'),
+    );
+    await expect(registered.locator('svg')).toHaveCount(0);
+    const graphScreenshot = testInfo.outputPath('resource-type-icons.png');
+    const nodeScreenshot = testInfo.outputPath('registered-resource-type.png');
+    await page.locator('.react-flow').screenshot({ path: graphScreenshot });
+    await registered.screenshot({ path: nodeScreenshot });
+    await testInfo.attach('Resource-type icon API fixture', {
+      path: graphScreenshot,
+      contentType: 'image/png',
+    });
+    await testInfo.attach('Registered resource-type SVG', {
+      path: nodeScreenshot,
+      contentType: 'image/png',
+    });
   });
 
   // KNOWN-DEFECT (#370): the visible error needs an accessible retry action.

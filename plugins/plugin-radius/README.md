@@ -44,6 +44,15 @@ old work and hides old data. A 10-second limit reports an error even if an overr
 ignores its abort signal; late responses cannot replace that error.
 
 The shared native card shows resource-type icons and the raw provisioning text.
+For discovered `Radius.Core/applications` API versions dated `2025-08-01` or
+later, the shared client requests `{includeIcons: true}`. Stable and `-preview`
+versions are supported. Older, unknown, and `Applications.Core` versions keep
+body-free graph requests. Backstage forwards the shared request body as JSON.
+The API supplies raw SVG from resource-type definitions in a hash-keyed `icons`
+map. The shared normalizer resolves each resource's `iconHash`; the dashboard
+does not read recipes or keep a resource-type icon map. The shared renderer
+loads SVG as an image, not page markup, and keeps the resource label when an
+icon is missing or cannot load.
 It does not infer deployment success. It shortens the visible type label but
 retains the original full type and ID in the DOM. Legend and details popup remain
 disabled by default. The separate public `rad-components` compatibility exports
@@ -68,11 +77,14 @@ Shared library version `0.1.0` is development metadata, not proof of a registry
 release. Repository builds use exact vendored compiled archives and relative file
 resolutions. See the [candidate preflight instructions](../../docs/contributing/contributing-code/contributing-code-building/README.md#shared-library-candidate-preflight)
 for hash, source/build receipt, installed-byte, and qualification requirements.
+`vendor/shared-libraries/resource-icons-candidate.json` identifies the active
+pair. The original `candidate.json` and archives remain unchanged as baseline
+evidence; they do not qualify the new pair.
 Public registry distribution remains unqualified until an approved release.
 
 ## Phase 4 test ownership
 
-The source identity in `vendor/shared-libraries/candidate.json` fixes the upstream
+The source identity in `vendor/shared-libraries/resource-icons-candidate.json` fixes the upstream
 test versions below. Canonical code and its tests live in those shared packages,
 not in a second dashboard parser, query client, renderer, or layout.
 

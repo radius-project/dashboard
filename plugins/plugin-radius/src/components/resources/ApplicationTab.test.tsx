@@ -1,4 +1,5 @@
 import React from 'react';
+import { createHash } from 'node:crypto';
 import { renderInTestApp, TestApiProvider } from '@backstage/test-utils';
 import { screen } from '@testing-library/react';
 import { RadiusGraph, RadiusGraphProps } from '@radius-project/graph-react';
@@ -56,6 +57,64 @@ const renderTab = (
 beforeEach(() => jest.clearAllMocks());
 
 describe('ApplicationTab host adapter', () => {
+  const definition = {
+    name: 'widgets',
+    properties: {
+      icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path fill="#2874a6" d="M4 4h24v24H4z"/></svg>',
+    },
+  };
+  const iconHash = createHash('sha256')
+    .update(definition.properties.icon)
+    .digest('hex');
+
+  it.each([
+    ['registered SVG', iconHash, definition.properties.icon],
+    ['missing SVG', iconHash, undefined],
+    ['invalid hash', 'not-an-icon-hash', definition.properties.icon],
+  ])(
+    'passes resource-type icon metadata through shared normalization: %s',
+    async (_label, hash, svg) => {
+      const applicationId = application.replace(
+        'Applications.Core',
+        'Radius.Core',
+      );
+      const resource = {
+        id: `${resourceGroup}/providers/Radius.Test/widgets/custom`,
+        name: 'custom',
+        type: 'Radius.Test/widgets',
+        iconHash: hash,
+        connections: [],
+      };
+      await renderTab(
+        {
+          getApplicationGraph: jest.fn().mockResolvedValue({
+            graph: {
+              resources: [resource],
+              icons: { [hash]: svg },
+            },
+            context: {
+              connectionId: 'selected-cluster',
+              plane: { type: 'radius', name: 'local' },
+              applicationId,
+            },
+          }),
+        },
+        applicationId,
+      );
+
+      expect(await screen.findByText('custom')).toBeVisible();
+      const normalized = jest.mocked(RadiusGraph).mock.calls.at(-1)![0].graph;
+      expect(normalized.resources[0]).toMatchObject({
+        id: resource.id,
+        name: 'custom',
+        type: 'Radius.Test/widgets',
+      });
+      expect(normalized.resources[0].icon).toBe(
+        hash === iconHash ? svg : undefined,
+      );
+    },
+  );
+
   it.each(['Applications.Core', 'Radius.Core'])(
     'GU-10 / E2E-19: renders %s with real context and the single legacy direction policy',
     async namespace => {
