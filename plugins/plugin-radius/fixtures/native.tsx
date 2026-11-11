@@ -2,9 +2,13 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { ConfigReader } from '@backstage/config';
 import { createApp } from '@backstage/frontend-defaults';
-import radius from '@internal/plugin-radius/alpha';
+import radius, { radiusApiExtension } from '@internal/plugin-radius/alpha';
 import kubernetes from '@backstage/plugin-kubernetes/alpha';
 import {
+  ApiBlueprint,
+  PageBlueprint,
+  appThemeApiRef,
+  useApi,
   createExternalRouteRef,
   createFrontendModule,
   createFrontendPlugin,
@@ -13,14 +17,102 @@ import {
 import {
   NavContentBlueprint,
   SignInPageBlueprint,
+  ThemeBlueprint,
 } from '@backstage/plugin-app-react';
+import { compatWrapper } from '@backstage/core-compat-api';
+import {
+  createBaseThemeOptions,
+  createUnifiedTheme,
+  palettes,
+  UnifiedThemeProvider,
+} from '@backstage/theme';
+import { useTheme } from '@material-ui/core';
+import { type KubernetesApi } from '@backstage/plugin-kubernetes';
+import {
+  ApplicationListInfoCard,
+  EnvironmentListInfoCard,
+} from '@internal/plugin-radius';
 import { Link } from 'react-router-dom';
 import { basePath, mountPath, installed, HostSignIn } from './host';
 
 const host = createFrontendPlugin({
   pluginId: 'qualification-host',
   externalRoutes: { applications: createExternalRouteRef() },
-  extensions: [],
+  extensions: [
+    PageBlueprint.make({
+      name: 'cards',
+      params: { path: '/host-cards', loader: async () => <HostCards /> },
+    }),
+  ],
+});
+
+function HostCards() {
+  const [cards, setCards] = React.useState(true);
+  const themeApi = useApi(appThemeApiRef);
+  const theme = useTheme();
+  return (
+    <main>
+      <h1>Host cards</h1>
+      <output aria-label="Host theme">{theme.palette.type}</output>
+      <button onClick={() => themeApi.setActiveThemeId('light')}>
+        Use light theme
+      </button>
+      <button onClick={() => themeApi.setActiveThemeId('dark')}>
+        Use dark theme
+      </button>
+      <button onClick={() => setCards(!cards)}>
+        {cards ? 'Hide' : 'Show'} optional cards
+      </button>
+      {cards && (
+        <>
+          {compatWrapper(<ApplicationListInfoCard />)}
+          {compatWrapper(<EnvironmentListInfoCard />)}
+        </>
+      )}
+    </main>
+  );
+}
+
+const apiOverride = createFrontendModule({
+  pluginId: 'radius',
+  extensions: [
+    radiusApiExtension.override({
+      factory(original) {
+        const factory = original().get(ApiBlueprint.dataRefs.factory);
+        return [
+          ApiBlueprint.dataRefs.factory({
+            ...factory,
+            factory({ kubernetesApi }: { kubernetesApi: KubernetesApi }) {
+              const selected =
+                new URLSearchParams(location.search).get('connection') ??
+                'packed-cluster';
+              document.documentElement.dataset.radiusApiConnection = selected;
+              return factory.factory({
+                kubernetesApi: {
+                  async getClusters() {
+                    const clusters = await kubernetesApi.getClusters();
+                    const chosen = clusters.find(
+                      cluster => cluster.name === selected,
+                    );
+                    if (!chosen)
+                      throw new Error(
+                        `Unknown host-selected Radius connection: ${selected}`,
+                      );
+                    return [
+                      chosen,
+                      ...clusters.filter(cluster => cluster !== chosen),
+                    ];
+                  },
+                  proxy: (options: Parameters<KubernetesApi['proxy']>[0]) =>
+                    kubernetesApi.proxy(options),
+                },
+              });
+            },
+          }),
+        ];
+      },
+    }),
+  ],
 });
 
 function Navigation() {
@@ -54,6 +146,26 @@ function Navigation() {
 const composition = createFrontendModule({
   pluginId: 'app',
   extensions: [
+    ...(['light', 'dark'] as const).map(variant => {
+      const theme = createUnifiedTheme(
+        createBaseThemeOptions({ palette: palettes[variant] }),
+      );
+      return ThemeBlueprint.make({
+        name: variant,
+        params: {
+          theme: {
+            id: variant,
+            title: variant,
+            variant,
+            Provider: ({ children }) => (
+              <UnifiedThemeProvider theme={theme}>
+                {children}
+              </UnifiedThemeProvider>
+            ),
+          },
+        },
+      });
+    }),
     NavContentBlueprint.make({ params: { component: Navigation } }),
     ...(installed
       ? [
@@ -66,7 +178,13 @@ const composition = createFrontendModule({
 });
 
 const app = createApp({
-  features: [radius, kubernetes, host, composition],
+  features: [
+    radius,
+    kubernetes,
+    host,
+    composition,
+    ...(installed ? [apiOverride] : []),
+  ],
   bindRoutes({ bind }) {
     bind(host.externalRoutes, { applications: radius.routes.applications });
   },

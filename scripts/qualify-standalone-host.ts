@@ -1,4 +1,4 @@
-import { createServer, type Server } from 'node:http';
+import { createServer, request as proxyRequest, type Server } from 'node:http';
 import { once } from 'node:events';
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
@@ -8,9 +8,15 @@ import { randomUUID } from 'node:crypto';
 import { setTimeout } from 'node:timers/promises';
 import { radiusFixtureResponse } from './qualification-fixture.ts';
 import {
+  qualifyBackendConnections,
+  type ObservedProxyRequest,
+} from '../packages/backend/qualificationContract.ts';
+import {
   startTestBackend,
+  qualifyMissingBackendService,
   testBackendConfig,
   type TestCluster,
+  type TestHostOptions,
 } from '../packages/backend/testUtils.ts';
 
 async function listen(server: Server) {
@@ -29,7 +35,11 @@ async function close(server: Server) {
   });
 }
 
-async function startContainer(image: string, clusters: TestCluster[]) {
+async function startContainer(
+  image: string,
+  clusters: TestCluster[],
+  publicBaseUrl?: string,
+) {
   const evidence = process.env.QUALIFICATION_EVIDENCE_DIRECTORY;
   if (!evidence || !path.isAbsolute(evidence)) {
     throw new Error(
@@ -42,11 +52,12 @@ async function startContainer(image: string, clusters: TestCluster[]) {
   const port = await listen(reservation);
   await close(reservation);
   const config = path.join(directory, 'app-config.json');
-  const configuration = testBackendConfig(
-    clusters,
-    port,
-    Boolean(process.env.QUALIFICATION_INSTALLED_CONSUMER),
-  );
+  const configuration = testBackendConfig(clusters, port, {
+    installedFrontend: Boolean(process.env.QUALIFICATION_INSTALLED_CONSUMER),
+    basePath: process.env.QUALIFICATION_APP_BASE_PATH,
+    mountPath: process.env.QUALIFICATION_PLUGIN_MOUNT_PATH,
+    publicBaseUrl,
+  });
   fs.writeFileSync(config, `${JSON.stringify(configuration, null, 2)}\n`);
   const name = `radius-qualification-${randomUUID()}`;
   const docker = (args: string[]) =>
@@ -56,6 +67,28 @@ async function startContainer(image: string, clusters: TestCluster[]) {
       timeout: 30_000,
     }).trim();
   const inspected = JSON.parse(docker(['image', 'inspect', image]))[0];
+  const runtimeTuple = JSON.parse(
+    docker([
+      'run',
+      '--rm',
+      '--pull=never',
+      '--entrypoint',
+      'node',
+      image,
+      '-e',
+      `const fs = require('node:fs'), path = require('node:path'), crypto = require('node:crypto');
+     const names = ${JSON.stringify(['@backstage/backend-defaults', '@backstage/plugin-app-backend', '@backstage/plugin-proxy-backend', '@backstage/plugin-auth-backend', '@backstage/plugin-auth-backend-module-guest-provider', '@backstage/plugin-catalog-backend', '@backstage/plugin-kubernetes-backend'])};
+     const dependencies = Object.fromEntries(names.map(name => {
+       let directory = path.dirname(require.resolve(name));
+       for (;;) {
+         const file = path.join(directory, 'package.json');
+         if (fs.existsSync(file)) { const manifest = JSON.parse(fs.readFileSync(file, 'utf8')); if (manifest.name === name) return [name, manifest.version]; }
+         const parent = path.dirname(directory); if (parent === directory) throw new Error('Missing installed package: ' + name); directory = parent;
+       }
+     }));
+     console.log(JSON.stringify({ node: process.version, lockSha256: crypto.createHash('sha256').update(fs.readFileSync('yarn.lock')).digest('hex'), dependencies }));`,
+    ]),
+  );
   const args = [
     'run',
     '--detach',
@@ -82,10 +115,14 @@ async function startContainer(image: string, clusters: TestCluster[]) {
         id: inspected.Id,
         architecture: inspected.Architecture,
         labels: inspected.Config.Labels,
+        runtimeTuple,
         command: ['docker', ...args],
-        scope: process.env.QUALIFICATION_INSTALLED_CONSUMER
-          ? 'installed external entries with real built container backend; not full Phase 5'
-          : 'built container baseline; not full Phase 5 installed-host qualification',
+        scope:
+          process.env.QUALIFICATION_FULL_HOST_JOURNEYS === 'true'
+            ? 'full native standalone production journeys'
+            : process.env.QUALIFICATION_INSTALLED_CONSUMER
+              ? 'installed external entries with real built container backend; not full Phase 5'
+              : 'built container baseline; not full Phase 5 installed-host qualification',
       },
       null,
       2,
@@ -241,18 +278,47 @@ async function startContainer(image: string, clusters: TestCluster[]) {
 
 async function main() {
   const consumer = process.env.QUALIFICATION_INSTALLED_CONSUMER;
+  const fullHost = process.env.QUALIFICATION_FULL_HOST_JOURNEYS === 'true';
+  const journeys = Boolean(consumer) || fullHost;
   const image = process.env.QUALIFICATION_CONTAINER_IMAGE;
+  const installedBackend = process.env.QUALIFICATION_INSTALLED_BACKEND;
+  let backendFactory: TestHostOptions['backendFactory'];
+  if (installedBackend) {
+    const entry = path.join(
+      installedBackend,
+      'browser',
+      'backend-composition.cjs',
+    );
+    const composition: {
+      createRadiusBackend: NonNullable<TestHostOptions['backendFactory']>;
+    } = createRequire(import.meta.url)(entry);
+    if (typeof composition.createRadiusBackend !== 'function') {
+      throw new Error('Clean built backend is missing its composition export');
+    }
+    backendFactory = composition.createRadiusBackend;
+    const result = await qualifyMissingBackendService(backendFactory);
+    const evidence = process.env.QUALIFICATION_EVIDENCE_DIRECTORY;
+    if (!evidence || !path.isAbsolute(evidence))
+      throw new Error('Clean backend requires persistent evidence');
+    fs.mkdirSync(evidence, { recursive: true });
+    fs.writeFileSync(
+      path.join(evidence, 'missing-service.json'),
+      `${JSON.stringify(result, null, 2)}\n`,
+    );
+  }
   if (consumer && !image)
     throw new Error(
       'Installed frontend/backend journeys require a built container image',
     );
   let forbidden: boolean | 'graph' = false;
+  let forbiddenConnection: string | undefined;
+  const observed: ObservedProxyRequest[] = [];
   const upstreamRequests: { method: string; path: string; status: number }[] =
     [];
   const upstream = createServer(async (request, response) => {
     response.setHeader('content-type', 'application/json');
     if (
-      consumer &&
+      journeys &&
       request.method === 'POST' &&
       request.url === '/__qualification/forbidden'
     ) {
@@ -269,13 +335,25 @@ async function main() {
       response.end('{}');
       return;
     }
+    const connection = request.url?.startsWith('/isolated-cluster/')
+      ? 'isolated-cluster'
+      : 'packed-cluster';
+    const credential =
+      connection === 'isolated-cluster'
+        ? 'isolated-test-token'
+        : 'standalone-test-token';
+    observed.push({
+      method: request.method ?? '',
+      url: request.url ?? '',
+      authorization: request.headers.authorization,
+    });
     const status =
-      consumer &&
-      request.headers.authorization !== 'Bearer standalone-test-token'
+      journeys && request.headers.authorization !== `Bearer ${credential}`
         ? 401
         : forbidden === true ||
             (forbidden === 'graph' && request.url?.includes('/getGraph')) ||
-            request.url?.includes('/forbidden')
+            request.url?.includes('/forbidden') ||
+            forbiddenConnection === connection
           ? 403
           : 200;
     upstreamRequests.push({
@@ -293,7 +371,7 @@ async function main() {
     }
     response.end(
       JSON.stringify(
-        consumer
+        journeys
           ? radiusFixtureResponse(decodeURIComponent(request.url ?? ''))
           : { value: [] },
       ),
@@ -302,31 +380,113 @@ async function main() {
   const upstreamPort = await listen(upstream);
   let backend: { stop(): Promise<void> } | undefined;
   const failures: unknown[] = [];
+  let ingress: Server | undefined;
+  let target = '';
   try {
+    let publicBaseUrl: string | undefined;
+    if (fullHost) {
+      const basePath = process.env.QUALIFICATION_APP_BASE_PATH ?? '';
+      ingress = createServer((request, response) => {
+        if (!target) {
+          response.writeHead(503).end('Host backend is starting');
+          return;
+        }
+        let url = request.url ?? '/';
+        if (basePath && (url === basePath || url.startsWith(`${basePath}/`))) {
+          url = url.slice(basePath.length) || '/';
+        }
+        const outgoing = proxyRequest(
+          new URL(url, target),
+          {
+            method: request.method,
+            headers: request.headers,
+          },
+          upstreamResponse => {
+            if (!upstreamResponse.statusCode) {
+              failures.push(
+                new Error('Host ingress received no upstream status'),
+              );
+              response.writeHead(502).end();
+              return;
+            }
+            response.writeHead(
+              upstreamResponse.statusCode,
+              upstreamResponse.headers,
+            );
+            upstreamResponse.pipe(response);
+          },
+        );
+        outgoing.on('error', error => {
+          failures.push(error);
+          response.writeHead(502).end('Host ingress failed');
+        });
+        request.pipe(outgoing);
+      });
+      publicBaseUrl = `http://127.0.0.1:${await listen(ingress)}`;
+    }
     const clusters: TestCluster[] = [
       {
-        name: consumer ? 'packed-cluster' : 'standalone-test-cluster',
-        url: `http://127.0.0.1:${upstreamPort}`,
+        name: journeys ? 'packed-cluster' : 'standalone-test-cluster',
+        url: `http://127.0.0.1:${upstreamPort}${journeys ? '/packed-cluster' : ''}`,
         authProvider: 'serviceAccount',
         serviceAccountToken: 'standalone-test-token',
       },
+      ...(journeys
+        ? [
+            {
+              name: 'isolated-cluster',
+              url: `http://127.0.0.1:${upstreamPort}/isolated-cluster`,
+              authProvider: 'serviceAccount' as const,
+              serviceAccountToken: 'isolated-test-token',
+            },
+          ]
+        : []),
     ];
     const started = image
-      ? await startContainer(image, clusters)
-      : await startTestBackend(clusters);
+      ? await startContainer(image, clusters, publicBaseUrl)
+      : await startTestBackend(clusters, {
+          basePath: process.env.QUALIFICATION_APP_BASE_PATH,
+          mountPath: process.env.QUALIFICATION_PLUGIN_MOUNT_PATH,
+          publicBaseUrl,
+          backendFactory,
+        });
     backend = started.backend;
-    const { baseUrl } = started;
-    const response = await fetch(baseUrl);
+    target = started.baseUrl;
+    const baseUrl = publicBaseUrl ?? started.baseUrl;
+    const response = await fetch(
+      `${baseUrl}${process.env.QUALIFICATION_APP_BASE_PATH ?? ''}`,
+    );
     if (!response.ok || !(await response.text()).includes('<div id="root">')) {
       throw new Error('The real backend must serve the built standalone app');
+    }
+    if (journeys) {
+      const result = await qualifyBackendConnections({
+        baseUrl,
+        clusters,
+        requests: observed,
+        denyConnection(name) {
+          forbiddenConnection = name;
+        },
+      });
+      const directory =
+        'evidenceDirectory' in started
+          ? started.evidenceDirectory
+          : process.env.QUALIFICATION_EVIDENCE_DIRECTORY;
+      if (typeof directory !== 'string')
+        throw new Error('Backend qualification requires persistent evidence');
+      fs.mkdirSync(directory, { recursive: true });
+      fs.writeFileSync(
+        path.join(directory, 'connection-isolation.json'),
+        `${JSON.stringify(result, null, 2)}\n`,
+      );
     }
     const require = createRequire(import.meta.url);
     const child = spawn(
       process.execPath,
-      consumer
+      journeys
         ? [
             path.join(process.cwd(), 'scripts', 'qualify-plugin-host.ts'),
-            consumer,
+            consumer ?? process.cwd(),
             '--installed',
           ]
         : [
@@ -340,10 +500,13 @@ async function main() {
         stdio: 'inherit',
         env: {
           ...process.env,
-          ...(consumer
+          ...(journeys
             ? {
                 QUALIFICATION_BACKEND_URL: baseUrl,
                 QUALIFICATION_UPSTREAM_URL: `http://127.0.0.1:${upstreamPort}`,
+                ...(fullHost
+                  ? { QUALIFICATION_STANDALONE_ORIGIN: baseUrl }
+                  : {}),
               }
             : {}),
           ...('evidenceDirectory' in started
@@ -369,9 +532,11 @@ async function main() {
         path.join(started.evidenceDirectory, 'journeys.json'),
         `${JSON.stringify(
           {
-            suite: consumer
-              ? 'installed external legacy/native shared journeys'
-              : 'standalone baseline',
+            suite: fullHost
+              ? 'standalone shared production journeys'
+              : consumer
+                ? 'installed external legacy/native shared journeys'
+                : 'standalone baseline',
             result: code === 0 ? 'passed' : 'failed',
             upstreamRequests,
             phase5Complete: false,
@@ -393,6 +558,11 @@ async function main() {
     }
     try {
       await close(upstream);
+    } catch (error) {
+      failures.push(error);
+    }
+    try {
+      if (ingress) await close(ingress);
     } catch (error) {
       failures.push(error);
     }

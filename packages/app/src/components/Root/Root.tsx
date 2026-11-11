@@ -15,6 +15,11 @@ import {
 import MenuIcon from '@material-ui/icons/Menu';
 import SettingsIcon from '@material-ui/icons/Settings';
 import {
+  applicationListPageRouteRef,
+  environmentListPageRouteRef,
+  recipeListPageRouteRef,
+  resourceListPageRouteRef,
+  resourceTypesListPageRouteRef,
   RadiusLogo,
   RadiusLogomarkReverse,
   ApplicationIcon,
@@ -22,6 +27,7 @@ import {
   ResourceIcon,
   RecipeIcon,
 } from '@internal/plugin-radius';
+import { useRouteRef } from '@backstage/core-plugin-api';
 
 const useSidebarLogoStyles = makeStyles({
   root: {
@@ -59,42 +65,49 @@ const SidebarLogo = () => {
   );
 };
 
-export const RadiusSidebar = () => (
-  <Sidebar>
-    <SidebarLogo />
-    <SidebarDivider />
-    <SidebarGroup label="Menu" icon={<MenuIcon />}>
-      {/* Global nav, not org-specific */}
-      <SidebarItem icon={RadiusLogomarkReverse} to="/" text="Home" />
-      <SidebarItem
-        icon={ResourceIcon}
-        to="resource-types"
-        text="Resource Types"
-      />
-      <SidebarItem
-        icon={EnvironmentIcon}
-        to="environments"
-        text="Environments"
-      />
-      <SidebarItem
-        icon={ApplicationIcon}
-        to="applications"
-        text="Applications"
-      />
-      <SidebarItem icon={ResourceIcon} to="resources" text="Resources" />
-      <SidebarItem icon={RecipeIcon} to="recipes" text="Recipes" />
-      {/* End global nav */}
+export const RadiusSidebar = () => {
+  const applications = useRouteRef(applicationListPageRouteRef);
+  const environments = useRouteRef(environmentListPageRouteRef);
+  const recipes = useRouteRef(recipeListPageRouteRef);
+  const resources = useRouteRef(resourceListPageRouteRef);
+  const resourceTypes = useRouteRef(resourceTypesListPageRouteRef);
+  return (
+    <Sidebar>
+      <SidebarLogo />
       <SidebarDivider />
-      <SidebarScrollWrapper />
-    </SidebarGroup>
-    <SidebarSpace />
-    <SidebarDivider />
-    <SidebarGroup
-      label="Settings"
-      icon={<UserSettingsSignInAvatar />}
-      to="/settings"
-    >
-      <SidebarItem icon={SettingsIcon} to="/settings" text="Settings" />
-    </SidebarGroup>
-  </Sidebar>
-);
+      <SidebarGroup label="Menu" icon={<MenuIcon />}>
+        {/* Global nav, not org-specific */}
+        <SidebarItem icon={RadiusLogomarkReverse} to="/" text="Home" />
+        <SidebarItem
+          icon={ResourceIcon}
+          to={resourceTypes()}
+          text="Resource Types"
+        />
+        <SidebarItem
+          icon={EnvironmentIcon}
+          to={environments()}
+          text="Environments"
+        />
+        <SidebarItem
+          icon={ApplicationIcon}
+          to={applications()}
+          text="Applications"
+        />
+        <SidebarItem icon={ResourceIcon} to={resources()} text="Resources" />
+        <SidebarItem icon={RecipeIcon} to={recipes()} text="Recipes" />
+        {/* End global nav */}
+        <SidebarDivider />
+        <SidebarScrollWrapper />
+      </SidebarGroup>
+      <SidebarSpace />
+      <SidebarDivider />
+      <SidebarGroup
+        label="Settings"
+        icon={<UserSettingsSignInAvatar />}
+        to="/settings"
+      >
+        <SidebarItem icon={SettingsIcon} to="/settings" text="Settings" />
+      </SidebarGroup>
+    </Sidebar>
+  );
+};

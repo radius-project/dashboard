@@ -15,6 +15,7 @@ import {
 } from './shared-library-candidate.ts';
 
 const root = process.cwd();
+const fullMatrix = process.env.QUALIFICATION_FULL_HOST_MATRIX === 'true';
 const evidence = process.env.QUALIFICATION_EVIDENCE_DIRECTORY;
 if (!evidence || !path.isAbsolute(evidence)) {
   throw new Error(
@@ -117,6 +118,17 @@ const candidate = JSON.parse(
 ) as SharedLibraryCandidate;
 const candidateDirectory = path.dirname(receiptPath);
 const artifacts: Record<string, { file: string; sha256: string }> = {};
+const hostManifests = fullMatrix
+  ? ['app', 'backend'].map(name => ({
+      directory: path.join('packages', name),
+      manifest: JSON.parse(
+        fs.readFileSync(
+          path.join(root, 'packages', name, 'package.json'),
+          'utf8',
+        ),
+      ),
+    }))
+  : [];
 
 try {
   // Backstage builds read the declarations emitted by the repository compiler.
@@ -148,16 +160,19 @@ try {
     artifacts[name] = { file, sha256: sha256(file) };
   }
   const dependencies: Record<string, string> = {};
-  for (const name of [
+  const packageNames = new Set([
     '@backstage/app-defaults',
     '@backstage/config',
     '@backstage/core-app-api',
+    '@backstage/core-compat-api',
     '@backstage/core-components',
     '@backstage/core-plugin-api',
     '@backstage/frontend-defaults',
     '@backstage/frontend-plugin-api',
     '@backstage/plugin-app-react',
     '@backstage/plugin-kubernetes',
+    '@backstage/theme',
+    '@material-ui/core',
     '@types/react',
     '@types/react-dom',
     'react',
@@ -165,7 +180,11 @@ try {
     'reactflow',
     'react-router-dom',
     'typescript',
-  ]) {
+    ...hostManifests
+      .flatMap(host => Object.keys(host.manifest.dependencies))
+      .filter(name => !name.startsWith('@internal/')),
+  ]);
+  for (const name of packageNames) {
     dependencies[name] = installedPackage(root, name).manifest.version;
   }
   for (const [name, artifact] of Object.entries(artifacts)) {
@@ -202,12 +221,56 @@ try {
   };
   fs.writeFileSync(
     path.join(consumer, 'package.json'),
-    `${JSON.stringify({ name: 'radius-installed-host', private: true, packageManager: repositoryManifest.packageManager, dependencies, resolutions }, null, 2)}\n`,
+    `${JSON.stringify({ name: 'radius-installed-host', private: true, packageManager: repositoryManifest.packageManager, dependencies, resolutions, ...(fullMatrix ? { workspaces: ['packages/*'] } : {}) }, null, 2)}\n`,
   );
   fs.writeFileSync(
     path.join(consumer, '.yarnrc.yml'),
-    'nodeLinker: node-modules\n',
+    `nodeLinker: node-modules\n${fullMatrix ? 'enableScripts: true\n' : ''}`,
   );
+  if (fullMatrix) {
+    for (const host of hostManifests) {
+      const directory = path.join(consumer, host.directory);
+      fs.mkdirSync(directory, { recursive: true });
+      for (const name of ['src', 'public']) {
+        const source = path.join(root, host.directory, name);
+        if (fs.existsSync(source))
+          fs.cpSync(source, path.join(directory, name), {
+            recursive: true,
+            filter: file =>
+              !/\.(test|spec)\.[jt]sx?$/.test(file) &&
+              path.basename(file) !== 'setupTests.ts',
+          });
+      }
+      const { devDependencies: _dev, jest: _jest, ...manifest } = host.manifest;
+      manifest.dependencies = Object.fromEntries(
+        Object.keys(host.manifest.dependencies).map(name => [
+          name,
+          name === '@internal/app'
+            ? 'workspace:*'
+            : artifacts[name]
+              ? `file:../../archives/${path.basename(artifacts[name].file)}`
+              : dependencies[name],
+        ]),
+      );
+      fs.writeFileSync(
+        path.join(directory, 'package.json'),
+        `${JSON.stringify(manifest, null, 2)}\n`,
+      );
+    }
+    for (const file of [
+      'tsconfig.json',
+      'backstage.json',
+      'app-config.yaml',
+      'app-config.dashboard.yaml',
+      '.dockerignore',
+    ]) {
+      fs.copyFileSync(path.join(root, file), path.join(consumer, file));
+    }
+    fs.copyFileSync(
+      path.join(root, 'packages', 'backend', 'Dockerfile'),
+      path.join(consumer, 'packages', 'backend', 'Dockerfile'),
+    );
+  }
   runYarn(['install'], consumer);
   runYarn(['install', '--immutable'], consumer);
   const shared = verifySharedLibraryCandidate(
@@ -226,6 +289,7 @@ try {
     process.execPath,
     [
       path.join(consumer, 'node_modules', 'typescript', 'bin', 'tsc'),
+      '--ignoreConfig',
       '--strict',
       '--noEmit',
       '--skipLibCheck',
@@ -244,6 +308,25 @@ try {
     ],
     consumer,
   );
+  if (fullMatrix) {
+    runYarn(['tsc'], consumer);
+    run(
+      process.execPath,
+      [
+        path.join(
+          consumer,
+          'node_modules',
+          '@backstage',
+          'cli',
+          'bin',
+          'backstage-cli',
+        ),
+        'package',
+        'build',
+      ],
+      path.join(consumer, 'packages', 'backend'),
+    );
+  }
   const graphRequire = createRequire(path.join(consumer, 'package.json'));
   const stylesheet = graphRequire.resolve(
     '@radius-project/graph-react/styles.css',
@@ -268,13 +351,118 @@ try {
     path.join(root, 'scripts', 'observe-shared-graph.ts'),
     consumer,
   ]);
-  if (process.env.QUALIFICATION_CONTAINER_IMAGE) {
+  let backendImage = process.env.QUALIFICATION_CONTAINER_IMAGE;
+  if (fullMatrix) {
+    run(
+      process.execPath,
+      [
+        path.join(root, 'scripts', 'qualify-standalone-host.ts'),
+        'nativeHost.test.ts',
+      ],
+      root,
+      {
+        QUALIFICATION_INSTALLED_BACKEND: consumer,
+        QUALIFICATION_CONTAINER_IMAGE: '',
+        QUALIFICATION_FULL_HOST_JOURNEYS: '',
+        QUALIFICATION_APP_BASE_PATH: '',
+        QUALIFICATION_PLUGIN_MOUNT_PATH: '',
+        QUALIFICATION_EVIDENCE_DIRECTORY: path.join(
+          recordDirectory,
+          'matrix',
+          'standalone-baseline',
+        ),
+      },
+    );
+    for (const basePath of ['', '/nested']) {
+      run(
+        process.execPath,
+        [path.join(root, 'scripts', 'qualify-standalone-host.ts')],
+        root,
+        {
+          QUALIFICATION_FULL_HOST_JOURNEYS: 'true',
+          QUALIFICATION_INSTALLED_BACKEND: consumer,
+          QUALIFICATION_CONTAINER_IMAGE: '',
+          QUALIFICATION_APP_BASE_PATH: basePath,
+          QUALIFICATION_PLUGIN_MOUNT_PATH: '/plugins/radius',
+          QUALIFICATION_EVIDENCE_DIRECTORY: path.join(
+            recordDirectory,
+            'matrix',
+            basePath ? 'standalone-nested' : 'standalone-root',
+          ),
+        },
+      );
+    }
+    if (backendImage) {
+      backendImage = `radius-phase5-installed:${artifacts['@internal/plugin-radius'].sha256.slice(0, 16)}`;
+      run(
+        'docker',
+        [
+          'build',
+          '--file',
+          path.join('packages', 'backend', 'Dockerfile'),
+          '--tag',
+          backendImage,
+          '--label',
+          `io.radius.qualification.plugin-sha256=${artifacts['@internal/plugin-radius'].sha256}`,
+          '--label',
+          `io.radius.qualification.backend-sha256=${sha256(path.join(consumer, 'packages', 'backend', 'src', 'createRadiusBackend.ts'))}`,
+          ...(process.env.QUALIFICATION_SOURCE_REVISION
+            ? [
+                '--label',
+                `org.opencontainers.image.revision=${process.env.QUALIFICATION_SOURCE_REVISION}`,
+              ]
+            : []),
+          '.',
+        ],
+        consumer,
+      );
+      run(
+        process.execPath,
+        [
+          path.join(root, 'scripts', 'qualify-standalone-host.ts'),
+          'nativeHost.test.ts',
+        ],
+        root,
+        {
+          QUALIFICATION_CONTAINER_IMAGE: backendImage,
+          QUALIFICATION_FULL_HOST_JOURNEYS: '',
+          QUALIFICATION_APP_BASE_PATH: '',
+          QUALIFICATION_PLUGIN_MOUNT_PATH: '',
+          QUALIFICATION_EVIDENCE_DIRECTORY: path.join(
+            recordDirectory,
+            'matrix',
+            'container-baseline',
+          ),
+        },
+      );
+      for (const basePath of ['', '/nested']) {
+        run(
+          process.execPath,
+          [path.join(root, 'scripts', 'qualify-standalone-host.ts')],
+          root,
+          {
+            QUALIFICATION_FULL_HOST_JOURNEYS: 'true',
+            QUALIFICATION_CONTAINER_IMAGE: backendImage,
+            QUALIFICATION_APP_BASE_PATH: basePath,
+            QUALIFICATION_PLUGIN_MOUNT_PATH: '/plugins/radius',
+            QUALIFICATION_EVIDENCE_DIRECTORY: path.join(
+              recordDirectory,
+              'matrix',
+              basePath ? 'container-nested' : 'container-root',
+            ),
+          },
+        );
+      }
+    }
+  }
+  if (backendImage) {
     run(
       process.execPath,
       [path.join(root, 'scripts', 'qualify-standalone-host.ts')],
       root,
       {
         QUALIFICATION_INSTALLED_CONSUMER: consumer,
+        QUALIFICATION_CONTAINER_IMAGE: backendImage,
       },
     );
   }
@@ -282,22 +470,23 @@ try {
     path.join(consumer, 'qualification.json'),
     `${JSON.stringify(
       {
-        stage: process.env.QUALIFICATION_CONTAINER_IMAGE
-          ? 'installed-external-frontend-with-container-backend'
-          : 'installed-external-frontend',
-        // This receipt must not imply completion of the full active host matrix.
-        phase5Complete: false,
+        stage: fullMatrix
+          ? 'clean-installed-active-host-matrix'
+          : process.env.QUALIFICATION_CONTAINER_IMAGE
+            ? 'installed-external-frontend-with-container-backend'
+            : 'installed-external-frontend',
+        phase5Complete: fullMatrix && Boolean(backendImage),
         openGates: [
-          'IA-01/IA-02/IA-03: independent clean installed backend declaration/build/dependency closure',
-          ...(process.env.QUALIFICATION_CONTAINER_IMAGE
+          ...(!fullMatrix
             ? [
-                'HU-12/IA-07: complete BS-01..BS-04 service and two-connection GET/POST isolation matrix',
+                'IA-01/IA-02/IA-03: independent clean installed backend declaration/build/dependency closure',
+                'full native standalone and built-container route/base-path/graph matrix; baseline tests alone do not close it',
+                'HU-12/BS-02: installed backend missing required service',
               ]
-            : [
-                'HU-12/IA-07: real backend/proxy, initialization failure and GET/POST authorization',
-              ]),
-          'full native standalone and built-container route/base-path/graph matrix; baseline tests alone do not close it',
-          'native API override, cards and themes in the installed host',
+            : []),
+          ...(!backendImage
+            ? ['HU-12/IA-07: built-container backend and full frontend matrix']
+            : []),
         ],
         node: process.version,
         packageManager: repositoryManifest.packageManager,
@@ -305,7 +494,8 @@ try {
         installedLockSha256: sha256(path.join(consumer, 'yarn.lock')),
         compiler: dependencies.typescript,
         entries: ['@internal/plugin-radius', '@internal/plugin-radius/alpha'],
-        backendImage: process.env.QUALIFICATION_CONTAINER_IMAGE ?? null,
+        backendImage: backendImage ?? null,
+        sourceRevision: process.env.QUALIFICATION_SOURCE_REVISION ?? null,
         dependencies,
         artifacts,
         shared,
@@ -334,11 +524,18 @@ try {
       'browser',
       'qualification.json',
       'failure.txt',
+      'packages',
+      'dist-types',
+      'tsconfig.json',
+      'backstage.json',
+      'app-config.yaml',
+      'app-config.dashboard.yaml',
     ]) {
       const source = path.join(consumer, name);
       if (fs.existsSync(source)) {
         fs.cpSync(source, path.join(recordDirectory, name), {
           recursive: true,
+          filter: file => path.basename(file) !== 'node_modules',
         });
       }
     }

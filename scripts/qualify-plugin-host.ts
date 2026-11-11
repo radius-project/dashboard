@@ -8,122 +8,164 @@ import { assertProductionInputs, sha256 } from './installed-host.ts';
 import { radiusFixtureResponse as fixtureResponse } from './qualification-fixture.ts';
 
 async function main() {
+  const standaloneOrigin = process.env.QUALIFICATION_STANDALONE_ORIGIN;
   const consumerRoot = process.argv[2];
   if (!consumerRoot)
     throw new Error('Expected the isolated packed consumer path');
   const fixtureRoot = path.join(consumerRoot, 'fixture');
-  const output = path.join(consumerRoot, 'browser');
+  const evidence = process.env.QUALIFICATION_EVIDENCE_DIRECTORY;
+  if (standaloneOrigin && (!evidence || !path.isAbsolute(evidence))) {
+    throw new Error('Standalone journeys require persistent absolute evidence');
+  }
+  const outputRoot = standaloneOrigin ? evidence : consumerRoot;
+  if (!outputRoot)
+    throw new Error('Missing host evidence or consumer directory');
+  const output = path.join(outputRoot, 'browser');
   const installed = process.argv.includes('--installed');
-  const buildRoot = installed ? consumerRoot : process.cwd();
-  const resolveBuildPath = (file: string) => path.resolve(buildRoot, file);
-  fs.cpSync(
-    path.join(process.cwd(), 'plugins', 'plugin-radius', 'fixtures'),
-    fixtureRoot,
-    { recursive: true },
-  );
-  const bundle = await build({
-    absWorkingDir: buildRoot,
-    entryPoints: {
-      native: path.join(fixtureRoot, 'native.tsx'),
-      legacy: path.join(fixtureRoot, 'legacy.tsx'),
-    },
-    outdir: output,
-    bundle: true,
-    splitting: true,
-    format: 'esm',
-    platform: 'browser',
-    nodePaths: installed ? [] : [path.join(process.cwd(), 'node_modules')],
-    define: {
-      'process.env': JSON.stringify({ NODE_ENV: 'production' }),
-      global: 'globalThis',
-    },
-    loader: { '.svg': 'dataurl', '.png': 'dataurl' },
-    metafile: true,
-    logLevel: 'warning',
-  });
-  const inputs = Object.entries(bundle.metafile.inputs)
-    // esbuild represents browser:false entries as empty virtual inputs.
-    .filter(
-      ([input, metadata]) =>
-        !input.startsWith('(disabled):') || metadata.bytes !== 0,
-    )
-    .map(([input]) =>
-      input === '<define:process.env>' ? input : resolveBuildPath(input),
+  if (standaloneOrigin) fs.mkdirSync(output, { recursive: true });
+  if (!standaloneOrigin) {
+    const buildRoot = installed ? consumerRoot : process.cwd();
+    const resolveBuildPath = (file: string) => path.resolve(buildRoot, file);
+    fs.cpSync(
+      path.join(process.cwd(), 'plugins', 'plugin-radius', 'fixtures'),
+      fixtureRoot,
+      { recursive: true },
     );
-  if (installed) {
-    fs.writeFileSync(
-      path.join(output, 'metafile.json'),
-      `${JSON.stringify(bundle.metafile, null, 2)}\n`,
-    );
-    assertProductionInputs(consumerRoot, inputs);
-    for (const entry of ['legacy', 'native']) {
-      if (
-        !fs
-          .readFileSync(path.join(output, `${entry}.css`), 'utf8')
-          .includes('.react-flow')
-      ) {
-        throw new Error(
-          `Missing shipped graph CSS in production ${entry} build`,
+    const bundle = await build({
+      absWorkingDir: buildRoot,
+      entryPoints: {
+        native: path.join(fixtureRoot, 'native.tsx'),
+        legacy: path.join(fixtureRoot, 'legacy.tsx'),
+      },
+      outdir: output,
+      bundle: true,
+      splitting: true,
+      format: 'esm',
+      platform: 'browser',
+      nodePaths: installed ? [] : [path.join(process.cwd(), 'node_modules')],
+      define: {
+        'process.env': JSON.stringify({ NODE_ENV: 'production' }),
+        global: 'globalThis',
+      },
+      loader: { '.svg': 'dataurl', '.png': 'dataurl' },
+      metafile: true,
+      logLevel: 'warning',
+    });
+    const inputs = Object.entries(bundle.metafile.inputs)
+      // esbuild represents browser:false entries as empty virtual inputs.
+      .filter(
+        ([input, metadata]) =>
+          !input.startsWith('(disabled):') || metadata.bytes !== 0,
+      )
+      .map(([input]) =>
+        input === '<define:process.env>' ? input : resolveBuildPath(input),
+      );
+    if (installed) {
+      fs.writeFileSync(
+        path.join(output, 'metafile.json'),
+        `${JSON.stringify(bundle.metafile, null, 2)}\n`,
+      );
+      assertProductionInputs(consumerRoot, inputs);
+      if (process.env.QUALIFICATION_FULL_HOST_MATRIX === 'true') {
+        const backend = await build({
+          absWorkingDir: consumerRoot,
+          entryPoints: ['packages/backend/src/createRadiusBackend.ts'],
+          outfile: path.join(output, 'backend-composition.cjs'),
+          platform: 'node',
+          format: 'cjs',
+          packages: 'external',
+          bundle: true,
+          metafile: true,
+          logLevel: 'warning',
+        });
+        const expected = 'packages/backend/src/createRadiusBackend.ts';
+        if (Object.keys(backend.metafile.inputs).join() !== expected) {
+          throw new Error(
+            'Backend composition must build only the clean host entry',
+          );
+        }
+        fs.writeFileSync(
+          path.join(output, 'backend-metafile.json'),
+          `${JSON.stringify(backend.metafile, null, 2)}\n`,
         );
+      }
+      for (const entry of ['legacy', 'native']) {
+        if (
+          !fs
+            .readFileSync(path.join(output, `${entry}.css`), 'utf8')
+            .includes('.react-flow')
+        ) {
+          throw new Error(
+            `Missing shipped graph CSS in production ${entry} build`,
+          );
+        }
       }
     }
-  }
-  if (
-    !inputs.some(input => input.includes('plugin-radius/dist/alpha.esm.js')) ||
-    !inputs.some(input => input.includes('plugin-radius/dist/index.esm.js')) ||
-    inputs.some(input => input.includes('plugin-radius/src/'))
-  ) {
-    throw new Error(
-      'Browser fixtures must use both packed entries, not workspace source',
-    );
-  }
-  for (const entry of ['native', 'legacy']) {
-    const outputs = bundle.metafile.outputs;
-    const start = Object.keys(outputs).find(
-      file => resolveBuildPath(file) === path.join(output, `${entry}.js`),
-    );
-    if (!start) throw new Error(`Missing packed ${entry} output`);
-    const visited = new Set<string>();
-    const visit = (file: string) => {
-      if (visited.has(file)) return;
-      visited.add(file);
-      const metadata = outputs[file];
-      if (!metadata) throw new Error(`Missing bundled output ${file}`);
-      if (
-        Object.keys(metadata.inputs).some(input =>
-          /node_modules\/(?:reactflow|@reactflow)\//.test(
-            input.replaceAll('\\', '/'),
-          ),
-        )
-      ) {
-        throw new Error(
-          `Packed ${entry} plugin must not include legacy Flow11`,
-        );
-      }
-      for (const dependency of metadata.imports.filter(
-        item => !item.external,
-      )) {
-        const target = Object.keys(outputs).find(
-          candidate =>
-            resolveBuildPath(candidate) ===
-              path.resolve(
-                path.dirname(resolveBuildPath(file)),
-                dependency.path,
-              ) ||
-            resolveBuildPath(candidate) === resolveBuildPath(dependency.path),
-        );
-        if (!target)
+    if (
+      !inputs.some(input =>
+        input.includes('plugin-radius/dist/alpha.esm.js'),
+      ) ||
+      !inputs.some(input =>
+        input.includes('plugin-radius/dist/index.esm.js'),
+      ) ||
+      inputs.some(input => input.includes('plugin-radius/src/'))
+    ) {
+      throw new Error(
+        'Browser fixtures must use both packed entries, not workspace source',
+      );
+    }
+    for (const entry of ['native', 'legacy']) {
+      const outputs = bundle.metafile.outputs;
+      const start = Object.keys(outputs).find(
+        file => resolveBuildPath(file) === path.join(output, `${entry}.js`),
+      );
+      if (!start) throw new Error(`Missing packed ${entry} output`);
+      const visited = new Set<string>();
+      const visit = (file: string) => {
+        if (visited.has(file)) return;
+        visited.add(file);
+        const metadata = outputs[file];
+        if (!metadata) throw new Error(`Missing bundled output ${file}`);
+        if (
+          Object.keys(metadata.inputs).some(input =>
+            /node_modules\/(?:reactflow|@reactflow)\//.test(
+              input.replaceAll('\\', '/'),
+            ),
+          )
+        ) {
           throw new Error(
-            `Cannot trace packed output dependency ${dependency.path}`,
+            `Packed ${entry} plugin must not include legacy Flow11`,
           );
-        visit(target);
-      }
-    };
-    visit(start);
+        }
+        for (const dependency of metadata.imports.filter(
+          item => !item.external,
+        )) {
+          const target = Object.keys(outputs).find(
+            candidate =>
+              resolveBuildPath(candidate) ===
+                path.resolve(
+                  path.dirname(resolveBuildPath(file)),
+                  dependency.path,
+                ) ||
+              resolveBuildPath(candidate) === resolveBuildPath(dependency.path),
+          );
+          if (!target)
+            throw new Error(
+              `Cannot trace packed output dependency ${dependency.path}`,
+            );
+          visit(target);
+        }
+      };
+      visit(start);
+    }
   }
   let system = 'legacy';
   let basePath = '';
-  const mountPath = installed ? '/plugins/radius' : '';
+  const mountPath = standaloneOrigin
+    ? (process.env.QUALIFICATION_PLUGIN_MOUNT_PATH ?? '')
+    : installed
+      ? '/plugins/radius'
+      : '';
   let forbidden: boolean | 'graph' = false;
   const requests: {
     system: string;
@@ -246,25 +288,32 @@ async function main() {
   let browser: Browser | undefined;
   const failures: unknown[] = [];
   try {
-    server.listen(0, '127.0.0.1');
-    await once(server, 'listening');
-    const address = server.address();
-    if (!address || typeof address === 'string')
-      throw new Error('Expected a TCP fixture server');
-    const origin = `http://127.0.0.1:${address.port}`;
+    let origin = standaloneOrigin;
+    if (!origin) {
+      server.listen(0, '127.0.0.1');
+      await once(server, 'listening');
+      const address = server.address();
+      if (!address || typeof address === 'string')
+        throw new Error('Expected a TCP fixture server');
+      origin = `http://127.0.0.1:${address.port}`;
+    }
     browser = await chromium.launch({
       ...(process.env.PLAYWRIGHT_BROWSER_CHANNEL
         ? { channel: process.env.PLAYWRIGHT_BROWSER_CHANNEL }
         : {}),
     });
-    for (system of ['legacy', 'native']) {
+    for (system of standaloneOrigin ? ['standalone'] : ['legacy', 'native']) {
       const context = await browser.newContext();
       const page = await context.newPage();
       await page.setViewportSize({ width: 1500, height: 1200 });
       const errors: string[] = [];
+      const consoleErrors: string[] = [];
+      page.on('console', message => {
+        if (message.type() === 'error') consoleErrors.push(message.text());
+      });
       const navigate = async (url: string) => {
         await page.goto(url);
-        if (installed) {
+        if (installed && !standaloneOrigin) {
           await page
             .getByRole('button', {
               name: 'Sign in to qualification host',
@@ -274,6 +323,33 @@ async function main() {
         }
       };
       page.on('pageerror', error => errors.push(error.message));
+      const assets: { path: string; status: number }[] = [];
+      page.on('response', response => {
+        const pathname = new URL(response.url()).pathname;
+        if (/\.(js|css)$/.test(pathname))
+          assets.push({ path: pathname, status: response.status() });
+      });
+      const responses: Promise<void>[] = [];
+      if (standaloneOrigin) {
+        page.on('response', response => {
+          if (!new URL(response.url()).pathname.startsWith('/api/kubernetes/'))
+            return;
+          responses.push(
+            (async () => {
+              const request = response.request();
+              const headers = await request.allHeaders();
+              const url = new URL(response.url());
+              requests.push({
+                system,
+                method: request.method(),
+                path: `${url.pathname}${url.search}`,
+                cluster: headers['backstage-kubernetes-cluster'],
+                status: response.status(),
+              });
+            })(),
+          );
+        });
+      }
       page.on('dialog', async dialog => {
         errors.push(`Unexpected dialog: ${dialog.message()}`);
         await dialog.dismiss();
@@ -284,7 +360,11 @@ async function main() {
           await route.fulfill({ json: fixtureResponse(url) });
         });
       try {
-        for (basePath of installed ? ['', '/nested'] : ['']) {
+        for (basePath of standaloneOrigin
+          ? [process.env.QUALIFICATION_APP_BASE_PATH ?? '']
+          : installed
+            ? ['', '/nested']
+            : ['']) {
           const prefix = `${basePath}${mountPath}`;
           for (const [route, title] of [
             ['/applications', 'Applications'],
@@ -310,7 +390,7 @@ async function main() {
           await navigate(`${origin}${prefix}/applications`);
           if (installed) {
             const nav = page.getByRole('navigation', {
-              name: 'Host navigation',
+              name: standaloneOrigin ? 'sidebar nav' : 'Host navigation',
             });
             for (const [name, route] of [
               ['Applications', '/applications'],
@@ -320,11 +400,16 @@ async function main() {
               ['Resource Types', '/resource-types'],
               ['External applications', '/applications'],
             ]) {
+              if (standaloneOrigin && name === 'External applications')
+                continue;
               const link = nav.getByRole('link', { name, exact: true });
               await expect(link).toHaveAttribute('href', `${prefix}${route}`);
               await link.click();
               await expect(page).toHaveURL(`${origin}${prefix}${route}`);
             }
+            await nav
+              .getByRole('link', { name: 'Applications', exact: true })
+              .click();
           }
           await page.getByRole('link', { name: 'packed-app' }).click();
           await page.getByRole('tab', { name: 'App Graph' }).click();
@@ -347,7 +432,7 @@ async function main() {
                 page.evaluate(() =>
                   Array.from(document.styleSheets).some(
                     sheet =>
-                      sheet.href?.endsWith('.css') &&
+                      (!sheet.href || sheet.href.startsWith(location.origin)) &&
                       Array.from(sheet.cssRules).some(rule =>
                         rule.cssText.includes('.react-flow'),
                       ),
@@ -424,7 +509,7 @@ async function main() {
             .toBe(true);
           const evidenceDirectory =
             process.env.QUALIFICATION_EVIDENCE_DIRECTORY;
-          if (evidenceDirectory && basePath === '') {
+          if (evidenceDirectory && (standaloneOrigin || basePath === '')) {
             fs.mkdirSync(evidenceDirectory, { recursive: true });
             await page.screenshot({
               path: path.join(evidenceDirectory, `${system}-multi-tier.png`),
@@ -518,7 +603,7 @@ async function main() {
             );
           }
           await page.reload();
-          if (installed)
+          if (installed && !standaloneOrigin)
             await page
               .getByRole('button', {
                 name: 'Sign in to qualification host',
@@ -545,6 +630,17 @@ async function main() {
                 page.getByRole('link', { name: 'packed-app', exact: true }),
               ).toHaveCount(0);
               if (backendUrl) {
+                await Promise.all(responses);
+                let token = 'radius-installed-host-fixture';
+                if (standaloneOrigin) {
+                  const signedIn = await fetch(
+                    `${backendUrl}/api/auth/guest/refresh`,
+                  );
+                  expect(signedIn.status).toBe(200);
+                  token = (await signedIn.json()).backstageIdentity.token;
+                  if (typeof token !== 'string')
+                    throw new Error('Missing host identity token');
+                }
                 for (const method of ['GET', 'POST']) {
                   const allowed = requests.find(
                     request =>
@@ -560,13 +656,28 @@ async function main() {
                   const denied = await fetch(`${origin}${allowed.path}`, {
                     method,
                     headers: {
-                      authorization: 'Bearer radius-installed-host-fixture',
+                      authorization: `Bearer ${token}`,
                       'backstage-kubernetes-cluster': 'packed-cluster',
                       'content-type': 'application/json',
                     },
                     ...(method === 'POST' ? { body: '{}' } : {}),
                   });
                   expect(denied.status).toBe(403);
+                }
+                await Promise.all(responses);
+                if (standaloneOrigin) {
+                  const css = await page.evaluate(() =>
+                    Array.from(document.styleSheets)
+                      .filter(
+                        sheet =>
+                          !sheet.href || sheet.href.startsWith(location.origin),
+                      )
+                      .flatMap(sheet =>
+                        Array.from(sheet.cssRules, rule => rule.cssText),
+                      )
+                      .join('\n'),
+                  );
+                  fs.writeFileSync(path.join(output, 'loaded-styles.css'), css);
                 }
               }
               await setForbidden('graph');
@@ -580,6 +691,115 @@ async function main() {
             }
           }
         }
+        if (installed && system === 'native') {
+          const prefix = `${basePath}${mountPath}`;
+          await navigate(
+            `${origin}${prefix}/applications?connection=isolated-cluster`,
+          );
+          await expect(page.locator('html')).toHaveAttribute(
+            'data-radius-api-connection',
+            'isolated-cluster',
+          );
+          await page
+            .getByRole('link', { name: 'packed-app', exact: true })
+            .click();
+          await page.getByRole('tab', { name: 'App Graph' }).click();
+          await expect(
+            page.getByRole('group', { name: 'frontend', exact: true }),
+          ).toBeVisible();
+          for (const method of ['GET', 'POST']) {
+            expect(
+              requests.some(
+                request =>
+                  request.system === system &&
+                  request.cluster === 'isolated-cluster' &&
+                  request.method === method &&
+                  request.status === 200 &&
+                  (method !== 'POST' || request.path.includes('/getGraph?')),
+              ),
+            ).toBe(true);
+          }
+          await setForbidden(true);
+          try {
+            await navigate(
+              `${origin}${prefix}/applications?connection=isolated-cluster`,
+            );
+            await expect(
+              page.getByText(/Host policy denied access|403|Forbidden/).first(),
+            ).toBeVisible();
+            await expect(
+              page.getByRole('link', { name: 'packed-app', exact: true }),
+            ).toHaveCount(0);
+          } finally {
+            await setForbidden(false);
+          }
+          await navigate(`${origin}${basePath}/host-cards`);
+          await expect(
+            page.getByRole('heading', { name: 'Host cards', exact: true }),
+          ).toBeVisible();
+          await expect(
+            page.getByRole('link', { name: 'packed-app', exact: true }),
+          ).toHaveAttribute(
+            'href',
+            `${prefix}/resources/demo/Applications.Core/applications/packed-app`,
+          );
+          await expect(
+            page.getByRole('link', { name: 'demo', exact: true }),
+          ).toHaveAttribute(
+            'href',
+            `${prefix}/environments/demo/Applications.Core/environments/demo`,
+          );
+          const backgrounds: string[] = [];
+          for (const variant of ['light', 'dark']) {
+            await page
+              .getByRole('button', { name: `Use ${variant} theme` })
+              .click();
+            await expect(
+              page.getByRole('status', { name: 'Host theme' }),
+            ).toHaveText(variant);
+            backgrounds.push(
+              await page
+                .locator('.MuiPaper-root')
+                .first()
+                .evaluate(element => getComputedStyle(element).backgroundColor),
+            );
+          }
+          expect(backgrounds[0]).not.toBe(backgrounds[1]);
+          await page
+            .getByRole('button', { name: 'Hide optional cards' })
+            .click();
+          await expect(
+            page.getByRole('heading', { name: 'Applications', exact: true }),
+          ).toHaveCount(0);
+          await expect(
+            page.getByRole('heading', { name: 'Environments', exact: true }),
+          ).toHaveCount(0);
+          await page
+            .getByRole('button', { name: 'Show optional cards' })
+            .click();
+          await expect(
+            page.getByRole('link', { name: 'packed-app', exact: true }),
+          ).toBeVisible();
+          fs.writeFileSync(
+            path.join(output, 'native-host-seams.json'),
+            `${JSON.stringify(
+              {
+                result: 'passed',
+                apiOverride:
+                  'original shipped native API factory with host-selected connection',
+                connection: 'isolated-cluster',
+                methods: ['GET', 'POST'],
+                forbiddenVisible: true,
+                optionalCards: ['present', 'absent', 'restored'],
+                themes: ['light', 'dark'],
+                backgrounds,
+              },
+              null,
+              2,
+            )}\n`,
+          );
+        }
+        await Promise.all(responses);
         expect(errors).toEqual([]);
       } catch (error) {
         const failure = {
@@ -589,6 +809,8 @@ async function main() {
           errors,
           text: await page.locator('body').innerText(),
           requests,
+          assets,
+          consoleErrors,
         };
         console.error(JSON.stringify(failure, null, 2));
         const directory = process.env.QUALIFICATION_EVIDENCE_DIRECTORY;
@@ -612,7 +834,9 @@ async function main() {
       );
     }
     if (installed) {
-      for (const entry of ['legacy', 'native']) {
+      for (const entry of standaloneOrigin
+        ? ['standalone']
+        : ['legacy', 'native']) {
         expect(
           requests.some(
             request =>
@@ -638,14 +862,18 @@ async function main() {
             transport: backendUrl
               ? 'real built backend Kubernetes proxy to declared fake upstream'
               : 'declared HTTP Kubernetes API fixture, not a qualified Backstage backend',
-            auth: 'host-owned fixture identity; no automatic guest sign-in',
+            auth: standaloneOrigin
+              ? 'real standalone host guest provider'
+              : 'host-owned fixture identity; no automatic guest sign-in',
             requests,
-            css: Object.fromEntries(
-              ['legacy', 'native'].map(entry => [
-                entry,
-                sha256(path.join(output, `${entry}.css`)),
-              ]),
-            ),
+            css: standaloneOrigin
+              ? { standalone: sha256(path.join(output, 'loaded-styles.css')) }
+              : Object.fromEntries(
+                  ['legacy', 'native'].map(entry => [
+                    entry,
+                    sha256(path.join(output, `${entry}.css`)),
+                  ]),
+                ),
           },
           null,
           2,

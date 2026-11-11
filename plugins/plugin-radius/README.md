@@ -110,7 +110,7 @@ run Docker by default or prove production authorization.
 
 ## Phase 5 installed-host evidence
 
-Phase 5 is in progress. `yarn test:package` remains a linked-dependency smoke
+`yarn test:package` remains a linked-dependency smoke
 check. Do not use it to qualify a clean external host.
 
 Run `yarn test:e2e:installed` with `QUALIFICATION_EVIDENCE_DIRECTORY` set to a
@@ -123,7 +123,7 @@ test identity. No automatic guest sign-in is enabled.
 
 The runner retains `commands.json`, command logs, `tuple.json`, archives, an
 installed lockfile, production `browser/metafile.json`, HTTP evidence, and graph
-records. Only a successful run writes `qualification.json`. Without a container,
+records. Only a successful run writes `qualification.json`. By default,
 its scope is `installed-external-frontend`; `phase5Complete` stays `false`. Its exact package
 versions and lockfile hashes are evidence of one tuple, not a support range or a
 decision on D2 or D5. The vendored shared candidates and graph records do not
@@ -147,33 +147,74 @@ mounts, package pulls, or the health scaffold. It requires a Linux Docker daemon
 with host networking. The existing native standalone suite can also run against
 that image, but its four baseline tests do not close the full matrix.
 
+Set `QUALIFICATION_FULL_HOST_MATRIX=true` as well to build and qualify the
+complete active matrix. The clean consumer then also contains the actual
+standalone app and backend host composition. Only host code is copied: Radius,
+the forwarding package, and both shared libraries still come from the four
+tarballs. No plugin workspace or source alias is available. The clean host
+compiles with the installed compiler and declarations, and the normal Backstage
+backend build also builds its frontend. The runner uses that compiled backend
+composition for native standalone checks. Root config and logging are controlled
+test services; the six actual backend plugins are not mocked.
+
+When a container image is requested in full-matrix mode, the runner builds a
+new local `radius-phase5-installed:<plugin-digest>` image from that clean host
+with the unchanged production Dockerfile. It does not publish an image or use
+the supplied image as a substitute for this build. Both the clean standalone
+and this built image run the same eight-route, real-graph journey at root and
+`/nested` app base paths, with the plugin at `/plugins/radius`. Their existing
+host-feature baseline also runs, including the actual catalog graph-to-entity
+external binding.
+
+The shared backend contract checks 24 combinations: two connections, GET and
+graph POST, missing/invalid/valid host auth, and allowed/selectively denied
+policies. Each forwarded request must use only the selected upstream URL and
+its credential. Missing or invalid auth must not reach either upstream.
+Discovery and catalog must work, and `/api/radius/health` must remain absent.
+The clean backend also rejects a plugin with a missing required service.
+Container startup must reject failed Kubernetes initialization.
+
+The installed native fixture decorates the public `radiusApiExtension` factory
+without replacing the shipped Radius client. It selects the second real
+connection, checks GET/POST and visible denials, mounts/removes/restores the
+exported cards, checks card route-ref links, and verifies light/dark host theme
+changes in computed card styles. This named extension is exported from `/alpha`
+so a host can use the typed override seam even when the inferred plugin
+extension map does not expose a typed `getExtension` key.
+
+A successful full-matrix run with the newly built container writes
+`phase5Complete: true`. This means the listed Phase 5 gates passed on that exact
+test tuple, not that Phase 7/8 accessibility, real Radius/auth, publishing, D2,
+or D5 are approved. Full-matrix runs need a working native SQLite build toolchain
+and enable dependency build scripts in the clean consumer.
+
 The table maps executable checks, not a claim that every gate has passed.
-Backend evidence below requires container mode.
+Full closure below requires full-matrix mode with a container.
 
 | Requirement | Executable evidence | Remaining scope |
 | --- | --- | --- |
-| HU-01 | `qualify-plugin-host.ts --installed`: actual legacy/native `createApp`, browser errors fail; optional real container backend | Full standalone/container frontend journeys |
-| HU-02 | Same journey visits all eight headings for each entry and base path | Standalone/container matrix |
-| HU-03 | Host binds its external applications ref to the plugin's real applications ref; browser follows that link | Standalone/container bindings |
-| HU-04 | Named host navigation links must exist and have exact accessible names | Full sidebar surfaces across the matrix |
-| HU-05 | Fixture links call `useRouteRef`; browser checks their computed destinations | Standalone/container navigation |
-| HU-06 | Installed journeys mount the plugin at `/plugins/radius`, also with the real container backend | Standalone/container frontend mounts |
-| HU-07 | The same nested mount runs with both root and `/nested` app base paths, also with the real backend | Standalone/container frontend base paths |
-| HU-08 | One candidate plugin archive supplies packed root and `/alpha` hosts | Standalone/container evidence |
+| HU-01 | `qualify-plugin-host.ts --installed`: actual legacy/native `createApp`; same journey drives clean standalone/container production output; browser errors fail | One pinned tuple, not a support range |
+| HU-02 | Shared journey visits all eight headings for every active host and base path | None in the controlled matrix |
+| HU-03 | External fixture follows a real bound applications ref; standalone/container baseline follows catalog graph's bound entity ref | Catalog baseline uses controlled entity responses |
+| HU-04 | Named host/sidebar links must exist with exact accessible names | Full accessibility audit belongs to Phase 7 |
+| HU-05 | Fixture and real standalone sidebar links call `useRouteRef`; browser checks destinations | Host-owned Home/Settings paths are unchanged |
+| HU-06 | All active hosts mount Radius at `/plugins/radius` | None in the controlled matrix |
+| HU-07 | Each active host runs with root and `/nested` app base paths; real ingress strips the base path for static assets | None in the controlled matrix |
+| HU-08 | Same candidate archive supplies packed root and `/alpha`; clean standalone/container use `/alpha` | No temporary hybrid support promise |
 | HU-09 | Host-owned fixture identity supplies HTTP credentials; real backend rejects missing identity | Controlled fixture/static auth is not a production provider |
-| HU-10 | Real proxy GET/graph POST return upstream 403; list and graph errors are visible, not empty success | Two-connection isolation matrix |
-| HU-11 | Both external entries reuse one Phase 3/4 journey with HTTP-fixture or real-container backend setup | Share full journeys with standalone/container frontend setup |
-| HU-12 | Real native backend initializes app/proxy/auth/provider/catalog/Kubernetes without health scaffold; missing initialization config exits with error | Other missing-service combinations, two-connection isolation, full matrix |
-| IA-01 | New Yarn consumer installs four candidate tarballs; build inputs must remain inside that consumer | Installed backend consumer |
-| IA-02 | Repository build/pack, installed declaration and fixture compilation, production esbuild frontend bundles; separately built backend/container | Independent clean installed backend build; `skipLibCheck` is retained, not full dependency declaration checking |
-| IA-03 | Shared preflight checks graph-transitive core; `assertCandidateResolution` also checks plugin/forwarding resolution | Installed backend dependency tree |
+| HU-10 | Real proxy GET/graph POST return upstream 403; list and graph errors remain visible; shared 24-case connection contract | Controlled auth/upstream only |
+| HU-11 | All active hosts reuse one Phase 3/4 journey with host-specific transport and sign-in setup | Existing host-feature baseline is additional evidence |
+| HU-12 | Actual six-plugin backend, missing-service rejection, failed initialization exit, discovery/catalog, and two-connection GET/POST isolation; scaffold 404 | Real production providers belong to Phase 8 |
+| IA-01 | Clean consumer installs four tarballs; only app/backend host code is copied; plugin build inputs must stay inside consumer | Private backend is not published as a plugin |
+| IA-02 | Installed declarations/fixtures and clean host compile; production frontend/backend build; clean production Dockerfile build | `skipLibCheck` is retained, not full dependency declaration checking |
+| IA-03 | Exact direct/plugin/forwarding/graph-transitive candidate resolution in the complete clean host tree | Recorded installed lock is part of the tuple |
 | IA-04 | Compiled shared inputs are required; workspace source and Flow11 browser inputs fail | Continue public forwarding-contract and import-boundary tests |
-| IA-05 | Full installed frontend tree must contain one React and one ReactDOM copy | Standalone/container installed tree |
-| IA-06 | Exact archive CSS bytes, CSS input in build metadata, built CSS, loaded browser rules and computed controls; altered installed CSS fails | Standalone/container production CSS |
-| IA-07 | Actual legacy/native registration/routes work through the real container Kubernetes proxy to fake upstream | Backend candidate/install closure and two-connection matrix |
-| IA-08 | Production bundles are served as files; actual installed graph renderers and built container backend | Complete standalone/container frontend journeys |
-| RX-01 | `assertInstalledReact18` rejects duplicate peers and any non-18 host React | Dashboard/container tree |
-| RX-02 | Both installed entry journeys use shared cards, edges, fit and zoom; graph observer checks the forwarding entry | Dashboard/container graph journeys |
+| IA-05 | Complete clean host tree must contain one React and one ReactDOM copy; image uses its built frontend | No React 19 host claim |
+| IA-06 | Exact archive CSS bytes, build input/output CSS, loaded browser rules and computed graph controls in all active hosts; altered CSS fails | None in the controlled matrix |
+| IA-07 | Actual registration/routes, clean six-plugin backend, real Kubernetes proxy and shared connection contract against fake upstream | Real Radius belongs to Phase 8 |
+| IA-08 | Static production bundles and actual built container; no dev server or mocked shared renderer | None in the controlled matrix |
+| RX-01 | Whole clean dashboard tree has one React 18 pair; duplicate/non-18 host peers fail | Exact recorded tuple only |
+| RX-02 | Every active host uses shared cards, edges, fit/zoom; forwarding observer also runs | No isolated-library result substitutes for a host |
 | RX-03 | A React 19 negative test fails the host tree check | No React 19 Backstage support claim |
 
 `scripts/installed-host.test.ts` checks duplicate resolution, duplicate React,
@@ -183,7 +224,7 @@ missing-file checks. `observe-shared-graph.ts` retains actual missing-CSS and
 stub-renderer browser controls. These negative tests must not be replaced with
 successful imports or a placeholder graph.
 
-The native external host still needs installed API override, card, and theme
-journeys. The temporary hybrid host is not a permanent support requirement.
-Native standalone and built-container baseline evidence is not full host
-qualification. Do not mark Phase 5 complete until the listed gaps are closed.
+The temporary hybrid host is not a permanent support requirement. An
+external-only run or standalone/container baseline is not full qualification.
+Use the full-matrix receipt and its command results, not a packed smoke test,
+to determine which gates passed.

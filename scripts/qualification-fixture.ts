@@ -20,7 +20,10 @@ export function radiusFixtureResponse(url: string): unknown {
   };
   if (url.endsWith('/clusters')) {
     return {
-      items: [{ name: 'packed-cluster', authProvider: 'serviceAccount' }],
+      items: ['packed-cluster', 'isolated-cluster'].map(name => ({
+        name,
+        authProvider: 'serviceAccount',
+      })),
     };
   }
   if (url.includes('/getGraph?')) {
