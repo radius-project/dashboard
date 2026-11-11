@@ -5610,7 +5610,7 @@ __metadata:
     "@testing-library/user-event": "npm:^14.6.8"
     "@types/jest": "npm:^30.0.0"
     "@types/react": "npm:^18"
-    esbuild: "npm:0.27.7"
+    esbuild: "npm:0.28.1"
     jest: "npm:^30.5.2"
     jest-canvas-mock: "npm:^2.5.8"
     msw: "npm:^3.0.3"
