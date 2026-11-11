@@ -30,8 +30,10 @@ import {
 } from '@material-ui/core';
 import type { Theme } from '@material-ui/core';
 import useAsync from 'react-use/lib/useAsync';
-import { useApi } from '@backstage/core-plugin-api';
+import { useApi, useRouteRef } from '@backstage/core-plugin-api';
 import { radiusApiRef } from '../../api/ref';
+import { withRadiusTheme } from '../../appearance';
+import { resourceTypesListPageRouteRef } from '../../routes';
 
 /**
  * Keep GitHub-flavored colors on code surfaces while allowing the surrounding
@@ -241,7 +243,8 @@ const GitHubCopyButton = ({
   );
 };
 
-export const ResourceTypeDetailPage = () => {
+export const ResourceTypeDetailPage = withRadiusTheme(() => {
+  const resourceTypesRoute = useRouteRef(resourceTypesListPageRouteRef);
   const classes = useStyles();
   const theme = useTheme();
   const colors = getThemeColors(theme);
@@ -402,7 +405,7 @@ This should test whether copy buttons appear properly.`;
         <Box mb={3}>
           <Breadcrumbs aria-label="breadcrumb">
             <Link to="/">Home</Link>
-            <Link to="/resource-types">Resource Types</Link>
+            <Link to={resourceTypesRoute()}>Resource Types</Link>
             <Typography>{typeName}</Typography>
           </Breadcrumbs>
         </Box>
@@ -2731,4 +2734,4 @@ This should test whether copy buttons appear properly.`;
       </Content>
     </Page>
   );
-};
+});

@@ -3,7 +3,10 @@ import { renderInTestApp } from '@backstage/test-utils';
 import { screen } from '@testing-library/react';
 import { EnvironmentLayout } from './EnvironmentLayout';
 import { Resource, EnvironmentProperties } from '../../resources';
-import { environmentPageRouteRef } from '../../routes';
+import {
+  environmentListPageRouteRef,
+  environmentPageRouteRef,
+} from '../../routes';
 
 jest.mock('react-router-dom', () => {
   return {
@@ -36,6 +39,7 @@ describe('EnvironmentLayout', () => {
       </EnvironmentLayout>,
       {
         mountedRoutes: {
+          '/environments': environmentListPageRouteRef,
           '/environments/:group/:namespace/:type/:name':
             environmentPageRouteRef,
         },
@@ -62,6 +66,7 @@ describe('EnvironmentLayout', () => {
       </EnvironmentLayout>,
       {
         mountedRoutes: {
+          '/environments': environmentListPageRouteRef,
           '/environments/:group/:namespace/:type/:name':
             environmentPageRouteRef,
         },
@@ -79,6 +84,7 @@ describe('EnvironmentLayout', () => {
       </EnvironmentLayout>,
       {
         mountedRoutes: {
+          '/plugins/radius/environments': environmentListPageRouteRef,
           '/environments/:group/:namespace/:type/:name':
             environmentPageRouteRef,
         },
@@ -89,6 +95,9 @@ describe('EnvironmentLayout', () => {
     expect(homeLink).toHaveAttribute('href', '/');
 
     const environmentsLink = screen.getByRole('link', { name: 'Environments' });
-    expect(environmentsLink).toHaveAttribute('href', '/environments');
+    expect(environmentsLink).toHaveAttribute(
+      'href',
+      '/plugins/radius/environments',
+    );
   });
 });

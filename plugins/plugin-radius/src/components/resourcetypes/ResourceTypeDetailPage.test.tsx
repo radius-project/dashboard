@@ -1,12 +1,14 @@
 import React from 'react';
 import { Link, Route } from 'react-router-dom';
 import { ThemeProvider, useTheme } from '@material-ui/core/styles';
+import { darkTheme } from '@backstage/theme';
 import { FlatRoutes } from '@backstage/core-app-api';
 import { renderInTestApp, TestApiProvider } from '@backstage/test-utils';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { RadiusApi } from '../../api';
 import { radiusApiRef } from '../../plugin';
 import { ResourceTypeDetailPage } from './ResourceTypeDetailPage';
+import { resourceTypesListPageRouteRef } from '../../routes';
 
 type ResourceTypeDetail = Awaited<ReturnType<RadiusApi['getResourceType']>>;
 
@@ -71,7 +73,10 @@ const renderWithApi = (
         />
       </FlatRoutes>
     </TestApiProvider>,
-    { routeEntries: [route] },
+    {
+      routeEntries: [route],
+      mountedRoutes: { '/resource-types': resourceTypesListPageRouteRef },
+    },
   );
 
 const renderPage = async (
@@ -863,7 +868,10 @@ describe('ResourceTypeDetailPage', () => {
             </FlatRoutes>
           </WithTheme>
         </TestApiProvider>,
-        { routeEntries: [resourceTypePath(params, tab)] },
+        {
+          routeEntries: [resourceTypePath(params, tab)],
+          mountedRoutes: { '/resource-types': resourceTypesListPageRouteRef },
+        },
       );
     };
 
@@ -930,7 +938,7 @@ describe('ResourceTypeDetailPage', () => {
       });
     });
 
-    it('RT-34: derives surrounding page colors from Backstage theme tokens', async () => {
+    it('RT-34: uses native dark page tokens without inheriting host brand colors', async () => {
       await renderThemedPage(
         'dark',
         makeResourceType({
@@ -953,22 +961,28 @@ describe('ResourceTypeDetailPage', () => {
       );
 
       const navigationTitle = await screen.findByText('API Versions');
-      expect(navigationTitle).toHaveStyle({ color: '#f5f5f5' });
+      expect(navigationTitle).toHaveStyle({
+        color: darkTheme.palette.text.primary,
+      });
       expect(navigationTitle.parentElement).toHaveStyle({
-        backgroundColor: '#203040',
-        border: '1px solid #6f8294',
+        backgroundColor: darkTheme.palette.action.hover,
+        border: `1px solid ${darkTheme.palette.divider}`,
       });
 
       expect(
         screen.getByRole('link', { name: '2025-08-01-preview' }),
       ).toHaveStyle({
-        backgroundColor: '#102030',
-        border: '1px solid #6f8294',
-        color: '#9fd3ff',
+        backgroundColor: darkTheme.palette.background.paper,
+        border: `1px solid ${darkTheme.palette.divider}`,
+        color: darkTheme.palette.link,
       });
 
-      expect(screen.getByText('Yes')).toHaveStyle({ color: '#f5f5f5' });
-      expect(screen.getAllByText('No')[0]).toHaveStyle({ color: '#d6dde3' });
+      expect(screen.getByText('Yes')).toHaveStyle({
+        color: darkTheme.palette.text.primary,
+      });
+      expect(screen.getAllByText('No')[0]).toHaveStyle({
+        color: darkTheme.palette.text.secondary,
+      });
     });
   });
 });

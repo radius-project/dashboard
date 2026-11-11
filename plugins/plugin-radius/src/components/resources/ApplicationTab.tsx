@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { parseLegacyResourceId } from '@radius-project/core/domain';
 import { normalizeLegacyLiveGraph } from '@radius-project/core/graph';
 import { RadiusGraph } from '@radius-project/graph-react';
@@ -12,8 +13,9 @@ import { useApi } from '@backstage/core-plugin-api';
 import { makeStyles, useTheme } from '@material-ui/core';
 import { radiusApiRef } from '../../api/ref';
 import { useApplicationGraph } from './useApplicationGraph';
+import { useResourceRoute } from '../resourcelink/useResourceRoute';
 
-const graphOptions = { showLegend: false, enablePopup: false };
+const graphOptions = { showLegend: true, enablePopup: true };
 
 const useStyles = makeStyles({
   container: {
@@ -25,6 +27,8 @@ const useStyles = makeStyles({
 export const ApplicationTab = ({ application }: { application: string }) => {
   const styles = useStyles();
   const theme = useTheme();
+  const navigate = useNavigate();
+  const resourceRoute = useResourceRoute();
   const radiusApi = useApi(radiusApiRef);
   const { value, loading, error } = useApplicationGraph(radiusApi, application);
   const normalized = useMemo(() => {
@@ -61,6 +65,10 @@ export const ApplicationTab = ({ application }: { application: string }) => {
             graph={normalized.graph}
             options={graphOptions}
             theme={{ colorScheme: theme.palette.type }}
+            callbacks={{
+              onNavigate: node =>
+                navigate(`${resourceRoute(node.id)}/overview`),
+            }}
           />
         </div>
       </InfoCard>

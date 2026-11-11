@@ -45,8 +45,10 @@ ignores its abort signal; late responses cannot replace that error.
 
 The shared native card shows resource-type icons and the raw provisioning text.
 It does not infer deployment success. It shortens the visible type label but
-retains the original full type and ID in the DOM. Legend and details popup remain
-disabled by default. The separate public `rad-components` compatibility exports
+retains the original full type and ID in the DOM. The plugin enables the legend
+and details popup. Each resource's Open control uses its full ID and the host's
+route reference to open its overview, including nested plugin mounts.
+The separate public `rad-components` compatibility exports
 keep compact cards and forward to the same shared renderer; only the data-only
 `ResourceNode` entry uses the host's Flow11 provider. Its root barrel exports
 `ResourceNode`, so `rad-components` keeps `reactflow` as a required peer, as before.
@@ -61,6 +63,18 @@ and identifies failed requests; a total failure rejects. The inventory views sho
 a warning for partial data and an error when an incomplete result has no
 resources. Metadata-free host overrides retain their prior contract; the plugin
 does not assume that those results prove completeness.
+
+## Page appearance
+
+All eight Radius pages use the native dashboard's light or dark theme inside
+the page boundary. They follow the host's current light/dark choice. The plugin
+does not change the host's navigation, Catalog, Settings, or global CSS baseline.
+No host palette changes are needed. Both the root and `/alpha` entries use the
+same page components, including loading and error states.
+
+The public `radiusThemes.light` and `radiusThemes.dark` exports also supply the
+native dashboard's app themes. This keeps page colors, typography, and header
+backgrounds in sync without a second theme definition.
 
 ## Development artifacts
 
