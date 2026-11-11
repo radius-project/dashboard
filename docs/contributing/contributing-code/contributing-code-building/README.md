@@ -114,6 +114,60 @@ yarn run build:all
 yarn workspace @radapp.io/rad-components run build
 ```
 
+#### Shared-library candidate preflight
+
+Use compiled core and graph-react tarballs from one identified producer revision.
+Do not use source aliases, registry fallback, or a rebuilt archive with an old digest.
+Use a temporary receipt outside the repository for intermediate candidates.
+For persistent development adoption, save the final compiled pair and its
+source/build/digest/license receipt under `vendor/shared-libraries`; use only
+repository-relative file resolutions. Do not commit intermediate candidates.
+This development path does not qualify registry or public package distribution.
+The byte-verification fields have this shape. Paths are relative to the receipt:
+
+```json
+{
+  "sourceRevision": "<full 40-character producer commit>",
+  "core": {
+    "path": "radius-project-core-0.1.0.tgz",
+    "sha256": "<archive SHA-256>"
+  },
+  "graphReact": {
+    "path": "radius-project-graph-react-0.1.0.tgz",
+    "sha256": "<archive SHA-256>",
+    "stylesSha256": "<dist/styles.css SHA-256 from this archive>",
+    "baseSha256": "<dist/base.css SHA-256 from this archive>"
+  }
+}
+```
+
+Run `yarn verify:shared-candidate <receipt.json>` before installation. It checks
+archive identity, shipped public JavaScript and declarations, stylesheet bytes,
+the exact graph-to-core dependency, and React peer declarations. This command
+does not download packages, extract files, run package code, or change manifests.
+
+After an explicit candidate installation, run
+`yarn verify:shared-candidate <receipt.json> <consumer-directory>`.
+This also compares all installed package files with the pinned archives, rejects
+workspace package links, and checks that direct and graph-transitive core and React
+resolve to the same files. React checks include each declared runtime renderer
+dependency, including `@xyflow/react`. When compatibility entries are present,
+both public compatibility entries must resolve the same core and React/DOM files.
+The installed consumer must also provide the optional Flow11 peer: its renderer
+must use the host React/DOM files and the same Flow11 provider instance as the
+legacy ResourceNode entry. Archive checks reject a required or direct Flow11
+dependency in place of that isolated optional peer. These checks do not prove
+that a native browser bundle excludes Flow11; host qualification must prove that.
+No package version alone proves artifact identity.
+
+Both stages report `hostQualified: false`. They do not prove browser safety,
+compatibility, CSS loading, or host behavior, and do not approve publication.
+Producer evidence must bind the declared source revision to the archive digests;
+the preflight does not verify that source relationship.
+Phase 4 still requires candidate-backed root/native host journeys, browser
+renderer/CSS negative checks, and reviewed graph record differences against the base.
+Run the preflight regression tests with `yarn test:qualification-runners`.
+
 **Build the dashboard container**
 
 ```bash
@@ -130,6 +184,13 @@ The `build-image` command uses `packages/backend/Dockerfile`. Its Docker build r
 not `GITHUB_SHA`) and `org.opencontainers.image.version` from `REL_VERSION`, defaulting to
 `edge` for local builds. A Git checkout is required to produce this provenance.
 
+The Build workflow runs FS-16 on pull requests and `main`. Issue
+[radius-project/dashboard#421](https://github.com/radius-project/dashboard/issues/421)
+tracks removal of this automatic check and its pinned previous image. Remove them after the
+first native-frontend release is published and a successful candidate-and-restore run is
+recorded for that release's source revision. Keep the manual rollback runner and legacy
+root-entry artifact tests until their retirement is approved separately.
+
 #### Release image staging
 
 The Build workflow stages release images under full-version tags. It does not publish
@@ -140,11 +201,13 @@ stable `X.Y` channel aliases during a tag build:
 | `refs/tags/v0.60.0-rc.1` | `0.60.0-rc.1` | `0.60.0-rc.1` |
 | `refs/tags/v0.60.0` | `0.60.0` | `0.60.0` |
 | `refs/tags/v0.60.1` | `0.60.1` | `0.60.1` |
-| `refs/heads/main` | `edge` | `latest` (unchanged) |
+| `refs/heads/main` | `edge` | `edge` |
 | Pull request | `pr-<number>` | Not published |
 
-Radius's gated release finalizer promotes the stable `X.Y` aliases with ORAS after
-release qualification. Staging a dashboard image alone does not promote a release.
+Radius's gated release finalizer promotes the stable `X.Y` aliases, and `latest` for
+the newest stable release, with ORAS after release qualification. `latest` therefore
+always names a stable release; `main` builds publish only `edge`. Staging a dashboard
+image alone does not promote a release.
 Full release versions must match the source `v` tag and be valid Docker tags; SemVer
 build metadata containing `+` is rejected rather than silently rewritten.
 
@@ -165,9 +228,21 @@ After validation, staging checks the registry again before pushing a missing
 full-version tag and verifies the published metadata. Runs for the same release tag
 are serialized without cancellation. Registry tags do not support a client-side
 atomic create-only operation, so release-version writes must remain exclusive to
-this workflow; the Radius finalizer writes channel aliases instead. An existing
+this workflow; the Radius finalizer writes channel aliases and `latest` instead. An existing
 conflicting release requires investigation, not deletion or an automatic overwrite.
-The independently published `main`/`latest` path remains unchanged.
+The independently published `main`/`edge` path is outside the release transaction.
+
+After staging, the separate `Attest Release Image` job signs SLSA build provenance
+for the full-version tag's digest with `actions/attest`. Only that job can request
+the OIDC signing token, so build and test dependencies never receive it. Rerunning a
+release build signs the same digest again, which is harmless. To verify a release:
+
+```bash
+gh attestation verify oci://ghcr.io/radius-project/dashboard:<version> \
+  --repo radius-project/dashboard \
+  --signer-workflow radius-project/dashboard/.github/workflows/build.yaml \
+  --source-ref refs/tags/v<version>
+```
 
 ### Formatting
 
@@ -197,15 +272,37 @@ yarn run lint:all
 
 ### Testing
 
+#### Coverage reports
+
+`yarn run test:all` runs the unit tests with coverage and checks the coverage
+limits in the root `package.json`. Jest writes the reports to `coverage/`.
+Open `coverage/lcov-report/index.html` to view the local report.
+
+The Build workflow uploads `coverage/lcov.info` to
+[Codecov](https://app.codecov.io/gh/radius-project/dashboard) after the unit tests
+pass in `radius-project/dashboard`. Fork builds skip the upload, but pull requests
+from forks to `radius-project/dashboard` still upload coverage. The workflow runs
+these tests on pull requests, pushes to `main`, and release tags.
+Reports from `main` provide the baseline for pull request comparisons. Upload
+errors fail the build; the existing Jest coverage limits remain in place.
+
+The [radius-project](https://app.codecov.io/gh/radius-project) Codecov organization
+allows uploads without a token. Organization administrators manage this setting
+under **Settings > Global Upload Token**. This supports public
+repositories, fork pull requests, and Dependabot builds without shared secrets.
+No `CODECOV_TOKEN` secret is required. The Codecov GitHub App is enabled for this
+repository and provides pull request checks and comments.
+
 **Run offline release image regressions:**
 
 ```bash
 yarn run test:release-images
 ```
 
-This suite is also part of `yarn run test:all`, which CI runs for pull requests and
-release tags. It requires Node.js 24, Git, and Python, but no installed dependencies,
-Docker daemon, registry credentials, or network access. To run without Yarn:
+This suite is also part of `yarn run test:all`, which CI runs for pull requests,
+pushes to `main`, and release tags. It requires Node.js 24, Git, and Python, but no
+installed dependencies, Docker daemon, registry credentials, or network access.
+To run without Yarn:
 
 ```bash
 node --test scripts/release-image.test.ts
@@ -218,6 +315,10 @@ validation, failure handling, and the absence of early channel publication.
 Attestation-bearing indexes are covered for both reuse and post-push verification,
 including rejection of malformed descriptors, extra runnable platforms, and
 attestation-only indexes.
+
+The native frontend qualification pins selected Backstage packages to a tested
+version set. These exact versions define the qualification set; they are not a
+public support range.
 
 **Run E2E tests:**
 

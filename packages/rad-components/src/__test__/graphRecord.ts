@@ -1,11 +1,21 @@
-import { AppGraph } from './graph';
-import { buildLayoutedGraphModel, GraphModel } from './graphModel';
+interface GraphObservation {
+  nodes: {
+    id: string;
+    label: string;
+    type: string;
+    status: string;
+    icon: string | null;
+    statusBadge: { kind: string; accessibleName: string } | null;
+    position: { x: number; y: number };
+  }[];
+  edges: { id: string; source: string; target: string }[];
+}
 
 /**
- * Legacy responses do not supply icons, and status badges are not populated
- * yet. Record missing metadata as `not-yet-populated` rather than a pinned
- * `null`, so richer responses produce a state transition rather than a
- * regression against an asserted absence.
+ * The renderer does not populate icons or status badges yet. That is recorded
+ * as an explicit `not-yet-populated` state rather than a pinned `null`, so when
+ * richer node rendering lands the diff reads as a state transition rather than
+ * as a regression against an asserted absence.
  */
 export const NOT_YET_POPULATED = 'not-yet-populated';
 
@@ -13,7 +23,7 @@ export interface GraphRecordNode {
   id: string;
   label: string;
   type: string;
-  /** An icon hash, or `NOT_YET_POPULATED`. */
+  /** An icon name, or `NOT_YET_POPULATED`. */
   icon: string;
   statusBadge:
     | {
@@ -133,7 +143,7 @@ export const knownGraphDefects: KnownGraphDefect[] = [
  * covered by renderer-independent assertions instead: GU-09 requires finite
  * positions and GU-09a requires non-overlapping nodes.
  */
-export function normalizeGraphModel(model: GraphModel): GraphRecord {
+export function normalizeGraphModel(model: GraphObservation): GraphRecord {
   return {
     nodes: model.nodes
       .map((node): GraphRecordNode => ({
@@ -156,10 +166,6 @@ export function normalizeGraphModel(model: GraphModel): GraphRecord {
         ),
       ),
   };
-}
-
-export function createGraphRecord(graph: AppGraph): GraphRecord {
-  return normalizeGraphModel(buildLayoutedGraphModel(graph));
 }
 
 export function findUnapprovedGraphRecordChanges(

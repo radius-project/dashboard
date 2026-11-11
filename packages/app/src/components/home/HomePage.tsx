@@ -1,6 +1,7 @@
 import { HomePageCompanyLogo } from '@backstage/plugin-home';
 import { Grid, makeStyles } from '@material-ui/core';
 import React from 'react';
+import { compatWrapper } from '@backstage/core-compat-api';
 import { Content, Page } from '@backstage/core-components';
 import {
   ApplicationListInfoCard,
@@ -48,10 +49,10 @@ export const HomePage = () => {
           </Grid>
           <Grid container item xs={12}>
             <Grid item xs={12} md={6}>
-              <ApplicationListInfoCard />
+              {compatWrapper(<ApplicationListInfoCard />)}
             </Grid>
             <Grid item xs={12} md={6}>
-              <EnvironmentListInfoCard />
+              {compatWrapper(<EnvironmentListInfoCard />)}
             </Grid>
           </Grid>
         </Grid>

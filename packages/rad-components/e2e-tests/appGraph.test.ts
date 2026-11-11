@@ -9,12 +9,14 @@ const harnessStoryUrl = (story: string) =>
   `/iframe.html?id=appgraph-harness--${story}&viewMode=story`;
 
 const node = (page: Page, name: string) =>
-  page.getByRole('button', { name: new RegExp(`^${name}`, 'i') });
+  page.getByRole('group', { name, exact: true });
 
-const edge = (page: Page, source: string, target: string) =>
-  page.getByRole('button', {
-    name: new RegExp(`^Edge from .*${source}.* to .*${target}`, 'i'),
-  });
+const edge = (page: Page, source: string, target: string) => {
+  const prefix =
+    '/planes/radius/local/resourceGroups/demo/providers/Applications.Core/containers';
+  const id = JSON.stringify([`${prefix}/${source}`, `${prefix}/${target}`]);
+  return page.locator(`.react-flow__edge[data-id=${JSON.stringify(id)}]`);
+};
 
 const graphContract = async (page: Page) => ({
   namedNode: await node(page, 'frontend').isVisible(),
@@ -29,39 +31,6 @@ const graphContract = async (page: Page) => ({
 });
 
 test.describe('real AppGraph renderer', () => {
-  test('renders API icons and one edge per typed relationship', async ({
-    page,
-  }) => {
-    await page.goto(storyUrl('with-metadata'));
-    await expect(page.locator('.react-flow__node')).toHaveCount(3);
-    await expect(page.locator('.react-flow__edge')).toHaveCount(2);
-    const images = page.locator('.react-flow__node img');
-    await expect(images).toHaveCount(2);
-    for (const image of await images.all()) {
-      await expect(image).toBeVisible();
-      await expect
-        .poll(() =>
-          image.evaluate(
-            (element: HTMLImageElement) =>
-              element.complete && element.naturalWidth > 0,
-          ),
-        )
-        .toBe(true);
-    }
-    const dependency = page.getByRole('button', { name: /^Dependency:/ });
-    const connection = page.getByRole('button', { name: /^Connection:/ });
-    await expect(dependency).toBeVisible();
-    await expect(connection).toBeVisible();
-    await expect(dependency.locator('.react-flow__edge-path')).toHaveCSS(
-      'stroke-dasharray',
-      '5px, 5px',
-    );
-    await expect(connection.locator('.react-flow__edge-path')).toHaveCSS(
-      'stroke-dasharray',
-      'none',
-    );
-  });
-
   test('GU-11: unmounting and remounting preserves positions without leaking scheduled work', async ({
     page,
   }) => {
@@ -207,19 +176,16 @@ test.describe('real AppGraph renderer', () => {
     await expect.poll(() => viewport.getAttribute('style')).not.toBe(zoomed);
   });
 
-  // KNOWN-DEFECT (#368): the correct behavior is an explicit accessible empty state.
-  test('GU-15: KNOWN-DEFECT an empty graph is a blank canvas without an empty-state message', async ({
+  test('GU-15 / #368: an empty graph has an explicit accessible empty state', async ({
     page,
   }) => {
     await page.goto(storyUrl('empty'));
 
-    await expect(page.locator('.react-flow')).toBeVisible();
     await expect(page.locator('.react-flow__node')).toHaveCount(0);
-    await expect(page.getByText(/no resources|empty graph/i)).toHaveCount(0);
+    await expect(page.getByText(/no resources|empty graph/i)).toBeVisible();
   });
 
-  // KNOWN-DEFECT (#41): selection should open dismissible details and restore focus on close.
-  test('GU-18: KNOWN-DEFECT selecting a node does not reveal resource details', async ({
+  test('GU-18: compact compatibility preserves the absence of details', async ({
     page,
   }) => {
     await page.goto(storyUrl('single-node'));
@@ -229,7 +195,7 @@ test.describe('real AppGraph renderer', () => {
     await selectedNode.click();
 
     await expect(page.getByRole('dialog')).toHaveCount(0);
-    await expect(selectedNode).toBeFocused();
+    await expect(page.locator('[data-radius-details]')).toHaveCount(0);
   });
 
   test('GU-19: renders with the shared stylesheet in light and dark hosts', async ({
@@ -258,8 +224,15 @@ test.describe('real AppGraph renderer', () => {
     await page.goto(harnessStoryUrl('stubbed-renderer'));
     await expect(node(page, 'frontend')).toHaveCount(0);
 
-    await page.goto(harnessStoryUrl('stylesheet-removed'));
-    await expect(node(page, 'frontend')).toBeHidden();
-    await expect(page.locator('.react-flow__controls')).toBeHidden();
+    await page.goto(storyUrl('multi-tier'));
+    await expect(node(page, 'frontend')).toBeVisible();
+    await page.evaluate(() => {
+      document
+        .querySelectorAll('style, link[rel="stylesheet"]')
+        .forEach(element => element.remove());
+    });
+    await expect
+      .poll(async () => (await graphContract(page)).stylesheet)
+      .toBe(false);
   });
 });

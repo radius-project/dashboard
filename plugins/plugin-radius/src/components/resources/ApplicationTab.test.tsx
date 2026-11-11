@@ -1,503 +1,198 @@
 import React from 'react';
 import { renderInTestApp, TestApiProvider } from '@backstage/test-utils';
-import { screen, waitFor } from '@testing-library/react';
-import { kubernetesApiRef, KubernetesApi } from '@backstage/plugin-kubernetes';
+import { screen } from '@testing-library/react';
+import { RadiusGraph, RadiusGraphProps } from '@radius-project/graph-react';
 import { RadiusApi } from '../../api';
 import { RadiusApiImpl } from '../../api/api';
-import { radiusApiRef } from '../../plugin';
-
-// Mock the AppGraph component to avoid reactflow issues in jsdom.
-jest.mock('@radapp.io/rad-components', () => ({
-  ...jest.requireActual('@radapp.io/rad-components'),
-  AppGraph: ({ graph }: { graph: { name: string } }) => (
-    <div data-testid="app-graph" data-graph={JSON.stringify(graph)}>
-      {graph.name}
-    </div>
-  ),
-}));
-
+import { radiusApiRef } from '../../api/ref';
 import { ApplicationTab } from './ApplicationTab';
 
-type IsExact<Left, Right> = [Left] extends [Right]
-  ? [Right] extends [Left]
-    ? true
-    : false
-  : false;
+// Renderer behavior is covered in Chromium; this suite checks the host adapter.
+jest.mock('@radius-project/graph-react', () => ({
+  RadiusGraph: jest.fn(({ graph }: RadiusGraphProps) => (
+    <div data-testid="graph-adapter">
+      {graph.resources.map(resource => (
+        <span key={resource.id}>{resource.name}</span>
+      ))}
+    </div>
+  )),
+}));
 
-// Minimal mock implementations ------------------------------------------------
-
-const mockRadiusApi: Pick<RadiusApi, 'getResourceType'> = {
-  getResourceType: jest.fn().mockResolvedValue({
-    Name: 'applications',
-    Description: '',
-    ResourceProviderNamespace: 'Applications.Core',
-    APIVersions: {},
-    APIVersionList: ['2023-10-01-preview'],
-  }),
-};
-
-function createMockKubernetesApi(
-  proxyImpl: KubernetesApi['proxy'],
-): Pick<KubernetesApi, 'getClusters' | 'proxy'> {
-  return {
-    getClusters: jest
-      .fn()
-      .mockResolvedValue([
-        { name: 'test-cluster', authProvider: 'serviceAccount' },
-      ]),
-    proxy: proxyImpl,
-  };
-}
-
-// Graph response fixtures -----------------------------------------------------
-
+const resourceGroup = '/planes/radius/local/resourceGroups/test-group';
+const application = `${resourceGroup}/providers/Applications.Core/applications/test-app`;
+const container = `${resourceGroup}/providers/Applications.Core/containers/frontend`;
+const gateway = `${resourceGroup}/providers/Applications.Core/gateways/edge`;
 const graphResponse = {
   name: 'test-app',
   resources: [
     {
-      id: '/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/containers/frontend',
+      id: container,
       name: 'frontend',
       type: 'Applications.Core/containers',
-      provider: 'kubernetes',
+      provider: 'radius',
       provisioningState: 'Succeeded',
+      connections: [{ id: gateway, direction: 'Inbound' }],
     },
-  ],
-};
-
-const radiusCoreGraphResponse = {
-  name: 'radius-app',
-  resources: [
     {
-      id: '/planes/radius/local/resourceGroups/test-group/providers/Radius.Compute/containers/frontend',
-      name: 'frontend',
-      type: 'Radius.Compute/containers',
-      provider: 'kubernetes',
-      provisioningState: 'Succeeded',
+      id: gateway,
+      name: 'edge',
+      type: 'Applications.Core/gateways',
+      provider: 'radius',
+      provisioningState: 'Pending',
     },
   ],
 };
 
-const radiusCoreRadiusApi: Pick<RadiusApi, 'getResourceType'> = {
-  getResourceType: jest.fn().mockResolvedValue({
-    Name: 'applications',
-    Description: '',
-    ResourceProviderNamespace: 'Radius.Core',
-    APIVersions: {},
-    APIVersionList: ['2025-01-01'],
-  }),
-};
+const renderTab = (
+  api: Pick<RadiusApi, 'getApplicationGraph'>,
+  id = application,
+) =>
+  renderInTestApp(
+    <TestApiProvider apis={[[radiusApiRef, api]]}>
+      <ApplicationTab application={id} />
+    </TestApiProvider>,
+  );
 
-const radiusCoreApplication =
-  '/planes/radius/local/resourceGroups/test-group/providers/Radius.Core/applications/radius-app';
+beforeEach(() => jest.clearAllMocks());
 
-// Tests -----------------------------------------------------------------------
-
-describe('ApplicationTab', () => {
-  it.each([
-    ['Radius.Core', '2025-08-01-preview', true],
-    ['Radius.Core', '2026-01-01', true],
-    ['Radius.Core', '2025-01-01', false],
-    ['Applications.Core', '2023-10-01-preview', false],
-  ])(
-    'requests supported graph icons for %s at %s',
-    async (namespace, version, includeIcons) => {
-      const response = {
-        icons: { icon: '<svg xmlns="http://www.w3.org/2000/svg"/>' },
-        resources: [
-          {
-            id: 'consumer',
-            name: 'consumer',
-            type: 'Radius.Compute/containers',
-            provisioningState: 'Succeeded',
-            iconHash: 'icon',
-            connections: [
-              { id: 'queue', direction: 'Outbound', kind: 'Dependency' },
-            ],
-          },
-        ],
+describe('ApplicationTab host adapter', () => {
+  it.each(['Applications.Core', 'Radius.Core'])(
+    'GU-10 / E2E-19: renders %s with real context and the single legacy direction policy',
+    async namespace => {
+      const applicationId = application.replace('Applications.Core', namespace);
+      const context = {
+        connectionId: 'explicit-host-connection',
+        plane: { type: 'radius', name: 'local' },
+        applicationId,
       };
-      const proxy = jest
-        .fn()
-        .mockResolvedValue(
-          new Response(JSON.stringify(response), { status: 200 }),
-        );
-      const api = {
-        getResourceType: jest.fn().mockResolvedValue({
-          APIVersionList: [version],
-        }),
-      };
-      await renderInTestApp(
-        <TestApiProvider
-          apis={[
-            [kubernetesApiRef, createMockKubernetesApi(proxy)],
-            [radiusApiRef, api],
-          ]}
-        >
-          <ApplicationTab
-            application={`/planes/radius/local/resourceGroups/test-group/providers/${namespace}/applications/test-app`}
-          />
-        </TestApiProvider>,
+      await renderTab(
+        {
+          getApplicationGraph: jest.fn().mockResolvedValue({
+            graph: graphResponse,
+            context,
+          }),
+        },
+        applicationId,
       );
 
-      const graph = await screen.findByTestId('app-graph');
-      expect(JSON.parse(graph.getAttribute('data-graph')!)).toEqual(response);
-      const request = proxy.mock.calls[0][0];
-      expect(request.path).toContain(`api-version=${version}`);
-      expect(request.init.headers).toEqual(
-        includeIcons ? { 'Content-Type': 'application/json' } : undefined,
-      );
-      expect(request.init.body).toBe(
-        includeIcons ? JSON.stringify({ includeIcons: true }) : undefined,
+      expect(
+        await screen.findByText('Application Graph: test-app'),
+      ).toBeVisible();
+      expect(screen.getByText('frontend')).toBeVisible();
+      const props = jest.mocked(RadiusGraph).mock.calls.at(-1)![0];
+      expect(props.graph).toMatchObject({
+        kind: 'live',
+        context,
+        resources: expect.arrayContaining([
+          expect.objectContaining({
+            id: gateway,
+            provisioningState: 'Pending',
+            connections: [{ id: container, direction: 'Outbound' }],
+          }),
+        ]),
+      });
+      expect(props.options).toMatchObject({
+        showLegend: false,
+        enablePopup: false,
+      });
+      expect(graphResponse.resources[0].connections?.[0].direction).toBe(
+        'Inbound',
       );
     },
   );
 
-  it('should show the application graph on successful response', async () => {
-    const mockProxy = jest
-      .fn()
-      .mockResolvedValue(
-        new Response(JSON.stringify(graphResponse), { status: 200 }),
-      );
-    const kubeApi = createMockKubernetesApi(mockProxy);
-
-    await renderInTestApp(
-      <TestApiProvider
-        apis={[
-          [kubernetesApiRef, kubeApi],
-          [radiusApiRef, mockRadiusApi],
-        ]}
-      >
-        <ApplicationTab application="/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/applications/test-app" />
-      </TestApiProvider>,
-    );
-
-    await waitFor(() => {
-      expect(
-        screen.getByText('Application Graph: test-app'),
-      ).toBeInTheDocument();
-    });
-  });
-
-  it('GU-16 / ER-05: KNOWN-DEFECT shows an error panel without retry when the graph request fails', async () => {
-    const mockProxy = jest
-      .fn()
-      .mockResolvedValue(new Response('Not Found', { status: 404 }));
-    const kubeApi = createMockKubernetesApi(mockProxy);
-
-    await renderInTestApp(
-      <TestApiProvider
-        apis={[
-          [kubernetesApiRef, kubeApi],
-          [radiusApiRef, mockRadiusApi],
-        ]}
-      >
-        <ApplicationTab application="/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/applications/test-app" />
-      </TestApiProvider>,
-    );
-
-    await waitFor(() => {
-      const alert = screen.getByRole('alert');
-      expect(alert).toBeInTheDocument();
-      expect(alert).toHaveTextContent('Request failed: 404');
-    });
-  });
-
-  it('ER-09: shows a timeout error when the request exceeds 10 seconds', async () => {
-    jest.useFakeTimers();
-
-    // Proxy that never resolves — simulates a hanging backend
-    const mockProxy = jest.fn().mockImplementation(
-      ({ init }: { init?: RequestInit }) =>
-        new Promise<Response>((_resolve, reject) => {
-          if (init?.signal) {
-            init.signal.addEventListener('abort', () => {
-              reject(
-                new DOMException('The operation was aborted.', 'AbortError'),
-              );
-            });
-          }
-        }),
-    );
-    const kubeApi = createMockKubernetesApi(mockProxy);
-
-    await renderInTestApp(
-      <TestApiProvider
-        apis={[
-          [kubernetesApiRef, kubeApi],
-          [radiusApiRef, mockRadiusApi],
-        ]}
-      >
-        <ApplicationTab application="/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/applications/test-app" />
-      </TestApiProvider>,
-    );
-
-    // Advance past the 10-second timeout
-    jest.advanceTimersByTime(11000);
-
-    await waitFor(() => {
-      const alert = screen.getByRole('alert');
-      expect(alert).toBeInTheDocument();
-      expect(alert).toHaveTextContent('timed out');
-    });
-
-    jest.useRealTimers();
-  });
-
-  it('should show error panel when proxy throws a non-abort error', async () => {
-    const mockProxy = jest.fn().mockRejectedValue(new Error('Network failure'));
-    const kubeApi = createMockKubernetesApi(mockProxy);
-
-    await renderInTestApp(
-      <TestApiProvider
-        apis={[
-          [kubernetesApiRef, kubeApi],
-          [radiusApiRef, mockRadiusApi],
-        ]}
-      >
-        <ApplicationTab application="/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/applications/test-app" />
-      </TestApiProvider>,
-    );
-
-    await waitFor(() => {
-      const alert = screen.getByRole('alert');
-      expect(alert).toBeInTheDocument();
-      expect(alert).toHaveTextContent('Network failure');
-    });
-  });
-
-  /**
-   * KNOWN-DEFECT: RadiusApi selects the first cluster while ApplicationTab
-   * independently selects the last one. Tracked by #356.
-   */
-  it('CN-03 / CN-04: KNOWN-DEFECT graph and resource requests select different connections', async () => {
-    const clusters = [
-      { name: 'first-cluster', authProvider: 'serviceAccount' },
-      { name: 'last-cluster', authProvider: 'serviceAccount' },
-    ];
-    const mockProxy = jest
-      .fn()
-      .mockResolvedValue(
-        new Response(JSON.stringify(graphResponse), { status: 200 }),
-      );
-    const kubeApi = {
-      getClusters: jest.fn().mockResolvedValue(clusters),
-      proxy: mockProxy,
+  it('CN-03 / CN-04 / #356: GET and the mounted graph POST use the same resolved cluster and plane', async () => {
+    const kube = {
+      getClusters: jest.fn().mockResolvedValue([
+        { name: 'first-cluster', authProvider: 'test' },
+        { name: 'last-cluster', authProvider: 'test' },
+      ]),
+      proxy: jest.fn().mockImplementation(({ init, path }) => {
+        let body: unknown = {
+          id: application,
+          name: 'test-app',
+          type: 'Applications.Core/applications',
+          properties: {},
+        };
+        if (path.includes('/resourceTypes/')) {
+          body = {
+            Name: 'Applications.Core/applications',
+            APIVersionList: ['2025-01-01'],
+            APIVersions: {},
+          };
+        } else if (init.method === 'POST') {
+          body = graphResponse;
+        }
+        return Promise.resolve(new Response(JSON.stringify(body)));
+      }),
     };
-    const api = new RadiusApiImpl(kubeApi);
+    const api = new RadiusApiImpl(kube);
+    await api.getResourceById({ id: application });
+    await renderTab(api);
+    await screen.findByText('frontend');
 
-    // eslint-disable-next-line dot-notation
-    await expect(api['selectCluster']()).resolves.toBe('first-cluster');
-
-    await renderInTestApp(
-      <TestApiProvider
-        apis={[
-          [kubernetesApiRef, kubeApi],
-          [radiusApiRef, mockRadiusApi],
-        ]}
-      >
-        <ApplicationTab application="/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/applications/test-app" />
-      </TestApiProvider>,
-    );
-
-    await screen.findByText('Application Graph: test-app');
-    expect(mockProxy).toHaveBeenCalledWith(
-      expect.objectContaining({ clusterName: 'last-cluster' }),
-    );
-  });
-
-  /**
-   * KNOWN-DEFECT: there is no selected-connection input or context to change,
-   * so the component cannot cancel work when the connection changes. Tracked
-   * by #367.
-   */
-  it('CN-05: KNOWN-DEFECT exposes no connection input for cancellation', () => {
-    type Props = React.ComponentProps<typeof ApplicationTab>;
-    const propsAreExact: IsExact<keyof Props, 'application'> = true;
-
-    const props = {
-      application: '/planes/radius/local/applications/test-app',
-    } satisfies Props;
-    expect(propsAreExact).toBe(true);
-    expect(Object.keys(props)).toEqual(['application']);
-  });
-
-  /**
-   * The current hook ignores a late response after application navigation, but
-   * the superseded network request itself is not cancelled.
-   */
-  it('ignores a late graph response after application navigation without cancelling its request', async () => {
-    let resolveFirst: ((response: Response) => void) | undefined;
-    const signals: AbortSignal[] = [];
-    const mockProxy = jest
-      .fn()
-      .mockImplementation(({ init }: { init?: RequestInit }) => {
-        if (init?.signal) {
-          signals.push(init.signal);
-        }
-        if (mockProxy.mock.calls.length === 1) {
-          return new Promise<Response>(resolve => {
-            resolveFirst = resolve;
-          });
-        }
-        return Promise.resolve(
-          new Response(
-            JSON.stringify({ ...graphResponse, name: 'second-app' }),
-            { status: 200 },
-          ),
-        );
-      });
-    const kubeApi = createMockKubernetesApi(mockProxy);
-    const firstApplication =
-      '/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/applications/first-app';
-    const secondApplication =
-      '/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/applications/second-app';
-    const apis = [
-      [kubernetesApiRef, kubeApi],
-      [radiusApiRef, mockRadiusApi],
-    ] as const;
-
-    const rendered = await renderInTestApp(
-      <TestApiProvider apis={apis}>
-        <ApplicationTab application={firstApplication} />
-      </TestApiProvider>,
-    );
-    await waitFor(() => expect(mockProxy).toHaveBeenCalledTimes(1));
-
-    rendered.rerender(
-      <TestApiProvider apis={apis}>
-        <ApplicationTab application={secondApplication} />
-      </TestApiProvider>,
-    );
-
-    await screen.findByText('second-app');
-    expect(signals[0].aborted).toBe(false);
-
-    resolveFirst?.(
-      new Response(JSON.stringify({ ...graphResponse, name: 'first-app' }), {
-        status: 200,
-      }),
-    );
-    await waitFor(() => expect(screen.getByText('second-app')).toBeVisible());
-    expect(screen.queryByText('first-app')).not.toBeInTheDocument();
-  });
-
-  // Radius.Core/applications tests --------------------------------------------
-
-  it('should show the application graph for Radius.Core/applications on successful response', async () => {
-    const mockProxy = jest
-      .fn()
-      .mockResolvedValue(
-        new Response(JSON.stringify(radiusCoreGraphResponse), { status: 200 }),
-      );
-    const kubeApi = createMockKubernetesApi(mockProxy);
-
-    await renderInTestApp(
-      <TestApiProvider
-        apis={[
-          [kubernetesApiRef, kubeApi],
-          [radiusApiRef, radiusCoreRadiusApi],
-        ]}
-      >
-        <ApplicationTab application={radiusCoreApplication} />
-      </TestApiProvider>,
-    );
-
-    await waitFor(() => {
-      expect(
-        screen.getByText('Application Graph: radius-app'),
-      ).toBeInTheDocument();
-    });
-
-    // Verify the proxy was called with the Radius.Core api-version
-    expect(mockProxy).toHaveBeenCalledWith(
+    expect(kube.getClusters).toHaveBeenCalledTimes(1);
+    expect(
+      kube.proxy.mock.calls.every(
+        ([request]) => request.clusterName === 'first-cluster',
+      ),
+    ).toBe(true);
+    expect(kube.proxy).toHaveBeenCalledWith(
       expect.objectContaining({
-        path: expect.stringContaining('api-version=2025-01-01'),
+        path: `/apis/api.ucp.dev/v1alpha3${application}/getGraph?api-version=2025-01-01`,
+        init: expect.objectContaining({ method: 'POST' }),
       }),
     );
   });
 
-  it('should show error panel for Radius.Core/applications when the proxy returns a non-ok response', async () => {
-    const mockProxy = jest
-      .fn()
-      .mockResolvedValue(new Response('Not Found', { status: 404 }));
-    const kubeApi = createMockKubernetesApi(mockProxy);
-
-    await renderInTestApp(
-      <TestApiProvider
-        apis={[
-          [kubernetesApiRef, kubeApi],
-          [radiusApiRef, radiusCoreRadiusApi],
-        ]}
-      >
-        <ApplicationTab application={radiusCoreApplication} />
-      </TestApiProvider>,
+  it('CN-07: displays an unsupported-operation error for an old API override without a Kubernetes fallback', async () => {
+    await renderTab({});
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'The host must provide getApplicationGraph',
     );
-
-    await waitFor(() => {
-      const alert = screen.getByRole('alert');
-      expect(alert).toBeInTheDocument();
-      expect(alert).toHaveTextContent('Request failed: 404');
-    });
+    expect(RadiusGraph).not.toHaveBeenCalled();
   });
 
-  it('should show timeout error for Radius.Core/applications when the request exceeds 10 seconds', async () => {
-    jest.useFakeTimers();
-
-    const mockProxy = jest.fn().mockImplementation(
-      ({ init }: { init?: RequestInit }) =>
-        new Promise<Response>((_resolve, reject) => {
-          if (init?.signal) {
-            init.signal.addEventListener('abort', () => {
-              reject(
-                new DOMException('The operation was aborted.', 'AbortError'),
-              );
-            });
-          }
-        }),
-    );
-    const kubeApi = createMockKubernetesApi(mockProxy);
-
-    await renderInTestApp(
-      <TestApiProvider
-        apis={[
-          [kubernetesApiRef, kubeApi],
-          [radiusApiRef, radiusCoreRadiusApi],
-        ]}
-      >
-        <ApplicationTab application={radiusCoreApplication} />
-      </TestApiProvider>,
-    );
-
-    jest.advanceTimersByTime(11000);
-
-    await waitFor(() => {
-      const alert = screen.getByRole('alert');
-      expect(alert).toBeInTheDocument();
-      expect(alert).toHaveTextContent('timed out');
+  it('CN-07: rejects a result for another application before rendering', async () => {
+    await renderTab({
+      getApplicationGraph: jest.fn().mockResolvedValue({
+        graph: graphResponse,
+        context: {
+          connectionId: 'override',
+          plane: { type: 'radius', name: 'local' },
+          applicationId: application.replace('test-app', 'other-app'),
+        },
+      }),
     });
-
-    jest.useRealTimers();
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'does not match',
+    );
+    expect(RadiusGraph).not.toHaveBeenCalled();
   });
 
-  it('should show error panel for Radius.Core/applications when proxy throws a non-abort error', async () => {
-    const mockProxy = jest.fn().mockRejectedValue(new Error('Network failure'));
-    const kubeApi = createMockKubernetesApi(mockProxy);
-
-    await renderInTestApp(
-      <TestApiProvider
-        apis={[
-          [kubernetesApiRef, kubeApi],
-          [radiusApiRef, radiusCoreRadiusApi],
-        ]}
-      >
-        <ApplicationTab application={radiusCoreApplication} />
-      </TestApiProvider>,
-    );
-
-    await waitFor(() => {
-      const alert = screen.getByRole('alert');
-      expect(alert).toBeInTheDocument();
-      expect(alert).toHaveTextContent('Network failure');
+  it('GU-16 / ER-05: displays graph retrieval errors', async () => {
+    await renderTab({
+      getApplicationGraph: jest
+        .fn()
+        .mockRejectedValue(new Error('Request failed: 404')),
     });
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Request failed: 404',
+    );
+  });
+
+  it('surfaces malformed graph responses instead of rendering a successful empty graph', async () => {
+    await renderTab({
+      getApplicationGraph: jest.fn().mockResolvedValue({
+        graph: { resources: null },
+        context: {
+          connectionId: 'override',
+          plane: { type: 'radius', name: 'local' },
+          applicationId: application,
+        },
+      }),
+    });
+    expect(await screen.findByRole('alert')).toBeVisible();
+    expect(RadiusGraph).not.toHaveBeenCalled();
   });
 });

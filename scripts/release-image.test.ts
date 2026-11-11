@@ -10,7 +10,7 @@ import type { CommandResult, CommandRunner } from './release-image.ts';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const repository = 'ghcr.io/radius-project/dashboard';
-const builtImage = `${repository}:latest`;
+const builtImage = `${repository}:edge`;
 const revisionLabel = 'org.opencontainers.image.revision';
 const versionLabel = 'org.opencontainers.image.version';
 const digest = `sha256:${'d'.repeat(64)}`;
@@ -759,7 +759,7 @@ test('the CLI rejects unknown commands without attempting a build', () => {
   );
 });
 
-test('the actual build chain, offline CI tests, validation gates, and latest publishing remain wired', () => {
+test('the actual build chain, offline CI tests, validation gates, and edge publishing remain wired', () => {
   const rootPackage = JSON.parse(
     readFileSync(join(root, 'package.json'), 'utf8'),
   );
@@ -778,16 +778,40 @@ test('the actual build chain, offline CI tests, validation gates, and latest pub
     rootPackage.scripts['test:release-images'],
     'node --test scripts/release-image.test.ts',
   );
+  assert.equal(
+    rootPackage.scripts['test:qualification-runners'],
+    'node --test scripts/qualify-plugin-host.test.ts scripts/shared-library-candidate.test.ts',
+  );
   assert.match(
     rootPackage.scripts['test:all'],
-    /^yarn test:release-images && backstage-cli repo test --coverage$/,
+    /^yarn test:release-images && yarn test:qualification-runners && backstage-cli repo test --coverage$/,
   );
 
   const workflow = readFileSync(
     join(root, '.github', 'workflows', 'build.yaml'),
     'utf8',
   );
-  assert.match(workflow, /run: yarn run test:all/);
+  const browserInstall = workflow.indexOf(
+    'run: yarn exec playwright install --with-deps chromium',
+  );
+  assert.ok(browserInstall >= 0);
+  assert.ok(browserInstall < workflow.indexOf('- name: Run Tests'));
+  assert.match(
+    workflow,
+    /run: yarn run test:all --coverageDirectory=coverage --coverageReporters=lcov --coverageReporters=text\r?\n/,
+  );
+  const coverageUpload = workflow
+    .split('- name: Upload coverage to Codecov')[1]
+    ?.split('\n      - name:')[0];
+  assert.ok(coverageUpload, 'The workflow must upload coverage to Codecov');
+  assert.match(
+    coverageUpload,
+    /if: \$\{\{ github\.repository == 'radius-project\/dashboard' \}\}/,
+  );
+  assert.match(coverageUpload, /uses: codecov\/codecov-action@[a-f0-9]{40}/);
+  assert.match(coverageUpload, /files: \.\/coverage\/lcov\.info/);
+  assert.match(coverageUpload, /disable_search: true/);
+  assert.match(coverageUpload, /fail_ci_if_error: true/);
   assert.match(workflow, /- name: Build Image\s+run: yarn run build-image/);
   assert.match(workflow, /run: node scripts\/release-image.ts stage/);
   assert.doesNotMatch(workflow, /REL_CHANNEL/);
@@ -822,8 +846,14 @@ test('the actual build chain, offline CI tests, validation gates, and latest pub
   );
   assert.match(
     workflow,
-    /- name: Push Image to ghcr.io \(push to main\)\s+if: \$\{\{ env.CI_PUBLISH_LATEST == 'true' \}\}\s+run: \|\s+docker push "\$\{BUILT_IMAGE\}"/,
+    /- name: Push Image to ghcr.io \(push to main\)\s+if: \$\{\{ env.CI_PUBLISH_EDGE == 'true' \}\}\s+run: \|\s+docker push "\$\{BUILT_IMAGE\}"/,
   );
+  assert.match(
+    workflow,
+    /BUILT_IMAGE: ghcr\.io\/radius-project\/dashboard:edge/,
+  );
+  // `latest` names the newest stable release, promoted only by the Radius finalizer.
+  assert.doesNotMatch(workflow, /dashboard:latest|CI_PUBLISH_LATEST/);
   for (const command of ['test:e2e', 'test:e2e:components', 'test:package']) {
     assert.ok(workflow.includes(`run: yarn run ${command}`));
   }
