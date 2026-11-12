@@ -897,6 +897,29 @@ describe('ResourceTypeDetailPage', () => {
       },
     );
 
+    it('RT-36b: hides the map row when its schema belongs to the other tab', async () => {
+      await renderPage(
+        makeResourceType(
+          withProperties({
+            settings: {
+              type: 'object',
+              readOnly,
+              properties: {
+                enabled: { type: 'boolean', readOnly },
+              },
+              additionalProperties: { type: 'string', readOnly: !readOnly },
+            },
+          }),
+        ),
+        tab,
+      );
+
+      expect(readPropertyRows().map(r => r.path)).toEqual([
+        'settings',
+        'settings.enabled',
+      ]);
+    });
+
     it('RT-37: keeps API versions and parent paths distinct for output and input fields', async () => {
       const schema = (type: string) => ({
         Schema: {

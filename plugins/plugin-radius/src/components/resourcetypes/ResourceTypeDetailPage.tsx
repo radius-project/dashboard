@@ -241,6 +241,13 @@ const GitHubCopyButton = ({
   );
 };
 
+// The "Map of key/values" row follows its parent object. Hide it only when the
+// map schema explicitly belongs to the other tab.
+const isMapRowVisible = (mapSchema: unknown, outputTab: boolean): boolean => {
+  const readOnly = (mapSchema as { readOnly?: boolean } | undefined)?.readOnly;
+  return outputTab ? readOnly !== false : readOnly !== true;
+};
+
 export const ResourceTypeDetailPage = () => {
   const classes = useStyles();
   const theme = useTheme();
@@ -846,18 +853,21 @@ This should test whether copy buttons appear properly.`;
                               schema.properties?.additionalProperties) as {
                               description?: string;
                               type?: string;
+                              readOnly?: boolean;
                             };
 
-                          nestedProps.push({
-                            name: 'Map of key/values',
-                            type: 'map',
-                            required: false,
-                            description: formatDescription(
-                              additionalPropsSchema?.description ||
-                                'Additional key-value pairs',
-                            ),
-                            schema: additionalPropsSchema,
-                          });
+                          if (isMapRowVisible(additionalPropsSchema, false)) {
+                            nestedProps.push({
+                              name: 'Map of key/values',
+                              type: 'map',
+                              required: false,
+                              description: formatDescription(
+                                additionalPropsSchema?.description ||
+                                  'Additional key-value pairs',
+                              ),
+                              schema: additionalPropsSchema,
+                            });
+                          }
                         }
 
                         return {
@@ -2033,18 +2043,21 @@ This should test whether copy buttons appear properly.`;
                               schema.properties?.additionalProperties) as {
                               description?: string;
                               type?: string;
+                              readOnly?: boolean;
                             };
 
-                          nestedProps.push({
-                            name: 'Map of key/values',
-                            type: 'map',
-                            required: false,
-                            description: formatDescription(
-                              additionalPropsSchema?.description ||
-                                'Additional key-value pairs',
-                            ),
-                            schema: additionalPropsSchema,
-                          });
+                          if (isMapRowVisible(additionalPropsSchema, true)) {
+                            nestedProps.push({
+                              name: 'Map of key/values',
+                              type: 'map',
+                              required: false,
+                              description: formatDescription(
+                                additionalPropsSchema?.description ||
+                                  'Additional key-value pairs',
+                              ),
+                              schema: additionalPropsSchema,
+                            });
+                          }
                         }
 
                         return {
