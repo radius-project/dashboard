@@ -8,7 +8,8 @@
  *
  * The fixture resolves the local tarballs from an isolated node_modules tree
  * while repository dependencies remain available for declaration checking.
- * Phase 5 replaces this with a fully clean install and host build.
+ * The separate `test:e2e:installed` runner installs all frontend dependencies
+ * into a clean consumer. This faster suite remains a package smoke check.
  */
 /* eslint-disable no-restricted-imports */
 import { execFileSync } from 'child_process';
@@ -191,6 +192,7 @@ beforeAll(() => {
     const dependencies = [
       '@backstage',
       '@material-ui',
+      '@mui',
       '@date-io',
       'react',
       'react-dom',
@@ -254,7 +256,7 @@ beforeAll(() => {
     fs.writeFileSync(
       path.join(consumerRoot, 'index.ts'),
       [
-        "import { ApplicationListPage, radiusApiRef, radiusPlugin } from '@internal/plugin-radius';",
+        "import { ApplicationListPage, radiusApiRef, radiusPlugin, radiusThemes } from '@internal/plugin-radius';",
         "import type { RadiusApi } from '@internal/plugin-radius';",
         "import nativeRadius from '@internal/plugin-radius/alpha';",
         'declare const api: RadiusApi;',
@@ -262,6 +264,7 @@ beforeAll(() => {
         'void ApplicationListPage;',
         'void radiusApiRef;',
         'void radiusPlugin.getId();',
+        "void radiusThemes.dark.getTheme('v4');",
         'const nativeId: string = nativeRadius.pluginId;',
         'void nativeId;',
         '',
@@ -495,8 +498,13 @@ afterAll(() => {
         path.join(repoRoot, 'scripts', 'qualify-plugin-host.ts'),
         consumerRoot,
       ]);
-      expect(result).toContain('FS-03/08 PASS: packed legacy');
-      expect(result).toContain('FS-03/08 PASS: packed native');
+      for (const system of ['legacy', 'native']) {
+        for (const basePath of ['/', '/nested']) {
+          expect(result).toContain(
+            `FS-03/08 PASS: packed ${system}, app base ${basePath}`,
+          );
+        }
+      }
     } catch (error) {
       if (error instanceof Error && 'stderr' in error) {
         throw new Error(String(error.stderr), { cause: error });

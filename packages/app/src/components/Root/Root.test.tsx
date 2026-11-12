@@ -14,15 +14,13 @@ import { RadiusSidebar } from './Root';
 
 /**
  * The sidebar is the host's navigation contract: it is the only way a user
- * reaches four of the five plugin pages, and every destination is a
- * hand-written path string that no route ref checks. A typo here produces a
- * sidebar that renders perfectly and navigates nowhere, which is exactly the
- * failure mode that survives a compile and a lint.
+ * reaches four of the five plugin pages. Destinations must follow the host's
+ * route bindings, including non-default plugin mounts.
  *
  * The sidebar is collapsed by default in the test app, so `SidebarItem` labels
  * are present in the DOM but the logo renders its square variant.
  */
-const renderRoot = async (children?: React.ReactNode) =>
+const renderRoot = async (children?: React.ReactNode, mount = '') =>
   renderInTestApp(
     <SidebarPage>
       <RadiusSidebar />
@@ -30,11 +28,11 @@ const renderRoot = async (children?: React.ReactNode) =>
     </SidebarPage>,
     {
       mountedRoutes: {
-        '/applications': applicationListPageRouteRef,
-        '/environments': environmentListPageRouteRef,
-        '/recipes': recipeListPageRouteRef,
-        '/resources': resourceListPageRouteRef,
-        '/resource-types': resourceTypesListPageRouteRef,
+        [`${mount}/applications`]: applicationListPageRouteRef,
+        [`${mount}/environments`]: environmentListPageRouteRef,
+        [`${mount}/recipes`]: recipeListPageRouteRef,
+        [`${mount}/resources`]: resourceListPageRouteRef,
+        [`${mount}/resource-types`]: resourceTypesListPageRouteRef,
         // The sidebar's settings group renders the user-settings tabs, which
         // resolve their own route ref. Without this the whole sidebar throws.
         '/settings': userSettingsPlugin.routes.settingsPage,
@@ -99,6 +97,22 @@ describe('RadiusSidebar', () => {
     expect(logo).toHaveLength(1);
     expect(logo[0]).toHaveAttribute('href', '/');
     expect(logo[0]).toHaveAttribute('aria-label', 'Home');
+  });
+
+  it('HU-05/06: follows host route refs at a nested plugin mount', async () => {
+    await renderRoot(undefined, '/plugins/radius');
+    for (const [label, route] of [
+      ['Applications', 'applications'],
+      ['Environments', 'environments'],
+      ['Recipes', 'recipes'],
+      ['Resources', 'resources'],
+      ['Resource Types', 'resource-types'],
+    ]) {
+      expect(screen.getByRole('link', { name: label })).toHaveAttribute(
+        'href',
+        `/plugins/radius/${route}`,
+      );
+    }
   });
 
   it('RR-05: renders the settings group so a user can reach their profile', async () => {

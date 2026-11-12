@@ -8,8 +8,9 @@ import {
   Link,
 } from '@backstage/core-components';
 import { ResourceTypesTable } from './ResourceTypesTable';
+import { withRadiusTheme } from '../../appearance';
 
-export const ResourceTypesListPage = () => (
+export const ResourceTypesListPage = withRadiusTheme(() => (
   <Page themeId="radius-resource-types-list">
     <Header
       title="Resource Types"
@@ -29,4 +30,4 @@ export const ResourceTypesListPage = () => (
       </Grid>
     </Content>
   </Page>
-);
+));
