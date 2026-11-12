@@ -36,7 +36,7 @@ Reviewed main: [`409a5692`](https://github.com/radius-project/dashboard/tree/409
 | Native frontend/backend and standalone | Merged [#416](https://github.com/radius-project/dashboard/pull/416), merge `825e349d`; native `/alpha`, eight pages, API factory, native standalone and prior-image rollback                          | Exact public host/auth support and legacy retirement remain D2/D3 inputs                                                    |
 | Shared-package adoption                | Merged [#429](https://github.com/radius-project/dashboard/pull/429), merge `054440a3`; compiled core/graph archives, common query context, public forwarding and removal of duplicate implementations | Development archives are not a registry release; candidate CI policy still needs T4 approval                                |
 | Installed hosts, Phase 5               | Open [#435](https://github.com/radius-project/dashboard/pull/435), head `3687d9e9`; full controlled-upstream installed-host matrix at `eb712970`                                                      | Full matrix is tied to `eb712970`, not a claim that every later head reran it                                               |
-| Native page appearance and graph links | Open [#436](https://github.com/radius-project/dashboard/pull/436), `ac9ddcf`, stacked on #435                                                                                                         | Uses the original shared pair, not #405's icon archives; merge/requalify in dependency order                                |
+| Native page appearance and graph links | Open [#436](https://github.com/radius-project/dashboard/pull/436), head `a30dd9e4` (includes #435 `3687d9e9`); live evidence at `ac9ddcf`, stacked on #435                                            | Uses the original shared pair, not #405's icon archives; merge/requalify in dependency order                                |
 | Resource-definition icons              | Open [#405](https://github.com/radius-project/dashboard/pull/405), head `f4f7a624`, based on main; live evidence at `0b0af6df`, shared source `f89020ac197fd4fd266b3a61bbc99f9b933134bb`              | Separate from #435/#436; combine only through a new exact-source qualification                                              |
 | Public release                         | Not qualified                                                                                                                                                                                         | D2/D3/D5, Phase 6 required checks, Phase 7 reliability/accessibility and Phase 8 real supported-host/auth gates remain open |
 
@@ -183,7 +183,7 @@ RU-08-RU-14 protect the resource request inventory:
 | Providers                   | `/planes/radius/{plane}/providers`                                           | `2023-10-01-preview`         |
 | Type detail                 | `/planes/radius/{plane}/providers/{ns}/resourceTypes/{type}`                 | `2023-10-01-preview`         |
 
-Pin discovery fallback `2023-10-01-preview`, skipping `Microsoft.Resources/deployments`, first-seen ID de-duplication, first rejection only on total equivalent-type failure, and `fixupResource` back-filling environment from the application. The design owns the [graph-query contract and future common boundary](./2026-09-radius-backstage-plugin.md#api-design-if-applicable); FS-02 still tests its existing `ApplicationTab` path before extraction.
+Pin discovery fallback `2023-10-01-preview`, skipping `Microsoft.Resources/deployments`, first-seen ID de-duplication, first rejection only on total equivalent-type failure, and `fixupResource` back-filling environment from the application. The design owns the [graph-query contract and future common boundary](./2026-09-radius-backstage-plugin.md#api-design-if-applicable); FS-02 tests the API `getApplicationGraph` POST, which `ApplicationTab` now uses.
 
 ### Appendix B: requirement catalog
 
@@ -210,7 +210,7 @@ IDs are stable. "Baseline" means a test exists in the recorded phase, possibly a
 
 #### Connections: CN-01-CN-08
 
-CN-02-CN-08 include baseline defect pins. CN-03/CN-04 record #356's first/last-cluster split; CN-05 also distinguishes ignoring a late result from cancelling the request.
+CN-02, CN-05-CN-08 include baseline defect pins. CN-03/CN-04 are positive #356 regressions: resource GET and `getApplicationGraph` POST use the same resolved cluster and plane. CN-05 also distinguishes ignoring a late result from cancelling the request.
 
 | ID    | Required behavior                                                                    |
 | ----- | ------------------------------------------------------------------------------------ |
@@ -249,24 +249,24 @@ PB-01a/PB-02a are predecessor checks for rad-components: find real imports, requ
 
 #### Frontend migration: FS-01-FS-16
 
-| ID    | Requirement                                                                                                                                                                                                               | Phase |
-| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- |
-| FS-01 | Native default export has plugin ID `radius`, unique reviewed extensions for eight pages; removing one fails its installed journey                                                                                        | 3A    |
-| FS-02 | Native `radius-api` constructs the real API with host Kubernetes dependency; GET reaches fake transport and removing API extension fails lookup. Cover graph POST through its current path until common-client extraction | 3A    |
-| FS-03 | Preserve route parameters, external bindings, standalone URLs, nested/non-root navigation, history and refresh                                                                                                            | 3A    |
-| FS-04 | Preserve `radius-catalog` ID and toggle behavior; optional home cards render, and absent cards do not break pages                                                                                                         | 3A    |
-| FS-05 | Entries reuse product pages/API; native Radius has no plugin converter, copied renderer/domain logic or private imports                                                                                                   | 3A    |
-| FS-06 | Native pages honor host API override, including connection selection/failures; no hidden default bypass                                                                                                                   | 3A    |
-| FS-07 | Packed root/native entries and declarations resolve; export maps point to shipped files; explicit features or supported discovery install exactly one plugin/API/page set                                                 | 3A    |
-| FS-08 | Same real-renderer journeys pass in legacy/native external fixtures using one candidate tarball and actual plugin registration                                                                                            | 3A    |
-| FS-09 | Hybrid actual entry renders `app.createRoot()` and preserves alerts, dialogs, sign-in and themes                                                                                                                          | 3B    |
-| FS-10 | App conversion and native Radius do not duplicate routes, factories, sidebar or flags                                                                                                                                     | 3B    |
-| FS-11 | Pinned home, catalog/entity, catalog graph, settings and Kubernetes integration work; each temporary adapter has owner, upstream reference, explicit page/card mapping and removal condition                              | 3B    |
-| FS-12 | Host auth distinguishes unauthenticated/forbidden; both themes work; external installs do not enable automatic guest sign-in                                                                                              | 3B    |
-| FS-13 | Built standalone runs required journeys without required legacy app helpers/third-party converters; pair source scan with native runtime evidence                                                                         | 3C    |
-| FS-14 | Removing old routes/imports preserves home cards, links, flags, theme selection, API overrides and refresh                                                                                                                | 3C    |
-| FS-15 | Open-source Backstage installs/builds pass; host enforces authorization for resource GET and graph POST                                                                                                                   | 3C    |
-| FS-16 | Record prior qualified app/lockfile/image and candidate frontend/backend tuple; actually restore the prior tuple and pass its journeys. Test legacy entry until approved retirement                                       | 3C    |
+| ID    | Requirement                                                                                                                                                                                                                            | Phase |
+| ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- |
+| FS-01 | Native default export has plugin ID `radius`, unique reviewed extensions for eight pages; removing one fails its installed journey                                                                                                     | 3A    |
+| FS-02 | Native `radius-api` constructs the real API with host Kubernetes dependency; GET reaches fake transport and removing API extension fails lookup. Cover graph POST through `getApplicationGraph` on the same resolved cluster and plane | 3A    |
+| FS-03 | Preserve route parameters, external bindings, standalone URLs, nested/non-root navigation, history and refresh                                                                                                                         | 3A    |
+| FS-04 | Preserve `radius-catalog` ID and toggle behavior; optional home cards render, and absent cards do not break pages                                                                                                                      | 3A    |
+| FS-05 | Entries reuse product pages/API; native Radius has no plugin converter, copied renderer/domain logic or private imports                                                                                                                | 3A    |
+| FS-06 | Native pages honor host API override, including connection selection/failures; no hidden default bypass                                                                                                                                | 3A    |
+| FS-07 | Packed root/native entries and declarations resolve; export maps point to shipped files; explicit features or supported discovery install exactly one plugin/API/page set                                                              | 3A    |
+| FS-08 | Same real-renderer journeys pass in legacy/native external fixtures using one candidate tarball and actual plugin registration                                                                                                         | 3A    |
+| FS-09 | Hybrid actual entry renders `app.createRoot()` and preserves alerts, dialogs, sign-in and themes                                                                                                                                       | 3B    |
+| FS-10 | App conversion and native Radius do not duplicate routes, factories, sidebar or flags                                                                                                                                                  | 3B    |
+| FS-11 | Pinned home, catalog/entity, catalog graph, settings and Kubernetes integration work; each temporary adapter has owner, upstream reference, explicit page/card mapping and removal condition                                           | 3B    |
+| FS-12 | Host auth distinguishes unauthenticated/forbidden; both themes work; external installs do not enable automatic guest sign-in                                                                                                           | 3B    |
+| FS-13 | Built standalone runs required journeys without required legacy app helpers/third-party converters; pair source scan with native runtime evidence                                                                                      | 3C    |
+| FS-14 | Removing old routes/imports preserves home cards, links, flags, theme selection, API overrides and refresh                                                                                                                             | 3C    |
+| FS-15 | Open-source Backstage installs/builds pass; host enforces authorization for resource GET and graph POST                                                                                                                                | 3C    |
+| FS-16 | Record prior qualified app/lockfile/image and candidate frontend/backend tuple; actually restore the prior tuple and pass its journeys. Test legacy entry until approved retirement                                                    | 3C    |
 
 Use supported native frontend test utilities, not legacy mocks bypassing extension installation.
 
@@ -389,43 +389,43 @@ These are not initial plugin release gates.
 
 The tier rules above distinguish desired invariants from linked baseline defect pins.
 
-| ID     | Tier | Requirement                                                                            |
-| ------ | ---- | -------------------------------------------------------------------------------------- |
-| GU-01  | A    | Every resource yields one node; duplicate IDs have a separate pin                      |
-| GU-02  | A    | Retained connections exactly match fixture-owned endpoint multisets                    |
-| GU-02a | A    | Redirected, reversed, missing/extra edges and count-preserving duplicates fail         |
-| GU-03  | A    | Every edge endpoint resolves in the same graph                                         |
-| GU-04  | A    | Missing target is dropped/stubbed, not dangling; baseline defect pin                   |
-| GU-05  | A    | Unparseable connection does not drop its owning node                                   |
-| GU-05a | A    | Skip unparseable connections; baseline dangling-edge pin                               |
-| GU-05b | A    | Do not mutate caller graph; baseline mutation pin                                      |
-| GU-06  | A    | No duplicate node or self-loop for self-reference; baseline pin                        |
-| GU-06a | A    | Characterize self-loop/duplicate-ID validation defect independently                    |
-| GU-07  | A    | Same fixture yields same model and rendered remount result                             |
-| GU-08  | A    | A then B equals B alone, in both orderings; positive #355 regression                   |
-| GU-09  | A    | Positions finite; node bounding boxes do not overlap                                   |
-| GU-10  | A    | Identities and relationships survive layout/rendering                                  |
-| GU-11  | A    | Remount produces same record and leaks no timers                                       |
-| GU-12  | B    | Find node by resource-name accessible label                                            |
-| GU-13  | B    | Render relationship between named resources                                            |
-| GU-14  | B    | Zoom/fit/controls work with mouse and keyboard                                         |
-| GU-15  | B    | Empty graph has accessible empty state; baseline blank-state pin                       |
-| GU-16  | B    | Request failure is retryable error, not empty success; baseline pin                    |
-| GU-17  | B    | Layout failure is explicitly degraded but usable, not overlap; baseline pin            |
-| GU-18  | B    | Node selection opens details and restores focus on close; baseline missing-feature pin |
-| GU-19  | B    | Both themes work with real shared CSS                                                  |
-| GU-20  | B    | Renderer or stylesheet removal fails GU-12/GU-13/GU-19                                 |
-| GU-21  | C    | Every Appendix E fixture produces its committed record                                 |
-| GU-21b | C    | Icon/status semantics use `not-yet-populated` when never supplied                      |
-| GU-21c | C    | No coordinates in records                                                              |
-| GU-22  | C    | Every generated/committed record difference has a manifest entry                       |
-| GU-23  | C    | Report a carried defect while its own invariant is violated                            |
-| GU-23a | C    | An unrelated repair cannot clear a defect                                              |
-| GU-23b | C    | Each predicate detects violating and healthy records                                   |
-| GU-23c | C    | Reject a known defect whose fixture has no record                                      |
-| GU-24  | C    | Manifest empty at extraction-phase boundaries                                          |
-| GU-25  | C    | Committed/base-branch differences require manifest entry                               |
-| GU-25a | C    | Mutating a committed record reports an unapproved change                               |
+| ID     | Tier | Requirement                                                                                                                     |
+| ------ | ---- | ------------------------------------------------------------------------------------------------------------------------------- |
+| GU-01  | A    | Every resource yields one node; duplicate IDs are checked separately                                                            |
+| GU-02  | A    | Retained connections exactly match fixture-owned endpoint multisets                                                             |
+| GU-02a | A    | Redirected, reversed, missing/extra edges and count-preserving duplicates fail                                                  |
+| GU-03  | A    | Every edge endpoint resolves in the same graph                                                                                  |
+| GU-04  | A    | Missing target is dropped/stubbed, not dangling; positive #353 regression                                                       |
+| GU-05  | A    | Unparseable connection does not drop its owning node                                                                            |
+| GU-05a | A    | Skip unparseable connections; positive #354 regression                                                                          |
+| GU-05b | A    | Do not mutate caller graph; positive #357 regression                                                                            |
+| GU-06  | A    | No duplicate node or self-loop for self-reference; positive regression                                                          |
+| GU-06a | A    | Validate self-loop/duplicate-ID handling independently; positive regression                                                     |
+| GU-07  | A    | Same fixture yields same model and rendered remount result                                                                      |
+| GU-08  | A    | A then B equals B alone, in both orderings; positive #355 regression                                                            |
+| GU-09  | A    | Positions finite; node bounding boxes do not overlap                                                                            |
+| GU-10  | A    | Identities and relationships survive layout/rendering                                                                           |
+| GU-11  | A    | Remount produces same record and leaks no timers                                                                                |
+| GU-12  | B    | Find node by resource-name accessible label                                                                                     |
+| GU-13  | B    | Render relationship between named resources                                                                                     |
+| GU-14  | B    | Zoom/fit/controls work with mouse and keyboard                                                                                  |
+| GU-15  | B    | Empty graph has accessible empty state; baseline blank-state pin                                                                |
+| GU-16  | B    | Request failure is retryable error, not empty success; baseline pin                                                             |
+| GU-17  | B    | Layout failure is explicitly degraded but usable, not overlap; baseline pin                                                     |
+| GU-18  | B    | Node selection opens details and restores focus on close; baseline missing-feature pin                                          |
+| GU-19  | B    | Both themes work with real shared CSS                                                                                           |
+| GU-20  | B    | Renderer or stylesheet removal fails GU-12/GU-13/GU-19                                                                          |
+| GU-21  | C    | Every Appendix E fixture produces its committed record                                                                          |
+| GU-21b | C    | Icon/status semantics use `not-yet-populated` when never supplied                                                               |
+| GU-21c | C    | No coordinates in records                                                                                                       |
+| GU-22  | C    | Every generated/committed record difference has a manifest entry                                                                |
+| GU-23  | C    | Report a carried defect while its own invariant is violated                                                                     |
+| GU-23a | C    | An unrelated repair cannot clear a defect                                                                                       |
+| GU-23b | C    | Each predicate detects violating and healthy records                                                                            |
+| GU-23c | C    | Reject a known defect whose fixture has no record                                                                               |
+| GU-24  | C    | Manifest holds only the four reviewed #353/#357 entries until the base contains them, then empty at extraction-phase boundaries |
+| GU-25  | C    | Committed/base-branch differences require manifest entry                                                                        |
+| GU-25a | C    | Mutating a committed record reports an unapproved change                                                                        |
 
 The old GU-17 local Dagre fault injection was retired with that implementation. The shared package owns layout-degradation tests; dashboard forwarding identity and public browser checks must not introduce another layout/error policy. This does not independently close #368. GU-20 must reject both a renderer stub and missing stylesheet; `ApplicationTab.test.tsx`'s graph double cannot satisfy it.
 
