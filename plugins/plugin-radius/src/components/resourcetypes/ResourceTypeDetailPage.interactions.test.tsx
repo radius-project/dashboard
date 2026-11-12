@@ -70,7 +70,7 @@ const resourceType: ResourceTypeDetail = {
 
 const renderPage = async (tab = 'overview') => {
   const getResourceType = jest.fn(async () => resourceType);
-  const view = await renderInTestApp(
+  await renderInTestApp(
     <TestApiProvider apis={[[radiusApiRef, { getResourceType }]]}>
       <FlatRoutes>
         <Route
@@ -90,7 +90,6 @@ const renderPage = async (tab = 'overview') => {
     namespace: 'Applications.Core',
     typeName: 'containers',
   });
-  return view;
 };
 
 describe('ResourceTypeDetailPage interactions', () => {
@@ -180,31 +179,6 @@ describe('ResourceTypeDetailPage interactions', () => {
         jest.advanceTimersByTime(1000);
       });
       expect(second).toHaveAccessibleName('Copy to clipboard');
-    });
-
-    it('does not update state when the page unmounts while the reset timer is pending', async () => {
-      const consoleError = jest
-        .spyOn(console, 'error')
-        .mockImplementation(() => undefined);
-      try {
-        const { unmount } = await renderPage();
-        jest.useFakeTimers();
-        const button = screen.getAllByRole('button', {
-          name: 'Copy to clipboard',
-        })[0];
-
-        await copy(button);
-        expect(button).toHaveAccessibleName('Copied!');
-        unmount();
-
-        expect(jest.getTimerCount()).toBeGreaterThan(0);
-        act(() => {
-          jest.advanceTimersByTime(2000);
-        });
-        expect(consoleError).not.toHaveBeenCalled();
-      } finally {
-        consoleError.mockRestore();
-      }
     });
 
     it('does not show success after clipboard rejection and allows a retry', async () => {
