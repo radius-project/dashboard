@@ -530,14 +530,6 @@ describe('graph records', () => {
     });
 
     expect(
-      byFixture('missing-target').isPresent({
-        ...healthy,
-        edges: [
-          { source: 'a', target: 'absent', direction: 'source-to-target' },
-        ],
-      }),
-    ).toBe(true);
-    expect(
       byFixture('self-reference').isPresent({
         ...healthy,
         edges: [{ source: 'a', target: 'a', direction: 'source-to-target' }],

@@ -31,6 +31,34 @@ const graphContract = async (page: Page) => ({
 });
 
 test.describe('real AppGraph renderer', () => {
+  for (const [story, target] of [
+    [
+      'missing-target',
+      '/planes/radius/local/resourceGroups/demo/providers/Applications.Datastores/redisCaches/absent',
+    ],
+    ['unparseable-connection', 'not-a-resource-id'],
+  ]) {
+    test(`GU-04 / GU-05a: reports ${story} without hiding the graph`, async ({
+      page,
+    }) => {
+      await page.goto(storyUrl(story));
+
+      const warning = page.getByRole('status');
+      await expect(warning).toContainText(
+        'Unresolved or self connection ignored:',
+      );
+      await expect(node(page, 'webapp')).toBeVisible();
+      await expect(page.locator('.react-flow__edge')).toHaveCount(0);
+      await expect(warning).toContainText(target);
+      await expect(warning).toContainText(
+        '/planes/radius/local/resourceGroups/demo/providers/Applications.Core/containers/webapp',
+      );
+      await expect(
+        page.getByRole('button', { name: 'Fit View' }),
+      ).toBeVisible();
+    });
+  }
+
   test('GU-11: unmounting and remounting preserves positions without leaking scheduled work', async ({
     page,
   }) => {

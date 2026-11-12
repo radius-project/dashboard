@@ -80,9 +80,16 @@ describe('Tier A public graph normalization invariants', () => {
       expect(graph.resources).toHaveLength(1);
       expect(graph.resources[0].name).toBe('webapp');
       expect(graph.resources[0].connections).toEqual([]);
-      expect(
-        graph.warnings.some(warning => warning.severity === 'warning'),
-      ).toBe(true);
+      const warning = graph.warnings.find(
+        entry => entry.code === 'unresolved-connection',
+      );
+      expect(warning).toMatchObject({ severity: 'warning' });
+      expect(warning?.message).toContain(graph.resources[0].id);
+      expect(warning?.message).toContain(
+        name === 'missing-target'
+          ? id('Applications.Datastores/redisCaches/absent')
+          : 'not-a-resource-id',
+      );
     },
   );
 
