@@ -798,7 +798,7 @@ test('the actual build chain, offline CI tests, validation gates, and edge publi
   assert.ok(browserInstall < workflow.indexOf('- name: Run Tests'));
   assert.match(
     workflow,
-    /run: yarn run test:all --coverageDirectory=coverage --coverageReporters=lcov --coverageReporters=text\r?\n/,
+    /run: yarn run test:all --coverageDirectory=coverage --coverageReporters=lcov --coverageReporters=text --coverageReporters=json-summary\r?\n/,
   );
   const coverageUpload = workflow
     .split('- name: Upload coverage to Codecov')[1]
