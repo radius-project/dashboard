@@ -920,6 +920,47 @@ describe('ResourceTypeDetailPage', () => {
       ]);
     });
 
+    it('RT-36c: omits the nested table of a pure map when its schema belongs to the other tab', async () => {
+      await renderPage(
+        makeResourceType(
+          withProperties({
+            conns: {
+              type: 'object',
+              readOnly,
+              additionalProperties: {
+                type: 'object',
+                readOnly: !readOnly,
+                properties: { phase: { type: 'string', readOnly } },
+              },
+            },
+          }),
+        ),
+        tab,
+      );
+
+      expect(readPropertyRows().map(r => r.path)).toEqual(['conns']);
+    });
+
+    it('RT-36d: omits the nested table of a pure map when every child belongs to the other tab', async () => {
+      await renderPage(
+        makeResourceType(
+          withProperties({
+            conns: {
+              type: 'object',
+              readOnly,
+              additionalProperties: {
+                type: 'object',
+                properties: { phase: { type: 'string', readOnly: !readOnly } },
+              },
+            },
+          }),
+        ),
+        tab,
+      );
+
+      expect(readPropertyRows().map(r => r.path)).toEqual(['conns']);
+    });
+
     it('RT-37: keeps API versions and parent paths distinct for output and input fields', async () => {
       const schema = (type: string) => ({
         Schema: {

@@ -960,7 +960,14 @@ This should test whether copy buttons appear properly.`;
                       // Handle additionalProperties (for dynamic object structures like connections)
                       if (
                         schema.additionalProperties &&
-                        schema.additionalProperties.properties
+                        schema.additionalProperties.properties &&
+                        isMapRowVisible(schema.additionalProperties, false) &&
+                        Object.values(
+                          schema.additionalProperties.properties,
+                        ).some(
+                          (p: unknown) =>
+                            (p as { readOnly?: boolean }).readOnly !== true,
+                        )
                       ) {
                         // Add a name property first for additionalProperties objects
                         const parentDescription = (
@@ -2150,7 +2157,14 @@ This should test whether copy buttons appear properly.`;
                       // Handle additionalProperties (for dynamic object structures like connections)
                       if (
                         schema.additionalProperties &&
-                        schema.additionalProperties.properties
+                        schema.additionalProperties.properties &&
+                        isMapRowVisible(schema.additionalProperties, true) &&
+                        Object.values(
+                          schema.additionalProperties.properties,
+                        ).some(
+                          (p: unknown) =>
+                            (p as { readOnly?: boolean }).readOnly === true,
+                        )
                       ) {
                         // Add a name property first for additionalProperties objects
                         const parentDescription = (
