@@ -207,7 +207,12 @@ with missing Kubernetes initialization config. The test host uses a controlled
 static token restricted to the Kubernetes plugin, not a production provider.
 Container evidence includes exact image identity, config, startup logs, and
 upstream request results. Docker uses `--pull=never`; no image is published.
-This mode requires Linux Docker host networking.
+This mode requires Linux Docker host networking (`--network host`). Docker
+Desktop on Windows and macOS does not support it. Run it on a Linux host or in
+WSL with a native Docker engine.
+
+`QUALIFICATION_CONTAINER_IMAGE` names a locally built image. The `:edge` tag is
+only the local build tag. The runner never pulls or publishes this image.
 
 To run the existing four native-host baseline tests against the built image:
 

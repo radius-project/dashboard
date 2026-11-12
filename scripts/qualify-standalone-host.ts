@@ -35,7 +35,28 @@ async function close(server: Server) {
   });
 }
 
+class PortConflictError extends Error {}
+
+// Host networking means the reserved port can be taken between release and
+// container start, so a bind failure is retried on a fresh port.
 async function startContainer(
+  image: string,
+  clusters: TestCluster[],
+  publicBaseUrl?: string,
+) {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await startContainerOnce(image, clusters, publicBaseUrl);
+    } catch (error) {
+      if (!(error instanceof PortConflictError) || attempt >= 3) throw error;
+      console.warn(
+        `Container port was taken before start (attempt ${attempt}); retrying`,
+      );
+    }
+  }
+}
+
+async function startContainerOnce(
   image: string,
   clusters: TestCluster[],
   publicBaseUrl?: string,
@@ -231,6 +252,19 @@ async function startContainer(
       if (
         docker(['inspect', '--format', '{{.State.Running}}', name]) !== 'true'
       ) {
+        const logs = spawnSync('docker', ['logs', name], {
+          encoding: 'utf8',
+          timeout: 30_000,
+        });
+        if (
+          /EADDRINUSE|address already in use/i.test(
+            `${logs.stdout ?? ''}${logs.stderr ?? ''}`,
+          )
+        ) {
+          throw new PortConflictError(
+            `Built backend port ${port} was already in use; see ${directory}`,
+          );
+        }
         throw new Error(
           `Built backend exited before readiness; see ${directory}`,
         );
