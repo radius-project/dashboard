@@ -332,6 +332,57 @@ describe('ApplicationTab host adapter', () => {
     );
   });
 
+  it.each([
+    `${resourceGroup}/providers/Applications.Core/containers/absent`,
+    'not-a-resource-id',
+  ])(
+    '#353: passes unresolved connection diagnostics to the shared renderer without losing valid topology (%s)',
+    async target => {
+      await renderTab({
+        getApplicationGraph: jest.fn().mockResolvedValue({
+          graph: {
+            ...graphResponse,
+            resources: [
+              {
+                ...graphResponse.resources[0],
+                connections: [
+                  ...graphResponse.resources[0].connections!,
+                  { id: target, direction: 'Outbound' },
+                ],
+              },
+              graphResponse.resources[1],
+            ],
+          },
+          context: {
+            connectionId: 'override',
+            plane: { type: 'radius', name: 'local' },
+            applicationId: application,
+          },
+        }),
+      });
+
+      expect(await screen.findByText('frontend')).toBeVisible();
+      expect(screen.getByText('edge')).toBeVisible();
+      const { graph } = jest.mocked(RadiusGraph).mock.calls.at(-1)![0];
+      expect(graph).toMatchObject({
+        warnings: [
+          expect.objectContaining({
+            code: 'unresolved-connection',
+            severity: 'warning',
+            message: expect.stringContaining(target),
+          }),
+        ],
+        resources: expect.arrayContaining([
+          expect.objectContaining({
+            id: gateway,
+            connections: [{ id: container, direction: 'Outbound' }],
+          }),
+          expect.objectContaining({ id: container, connections: [] }),
+        ]),
+      });
+    },
+  );
+
   it('surfaces malformed graph responses instead of rendering a successful empty graph', async () => {
     await renderTab({
       getApplicationGraph: jest.fn().mockResolvedValue({
