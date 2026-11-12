@@ -303,7 +303,7 @@ One case per shipped page/tab/table/card must cover loading, empty, populated an
 | RE     | `components/recipes/RecipeListPage.tsx`               | RE-01-RE-08                       |
 | RK     | `components/recipes/RecipeTable.tsx`                  | RK-01-RK-10                       |
 | RL     | `components/resources/ResourceListPage.tsx`           | RL-01-RL-07                       |
-| RT     | `components/resourcetypes/ResourceTypeDetailPage.tsx` | RT-01-RT-30                       |
+| RT     | `components/resourcetypes/ResourceTypeDetailPage.tsx` | RT-01-RT-40                       |
 | AC     | `components/applications/ApplicationListInfoCard.tsx` | AC-01-AC-08                       |
 | EC     | `components/environments/EnvironmentListInfoCard.tsx` | EC-01-EC-08                       |
 | EV     | `components/environments/EnvironmentResourcesTab.tsx` | EV-01-EV-03                       |
@@ -583,7 +583,7 @@ This is a historical defect inventory, not a live issue-state list. `KNOWN-DEFEC
 | #360  | Loaded-machine page timeouts: T3; harness risk, not product pin                                                                  |
 | #361  | Missing type description gets placeholder container docs: RT-07                                                                  |
 | #362  | Off-route layout displays `undefined/undefined: undefined`: LY-04                                                                |
-| #363  | Output tab hides read-only nested properties and shows writable ones: RT-27                                                      |
+| #363  | Fixed on main: output tab selects read-only nested children at every level; RT-27 and RT-35-RT-40 are positive regressions       |
 | #364  | Discord card `to=""` points home, lacks new-window hint: CC-05/CC-06                                                             |
 | #365  | Required `systemData: Record<string, never>` forces fixture casts: RS-14; replace with optional open-valued model tests on fix   |
 | #366  | Sucrase cache key omits instrumentation: PU-35, upstream Jest module; zero current usage                                         |
@@ -592,7 +592,7 @@ This is a historical defect inventory, not a live issue-state list. `KNOWN-DEFEC
 | #369  | Default client now carries completeness/errors and views show partial warnings; metadata-free overrides remain compatible: ER-08 |
 | #370  | Graph error has no retry action: GU-16                                                                                           |
 
-Issues #361 and #363 shared nearly duplicated tab bodies at the historical baseline; inspect the current source before a fix. #352 needs visible-card regression coverage, not just parser cases. Retain #356's same two-cluster fixture on both query paths.
+Issues #361 and #363 shared nearly duplicated tab bodies at the historical baseline. #363 is fixed and guarded by RT-27 and RT-35-RT-40; #361 is unchanged, so inspect the current source before a fix. #352 needs visible-card regression coverage, not just parser cases. Retain #356's same two-cluster fixture on both query paths.
 
 Withdrawn PU-16, PU-18 and FF-02 asserted unresolved private/license/export-policy choices. Resolving a decision must not break CI; design D5 owns those choices.
 
