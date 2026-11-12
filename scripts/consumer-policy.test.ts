@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import fs from 'node:fs';
 import { test } from 'node:test';
 import {
   assertApprovedPolicy,
@@ -162,10 +161,10 @@ test('CP-01/04: qualify immutable consumer tuple from independent service record
 });
 
 test('unapproved invocation policy cannot yield successful evidence', () => {
-  const pending = JSON.parse(
-    fs.readFileSync('.github/consumer-policy.json', 'utf8'),
+  assert.throws(
+    () => assertApprovedPolicy({ status: 'pending' }),
+    /not approved/,
   );
-  assert.throws(() => assertApprovedPolicy(pending), /not approved/);
   const f = fixture();
   delete f.policy.approval;
   assert.throws(() => assertApprovedPolicy(f.policy), /approval/);
