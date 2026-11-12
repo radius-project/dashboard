@@ -11,6 +11,7 @@ import {
 } from '@testing-library/react';
 import { RadiusApi } from '../../api';
 import { radiusApiRef } from '../../plugin';
+import { resourceTypesListPageRouteRef } from '../../routes';
 import { ResourceTypeDetailPage } from './ResourceTypeDetailPage';
 
 type ResourceTypeDetail = Awaited<ReturnType<RadiusApi['getResourceType']>>;
@@ -84,6 +85,7 @@ const renderPage = async (tab = 'overview') => {
       </FlatRoutes>
     </TestApiProvider>,
     {
+      mountedRoutes: { '/resource-types': resourceTypesListPageRouteRef },
       routeEntries: [`/resource-types/Applications.Core/containers/${tab}`],
     },
   );
