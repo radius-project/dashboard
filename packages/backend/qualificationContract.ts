@@ -53,7 +53,12 @@ export async function qualifyBackendConnections(options: {
     status: number;
     forwarded: number;
   }[] = [];
-  const selectedDenial = clusters[1].name;
+  // Order-independent choice: the last name when sorted, so reordering the
+  // cluster list cannot change which connection is denied.
+  const selectedDenial = clusters
+    .map(cluster => cluster.name)
+    .sort()
+    .at(-1)!;
   try {
     for (const policy of ['allowed', 'selected-denied']) {
       denyConnection(policy === 'selected-denied' ? selectedDenial : undefined);

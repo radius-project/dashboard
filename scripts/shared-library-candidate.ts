@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { isInsidePath } from './installed-host.ts';
 
 interface ArchiveIdentity {
   path: string;
@@ -116,14 +117,9 @@ const verifyInstalledArchive = (
   packageRoot: string,
   consumerRoot: string,
 ) => {
-  const relativeRoot = path.relative(
-    path.join(fs.realpathSync(consumerRoot), 'node_modules'),
-    fs.realpathSync(packageRoot),
-  );
   if (
     fs.lstatSync(packageRoot).isSymbolicLink() ||
-    relativeRoot.startsWith('..') ||
-    path.isAbsolute(relativeRoot)
+    !isInsidePath(path.join(consumerRoot, 'node_modules'), packageRoot)
   ) {
     throw new Error(
       `${archive.manifest.name}: candidate must not be a workspace link`,
@@ -137,11 +133,7 @@ const verifyInstalledArchive = (
         `${archive.manifest.name}: installed ${relative} must be a regular file`,
       );
     }
-    const relativeFile = path.relative(
-      fs.realpathSync(packageRoot),
-      fs.realpathSync(installedPath),
-    );
-    if (relativeFile.startsWith('..') || path.isAbsolute(relativeFile)) {
+    if (!isInsidePath(packageRoot, installedPath)) {
       throw new Error(
         `${archive.manifest.name}: installed ${relative} resolves outside the package`,
       );

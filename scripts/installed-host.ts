@@ -47,9 +47,23 @@ export function installedPackage(root: string, name: string) {
   };
 }
 
+// True when target is root or below it. A sibling named "..foo" is inside;
+// the parent ("..") is not.
+export function isInsidePath(root: string, target: string) {
+  const relative = path.relative(
+    fs.realpathSync(root),
+    fs.realpathSync(target),
+  );
+  return (
+    relative === '' ||
+    (relative !== '..' &&
+      !relative.startsWith(`..${path.sep}`) &&
+      !path.isAbsolute(relative))
+  );
+}
+
 export function assertInside(root: string, file: string) {
-  const relative = path.relative(fs.realpathSync(root), fs.realpathSync(file));
-  if (relative.startsWith('..') || path.isAbsolute(relative)) {
+  if (!isInsidePath(root, file)) {
     throw new Error(`Installed host input escapes its isolated root: ${file}`);
   }
 }

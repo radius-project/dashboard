@@ -7,6 +7,7 @@ import {
   assertCandidateResolution,
   assertInstalledReact18,
   installedPackage,
+  isInsidePath,
   sha256,
 } from './installed-host.ts';
 import {
@@ -23,15 +24,7 @@ if (!evidence || !path.isAbsolute(evidence)) {
   );
 }
 fs.mkdirSync(evidence, { recursive: true });
-const relativeEvidence = path.relative(
-  fs.realpathSync(root),
-  fs.realpathSync(evidence),
-);
-if (
-  relativeEvidence === '' ||
-  (!relativeEvidence.startsWith(`..${path.sep}`) &&
-    !path.isAbsolute(relativeEvidence))
-) {
+if (isInsidePath(root, evidence)) {
   throw new Error(
     'Installed-host evidence must be outside the repository dependency tree',
   );
@@ -43,12 +36,8 @@ if (workDirectory && !path.isAbsolute(workDirectory)) {
 }
 if (workDirectory) fs.mkdirSync(workDirectory, { recursive: true });
 if (workDirectory) {
-  const relativeWork = path.relative(
-    fs.realpathSync(root),
-    fs.realpathSync(workDirectory),
-  );
   assert(
-    relativeWork.startsWith(`..${path.sep}`) || path.isAbsolute(relativeWork),
+    !isInsidePath(root, workDirectory),
     'Installed-host work directory must be outside the repository dependency tree',
   );
 }
