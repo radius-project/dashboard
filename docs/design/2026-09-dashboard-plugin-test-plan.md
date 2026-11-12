@@ -348,7 +348,7 @@ The recorded Phase 3 baseline implements PU-01-PU-28 and PU-31-PU-35 through con
 | PU-14  | React/DOM/router are peers, not dependencies                                                                                              |
 | PU-15  | React peer range covers the host's React 18                                                                                               |
 | PU-16  | Withdrawn: private/public setting belongs to design D5                                                                                    |
-| PU-17  | Source declares graph workspace dependency; this alone proves no installability                                                           |
+| PU-17  | Source declares exact shared core/graph-react dependency metadata, not the replaced graph workspace; packing/installability are verified separately |
 | PU-18  | Withdrawn: license conflict belongs to design D5                                                                                          |
 | PU-19  | Pin current `@internal/plugin-radius` identity pending approved rename                                                                    |
 | PU-20  | Root config enforces floors in repository runs                                                                                            |
