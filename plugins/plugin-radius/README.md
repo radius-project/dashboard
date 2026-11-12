@@ -80,6 +80,8 @@ for hash, source/build receipt, installed-byte, and qualification requirements.
 `vendor/shared-libraries/resource-icons-candidate.json` identifies the active
 pair. The original `candidate.json` and archives remain unchanged as baseline
 evidence; they do not qualify the new pair.
+The new archives were built by the producer. The receipt records their source
+revision, hashes and signature checks; the dashboard did not rebuild them from source.
 Public registry distribution remains unqualified until an approved release.
 
 ## Phase 4 test ownership

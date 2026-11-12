@@ -116,6 +116,38 @@ describe('shared query client through the Backstage transport', () => {
     },
   );
 
+  it('reports a failed graph POST that carries the icon request body', async () => {
+    const kube = {
+      getClusters: jest.fn().mockResolvedValue([{ name: 'selected-cluster' }]),
+      proxy: jest.fn().mockImplementation(({ path, init }) => {
+        if (path.includes('/resourceTypes/')) {
+          return Promise.resolve(
+            json({
+              ...typeInfo,
+              Name: 'Radius.Core/applications',
+              ResourceProviderNamespace: 'Radius.Core',
+              APIVersionList: ['2025-08-01-preview'],
+              APIVersions: { '2025-08-01-preview': {} },
+            }),
+          );
+        }
+        expect(init.method).toBe('POST');
+        expect(init.body).toBe(JSON.stringify({ includeIcons: true }));
+        return Promise.resolve(
+          new Response('bad icon request', { status: 400 }),
+        );
+      }),
+    };
+    const api = new RadiusApiImpl(kube);
+
+    await expect(
+      api.getApplicationGraph({ applicationId: currentId }),
+    ).rejects.toThrow(/400/);
+    expect(
+      kube.proxy.mock.calls.filter(([r]) => r.init.method === 'POST'),
+    ).toHaveLength(1);
+  });
+
   it('CN-01 / CN-02 / CN-03 / CN-04: binds GET and graph POST to the first cluster and the same plane', async () => {
     const kube = host(request =>
       request.init?.method === 'POST'

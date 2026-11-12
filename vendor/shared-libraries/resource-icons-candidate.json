@@ -83,6 +83,7 @@
     "Archive verification alone does not qualify a real host or approve graph record changes.",
     "Public naming, release, support and distribution policy remain unqualified.",
     "Producer package checks do not qualify the dashboard, Headlamp, Windows or wider repository hosts.",
-    "Dashboard icon browser evidence uses a declared resource-type API fixture, not a live resource registry."
+    "Repository browser tests use a declared resource-type API fixture. Live-cluster icon checks were run separately and are reported on the pull request; this receipt does not record them.",
+    "The archives were built by the producer. The consumer checked their hashes, source signature and lock evidence, but did not rebuild them from source."
   ]
 }
