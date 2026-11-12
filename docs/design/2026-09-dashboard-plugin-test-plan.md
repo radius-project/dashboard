@@ -585,7 +585,11 @@ now have suites, all of which assert the error path:
   recursive `definitions` discovery, and the descending version ordering. RT-28–RT-29 use real
   route parameters and request-sensitive stubs to cover different namespaces/types and refetching
   after navigation. RT-30 preserves repeated property names by API version and parent path rather
-  than overwriting them in a name-keyed map.
+  than overwriting them in a name-keyed map. RT-35–RT-40 add data-driven schema cases on both tabs:
+  nested objects, arrays of objects, maps of objects, fixed fields with dynamic values, deep paths,
+  schema discovery, and empty nested tables after filtering. They assert complete rows, including
+  descriptions and required fields where that column exists. RT-27 now guards the fix for #363:
+  output tables include read-only children and exclude writable children at every nesting level.
 - `ApplicationListInfoCard` (AC-01–AC-08) and `EnvironmentListInfoCard` (EC-01–EC-08). Priority 4
   above: the two components a host can embed **without** a route, so they are published surface
   rather than internal detail, and neither had any test.
@@ -1056,7 +1060,7 @@ its issue is fixed, and that failure is the signal the fix landed, not a regress
 | #360  | Five page suites can time out under loaded parallel execution and misreport as coverage failures | Phase 1 default-worker recheck; open guardrail |
 | #361  | A resource type with no description shows placeholder container documentation | RT-07                |
 | #362  | `ResourceLayout` renders literal `undefined/undefined: undefined` off-route  | LY-04                |
-| #363  | The output-properties tab hides read-only nested properties and shows writable ones | RT-27         |
+| #363  | Output-properties nested filtering — **fixed; object, array, and map children now select read-only fields** | RT-27, RT-35–RT-40 (regression) |
 | #364  | "Join us on Discord" navigates to the dashboard home page instead of Discord | CC-05, CC-06        |
 | #365  | `Resource.systemData` is required and typed `Record<string, never>`, so every fixture must be cast | RS-14 |
 | #366  | The Sucrase Jest transform's cache key ignores `instrument`, so an override that selects it reports 0% while its tests pass | PU-35 guardrail; fix is upstream |
@@ -1101,8 +1105,8 @@ real symptom unrecorded.
 
 `#361` and `#363` are both consequences of the same structure: `ResourceTypeDetailPage` is 2,693
 lines containing two near-duplicate eleven-hundred-line tab bodies that are meant to differ by one
-boolean. Pinning them individually is worth doing, but the duplication is the defect that generates
-defects.
+boolean. RT-27 and the schema matrix now guard the #363 fix, but the duplicate tab implementations
+remain. The placeholder-documentation defect in #361 is unchanged.
 
 `#360` is a harness defect rather than a product defect, which is why it is carried as an open
 decision rather than as a `KNOWN-DEFECT` assertion. It is listed here anyway because its failure
