@@ -14,7 +14,7 @@
  * not exist. Nothing else in the repository notices.
  */
 const add = jest.fn();
-const start = jest.fn();
+const start = jest.fn().mockResolvedValue(undefined);
 
 jest.mock('@backstage/backend-defaults', () => ({
   createBackend: jest.fn(() => ({ add, start })),
@@ -90,5 +90,32 @@ describe('backend entry point', () => {
     const lastAddOrder = Math.max(...add.mock.invocationCallOrder);
 
     expect(startOrder).toBeGreaterThan(lastAddOrder);
+  });
+});
+
+describe('backend startup failure', () => {
+  it('logs the startup error and exits with a failure status', async () => {
+    const error = new Error('Backend initialization failed');
+    const logError = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const exit = jest
+      .spyOn(process, 'exit')
+      .mockImplementation(jest.fn<never, Parameters<typeof process.exit>>());
+
+    try {
+      start.mockRejectedValueOnce(error);
+      await jest.isolateModulesAsync(async () => {
+        await import('./index');
+      });
+
+      expect(logError).toHaveBeenCalledWith(
+        'Radius backend startup failed',
+        error,
+      );
+      expect(exit).toHaveBeenCalledTimes(1);
+      expect(exit).toHaveBeenCalledWith(1);
+    } finally {
+      exit.mockRestore();
+      logError.mockRestore();
+    }
   });
 });

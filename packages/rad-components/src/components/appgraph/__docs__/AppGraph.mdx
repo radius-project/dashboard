@@ -8,6 +8,11 @@ import * as AppGraph from './AppGraph.stories.tsx';
 
 AppGraph displays the topology of different applications.
 
+If a connection target is absent or its ID is invalid, the shared renderer
+omits the edge and shows a warning with the owning resource ID and target ID.
+The warning uses an accessible status region. Valid resources and connections
+remain visible.
+
 #### Example: Demo Application
 
 <Canvas of={AppGraph.Demo} />

@@ -75,13 +75,6 @@ export interface KnownGraphDefect {
 
 const nodeIds = (record: GraphRecord) => new Set(record.nodes.map(n => n.id));
 
-const hasDanglingEdge = (record: GraphRecord) => {
-  const ids = nodeIds(record);
-  return record.edges.some(
-    edge => !ids.has(edge.source) || !ids.has(edge.target),
-  );
-};
-
 const hasSelfEdge = (record: GraphRecord) =>
   record.edges.some(edge => edge.source === edge.target);
 
@@ -97,18 +90,6 @@ const hasNoStatusBadges = (record: GraphRecord) =>
   record.nodes.every(node => node.statusBadge === NOT_YET_POPULATED);
 
 export const knownGraphDefects: KnownGraphDefect[] = [
-  {
-    fixture: 'missing-target',
-    issue: '#353',
-    invariant: 'every edge endpoint resolves to a node',
-    isPresent: hasDanglingEdge,
-  },
-  {
-    fixture: 'unparseable-connection',
-    issue: '#353',
-    invariant: 'every edge endpoint resolves to a node',
-    isPresent: hasDanglingEdge,
-  },
   {
     fixture: 'self-reference',
     issue: '#357',

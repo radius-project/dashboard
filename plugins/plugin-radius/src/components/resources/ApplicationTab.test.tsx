@@ -1,11 +1,18 @@
 import React from 'react';
 import { renderInTestApp, TestApiProvider } from '@backstage/test-utils';
-import { screen } from '@testing-library/react';
-import { RadiusGraph, RadiusGraphProps } from '@radius-project/graph-react';
+import { act, screen } from '@testing-library/react';
+import { errorApiRef } from '@backstage/core-plugin-api';
+import { useLocation } from 'react-router-dom';
+import {
+  RadiusGraph,
+  RadiusGraphProps,
+  GraphNodeData,
+} from '@radius-project/graph-react';
 import { RadiusApi } from '../../api';
 import { RadiusApiImpl } from '../../api/api';
 import { radiusApiRef } from '../../api/ref';
 import { ApplicationTab } from './ApplicationTab';
+import { environmentPageRouteRef, resourcePageRouteRef } from '../../routes';
 
 // Renderer behavior is covered in Chromium; this suite checks the host adapter.
 jest.mock('@radius-project/graph-react', () => ({
@@ -43,14 +50,33 @@ const graphResponse = {
   ],
 };
 
+const LocationProbe = () => <output>{useLocation().pathname}</output>;
+
+const errorApi = { post: jest.fn(), error$: jest.fn() };
+
 const renderTab = (
   api: Pick<RadiusApi, 'getApplicationGraph'>,
   id = application,
+  prefix = '',
 ) =>
   renderInTestApp(
-    <TestApiProvider apis={[[radiusApiRef, api]]}>
+    <TestApiProvider
+      apis={[
+        [radiusApiRef, api],
+        [errorApiRef, errorApi],
+      ]}
+    >
       <ApplicationTab application={id} />
+      <LocationProbe />
     </TestApiProvider>,
+    {
+      mountedRoutes: {
+        [`${prefix}/resources/:group/:namespace/:type/:name`]:
+          resourcePageRouteRef,
+        [`${prefix}/environments/:group/:namespace/:type/:name`]:
+          environmentPageRouteRef,
+      },
+    },
   );
 
 beforeEach(() => jest.clearAllMocks());
@@ -92,14 +118,91 @@ describe('ApplicationTab host adapter', () => {
         ]),
       });
       expect(props.options).toMatchObject({
-        showLegend: false,
-        enablePopup: false,
+        showLegend: true,
+        enablePopup: true,
       });
       expect(graphResponse.resources[0].connections?.[0].direction).toBe(
         'Inbound',
       );
     },
   );
+
+  it.each([
+    ['', 'Applications.Core', 'frontend'],
+    ['/plugins/radius', 'Radius.Compute', 'my.frontend_2'],
+    ['/nested/plugins/radius', 'Custom.Provider', 'my.frontend_2'],
+  ])(
+    'opens the selected resource overview through the host route at %s',
+    async (prefix, namespace, name) => {
+      await renderTab(
+        {
+          getApplicationGraph: jest.fn().mockResolvedValue({
+            graph: graphResponse,
+            context: {
+              connectionId: 'host',
+              plane: { type: 'radius', name: 'local' },
+              applicationId: application,
+            },
+          }),
+        },
+        application,
+        prefix,
+      );
+      await screen.findByText('frontend');
+      const callbacks = jest.mocked(RadiusGraph).mock.calls.at(-1)![0]
+        .callbacks;
+      const selected: GraphNodeData = {
+        id: `${resourceGroup}/providers/${namespace}/containers/${name}`,
+        nodeName: 'not-the-resource-name',
+        resourceType: 'not-the-resource-type',
+        borderColor: '',
+        borderWidth: 1,
+        bgColor: '',
+        icon: '',
+        typeLabel: '',
+        concreteType: '',
+        codeRef: '',
+        sourceUrl: '',
+        srcPath: '',
+        srcLine: 0,
+        defFile: '',
+        defLine: 0,
+        diffStatus: '',
+        deployStatus: '',
+        portalUrl: '',
+        cloudResources: '',
+      };
+      act(() => callbacks?.onNavigate?.(selected));
+      expect(
+        await screen.findByText(
+          `${prefix}/resources/test-group/${namespace}/containers/${name}/overview`,
+        ),
+      ).toBeInTheDocument();
+    },
+  );
+
+  it('reports an error for a node whose id is not a resource id', async () => {
+    await renderTab({
+      getApplicationGraph: jest.fn().mockResolvedValue({
+        graph: graphResponse,
+        context: {
+          connectionId: 'host',
+          plane: { type: 'radius', name: 'local' },
+          applicationId: application,
+        },
+      }),
+    });
+    await screen.findByText('frontend');
+    const callbacks = jest.mocked(RadiusGraph).mock.calls.at(-1)![0].callbacks;
+    const bare = { id: 'resource-0' } as GraphNodeData;
+    expect(() => act(() => callbacks?.onNavigate?.(bare))).not.toThrow();
+    expect(screen.queryByText(/overview$/)).not.toBeInTheDocument();
+    expect(errorApi.post).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: expect.stringContaining('resource-0'),
+      }),
+    );
+  });
 
   it('CN-03 / CN-04 / #356: GET and the mounted graph POST use the same resolved cluster and plane', async () => {
     const kube = {
@@ -180,6 +283,57 @@ describe('ApplicationTab host adapter', () => {
       'Request failed: 404',
     );
   });
+
+  it.each([
+    `${resourceGroup}/providers/Applications.Core/containers/absent`,
+    'not-a-resource-id',
+  ])(
+    '#353: passes unresolved connection diagnostics to the shared renderer without losing valid topology (%s)',
+    async target => {
+      await renderTab({
+        getApplicationGraph: jest.fn().mockResolvedValue({
+          graph: {
+            ...graphResponse,
+            resources: [
+              {
+                ...graphResponse.resources[0],
+                connections: [
+                  ...graphResponse.resources[0].connections!,
+                  { id: target, direction: 'Outbound' },
+                ],
+              },
+              graphResponse.resources[1],
+            ],
+          },
+          context: {
+            connectionId: 'override',
+            plane: { type: 'radius', name: 'local' },
+            applicationId: application,
+          },
+        }),
+      });
+
+      expect(await screen.findByText('frontend')).toBeVisible();
+      expect(screen.getByText('edge')).toBeVisible();
+      const { graph } = jest.mocked(RadiusGraph).mock.calls.at(-1)![0];
+      expect(graph).toMatchObject({
+        warnings: [
+          expect.objectContaining({
+            code: 'unresolved-connection',
+            severity: 'warning',
+            message: expect.stringContaining(target),
+          }),
+        ],
+        resources: expect.arrayContaining([
+          expect.objectContaining({
+            id: gateway,
+            connections: [{ id: container, direction: 'Outbound' }],
+          }),
+          expect.objectContaining({ id: container, connections: [] }),
+        ]),
+      });
+    },
+  );
 
   it('surfaces malformed graph responses instead of rendering a successful empty graph', async () => {
     await renderTab({

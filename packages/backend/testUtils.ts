@@ -1,6 +1,11 @@
 import { createServer } from 'node:http';
 import { once } from 'node:events';
+import assert from 'node:assert/strict';
 import { mockServices } from '@backstage/backend-test-utils';
+import {
+  createBackendPlugin,
+  createServiceRef,
+} from '@backstage/backend-plugin-api';
 import { createRadiusBackend } from './src/createRadiusBackend.ts';
 
 export interface TestCluster {
@@ -9,6 +14,76 @@ export interface TestCluster {
   url: string;
   authProvider: 'serviceAccount';
   serviceAccountToken: string;
+}
+
+export interface TestHostOptions {
+  installedFrontend?: boolean;
+  basePath?: string;
+  mountPath?: string;
+  publicBaseUrl?: string;
+  backendFactory?: typeof createRadiusBackend;
+}
+
+export function testBackendConfig(
+  clusters: TestCluster[],
+  port: number,
+  options: TestHostOptions = {},
+) {
+  const baseUrl = options.publicBaseUrl ?? `http://127.0.0.1:${port}`;
+  return {
+    app: {
+      baseUrl: `${baseUrl}${options.basePath ?? ''}`,
+      title: 'Radius Dashboard',
+      packageName: '@internal/app',
+      ...(options.mountPath
+        ? {
+            extensions: [
+              ['applications', 'applications'],
+              ['environments', 'environments'],
+              ['resources', 'resources'],
+              ['recipes', 'recipes'],
+              ['resource-types', 'resource-types'],
+              ['resource-type', 'resource-types/:namespace/:typeName'],
+              ['resource', 'resources/:group/:namespace/:type/:name'],
+              ['environment', 'environments/:group/:namespace/:type/:name'],
+            ].map(([name, route]) => ({
+              [`page:radius/${name}`]: {
+                config: { path: `${options.mountPath}/${route}` },
+              },
+            })),
+          }
+        : {}),
+    },
+    backend: {
+      baseUrl,
+      listen: { port, host: '127.0.0.1' },
+      database: { client: 'better-sqlite3', connection: ':memory:' },
+      ...(options.installedFrontend
+        ? {
+            auth: {
+              externalAccess: [
+                {
+                  type: 'static',
+                  options: {
+                    token: 'radius-installed-host-fixture',
+                    subject: 'qualification-host',
+                  },
+                  accessRestrictions: [{ plugin: 'kubernetes' }],
+                },
+              ],
+            },
+          }
+        : {}),
+    },
+    auth: {
+      providers: { guest: { dangerouslyAllowOutsideDevelopment: true } },
+    },
+    catalog: { locations: [] },
+    kubernetes: {
+      serviceLocatorMethod: { type: 'multiTenant' },
+      clusterLocatorMethods: [{ type: 'config', clusters }],
+    },
+  };
 }
 
 function isAddressInUse(error: unknown): boolean {
@@ -20,7 +95,10 @@ function isAddressInUse(error: unknown): boolean {
   return false;
 }
 
-export async function startTestBackend(clusters: TestCluster[]) {
+export async function startTestBackend(
+  clusters: TestCluster[],
+  options: TestHostOptions = {},
+) {
   for (let attempt = 0; attempt < 5; attempt++) {
     const reservation = createServer();
     reservation.listen(0, '127.0.0.1');
@@ -35,30 +113,11 @@ export async function startTestBackend(clusters: TestCluster[]) {
     });
 
     const baseUrl = `http://127.0.0.1:${port}`;
-    const backend = createRadiusBackend();
+    const backend = (options.backendFactory ?? createRadiusBackend)();
     backend.add(mockServices.rootLogger.factory({ level: 'error' }));
     backend.add(
       mockServices.rootConfig.factory({
-        data: {
-          app: {
-            baseUrl,
-            title: 'Radius Dashboard',
-            packageName: '@internal/app',
-          },
-          backend: {
-            baseUrl,
-            listen: { port, host: '127.0.0.1' },
-            database: { client: 'better-sqlite3', connection: ':memory:' },
-          },
-          auth: {
-            providers: { guest: { dangerouslyAllowOutsideDevelopment: true } },
-          },
-          catalog: { locations: [] },
-          kubernetes: {
-            serviceLocatorMethod: { type: 'multiTenant' },
-            clusterLocatorMethods: [{ type: 'config', clusters }],
-          },
-        },
+        data: testBackendConfig(clusters, port, options),
       }),
     );
 
@@ -79,4 +138,39 @@ export async function startTestBackend(clusters: TestCluster[]) {
   }
 
   throw new Error('Could not start the test backend after port conflicts');
+}
+
+export async function qualifyMissingBackendService(
+  backendFactory = createRadiusBackend,
+) {
+  await assert.rejects(
+    startTestBackend([], {
+      backendFactory() {
+        const backend = backendFactory();
+        backend.add(
+          createBackendPlugin({
+            pluginId: 'qualification-missing-service',
+            register(env) {
+              env.registerInit({
+                deps: {
+                  required: createServiceRef({
+                    id: 'qualification.required',
+                    scope: 'root',
+                  }),
+                },
+                async init() {
+                  throw new Error(
+                    'Missing service must prevent initialization',
+                  );
+                },
+              });
+            },
+          }),
+        );
+        return backend;
+      },
+    }),
+    /qualification.required/,
+  );
+  return { result: 'passed', missingService: 'qualification.required' };
 }

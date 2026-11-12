@@ -2,8 +2,9 @@ import React from 'react';
 import { Grid } from '@material-ui/core';
 import { Header, Page, Content } from '@backstage/core-components';
 import { ResourceTable } from '../resourcetable';
+import { withRadiusTheme } from '../../appearance';
 
-export const ResourceListPage = () => (
+export const ResourceListPage = withRadiusTheme(() => (
   <Page themeId="radius-resource-list">
     <Header title="Resources" subtitle="Displaying deployed resources." />
     <Content>
@@ -14,4 +15,4 @@ export const ResourceListPage = () => (
       </Grid>
     </Content>
   </Page>
-);
+));

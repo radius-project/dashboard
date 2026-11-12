@@ -8,8 +8,9 @@ import {
 } from '@backstage/core-components';
 import { Checkbox, FormControlLabel, Box } from '@material-ui/core';
 import useAsync from 'react-use/lib/useAsync';
-import { useApi } from '@backstage/core-plugin-api';
+import { useApi, useRouteRef } from '@backstage/core-plugin-api';
 import { radiusApiRef } from '../../api/ref';
+import { resourceTypeDetailPageRouteRef } from '../../routes';
 
 type RT = {
   id: string;
@@ -26,6 +27,7 @@ type RT = {
 export const ResourceTypesTable = (props: { title: string }) => {
   const [showOtherResourceTypes, setShowOtherResourceTypes] = useState(false);
   const radiusApi = useApi(radiusApiRef);
+  const detailRoute = useRouteRef(resourceTypeDetailPageRouteRef);
   const { value, loading, error } = useAsync(async () => {
     // call the API method we added
     return (await radiusApi.listResourceTypes()) as
@@ -58,9 +60,10 @@ export const ResourceTypesTable = (props: { title: string }) => {
       type: 'string',
       render: (row: RT) => (
         <Link
-          to={`/resource-types/${encodeURIComponent(
-            row.properties.namespace,
-          )}/${encodeURIComponent(row.properties.type)}`}
+          to={detailRoute({
+            namespace: row.properties.namespace,
+            typeName: row.properties.type,
+          })}
         >
           {row.properties.type}
         </Link>
