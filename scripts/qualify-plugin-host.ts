@@ -17,7 +17,12 @@ async function main() {
   if (standaloneOrigin && (!evidence || !path.isAbsolute(evidence))) {
     throw new Error('Standalone journeys require persistent absolute evidence');
   }
-  const outputRoot = standaloneOrigin ? evidence : consumerRoot;
+  // Container-backed runs share the consumer, so they write under their own
+  // evidence directory instead of overwriting the earlier external-host files.
+  const outputRoot =
+    standaloneOrigin || (process.env.QUALIFICATION_BACKEND_URL && evidence)
+      ? evidence
+      : consumerRoot;
   if (!outputRoot)
     throw new Error('Missing host evidence or consumer directory');
   const output = path.join(outputRoot, 'browser');
