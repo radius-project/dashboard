@@ -69,17 +69,14 @@ async function startContainerOnce(
   }
   fs.mkdirSync(evidence, { recursive: true });
   const directory = fs.mkdtempSync(path.join(evidence, 'container-host-'));
-  const reservation = createServer();
-  const port = await listen(reservation);
-  await close(reservation);
+  const configFor = (listenPort: number) =>
+    testBackendConfig(clusters, listenPort, {
+      installedFrontend: Boolean(process.env.QUALIFICATION_INSTALLED_CONSUMER),
+      basePath: process.env.QUALIFICATION_APP_BASE_PATH,
+      mountPath: process.env.QUALIFICATION_PLUGIN_MOUNT_PATH,
+      publicBaseUrl,
+    });
   const config = path.join(directory, 'app-config.json');
-  const configuration = testBackendConfig(clusters, port, {
-    installedFrontend: Boolean(process.env.QUALIFICATION_INSTALLED_CONSUMER),
-    basePath: process.env.QUALIFICATION_APP_BASE_PATH,
-    mountPath: process.env.QUALIFICATION_PLUGIN_MOUNT_PATH,
-    publicBaseUrl,
-  });
-  fs.writeFileSync(config, `${JSON.stringify(configuration, null, 2)}\n`);
   const name = `radius-qualification-${randomUUID()}`;
   const docker = (args: string[]) =>
     execFileSync('docker', args, {
@@ -149,7 +146,6 @@ async function startContainerOnce(
       2,
     )}\n`,
   );
-  const baseUrl = `http://127.0.0.1:${port}`;
   let started = false;
   const stop = async () => {
     const failures: unknown[] = [];
@@ -178,12 +174,14 @@ async function startContainerOnce(
   };
   try {
     const invalidConfig = path.join(directory, 'missing-service-config.json');
+    const probeConfiguration = configFor(0);
     fs.writeFileSync(
       invalidConfig,
       JSON.stringify({
-        ...configuration,
+        ...probeConfiguration,
         kubernetes: {
-          clusterLocatorMethods: configuration.kubernetes.clusterLocatorMethods,
+          clusterLocatorMethods:
+            probeConfiguration.kubernetes.clusterLocatorMethods,
         },
       }),
     );
@@ -245,6 +243,12 @@ async function startContainerOnce(
         2,
       ),
     );
+    // Reserve the port only now, so no container run holds it unbound.
+    const reservation = createServer();
+    const port = await listen(reservation);
+    await close(reservation);
+    const baseUrl = `http://127.0.0.1:${port}`;
+    fs.writeFileSync(config, `${JSON.stringify(configFor(port), null, 2)}\n`);
     docker(args);
     started = true;
     const deadline = Date.now() + 90_000;
@@ -295,7 +299,14 @@ async function startContainerOnce(
     console.log(`Built-container evidence: ${directory}`);
     return { baseUrl, backend: { stop }, evidenceDirectory: directory };
   } catch (error) {
-    fs.writeFileSync(path.join(directory, 'failure.txt'), `${String(error)}\n`);
+    const retryable = error instanceof PortConflictError;
+    // A retried port conflict must not leave failure evidence behind.
+    if (!retryable) {
+      fs.writeFileSync(
+        path.join(directory, 'failure.txt'),
+        `${String(error)}\n`,
+      );
+    }
     if (started) {
       try {
         await stop();
@@ -306,6 +317,7 @@ async function startContainerOnce(
         );
       }
     }
+    if (retryable) fs.rmSync(directory, { recursive: true, force: true });
     throw error;
   }
 }

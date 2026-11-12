@@ -23,24 +23,24 @@ if (!evidence || !path.isAbsolute(evidence)) {
     'Set QUALIFICATION_EVIDENCE_DIRECTORY to a persistent absolute directory',
   );
 }
-fs.mkdirSync(evidence, { recursive: true });
+const workDirectory = process.env.QUALIFICATION_WORK_DIRECTORY;
+if (workDirectory && !path.isAbsolute(workDirectory)) {
+  throw new Error('QUALIFICATION_WORK_DIRECTORY must be absolute');
+}
 if (isInsidePath(root, evidence)) {
   throw new Error(
     'Installed-host evidence must be outside the repository dependency tree',
   );
 }
-const recordDirectory = fs.mkdtempSync(path.join(evidence, 'installed-host-'));
-const workDirectory = process.env.QUALIFICATION_WORK_DIRECTORY;
-if (workDirectory && !path.isAbsolute(workDirectory)) {
-  throw new Error('QUALIFICATION_WORK_DIRECTORY must be absolute');
-}
-if (workDirectory) fs.mkdirSync(workDirectory, { recursive: true });
 if (workDirectory) {
   assert(
     !isInsidePath(root, workDirectory),
     'Installed-host work directory must be outside the repository dependency tree',
   );
 }
+fs.mkdirSync(evidence, { recursive: true });
+const recordDirectory = fs.mkdtempSync(path.join(evidence, 'installed-host-'));
+if (workDirectory) fs.mkdirSync(workDirectory, { recursive: true });
 const consumer = workDirectory
   ? fs.mkdtempSync(path.join(workDirectory, 'installed-host-'))
   : recordDirectory;

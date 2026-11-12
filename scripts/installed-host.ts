@@ -49,10 +49,23 @@ export function installedPackage(root: string, name: string) {
 
 // True when target is root or below it. A sibling named "..foo" is inside;
 // the parent ("..") is not.
+function resolveWithExistingAncestor(target: string) {
+  const missing: string[] = [];
+  let current = path.resolve(target);
+  while (!fs.existsSync(current)) {
+    const parent = path.dirname(current);
+    if (parent === current) break;
+    missing.unshift(path.basename(current));
+    current = parent;
+  }
+  return path.join(fs.realpathSync(current), ...missing);
+}
+
+// Works for paths that do not exist yet, so callers can validate before mkdir.
 export function isInsidePath(root: string, target: string) {
   const relative = path.relative(
-    fs.realpathSync(root),
-    fs.realpathSync(target),
+    resolveWithExistingAncestor(root),
+    resolveWithExistingAncestor(target),
   );
   return (
     relative === '' ||

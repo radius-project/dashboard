@@ -198,6 +198,10 @@ test('path guards: parent is outside, "..foo" child is inside, root is inside', 
       assertInside(root, path.join(root, '..foo', 'file.js')),
     );
     assert.equal(isInsidePath(root, path.dirname(root)), false);
+    const missing = path.join(root, 'not-yet', 'deep');
+    assert.equal(isInsidePath(root, missing), true);
+    assert.equal(isInsidePath(path.join(root, 'inner'), missing), false);
+    assert.equal(fs.existsSync(path.join(root, 'not-yet')), false);
     assert.equal(isInsidePath(path.join(root, 'inner'), root), false);
     assert.throws(
       () => assertInside(path.join(root, 'inner'), root),
