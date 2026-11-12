@@ -328,48 +328,48 @@ RU covers domain behavior; RS types emit no JavaScript and require exact-type/op
 
 The recorded Phase 3 baseline implements PU-01-PU-28 and PU-31-PU-35 through contract, artifact and policy suites, except withdrawn policy assertions. PU-29 is Phase 4 forwarding; PU-30 is release qualification.
 
-| ID     | Requirement                                                                                                                                         |
-| ------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| PU-01  | Plugin registration ID is `radius`                                                                                                                  |
-| PU-02  | Public exports match Appendix A exactly                                                                                                             |
-| PU-03  | Route refs have declared IDs                                                                                                                        |
-| PU-04  | Route refs declare required caller parameters                                                                                                       |
-| PU-05  | Root route ref is in plugin route map                                                                                                               |
-| PU-06  | API ref ID is `radius-api`                                                                                                                          |
-| PU-07  | Exactly one factory binds that API ref                                                                                                              |
-| PU-07a | Invoke the real factory with fake Kubernetes API and assert its actual request                                                                      |
-| PU-08  | Feature flag set is exactly `radius-catalog`                                                                                                        |
-| PU-09  | All routable pages are named extensions                                                                                                             |
-| PU-10  | Public entry exposes API ref and `RadiusApi` type                                                                                                   |
-| PP-01  | Artifact suite has a separate serial script and CI step, outside repository Jest                                                                    |
-| PU-11  | Manifest declares `backstage.role: frontend-plugin`                                                                                                 |
-| PU-12  | `files` is `dist` only; `publishConfig` uses built entries                                                                                          |
-| PU-13  | `sideEffects: false` supports tree-shaking                                                                                                          |
-| PU-14  | React/DOM/router are peers, not dependencies                                                                                                        |
-| PU-15  | React peer range covers the host's React 18                                                                                                         |
-| PU-16  | Withdrawn: private/public setting belongs to design D5                                                                                              |
-| PU-17  | Source declares exact shared core/graph-react dependency metadata, not the replaced graph workspace; packing/installability are verified separately |
-| PU-18  | Withdrawn: license conflict belongs to design D5                                                                                                    |
-| PU-19  | Pin current `@internal/plugin-radius` identity pending approved rename                                                                              |
-| PU-20  | Root config enforces floors in repository runs                                                                                                      |
-| PU-21  | No ignored workspace-level floor                                                                                                                    |
-| PU-22  | No `global` coverage group                                                                                                                          |
-| PU-23  | Every workspace has exact full-source group or recorded exemption                                                                                   |
-| PU-24  | Every group points at an existing workspace source directory, not a narrower path                                                                   |
-| PU-25  | Require statements/lines; all declared floors finite and in (0,100]                                                                                 |
-| PU-26  | Built runtime named exports match source                                                                                                            |
-| PU-27  | Emitted declarations compile in isolated packed consumer                                                                                            |
-| PU-27a | Resolution points at extracted candidates, not workspace source                                                                                     |
-| PU-27b | Success/failure cleanup restores both source manifests byte-for-byte; source types still resolve to source                                          |
-| PU-27c | Packed identity/role/entries/files/sideEffects/peer placement/range rewrite and no shipped `src` pass; no private/license decision pinned           |
-| PU-28  | All eight real lazy extensions resolve through production host routes                                                                               |
-| PU-29  | Retained rad-components forwards only; no domain/layout/renderer or independent React Flow/Dagre                                                    |
-| PU-30  | Final public manifest and approved license/notices pass before release                                                                              |
-| PU-31  | Exemption list remains empty unless reviewed policy changes                                                                                         |
-| PU-32  | Narrowed groups leave an unguarded workspace and fail                                                                                               |
-| PU-33  | Reject zero/negative/non-finite/>100 floors                                                                                                         |
-| PU-34  | Reject missing mandatory or zero optional floors                                                                                                    |
-| PU-35  | No workspace selects Sucrase's instrumentation-blind cache transform                                                                                |
+| ID     | Requirement                                                                                                                                                                                               |
+| ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| PU-01  | Plugin registration ID is `radius`                                                                                                                                                                        |
+| PU-02  | Public exports match Appendix A exactly                                                                                                                                                                   |
+| PU-03  | Route refs have declared IDs                                                                                                                                                                              |
+| PU-04  | Route refs declare required caller parameters                                                                                                                                                             |
+| PU-05  | Root route ref is in plugin route map                                                                                                                                                                     |
+| PU-06  | API ref ID is `radius-api`                                                                                                                                                                                |
+| PU-07  | Exactly one factory binds that API ref                                                                                                                                                                    |
+| PU-07a | Invoke the real factory with fake Kubernetes API and assert its actual request                                                                                                                            |
+| PU-08  | Feature flag set is exactly `radius-catalog`                                                                                                                                                              |
+| PU-09  | All routable pages are named extensions                                                                                                                                                                   |
+| PU-10  | Public entry exposes API ref and `RadiusApi` type                                                                                                                                                         |
+| PP-01  | Artifact suite has a separate serial script and CI step, outside repository Jest                                                                                                                          |
+| PU-11  | Manifest declares `backstage.role: frontend-plugin`                                                                                                                                                       |
+| PU-12  | `files` is `dist` only; `publishConfig` uses built entries                                                                                                                                                |
+| PU-13  | `sideEffects: false` supports tree-shaking                                                                                                                                                                |
+| PU-14  | React/DOM/router are peers, not dependencies                                                                                                                                                              |
+| PU-15  | React peer range covers the host's React 18                                                                                                                                                               |
+| PU-16  | Withdrawn: private/public setting belongs to design D5                                                                                                                                                    |
+| PU-17  | Source pins `@radius-project/core` and `@radius-project/graph-react` at `0.1.0`, has no `@radapp.io/rad-components` dependency and no `workspace:` ranges; packing/installability are verified separately |
+| PU-18  | Withdrawn: license conflict belongs to design D5                                                                                                                                                          |
+| PU-19  | Pin current `@internal/plugin-radius` identity pending approved rename                                                                                                                                    |
+| PU-20  | Root config enforces floors in repository runs                                                                                                                                                            |
+| PU-21  | No ignored workspace-level floor                                                                                                                                                                          |
+| PU-22  | No `global` coverage group                                                                                                                                                                                |
+| PU-23  | Every workspace has exact full-source group or recorded exemption                                                                                                                                         |
+| PU-24  | Every group points at an existing workspace source directory, not a narrower path                                                                                                                         |
+| PU-25  | Require statements/lines; all declared floors finite and in (0,100]                                                                                                                                       |
+| PU-26  | Built runtime named exports match source                                                                                                                                                                  |
+| PU-27  | Emitted declarations compile in isolated packed consumer                                                                                                                                                  |
+| PU-27a | Resolution points at extracted candidates, not workspace source                                                                                                                                           |
+| PU-27b | Success/failure cleanup restores both source manifests byte-for-byte; source types still resolve to source                                                                                                |
+| PU-27c | Packed identity/role/entries/files/sideEffects/peer placement/range rewrite and no shipped `src` pass; no private/license decision pinned                                                                 |
+| PU-28  | All eight real lazy extensions resolve through production host routes                                                                                                                                     |
+| PU-29  | Retained rad-components forwards only; no domain/layout/renderer or independent React Flow/Dagre                                                                                                          |
+| PU-30  | Final public manifest and approved license/notices pass before release                                                                                                                                    |
+| PU-31  | Exemption list remains empty unless reviewed policy changes                                                                                                                                               |
+| PU-32  | Narrowed groups leave an unguarded workspace and fail                                                                                                                                                     |
+| PU-33  | Reject zero/negative/non-finite/>100 floors                                                                                                                                                               |
+| PU-34  | Reject missing mandatory or zero optional floors                                                                                                                                                          |
+| PU-35  | No workspace selects Sucrase's instrumentation-blind cache transform                                                                                                                                      |
 
 Run artifact tests alone: `build`/`pack` rewrites source manifests, while other packaging tests read them. Use a private `os.tmpdir()` directory for tarballs/fixture and cleanup on failure. Store repository policy suites inside a workspace: a root probe produced "No tests found" with exit 0. A new policy workspace requires an explicit scan exclusion design, not an implicit exemption.
 
