@@ -1558,7 +1558,7 @@ This should test whether copy buttons appear properly.`;
                               style={{ marginTop: '16px', textAlign: 'right' }}
                             >
                               <a
-                                href={`#${version}-${table.parentProperty}`}
+                                href={`#${table.id.includes('.') ? `${version}-${table.id.substring(0, table.id.lastIndexOf('.'))}` : `version-${version}`}`}
                                 style={{
                                   color: colors.link,
                                   textDecoration: 'none',
@@ -2681,7 +2681,7 @@ This should test whether copy buttons appear properly.`;
                               style={{ marginTop: '16px', textAlign: 'right' }}
                             >
                               <a
-                                href={`#output-${version}-${table.parentProperty}`}
+                                href={`#${table.id.includes('.') ? `output-${version}-${table.id.substring(0, table.id.lastIndexOf('.'))}` : `output-version-${version}`}`}
                                 style={{
                                   color: colors.link,
                                   textDecoration: 'none',

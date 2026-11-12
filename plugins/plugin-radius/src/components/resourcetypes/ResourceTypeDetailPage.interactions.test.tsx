@@ -29,23 +29,27 @@ const tlsObject = {
   },
 };
 
-const connectionObject = {
+const configObject = {
   type: 'object',
   properties: {
-    tls: tlsObject,
-    outputTls: { ...tlsObject, readOnly: true },
+    connection: {
+      type: 'object',
+      properties: { tls: tlsObject },
+    },
   },
 };
 
-// Both branches permit navigation before and after the separate output-filter fix.
-const nestedObject = {
+const statusObject = {
   type: 'object',
+  readOnly: true,
   properties: {
-    connection: connectionObject,
-    outputConnection: { ...connectionObject, readOnly: true },
+    outputConnection: {
+      type: 'object',
+      readOnly: true,
+      properties: { outputTls: { ...tlsObject, readOnly: true } },
+    },
   },
 };
-
 const resourceType: ResourceTypeDetail = {
   Name: 'containers',
   ResourceProviderNamespace: 'Applications.Core',
@@ -58,8 +62,8 @@ const resourceType: ResourceTypeDetail = {
       {
         Schema: {
           properties: {
-            config: nestedObject,
-            status: { ...nestedObject, readOnly: true },
+            config: configObject,
+            status: statusObject,
           },
         },
       },
@@ -212,9 +216,19 @@ describe('ResourceTypeDetailPage interactions', () => {
   });
 
   describe.each([
-    { tab: 'properties', prefix: '', property: 'config' },
-    { tab: 'output-properties', prefix: 'output-', property: 'status' },
-  ])('$tab navigation', ({ tab, prefix, property }) => {
+    {
+      tab: 'properties',
+      prefix: '',
+      property: 'config',
+      chain: ['connection', 'tls'],
+    },
+    {
+      tab: 'output-properties',
+      prefix: 'output-',
+      property: 'status',
+      chain: ['outputConnection', 'outputTls'],
+    },
+  ])('$tab navigation', ({ tab, prefix, property, chain }) => {
     const scrollIntoView = jest.fn();
     const scrollDescriptor = Object.getOwnPropertyDescriptor(
       HTMLElement.prototype,
@@ -284,10 +298,7 @@ describe('ResourceTypeDetailPage interactions', () => {
 
         const parents = [root, first];
         let current = first;
-        for (const name of [
-          /^(connection|outputConnection)$/,
-          /^(tls|outputTls)$/,
-        ]) {
+        for (const name of chain) {
           const link = within(current).getByRole('link', { name });
           const target = section(`${current.id}.${link.textContent}`);
           expect(link).toHaveAttribute('href', `#${target.id}`);
@@ -297,12 +308,11 @@ describe('ResourceTypeDetailPage interactions', () => {
         }
 
         for (let index = parents.length - 1; index > 0; index--) {
-          clickAndExpectScroll(
-            within(parents[index]).getByRole('link', {
-              name: /Back to parent/,
-            }),
-            parents[index - 1],
-          );
+          const back = within(parents[index]).getByRole('link', {
+            name: /Back to parent/,
+          });
+          expect(back).toHaveAttribute('href', `#${parents[index - 1].id}`);
+          clickAndExpectScroll(back, parents[index - 1]);
         }
       },
     );
