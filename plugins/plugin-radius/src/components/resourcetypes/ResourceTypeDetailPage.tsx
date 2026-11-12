@@ -30,12 +30,15 @@ import {
 } from '@material-ui/core';
 import type { Theme } from '@material-ui/core';
 import useAsync from 'react-use/lib/useAsync';
-import { useApi } from '@backstage/core-plugin-api';
+import { useApi, useRouteRef } from '@backstage/core-plugin-api';
 import { radiusApiRef } from '../../api/ref';
+import { withRadiusTheme } from '../../appearance';
+import { resourceTypesListPageRouteRef } from '../../routes';
 
 /**
- * Keep GitHub-flavored colors on code surfaces while allowing the surrounding
- * page to follow any Backstage light, dark, or branded theme.
+ * Keep GitHub-flavored colors on code surfaces. The page is wrapped in
+ * `withRadiusTheme`, so it uses the Radius light or dark theme that matches the
+ * host palette type, not a host's branded palette.
  */
 const getThemeColors = (theme: Theme) => {
   const isDark = theme.palette.type === 'dark';
@@ -241,7 +244,15 @@ const GitHubCopyButton = ({
   );
 };
 
-export const ResourceTypeDetailPage = () => {
+// The "Map of key/values" row follows its parent object. Hide it only when the
+// map schema explicitly belongs to the other tab.
+const isMapRowVisible = (mapSchema: unknown, outputTab: boolean): boolean => {
+  const readOnly = (mapSchema as { readOnly?: boolean } | undefined)?.readOnly;
+  return outputTab ? readOnly !== false : readOnly !== true;
+};
+
+export const ResourceTypeDetailPage = withRadiusTheme(() => {
+  const resourceTypesRoute = useRouteRef(resourceTypesListPageRouteRef);
   const classes = useStyles();
   const theme = useTheme();
   const colors = getThemeColors(theme);
@@ -402,7 +413,7 @@ This should test whether copy buttons appear properly.`;
         <Box mb={3}>
           <Breadcrumbs aria-label="breadcrumb">
             <Link to="/">Home</Link>
-            <Link to="/resource-types">Resource Types</Link>
+            <Link to={resourceTypesRoute()}>Resource Types</Link>
             <Typography>{typeName}</Typography>
           </Breadcrumbs>
         </Box>
@@ -846,18 +857,21 @@ This should test whether copy buttons appear properly.`;
                               schema.properties?.additionalProperties) as {
                               description?: string;
                               type?: string;
+                              readOnly?: boolean;
                             };
 
-                          nestedProps.push({
-                            name: 'Map of key/values',
-                            type: 'map',
-                            required: false,
-                            description: formatDescription(
-                              additionalPropsSchema?.description ||
-                                'Additional key-value pairs',
-                            ),
-                            schema: additionalPropsSchema,
-                          });
+                          if (isMapRowVisible(additionalPropsSchema, false)) {
+                            nestedProps.push({
+                              name: 'Map of key/values',
+                              type: 'map',
+                              required: false,
+                              description: formatDescription(
+                                additionalPropsSchema?.description ||
+                                  'Additional key-value pairs',
+                              ),
+                              schema: additionalPropsSchema,
+                            });
+                          }
                         }
 
                         return {
@@ -950,7 +964,14 @@ This should test whether copy buttons appear properly.`;
                       // Handle additionalProperties (for dynamic object structures like connections)
                       if (
                         schema.additionalProperties &&
-                        schema.additionalProperties.properties
+                        schema.additionalProperties.properties &&
+                        isMapRowVisible(schema.additionalProperties, false) &&
+                        Object.values(
+                          schema.additionalProperties.properties,
+                        ).some(
+                          (p: unknown) =>
+                            (p as { readOnly?: boolean }).readOnly !== true,
+                        )
                       ) {
                         // Add a name property first for additionalProperties objects
                         const parentDescription = (
@@ -1911,7 +1932,7 @@ This should test whether copy buttons appear properly.`;
                           })
                       : [];
 
-                    // Function to extract nested properties from object type properties (same as regular Properties tab)
+                    // Expand only read-only children in the Output Properties tab.
                     const extractNestedProperties = (
                       propertySchema: unknown,
                     ): {
@@ -1958,7 +1979,7 @@ This should test whether copy buttons appear properly.`;
                               const typedNestedProp = nestedPropSchema as {
                                 readOnly?: boolean;
                               };
-                              return typedNestedProp.readOnly !== true;
+                              return typedNestedProp.readOnly === true;
                             },
                           )
                           .map(
@@ -2033,18 +2054,21 @@ This should test whether copy buttons appear properly.`;
                               schema.properties?.additionalProperties) as {
                               description?: string;
                               type?: string;
+                              readOnly?: boolean;
                             };
 
-                          nestedProps.push({
-                            name: 'Map of key/values',
-                            type: 'map',
-                            required: false,
-                            description: formatDescription(
-                              additionalPropsSchema?.description ||
-                                'Additional key-value pairs',
-                            ),
-                            schema: additionalPropsSchema,
-                          });
+                          if (isMapRowVisible(additionalPropsSchema, true)) {
+                            nestedProps.push({
+                              name: 'Map of key/values',
+                              type: 'map',
+                              required: false,
+                              description: formatDescription(
+                                additionalPropsSchema?.description ||
+                                  'Additional key-value pairs',
+                              ),
+                              schema: additionalPropsSchema,
+                            });
+                          }
                         }
 
                         return {
@@ -2066,7 +2090,7 @@ This should test whether copy buttons appear properly.`;
                             const typedNestedProp = nestedPropSchema as {
                               readOnly?: boolean;
                             };
-                            return typedNestedProp.readOnly !== true;
+                            return typedNestedProp.readOnly === true;
                           })
                           .map(
                             ([nestedPropName, nestedPropSchema]: [
@@ -2137,7 +2161,14 @@ This should test whether copy buttons appear properly.`;
                       // Handle additionalProperties (for dynamic object structures like connections)
                       if (
                         schema.additionalProperties &&
-                        schema.additionalProperties.properties
+                        schema.additionalProperties.properties &&
+                        isMapRowVisible(schema.additionalProperties, true) &&
+                        Object.values(
+                          schema.additionalProperties.properties,
+                        ).some(
+                          (p: unknown) =>
+                            (p as { readOnly?: boolean }).readOnly === true,
+                        )
                       ) {
                         // Add a name property first for additionalProperties objects
                         const parentDescription = (
@@ -2168,7 +2199,7 @@ This should test whether copy buttons appear properly.`;
                                 const typedNestedProp = nestedPropSchema as {
                                   readOnly?: boolean;
                                 };
-                                return typedNestedProp.readOnly !== true;
+                                return typedNestedProp.readOnly === true;
                               },
                             )
                             .map(
@@ -2731,4 +2762,4 @@ This should test whether copy buttons appear properly.`;
       </Content>
     </Page>
   );
-};
+});

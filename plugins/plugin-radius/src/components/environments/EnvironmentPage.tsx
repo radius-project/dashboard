@@ -13,8 +13,9 @@ import { useApi, useRouteRefParams } from '@backstage/core-plugin-api';
 import { environmentPageRouteRef } from '../../routes';
 import { radiusApiRef } from '../../api/ref';
 import { EnvironmentResourcesTab } from './EnvironmentResourcesTab';
+import { withRadiusTheme } from '../../appearance';
 
-export const EnvironmentPage = () => {
+export const EnvironmentPage = withRadiusTheme(() => {
   const radiusApi = useApi(radiusApiRef);
   const params = useRouteRefParams(environmentPageRouteRef);
   const id = `/planes/radius/local/resourceGroups/${params.group}/providers/${params.namespace}/${params.type}/${params.name}`;
@@ -50,4 +51,4 @@ export const EnvironmentPage = () => {
       </TabbedLayout>
     </EnvironmentLayout>
   );
-};
+});
