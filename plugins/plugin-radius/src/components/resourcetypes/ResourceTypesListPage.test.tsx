@@ -5,6 +5,7 @@ import { renderInTestApp, TestApiProvider } from '@backstage/test-utils';
 import { RadiusApi } from '../../api';
 import { radiusApiRef } from '../../plugin';
 import { ResourceList } from '../../resources';
+import { resourceTypeDetailPageRouteRef } from '../../routes';
 
 describe('ResourceTypesListPage', () => {
   // Rendering an empty table is fine for now, we have good unit tests for the
@@ -28,6 +29,12 @@ describe('ResourceTypesListPage', () => {
       <TestApiProvider apis={[[radiusApiRef, api]]}>
         <ResourceTypesListPage />
       </TestApiProvider>,
+      {
+        mountedRoutes: {
+          '/plugins/radius/resource-types/:namespace/:typeName':
+            resourceTypeDetailPageRouteRef,
+        },
+      },
     );
     expect(
       screen.getByText('Resource types available for building applications.'),

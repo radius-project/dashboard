@@ -23,6 +23,7 @@ import useAsync from 'react-use/lib/useAsync';
 import { radiusApiRef } from '../../api/ref';
 import { Resource } from '../../resources';
 import { parseLegacyResourceId as parseResourceId } from '@radius-project/core/domain';
+import { withRadiusTheme } from '../../appearance';
 
 const EnvironmentListPageContent = ({
   environments,
@@ -110,7 +111,7 @@ const EnvironmentListPageContent = ({
   );
 };
 
-export const EnvironmentListPage = () => {
+export const EnvironmentListPage = withRadiusTheme(() => {
   const radiusApi = useApi(radiusApiRef);
   const { value, loading, error } = useAsync(
     async () =>
@@ -157,4 +158,4 @@ export const EnvironmentListPage = () => {
       </Content>
     </Page>
   );
-};
+});

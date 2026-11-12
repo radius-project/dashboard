@@ -34,20 +34,22 @@ const routes = convertLegacyRouteRefs({
   resourceType: resourceTypeDetailPageRouteRef,
 });
 
+export const radiusApiExtension = ApiBlueprint.make({
+  name: 'radius',
+  params: defineParams =>
+    defineParams({
+      api: radiusApiRef,
+      deps: { kubernetesApi: kubernetesApiRef },
+      factory: ({ kubernetesApi }) => new RadiusApiImpl(kubernetesApi),
+    }),
+});
+
 export default createFrontendPlugin({
   pluginId: 'radius',
   routes,
   featureFlags: [{ name: featureRadiusCatalog }],
   extensions: [
-    ApiBlueprint.make({
-      name: 'radius',
-      params: defineParams =>
-        defineParams({
-          api: radiusApiRef,
-          deps: { kubernetesApi: kubernetesApiRef },
-          factory: ({ kubernetesApi }) => new RadiusApiImpl(kubernetesApi),
-        }),
-    }),
+    radiusApiExtension,
     PageBlueprint.make({
       name: 'applications',
       params: {

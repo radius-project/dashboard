@@ -1,6 +1,7 @@
 import { createServer, type Server } from 'node:http';
 import { once } from 'node:events';
-import { startTestBackend } from '../testUtils';
+import { startTestBackend, qualifyMissingBackendService } from '../testUtils';
+import { qualifyBackendConnections } from '../qualificationContract';
 
 async function listen(server: Server) {
   server.listen(0, '127.0.0.1');
@@ -19,11 +20,19 @@ async function close(server: Server) {
 }
 
 describe('native backend composition', () => {
+  it('BS-02: rejects a plugin whose required service is missing', async () => {
+    await expect(qualifyMissingBackendService()).resolves.toMatchObject({
+      result: 'passed',
+      missingService: 'qualification.required',
+    });
+  }, 30_000);
   let backend:
     Awaited<ReturnType<typeof startTestBackend>>['backend'] | undefined;
   let upstream: Server;
   let baseUrl = '';
   let token: string;
+  let forbiddenConnection: string | undefined;
+  let clusters: Parameters<typeof startTestBackend>[0];
   const requests: { method: string; url: string; authorization?: string }[] =
     [];
 
@@ -35,7 +44,11 @@ describe('native backend composition', () => {
         authorization: request.headers.authorization,
       });
       response.setHeader('content-type', 'application/json');
-      if (request.url?.includes('/forbidden')) {
+      if (
+        request.url?.includes('/forbidden') ||
+        (forbiddenConnection &&
+          request.url?.startsWith(`/${forbiddenConnection}/`))
+      ) {
         response.writeHead(403);
         response.end(
           JSON.stringify({ message: 'Upstream policy denied this request' }),
@@ -45,14 +58,13 @@ describe('native backend composition', () => {
       }
     });
     const upstreamPort = await listen(upstream);
-    const started = await startTestBackend(
-      ['one', 'two'].map(name => ({
-        name,
-        url: `http://127.0.0.1:${upstreamPort}/${name}`,
-        authProvider: 'serviceAccount' as const,
-        serviceAccountToken: `test-cluster-${name}`,
-      })),
-    );
+    clusters = ['one', 'two'].map(name => ({
+      name,
+      url: `http://127.0.0.1:${upstreamPort}/${name}`,
+      authProvider: 'serviceAccount' as const,
+      serviceAccountToken: `test-cluster-${name}`,
+    }));
+    const started = await startTestBackend(clusters);
     backend = started.backend;
     baseUrl = started.baseUrl;
     const signIn = await fetch(`${baseUrl}/api/auth/guest/refresh`);
@@ -71,11 +83,11 @@ describe('native backend composition', () => {
 
   it('BS-01/04: initializes the real six-plugin host without the Radius scaffold', async () => {
     const headers = { authorization: `Bearer ${token}` };
-    const clusters = await fetch(`${baseUrl}/api/kubernetes/clusters`, {
+    const discovery = await fetch(`${baseUrl}/api/kubernetes/clusters`, {
       headers,
     });
-    expect(clusters.status).toBe(200);
-    expect(await clusters.json()).toMatchObject({
+    expect(discovery.status).toBe(200);
+    expect(await discovery.json()).toMatchObject({
       items: [{ name: 'one' }, { name: 'two' }],
     });
     expect(
@@ -135,4 +147,16 @@ describe('native backend composition', () => {
     });
     expect(response.status).toBe(403);
   });
+
+  it('BS-03: isolates GET and graph POST credentials and denials on both connections', async () => {
+    const result = await qualifyBackendConnections({
+      baseUrl,
+      clusters,
+      requests,
+      denyConnection(name) {
+        forbiddenConnection = name;
+      },
+    });
+    expect(result.cases).toHaveLength(24);
+  }, 30_000);
 });

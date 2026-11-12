@@ -204,6 +204,16 @@ test.describe('standalone frontend contracts', () => {
     await expect(
       page.locator('svg').getByText('standalone-component', { exact: true }),
     ).toBeVisible();
+    await page
+      .locator('svg')
+      .getByText('standalone-component', { exact: true })
+      .click({ modifiers: ['Shift'] });
+    await expect(page).toHaveURL(
+      /\/catalog\/default\/component\/standalone-component$/,
+    );
+    await expect(
+      page.getByRole('heading', { name: 'standalone-component', exact: true }),
+    ).toBeVisible();
     expect(catalogErrors).toEqual([]);
   });
 });

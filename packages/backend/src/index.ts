@@ -8,4 +8,9 @@
 
 import { createRadiusBackend } from './createRadiusBackend';
 
-createRadiusBackend().start();
+createRadiusBackend()
+  .start()
+  .catch(error => {
+    console.error('Radius backend startup failed', error);
+    process.exit(1);
+  });
