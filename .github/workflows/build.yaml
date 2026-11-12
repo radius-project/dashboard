@@ -69,16 +69,23 @@ jobs:
       - name: Build Storybook
         run: yarn workspace @radapp.io/rad-components run build-storybook
 
+      - name: Install Playwright browser
+        run: yarn exec playwright install --with-deps chromium
+
       - name: Run Tests
-        if: ${{ env.CI_TEST == 'true' }}
         env:
           # Empty on push builds, where GU-25 falls back to origin/main.
           GRAPH_RECORD_BASE_REF: ${{ github.event.pull_request.base.sha }}
-        run: yarn run test:all
+        # main builds provide the baseline for Codecov pull request comparisons.
+        run: yarn run test:all --coverageDirectory=coverage --coverageReporters=lcov --coverageReporters=text
 
-      - name: Install Playwright browser
-        if: ${{ env.CI_TEST == 'true' }}
-        run: yarn exec playwright install --with-deps chromium
+      - name: Upload coverage to Codecov
+        if: ${{ github.repository == 'radius-project/dashboard' }}
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          files: ./coverage/lcov.info
+          disable_search: true
+          fail_ci_if_error: true
 
       - name: Qualify Built Standalone Host
         if: ${{ env.CI_TEST == 'true' }}
@@ -137,7 +144,7 @@ jobs:
 
       - name: Login to ghcr.io
         if: ${{ env.CI_PUBLISH_EDGE == 'true' || env.CI_PUBLISH_RELEASE == 'true' }}
-        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}

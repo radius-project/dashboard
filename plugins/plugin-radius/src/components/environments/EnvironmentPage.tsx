@@ -23,7 +23,7 @@ export const EnvironmentPage = () => {
     Resource<EnvironmentProperties>
   > => {
     return radiusApi.getResourceById<EnvironmentProperties>({ id });
-  }, [id]);
+  }, [radiusApi, id]);
 
   if (loading) {
     return <Progress />;

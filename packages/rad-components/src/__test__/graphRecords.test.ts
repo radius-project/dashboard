@@ -1,9 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { execFileSync } from 'child_process';
-import { AppGraph } from '../graph';
 import {
-  createGraphRecord,
   diffGraphRecords,
   findCarriedForwardGraphDefects,
   findUnapprovedGraphRecordChanges,
@@ -13,7 +11,7 @@ import {
   knownGraphDefects,
   NOT_YET_POPULATED,
   normalizeGraphModel,
-} from '../graphRecord';
+} from './graphRecord';
 
 import empty from '../__fixtures__/graph/empty.json';
 import singleNode from '../__fixtures__/graph/single-node.json';
@@ -29,6 +27,8 @@ import unknownType from '../__fixtures__/graph/unknown-type.json';
 import duplicateIds from '../__fixtures__/graph/duplicate-ids.json';
 import bothNamespaces from '../__fixtures__/graph/both-namespaces.json';
 import largeFanOut from '../__fixtures__/graph/large-fan-out.json';
+
+jest.setTimeout(120000);
 
 const fixtureDirectory = path.resolve(
   __dirname,
@@ -56,13 +56,30 @@ const fixtures: Record<string, unknown> = {
   'large-fan-out': largeFanOut,
 };
 
-const load = (fixture: unknown): AppGraph =>
-  JSON.parse(JSON.stringify(fixture)) as AppGraph;
-
 const updateMode = process.env.UPDATE_GRAPH_RECORDS === 'true';
 
-const createFreshGraphRecord = async (fixture: unknown): Promise<GraphRecord> =>
-  createGraphRecord(load(fixture));
+let observedRecords: Record<string, GraphRecord> | undefined;
+const observeRecords = () => {
+  observedRecords ??= JSON.parse(
+    execFileSync(process.execPath, ['scripts/observe-shared-graph.ts'], {
+      cwd: repoRoot,
+      encoding: 'utf8',
+      timeout: 120000,
+      maxBuffer: 8 * 1024 * 1024,
+    }),
+  ) as Record<string, GraphRecord>;
+  return observedRecords;
+};
+
+const createFreshGraphRecord = async (
+  fixture: unknown,
+): Promise<GraphRecord> => {
+  const name = Object.entries(fixtures).find(
+    ([, value]) => value === fixture,
+  )?.[0];
+  if (!name) throw new Error('Unregistered graph observation fixture');
+  return observeRecords()[name];
+};
 
 const readRecord = (fixture: string): GraphRecord =>
   JSON.parse(
@@ -452,11 +469,16 @@ describe('graph records', () => {
         await generatedRecords(),
         knownGraphDefects,
       ),
-    ).toEqual(knownGraphDefects);
+    ).toEqual(
+      knownGraphDefects.filter(defect =>
+        ['multi-tier', 'deploy-status-matrix'].includes(defect.fixture),
+      ),
+    );
   });
 
   it('GU-23a: clears a defect only when its own invariant is repaired', () => {
-    const duplicate = readRecord('duplicate-ids');
+    const node = readRecord('duplicate-ids').nodes[0];
+    const duplicate: GraphRecord = { nodes: [node, { ...node }], edges: [] };
     const defect = knownGraphDefects.find(
       known => known.fixture === 'duplicate-ids',
     )!;
@@ -593,16 +615,29 @@ describe('graph records', () => {
     ).not.toEqual([]);
   });
 
-  it('GU-24: limits expected changes to the missing endpoint fixes for #353', () => {
-    expect(parseManifest(fs.readFileSync(manifestPath, 'utf8'))).toEqual(
-      ['missing-target', 'unparseable-connection'].map(fixture => ({
-        fixture,
-        field: 'edges.0',
-        oldValue: expect.any(String),
-        newValue: '<absent>',
-        reason:
-          '#353: Omit the edge with a missing endpoint and report the connection in the graph warning.',
-      })),
-    );
+  it('GU-24: retains only reviewed, issue-linked changes with exact fixture/field/value identities', () => {
+    const manifest = parseManifest(fs.readFileSync(manifestPath, 'utf8'));
+    expect(manifest).toHaveLength(4);
+    expect(
+      manifest.every(
+        change =>
+          change.reason.includes('Coordinator reviewed the exact DOM diff') &&
+          /#353|#357/.test(change.reason) &&
+          Object.hasOwn(fixtures, change.fixture) &&
+          change.oldValue !== change.newValue,
+      ),
+    ).toBe(true);
+    expect(
+      new Set(
+        manifest.map(change =>
+          JSON.stringify([
+            change.fixture,
+            change.field,
+            change.oldValue,
+            change.newValue,
+          ]),
+        ),
+      ).size,
+    ).toBe(manifest.length);
   });
 });

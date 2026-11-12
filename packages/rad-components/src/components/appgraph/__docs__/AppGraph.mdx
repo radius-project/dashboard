@@ -8,10 +8,10 @@ import * as AppGraph from './AppGraph.stories.tsx';
 
 AppGraph displays the topology of different applications.
 
-If a connection target is not in the graph response, AppGraph shows a warning
-that the graph is incomplete. Expand **Show unresolved connections** to see
-the owning resource ID and the target ID for each omitted connection.
-Resources and connections with both endpoints present remain visible.
+If a connection target is absent or its ID is invalid, the shared renderer
+omits the edge and shows a warning with the owning resource ID and target ID.
+The warning uses an accessible status region. Valid resources and connections
+remain visible.
 
 #### Example: Demo Application
 

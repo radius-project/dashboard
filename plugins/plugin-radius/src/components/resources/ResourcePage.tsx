@@ -23,7 +23,7 @@ export const ResourcePage = () => {
 
   const { value, loading, error } = useAsync(async (): Promise<Resource> => {
     return radiusApi.getResourceById({ id });
-  }, [id]);
+  }, [radiusApi, id]);
 
   if (loading) {
     return <Progress />;

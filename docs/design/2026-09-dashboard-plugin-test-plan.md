@@ -682,13 +682,14 @@ than against `initialNodes` directly. That indirection is the point: Tier A must
 unchanged (apart from reviewed linked-defect replacements), so it must not name the implementation
 being extracted. Phase 4 repoints that one adapter at the shared package and the invariants keep running.
 
-The semantic normalizer is `packages/rad-components/src/graphRecord.ts`. It emits only sorted node
+The semantic normalizer is `packages/rad-components/src/__test__/graphRecord.ts`. It emits only sorted node
 and edge meaning: ids, labels, types, the currently unpopulated icon/status semantics recorded as
 the explicit `not-yet-populated` sentinel, resolved endpoints, and direction. It records no layout
 coordinates. All fourteen records are committed under
-`src/__fixtures__/graph-records/`; `graph-expected-changes.md` declares the two edge removals for #353. GU-22 rejects undeclared
+`src/__fixtures__/graph-records/`; `graph-expected-changes.md` retains the four reviewed changes
+from the shared-package migration, including the two edge removals for #353. GU-22 rejects undeclared
 record changes, GU-23 reports known defects whose own invariant is still violated as carried
-forward, and GU-24 limits the manifest to these two corrections.
+forward, and GU-24 limits the manifest to those four corrections.
 
 GU-22 alone is not sufficient, because it compares generated records against the committed ones: a
 change that edits a record file and the renderer together satisfies it without consulting the
@@ -743,10 +744,10 @@ which is the argument for doing this before the extraction rather than after:
 - An **unparseable connection id is not skipped**. The parse result only gates the direction
   rewrite; the edge-building loop that follows runs over every connection regardless, so the
   connection becomes an edge to a node that does not exist and the dependency vanishes from the
-  diagram silently (GU-05a). Fixed for #353: connections with no matching node are omitted,
-  and the graph shows a warning with the owning resource and target IDs.
+  diagram silently (GU-05a). The shared normalizer now omits invalid connections,
+  and the shared renderer shows a status warning with the owning resource and target IDs.
 - A **connection to a resource absent from the graph** produced the same dangling edge (GU-04).
-  Fixed for #353 with the same endpoint check and visible warning.
+  The shared normalizer now omits it, and the renderer shows the same visible warning.
 - A **self-referential connection** produces a self-loop (GU-06a), and **duplicate resource ids**
   produce duplicate node ids, one of which React Flow silently discards.
 
@@ -1520,7 +1521,7 @@ expected-change manifest.
 | GU-23a | C   | A defect clears only when its own invariant is repaired, not when an unrelated one is — **done** |
 | GU-23b | C   | Each defect predicate detects its own condition and reports repair on a healthy record — **done** |
 | GU-23c | C   | A defect naming a fixture with no record is rejected rather than silently ignored — **done**     |
-| GU-24 | C    | The manifest contains only the two missing-endpoint corrections for #353 — **done**                 |
+| GU-24 | C    | The manifest retains the four reviewed shared-package corrections for #353 and #357 — **done** |
 | GU-25 | C    | A committed record edited relative to the base branch maps to a manifest entry — **done**            |
 | GU-25a | C   | A mutated committed record is reported as an unapproved change — **done**                            |
 
@@ -1584,7 +1585,8 @@ names, element nesting, or coordinates of any kind.
 
 The records are frozen under `packages/rad-components/src/__fixtures__/graph-records/` and diffed
 in Phase 4 against `packages/rad-components/src/__fixtures__/graph-expected-changes.md`. The
-manifest declares the two missing-endpoint edge removals for #353. Fixtures tagged `KNOWN-DEFECT` declare the invariant they violate
+manifest retains the four reviewed shared-package corrections for #353 and #357.
+Fixtures tagged `KNOWN-DEFECT` declare the invariant they violate
 through `knownGraphDefects` in `graphRecord.ts`; GU-23 reports every defect whose invariant is still
 violated, so only an actual repair retires an entry.
 
