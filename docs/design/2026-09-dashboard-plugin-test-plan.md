@@ -91,7 +91,7 @@ The design's [P-unit table](./2026-09-radius-backstage-plugin.md#appendix-d-deli
 | 8. Release qualification                    | All launch gates, including 3C                     | HOST-01-HOST-08 in built published standalone/external hosts on disposable Radius/cluster; auth, absent-control-plane and cleanup checks; no skipped/simulated substitutes |
 | 9. Namespace corpus                         | D6; separate from 1/2/4, normally after 4          | NS-01-NS-10; reviewed Tier C changes then empty manifest; explicit reasons for retained legacy fixtures                                                                    |
 
-Stable release requires 3C, not only hybrid success. Phase 5's real build qualifies production loading; transformed Jest backend tests do not. Required check configuration, not a green optional job, closes Phase 6.
+Phases 5-9 are still open. Stable release requires 3C, not only hybrid success. Phase 5's real build qualifies production loading; transformed Jest backend tests do not. Required check configuration, not a green optional job, closes Phase 6.
 
 ## Working rules and checks
 
