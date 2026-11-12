@@ -2,6 +2,7 @@
 
 - **Status**: Proposed
 - **Date**: 2026-10-27
+- **Revised**: 2026-11-12
 
 Proposed for team review. This record uses minimal MADR. The
 [design](./2026-09-radius-backstage-plugin.md#decisions-for-review) owns the review choices, trade-offs and contracts;
@@ -26,6 +27,10 @@ How do we distribute the plugin without copying pages, graph code or host setup?
 This keeps Backstage tooling with the product and gives shared code one owner.
 [D1-D6](./2026-09-radius-backstage-plugin.md#decisions-for-review) contain the supporting decisions and their open inputs.
 No team acceptance or public support range is recorded.
+
+Native composition and shared-library adoption have merged. The test plan's
+[status table](./2026-09-dashboard-plugin-test-plan.md#implementation-and-evidence-status)
+separates that implementation from open candidate PRs and release approval. Implementation does not change this record's Proposed status.
 
 ### Consequences
 

@@ -9,7 +9,7 @@ import {
 import { Checkbox, FormControlLabel, Box } from '@material-ui/core';
 import useAsync from 'react-use/lib/useAsync';
 import { useApi } from '@backstage/core-plugin-api';
-import { radiusApiRef } from '../../plugin';
+import { radiusApiRef } from '../../api/ref';
 
 type RT = {
   id: string;
@@ -33,7 +33,7 @@ export const ResourceTypesTable = (props: { title: string }) => {
           value: RT[];
         }
       | undefined;
-  });
+  }, [radiusApi]);
 
   if (loading) return <Progress />;
   if (error) return <ResponseErrorPanel error={error} />;

@@ -2,14 +2,14 @@
 
 - **Author**: Nicole James (@nicolejms)
 - **Status**: Draft, proposed for team review
-- **Revised**: 2026-10-27
+- **Revised**: 2026-11-12
 - **Feature spec / issue**: Not assigned
-- **Authoring notes**: Agent-drafted consolidation of the existing design and test plan. Source reviews are pinned in [Appendix E](#appendix-e-source-evidence); they do not prove support for a Backstage release. This edit changes no runtime code.
+- **Authoring notes**: Updated against main `409a5692` and the candidate revisions recorded in the [test plan](./2026-09-dashboard-plugin-test-plan.md#implementation-and-evidence-status). Source reviews in [Appendix E](#appendix-e-source-evidence) remain historical evidence, not a supported-release matrix. This edit changes no runtime code.
 - **Related**: [Test plan](./2026-09-dashboard-plugin-test-plan.md), [proposed ADR](./2026-10-radius-backstage-plugin-adr.md)
 
 ## Review guide
 
-Review D1-D6 first. All remain open; recommendations are not approvals. Security and Compatibility need explicit review before release.
+Review D1-D6 first. Implementation has progressed, but no team approval is recorded here. Security, Compatibility and publication still need explicit review before release. The test plan owns [merged work, candidate evidence and remaining gates](./2026-09-dashboard-plugin-test-plan.md#implementation-and-evidence-status).
 
 | Information                                                                                      | Single owner                                                                                |
 | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------- |
@@ -38,7 +38,7 @@ Test-only choices about coverage targets, runner changes, timeout policy and the
 
 Make the existing Radius frontend plugin installable in an external Backstage host. The standalone dashboard must consume the same pages and API, not a copy.
 
-Keep the plugin in this repository. Consume shared domain and graph libraries from `radius-project/ai-extensions`, then delete the replaced dashboard implementations. Add native frontend registration and migrate the standalone app without changing its URLs or required features. The backend already uses Backstage's new system.
+Keep the plugin in this repository. Main now consumes compiled domain and graph libraries from `radius-project/ai-extensions`; the replaced dashboard implementations are removed. Native frontend registration and standalone composition have also merged. The backend already uses Backstage's new system. Remaining work qualifies installed hosts, resolves release decisions and closes the gaps in the test plan.
 
 ## Terms and definitions
 
@@ -68,7 +68,7 @@ A platform engineer installs Radius in an existing Backstage host and configures
 
 ## User Experience (if applicable)
 
-Mount Radius at a host-selected path, for example `/radius`. Preserve existing standalone URLs, list/detail views, JSON views, breadcrumbs and graph controls. The host owns sign-in, navigation, settings and branding.
+Mount Radius at a host-selected path, for example `/radius`. Preserve existing standalone URLs, list/detail views, JSON views, breadcrumbs and graph controls. Radius page regions must match the standalone light/dark appearance without changing the host shell, Catalog or Settings. The host owns sign-in, navigation, settings and branding.
 
 **Sample Input:** Connection `production`, configured for an approved cluster and plane `radius/local`.
 
@@ -86,20 +86,18 @@ Mount Radius at a host-selected path, for example `/radius`. Preserve existing s
 
 ### Architecture Diagram
 
-Arrows mean "depends on." Shared packages are proposed additions, not new services.
+Arrows mean "depends on." Shared packages are installed libraries, not new services.
 
 ```mermaid
 flowchart LR
     App["Standalone dashboard"] --> Plugin["Radius Backstage plugin"]
     Host["External Backstage host"] --> Plugin
-    Plugin --> Graph["Shared graph-react (proposed)"]
-    Plugin --> Core["Shared core exports (proposed)"]
+    Plugin --> Graph["Shared graph-react"]
+    Plugin --> Core["Shared core exports"]
     Graph --> Core
     Plugin --> Transport["Backstage transport"]
     Transport --> Proxy["Host Kubernetes backend"]
     Proxy --> UCP["Radius UCP"]
-    classDef proposed stroke-dasharray: 5 5
-    class Graph,Core proposed
 ```
 
 ### Data flow and sequence
@@ -143,14 +141,14 @@ Resource reads and graph queries must use the same selected connection. Changing
 
 ##### D2: Frontend migration
 
-**Context:** The reviewed frontend uses legacy registration. Radius is code we own, so a permanent conversion wrapper is unnecessary.
+**Context:** Main now provides native `/alpha` registration and native standalone composition, while retaining the legacy root. Radius is code we own, so a permanent plugin conversion wrapper is unnecessary.
 
 | Option                              | Advantage                                        | Cost                                            |
 | ----------------------------------- | ------------------------------------------------ | ----------------------------------------------- |
 | Native Radius, bounded legacy entry | Direct extension contracts; controlled migration | Two public entries need tests during transition |
 | Permanent wrappers or hybrid app    | Less initial host work                           | Required legacy composition has no exit         |
 
-**Proposed Option:** Use `createFrontendPlugin`, `PageBlueprint` and `ApiBlueprint` with the existing product code. Retain the tested legacy root; `/alpha` is the proposed native default-export subpath. Qualify native Radius first, then hybrid and native standalone composition.
+**Proposed Option:** Retain the implemented `createFrontendPlugin`, `PageBlueprint` and `ApiBlueprint` entry at `/alpha`, plus the tested legacy root for a bounded window. The intermediate hybrid stage is historical, not a second stable host. Route-ref conversion and `compatWrapper` bridge existing page APIs; they are not whole-plugin or whole-app converters.
 
 **Consequences:** Preserve all eight pages, route parameters, `radius-api`, `radius-catalog`, cards, themes, auth and API overrides. Install one active Radius entry. Required third-party gaps block native completion; do not remove a feature to pass.
 
@@ -160,7 +158,7 @@ Resource reads and graph queries must use the same selected connection. Changing
 
 ##### D3: Connections and access
 
-**Context:** At the reviewed baseline, resource reads choose the first cluster and graph requests the last. Browser configuration cannot authorize either path.
+**Context:** The old first/last-cluster split is fixed. Main resolves one cluster and plane per API instance for both resource reads and graph requests. It still defaults to the first configured cluster and `radius/local`; an explicit constructor option or public API override can select another context. There is no connection picker. Browser configuration cannot authorize either path.
 
 | Option                                        | Advantage                                   | Cost                                             |
 | --------------------------------------------- | ------------------------------------------- | ------------------------------------------------ |
@@ -169,7 +167,7 @@ Resource reads and graph queries must use the same selected connection. Changing
 
 **Proposed Option:** Use the existing proxy and expose a public API override for another authorized transport. Keep the health-only Radius scaffold uninstalled and outside initial distribution.
 
-**Consequences:** Require operator-approved clusters/planes, connection-scoped state, and backend authorization for GET and graph POST. Block release if the host cannot enforce access; approve a narrow gateway separately if needed.
+**Consequences:** Require operator-approved clusters/planes, connection-scoped state, and backend authorization for GET and graph POST. The proposed multi-connection configuration below is not implemented. A graph POST may require Kubernetes `create` permission even though it only reads data; test the minimum policy rather than promising GET-only RBAC. Block release if the host cannot enforce access; approve a narrow gateway separately if needed.
 
 **How we'll know it's right:** [Connection, error and native-backend requirements](./2026-09-dashboard-plugin-test-plan.md#appendix-b-requirement-catalog) distinguish allowed, unauthenticated and forbidden requests without cross-connection leakage.
 
@@ -184,9 +182,9 @@ Resource reads and graph queries must use the same selected connection. Changing
 | One renderer plus packed-consumer CI     | Detects integration failures before merge | Isolated cross-repository CI and maintained consumer pins |
 | Source-only tests or duplicate renderers | Easier initial setup                      | Packaging and behavior can diverge unnoticed              |
 
-**Proposed Option:** Use one layout/renderer, browser-safe core imports and explicit live/modeled variants. Keep the dashboard on React 18; qualify the shared library separately on React 18/19. Freeze observable behavior before extraction.
+**Proposed Option:** Keep the adopted single layout/renderer, browser-safe core imports and explicit live/modeled variants. Keep the dashboard on React 18; qualify the shared library separately on React 18/19. Preserve the frozen observable behavior through later candidate updates.
 
-**Consequences:** Shared-library changes must pass the dashboard-owned journeys through packed candidates. No copied host suites, toy graph, source alias or fallback implementation may satisfy the gate.
+**Consequences:** Shared-library changes must pass the dashboard-owned journeys through packed candidates. Main uses exact vendored development archives and a digest receipt, not published registry packages. No copied host suites, toy graph, source alias or fallback implementation may satisfy the gate.
 
 **How we'll know it's right:** [Graph records](./2026-09-dashboard-plugin-test-plan.md#appendix-e-graph-fixtures-and-records) and the [candidate CI protocol](./2026-09-dashboard-plugin-test-plan.md#appendix-h-candidate-ci-protocol) detect changed semantics, missing styles and stale/missing results.
 
@@ -194,7 +192,7 @@ Resource reads and graph queries must use the same selected connection. Changing
 
 ##### D5: Publication policy
 
-**Context:** The current plugin is private `@internal/plugin-radius`. Proposed package names and documentation do not establish registry ownership or approved licenses.
+**Context:** The current plugin is private `@internal/plugin-radius`. Shared packages are adopted under the proposed names below through exact local archives. Those names and successful local installation do not establish registry ownership or approved public distribution.
 
 | Option                                | Advantage                             | Cost                                                    |
 | ------------------------------------- | ------------------------------------- | ------------------------------------------------------- |
@@ -319,6 +317,8 @@ Live UCP graphs need no `diffHash`, definition file or workflow status. Modeled,
 
 Preserve both application namespaces, recipe packs and legacy recipes, per-type API versions and raw status. Enable icons, source links, badges or diff actions only when their required data/capabilities are supplied. Pass themes and host actions as inputs.
 
+Resource-definition icons belong to the shared query, live normalizer and renderer, not a dashboard icon map. The icon candidate requests `{includeIcons:true}` only for discovered `Radius.Core/applications` API versions dated `2025-08-01` or later, stable or preview. Core resolves each `iconHash` through an own entry in the response `icons` map. Graph-react treats raw SVG as untrusted, renders it through isolated image/mask data and retains a fallback for invalid icons. Backstage only serializes the shared client's optional JSON body. The test plan records this candidate's exact source and live evidence separately from appearance qualification.
+
 Proposed configuration, not a final schema:
 
 ```yaml
@@ -337,7 +337,7 @@ Use supported route-ref conversion where required. `convertLegacyPlugin`/`conver
 
 ### Appendix B: compatibility evidence
 
-Review with D2/D4/D5. These are findings at the reviewed revisions, not current-release qualification.
+Review with D2/D4/D5. These are historical findings at the reviewed revisions, not current-release qualification. Current development uses Yarn 4.18.1; use the checked-in manifest, lockfile and candidate receipt for exact build inputs rather than this research table.
 
 | Evidence                                                                                                                                                | Implication                                                                                       |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
@@ -382,7 +382,7 @@ New base contracts include application, environment, connections and codeReferen
 
 ### Appendix D: delivery and release
 
-P identifiers name implementation review units; test phase numbers are different and live only in the test plan.
+P identifiers name implementation review units; test phase numbers and current status live only in the test plan. This table is the original work breakdown, not a queue of unstarted tasks. Shared adoption and native composition have merged; use the test plan's status table to choose remaining work.
 
 | Unit | Owner / deliverable                                                             | Prerequisite                                                                      | Estimate |
 | ---- | ------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- | -------- |
@@ -403,7 +403,7 @@ P identifiers name implementation review units; test phase numbers are different
 | P9   | Both: publication and install/upgrade/rollback guides                           | P3c, P6-P7, P8a-P8c for stable                                                    | 2-3 days |
 | P10  | Both: real supported-host pilot and stable release                              | All release gates                                                                 | 3-5 days |
 
-Allow 45-71 engineer-days, about 9-15 working weeks for one engineer, excluding review/environment waits. The earlier 38-59-day estimate used a 2-3-day wrapper instead of P8's 9-15 days. These are estimates, not completed-work claims; re-estimate after the third-party inventory.
+The original estimate was 45-71 engineer-days, about 9-15 working weeks for one engineer, excluding review/environment waits. It is not a remaining-work estimate. Re-estimate only the open release decisions and unmet gates after reviewing the recorded implementation.
 
 Before first extraction, merge dashboard journeys and candidate-install support and pin that immutable revision. A reviewed integration revision may supply needed host edits before package adoption; probes alone do not qualify the candidate. P4/P6 complete adoption and deletion. Track moved source, destination/export, consumer, test destination and removal PR.
 
@@ -431,4 +431,4 @@ Migration guidance: [frontend app](https://backstage.io/docs/frontend-system/bui
 
 ## Design Review Notes
 
-No team approval is recorded. The September draft selected the proposed ownership split; October 23 added native frontend migration; October 27 limited scope to shared libraries and consolidated this note for decision-first review. These edits publish no packages and approve no support range. Record each meeting's date, reviewers, decision outcomes and follow-up owners here.
+No team approval is recorded. The September draft selected the proposed ownership split; October 23 added native frontend migration; October 27 limited scope to shared libraries and consolidated this note for decision-first review. November 12 separates merged implementation, open candidates and release gates, and retains main's namespace correction. These edits publish no packages and approve no support range. Record each meeting's date, reviewers, decision outcomes and follow-up owners here.

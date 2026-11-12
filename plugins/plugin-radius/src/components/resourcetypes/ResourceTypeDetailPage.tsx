@@ -31,7 +31,7 @@ import {
 import type { Theme } from '@material-ui/core';
 import useAsync from 'react-use/lib/useAsync';
 import { useApi } from '@backstage/core-plugin-api';
-import { radiusApiRef } from '../../plugin';
+import { radiusApiRef } from '../../api/ref';
 
 /**
  * Keep GitHub-flavored colors on code surfaces while allowing the surrounding
@@ -258,7 +258,7 @@ export const ResourceTypeDetailPage = () => {
   } = useAsync(async () => {
     if (!namespace || !typeName) return undefined;
     return await radiusApi.getResourceType({ namespace, typeName });
-  }, [namespace, typeName]);
+  }, [radiusApi, namespace, typeName]);
 
   if (loading) return <Progress />;
   if (error) return <ResponseErrorPanel error={error} />;

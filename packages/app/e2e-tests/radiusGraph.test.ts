@@ -42,6 +42,28 @@ const resourceType = (namespace: string) => ({
   APIVersionList: ['2025-01-01'],
 });
 
+const radiusTypes: [RegExp, string][] = [
+  [/Applications\.Core\/containers/g, 'Radius.Compute/containers'],
+  [/Applications\.Core\/gateways/g, 'Radius.Compute/routes'],
+  [/Applications\.Datastores\/redisCaches/g, 'Radius.Data/redisCaches'],
+];
+
+const graphTypes = (namespace: string) =>
+  namespace === 'Radius.Core'
+    ? {
+        container: 'Radius.Compute/containers',
+        gateway: 'Radius.Compute/routes',
+      }
+    : {
+        container: 'Applications.Core/containers',
+        gateway: 'Applications.Core/gateways',
+      };
+
+const edge = (page: Page, source: string, target: string) =>
+  page.locator(
+    `.react-flow__edge[data-id=${JSON.stringify(JSON.stringify([source, target]))}]`,
+  );
+
 async function fulfillRadiusRequest(route: Route) {
   const url = decodeURIComponent(route.request().url());
 
@@ -60,7 +82,13 @@ async function fulfillRadiusRequest(route: Route) {
   }
 
   if (url.includes('/getGraph?')) {
-    await route.fulfill({ json: multiTier });
+    const graph = url.includes('/Radius.Core/')
+      ? radiusTypes.reduce(
+          (body, [legacy, current]) => body.replace(legacy, current),
+          JSON.stringify(multiTier),
+        )
+      : JSON.stringify(multiTier);
+    await route.fulfill({ body: graph, contentType: 'application/json' });
     return;
   }
 
@@ -160,15 +188,34 @@ test.describe('Radius application graph journey', () => {
       await page.getByRole('tab', { name: 'App Graph' }).click();
 
       await expect(
-        page.getByRole('button', {
-          name: /^frontend/,
+        page.getByRole('group', {
+          name: 'frontend',
+          exact: true,
         }),
+      ).toBeVisible();
+      const { container, gateway } = graphTypes(item.type.split('/')[0]);
+      const providers = '/planes/radius/local/resourceGroups/demo/providers';
+      await expect(
+        edge(
+          page,
+          `${providers}/${container}/backend`,
+          `${providers}/${container}/frontend`,
+        ),
       ).toBeVisible();
       await expect(
-        page.getByRole('button', {
-          name: /^Edge from .*backend.* to .*frontend/,
-        }),
+        edge(
+          page,
+          `${providers}/${gateway}/edge`,
+          `${providers}/${container}/frontend`,
+        ),
       ).toBeVisible();
+      await expect(
+        edge(
+          page,
+          `${providers}/${container}/frontend`,
+          `${providers}/${gateway}/edge`,
+        ),
+      ).toHaveCount(0);
 
       await page.goto('/applications');
     }
@@ -182,16 +229,18 @@ test.describe('Radius application graph journey', () => {
       '/resources/demo/Applications.Core/applications/legacy-app/application',
     );
     await expect(
-      page.getByRole('button', {
-        name: /^frontend/,
+      page.getByRole('group', {
+        name: 'frontend',
+        exact: true,
       }),
     ).toBeVisible();
 
     await page.reload();
 
     await expect(
-      page.getByRole('button', {
-        name: /^frontend/,
+      page.getByRole('group', {
+        name: 'frontend',
+        exact: true,
       }),
     ).toBeVisible();
   });

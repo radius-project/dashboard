@@ -145,35 +145,7 @@ describe('ApplicationListInfoCard', () => {
     expect(screen.getByRole('link', { name: 'beta' })).toBeInTheDocument();
   });
 
-  /**
-   * KNOWN-DEFECT, tracked by radius-project/dashboard#352.
-   *
-   * `parseResourceId` rejects ids it should accept, and the two consumers here
-   * disagree about what to do when it does. The Actions column returns `null`,
-   * degrading quietly; `ResourceLink` throws. Because they render in the same
-   * row, the throw wins.
-   *
-   * Two things make this worse than a broken row.
-   *
-   * The blast radius: the failure is not confined to the offending row, or even
-   * to the card. One unparseable id takes down every application in the list,
-   * and there is no error boundary between this card and the page embedding it
-   * — so in the app it is the surrounding page that fails, not just the card.
-   *
-   * The diagnosis: the thrown `Invalid resource id` never reaches the user.
-   * React unwinds the tree, and `MaterialTable.componentDidMount` then
-   * dereferences a now-null ref, so the error actually surfaced is
-   * `Cannot read properties of null (reading 'scrollWidth')`. The reported
-   * cause names a table-measurement internal and says nothing about resource
-   * ids, which is why the assertion below checks that the real cause is
-   * *absent* from the output. Anyone debugging this from a bug report starts
-   * in entirely the wrong place.
-   *
-   * `neo4jDatabases` is used deliberately — a digit in the resource type is
-   * legal per the upstream manifest validation rules, and this is a real Radius
-   * type, not a contrived string.
-   */
-  it('AC-08: KNOWN-DEFECT one unparseable id destroys the card and misreports the cause', async () => {
+  it('AC-08 / #352: legal digits in resource types retain both healthy rows and navigation', async () => {
     const api: AppApiStub = {
       listApplications: async () => ({
         value: [
@@ -186,21 +158,12 @@ describe('ApplicationListInfoCard', () => {
       }),
     };
 
-    const consoleError = jest
-      .spyOn(console, 'error')
-      .mockImplementation(() => {});
-
-    try {
-      await renderCard(api);
-
-      await waitFor(() => {
-        expect(screen.getByText(/Something Went Wrong/i)).toBeInTheDocument();
-      });
-
-      expect(screen.queryByText('healthy')).toBeNull();
-      expect(document.body.textContent).not.toMatch(/Invalid resource id/);
-    } finally {
-      consoleError.mockRestore();
-    }
+    await renderCard(api);
+    expect(await screen.findByRole('link', { name: 'healthy' })).toBeVisible();
+    expect(screen.getByRole('link', { name: 'neo4j' })).toHaveAttribute(
+      'href',
+      '/resource/default/Radius.Data/neo4jDatabases/neo4j',
+    );
+    expect(screen.queryByText(/Something Went Wrong/i)).toBeNull();
   });
 });

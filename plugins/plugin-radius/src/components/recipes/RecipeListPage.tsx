@@ -14,7 +14,7 @@ import {
   Progress,
   ResponseErrorPanel,
 } from '@backstage/core-components';
-import { radiusApiRef } from '../../plugin';
+import { radiusApiRef } from '../../api/ref';
 import {
   EnvironmentProperties,
   RecipePackProperties,
@@ -24,6 +24,8 @@ import { useApi } from '@backstage/core-plugin-api';
 import useAsync from 'react-use/lib/useAsync';
 import { RecipeTable } from './RecipeTable';
 import { aggregateRecipesFromEnvironment } from './recipeAggregation';
+import { RadiusListResult } from '../../api';
+import { ResourceQueryResult } from '../queryresult/ResourceQueryResult';
 
 export const RecipeListPageContent2 = ({
   environments,
@@ -80,7 +82,7 @@ export const RecipeListPageContent2 = ({
 export const RecipeListPageContent = () => {
   const radiusApi = useApi(radiusApiRef);
   const { value, loading, error } = useAsync(async (): Promise<{
-    environments: Resource<EnvironmentProperties>[];
+    environments: RadiusListResult<EnvironmentProperties>;
     packsById: Record<string, Resource<RecipePackProperties>>;
   }> => {
     const environments = await radiusApi.listEnvironments();
@@ -95,21 +97,33 @@ export const RecipeListPageContent = () => {
       }
     }
 
+    const requestedPacks = Array.from(packIds);
     const packResults = await Promise.allSettled(
-      Array.from(packIds).map(id =>
+      requestedPacks.map(id =>
         radiusApi.getResourceById<RecipePackProperties>({ id }),
       ),
     );
 
     const packsById: Record<string, Resource<RecipePackProperties>> = {};
-    for (const result of packResults) {
+    const errors = [...(environments.errors ?? [])];
+    for (const [index, result] of packResults.entries()) {
       if (result.status === 'fulfilled') {
         packsById[result.value.id] = result.value;
+      } else {
+        errors.push({
+          resourceId: requestedPacks[index],
+          error: result.reason,
+        });
       }
     }
 
-    return { environments: environments.value, packsById };
-  }, []);
+    return {
+      environments: errors.length
+        ? { ...environments, complete: false, errors }
+        : environments,
+      packsById,
+    };
+  }, [radiusApi]);
 
   if (loading) {
     return <Progress data-testid="progress" />;
@@ -121,11 +135,32 @@ export const RecipeListPageContent = () => {
     throw new Error('This should not happen.');
   }
 
+  const loadedPackIds = new Set(
+    Object.keys(value.packsById).map(id => id.toLowerCase()),
+  );
+
   return (
-    <RecipeListPageContent2
-      environments={value.environments}
-      packsById={value.packsById}
-    />
+    <ResourceQueryResult
+      result={{
+        ...value.environments,
+        // Environments without recipes are still data. Only missing packs
+        // (no recipes can be shown) make the result unusable.
+        value: value.environments.value.filter(
+          environment =>
+            !environment.properties?.recipePacks?.length ||
+            environment.properties.recipePacks.some(id =>
+              loadedPackIds.has(id.toLowerCase()),
+            ) ||
+            aggregateRecipesFromEnvironment(environment, value.packsById)
+              .length > 0,
+        ),
+      }}
+    >
+      <RecipeListPageContent2
+        environments={value.environments.value}
+        packsById={value.packsById}
+      />
+    </ResourceQueryResult>
   );
 };
 

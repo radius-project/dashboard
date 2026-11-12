@@ -1,5 +1,15 @@
-import { AppGraph } from './graph';
-import { buildLayoutedGraphModel, GraphModel } from './graphModel';
+interface GraphObservation {
+  nodes: {
+    id: string;
+    label: string;
+    type: string;
+    status: string;
+    icon: string | null;
+    statusBadge: { kind: string; accessibleName: string } | null;
+    position: { x: number; y: number };
+  }[];
+  edges: { id: string; source: string; target: string }[];
+}
 
 /**
  * The renderer does not populate icons or status badges yet. That is recorded
@@ -133,7 +143,7 @@ export const knownGraphDefects: KnownGraphDefect[] = [
  * covered by renderer-independent assertions instead: GU-09 requires finite
  * positions and GU-09a requires non-overlapping nodes.
  */
-export function normalizeGraphModel(model: GraphModel): GraphRecord {
+export function normalizeGraphModel(model: GraphObservation): GraphRecord {
   return {
     nodes: model.nodes
       .map((node): GraphRecordNode => ({
@@ -156,10 +166,6 @@ export function normalizeGraphModel(model: GraphModel): GraphRecord {
         ),
       ),
   };
-}
-
-export function createGraphRecord(graph: AppGraph): GraphRecord {
-  return normalizeGraphModel(buildLayoutedGraphModel(graph));
 }
 
 export function findUnapprovedGraphRecordChanges(

@@ -2,7 +2,7 @@
 
 - **Author**: Nicole James (@nicolejms)
 - **Status**: Draft, proposed for team review
-- **Revised**: 2026-10-27
+- **Revised**: 2026-11-12
 - **Design**: [Implementation design](./2026-09-radius-backstage-plugin.md)
 - **Decision summary**: [Proposed ADR](./2026-10-radius-backstage-plugin-adr.md)
 
@@ -12,7 +12,7 @@ This plan owns test requirements and evidence. The design owns architecture, API
 
 Read the opening decisions, host matrix and phase table first. Reviewers of graph extraction also need [record-change controls](#appendix-e-graph-fixtures-and-records). CI owners need the [candidate protocol](#appendix-h-candidate-ci-protocol). Namespace changes have a separate [NS catalog](#namespace-migration-ns-01-ns-10).
 
-Phases 0-3 below record the qualified legacy baseline in this documentation branch. Later rows define required evidence, not an implementation progress report or a support promise. A passing legacy package does not qualify a native entry or a release. [Appendix J](#appendix-j-baseline-evidence) keeps historical measurements out of the review path.
+The [status table](#implementation-and-evidence-status) distinguishes merged work, open candidates and release gates as of November 12. A passing legacy package, local live test or green optional job does not qualify a public release. [Appendix J](#appendix-j-baseline-evidence) keeps historical measurements out of the review path.
 
 ## Decisions for test review
 
@@ -26,6 +26,37 @@ All choices remain proposed. Record the owner, date and result in this table aft
 | T4  | Shared consumer invocation | Invoke dashboard-owned journeys at its pinned commit / add a shared harness package. Prefer invocation from the dashboard, not copied tests           | CI owners must define the invocation path, exact required jobs/results, pin-age window and pin-refresh owner; Open |
 
 Coverage percentages are not architecture decisions. Names, licenses, host versions, adapter exits and namespace timing are inputs from design D2/D5/D6.
+
+## Implementation and evidence status
+
+Reviewed main: [`409a5692`](https://github.com/radius-project/dashboard/tree/409a5692). Open PRs remain candidates; their evidence does not describe main or approve a support range.
+
+| Work                                   | State and pinned evidence                                                                                                                                                                             | Remaining boundary                                                                                                          |
+| -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Native frontend/backend and standalone | Merged [#416](https://github.com/radius-project/dashboard/pull/416), merge `825e349d`; native `/alpha`, eight pages, API factory, native standalone and prior-image rollback                          | Exact public host/auth support and legacy retirement remain D2/D3 inputs                                                    |
+| Shared-package adoption                | Merged [#429](https://github.com/radius-project/dashboard/pull/429), merge `054440a3`; compiled core/graph archives, common query context, public forwarding and removal of duplicate implementations | Development archives are not a registry release; candidate CI policy still needs T4 approval                                |
+| Installed hosts, Phase 5               | Open [#435](https://github.com/radius-project/dashboard/pull/435), head `3687d9e9`; full controlled-upstream installed-host matrix at `eb712970`                                                      | Full matrix is tied to `eb712970`, not a claim that every later head reran it                                               |
+| Native page appearance and graph links | Open [#436](https://github.com/radius-project/dashboard/pull/436), `ac9ddcf`, stacked on #435                                                                                                         | Uses the original shared pair, not #405's icon archives; merge/requalify in dependency order                                |
+| Resource-definition icons              | Open [#405](https://github.com/radius-project/dashboard/pull/405), head `f4f7a624`, based on main; live evidence at `0b0af6df`, shared source `f89020ac197fd4fd266b3a61bbc99f9b933134bb`              | Separate from #435/#436; combine only through a new exact-source qualification                                              |
+| Public release                         | Not qualified                                                                                                                                                                                         | D2/D3/D5, Phase 6 required checks, Phase 7 reliability/accessibility and Phase 8 real supported-host/auth gates remain open |
+
+The latest #435 change fixes qualification path guards, port-conflict retries and denied-cluster selection. The latest #405 change adds a failed-POST test and corrects receipt limits; it does not change the icon runtime. The live results below remain tied to their tested commits.
+
+### Candidate live evidence
+
+The local Podman sample uses Radius 0.62, guest sign-in and a test service account. These runs do not qualify production authorization. Baseline hosts and receipts were retained unchanged.
+
+- **Appearance `ac9ddcf`:** 168 page visits across native/generic hosts, three mounts and both themes; 84/84 effective page-style pairs and 24 graph Open/back/forward/reload actions pass. Six same-document Catalog/Settings cases prove host-theme isolation. The first aggregate failed on loading-state samples; its receipts remain intact. Focused loaded-host and environment-table checks supply only those replacements. [Screenshots and evidence](https://github.com/radius-project/dashboard/pull/436#issuecomment-6805383505).
+- **Icons `0b0af6df`:** a separate clean installed-plugin host verifies three real registered SVGs through registry definitions, `getGraph` hashes/map and decoded visible masks in both themes. Three nodes, one Redis-to-container connection, Fit, deep URL and reload pass. [Live screenshots and evidence](https://github.com/radius-project/dashboard/pull/405#issuecomment-6804258126) replace the earlier API-fixture images in place.
+
+Known metadata HTTP 400 probes remain recorded separately; neither run fixes them. Missing edge arrowheads, existing mobile overflow and production-auth gaps remain limits. Appearance parity covers Radius page regions, not whole-host pixel identity. No combined appearance-plus-icon live matrix is claimed.
+
+### Remaining execution order
+
+1. Review and land installed-host work before its appearance dependent; retain exact receipts and rerun affected checks after integration. The stacked appearance PR does not run the main-target Build workflow until it targets main.
+2. Review icons independently. After combining candidates, qualify the actual merged source, installed archives, request body, page styles and graph links. Do not reuse separate receipts as proof of the combination.
+3. Configure and verify Phase 6 required jobs and approve T1/T4 inputs. Complete Phase 7 keyboard, accessibility and scheduled reliability checks without hiding the metadata errors.
+4. Finish the approved namespace corpus separately, then qualify the public release against the D2/D3/D5 support, authorization, publication and rollback decisions. Native standalone is already implemented, not new migration work.
 
 ## Host matrix
 
@@ -44,21 +75,21 @@ All rows use a qualified new-system backend. A legacy backend is not an initial 
 
 The design's [P-unit table](./2026-09-radius-backstage-plugin.md#appendix-d-delivery-and-release) owns implementation work and estimates. These rows own acceptance evidence and prerequisites.
 
-| Phase                               | Prerequisite                                       | Evidence required to close                                                                                                                                                 |
-| ----------------------------------- | -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 0. Record baseline, done            | Original source                                    | Appendix A inventory; measured root coverage floors; deliberately raising a floor fails the named group                                                                    |
-| 1. Close behavior gaps, done        | 0                                                  | RU and component cases, BE-01-BE-05, backend/app entry tests; substantive gaps in Appendix F closed                                                                        |
-| 2. Freeze graph baseline, done      | 1                                                  | Real-renderer GU-01-GU-25, CN-01-CN-08, ER-01-ER-10; committed records, empty manifest, renderer/CSS removal fails                                                         |
-| 3. Current plugin artifact, done    | 0; can overlap 2                                   | PU source/dist/type contracts, executable API factory, all eight lazy routes, isolated build/pack and restored manifests; no approval of final publishing settings         |
-| 3A. Native Radius and backend audit | Design P8a inputs; legacy baseline                 | FS-01-FS-08 and BS-01-BS-04; removing a page/API extension fails; legacy entry still passes                                                                                |
-| 3B. Hybrid standalone               | 3A and frozen host journeys                        | FS-09-FS-12 with real backend; adapter inventory includes exact version, missing surface, mapping, owner, upstream reference and exit; prior tuple recorded                |
-| 3C. Native standalone               | 3B; native replacements for every required feature | FS-13-FS-16 in built output, including actual prior-image restoration; no required app/third-party converters                                                              |
-| 4. Shared-package adoption          | 2; qualified core/graph-react candidates           | PB checks, GU-22-GU-25, reviewed record diff; zero duplicate parser/query policy/layout/renderer; PU-29 if forwarding survives                                             |
-| 5. Installed hosts                  | 4; qualified artifacts; 3A for native row          | HU-01-HU-12, IA-01-IA-08, RX-01-RX-03 across the active host matrix; missing shipped files or a toy graph fail                                                             |
-| 6. Required CI gates                | Earlier checks exist                               | CP-01-CP-05, required contract/artifact/native/backend/record jobs, approved floors and no-decrease checks; bounded redacted failure evidence                              |
-| 7. Accessibility and reliability    | 5; namespace timing from D6                        | E2E-01-E2E-20, Appendix D visuals, no serious/critical axe findings in either theme; three consecutive stable scheduled runs                                               |
-| 8. Release qualification            | All launch gates, including 3C                     | HOST-01-HOST-08 in built published standalone/external hosts on disposable Radius/cluster; auth, absent-control-plane and cleanup checks; no skipped/simulated substitutes |
-| 9. Namespace corpus                 | D6; separate from 1/2/4, normally after 4          | NS-01-NS-10; reviewed Tier C changes then empty manifest; explicit reasons for retained legacy fixtures                                                                    |
+| Phase                                       | Prerequisite                                       | Evidence required to close                                                                                                                                                 |
+| ------------------------------------------- | -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0. Record baseline, done                    | Original source                                    | Appendix A inventory; measured root coverage floors; deliberately raising a floor fails the named group                                                                    |
+| 1. Close behavior gaps, done                | 0                                                  | RU and component cases, BE-01-BE-05, backend/app entry tests; substantive gaps in Appendix F closed                                                                        |
+| 2. Freeze graph baseline, done              | 1                                                  | Real-renderer GU-01-GU-25, CN-01-CN-08, ER-01-ER-10; committed records, empty manifest, renderer/CSS removal fails                                                         |
+| 3. Current plugin artifact, done            | 0; can overlap 2                                   | PU source/dist/type contracts, executable API factory, all eight lazy routes, isolated build/pack and restored manifests; no approval of final publishing settings         |
+| 3A. Native Radius and backend audit, merged | Design P8a inputs; legacy baseline                 | #416: FS-01-FS-08 and BS-01-BS-04; removing a page/API extension fails; legacy entry still passes                                                                          |
+| 3B. Hybrid standalone, superseded           | 3A and frozen host journeys                        | FS-09-FS-12 protect the transition; #416 replaces it with native composition, not a supported hybrid endpoint                                                              |
+| 3C. Native standalone, merged               | 3B; native replacements for every required feature | #416: FS-13-FS-16 in built output, including actual prior-image restoration; no required whole-app/plugin converters                                                       |
+| 4. Shared-package adoption, merged          | 2; qualified core/graph-react candidates           | #429: PB checks, GU-22-GU-25, reviewed record diff; duplicate implementation removed; public forwarding retained                                                           |
+| 5. Installed hosts, candidate               | 4; qualified artifacts; 3A for native row          | #435 evidence at the pinned revision above: HU-01-HU-12, IA-01-IA-08, RX-01-RX-03; not yet a merged release gate                                                           |
+| 6. Required CI gates                        | Earlier checks exist                               | CP-01-CP-05, required contract/artifact/native/backend/record jobs, approved floors and no-decrease checks; bounded redacted failure evidence                              |
+| 7. Accessibility and reliability            | 5; namespace timing from D6                        | E2E-01-E2E-20, Appendix D visuals, no serious/critical axe findings in either theme; three consecutive stable scheduled runs                                               |
+| 8. Release qualification                    | All launch gates, including 3C                     | HOST-01-HOST-08 in built published standalone/external hosts on disposable Radius/cluster; auth, absent-control-plane and cleanup checks; no skipped/simulated substitutes |
+| 9. Namespace corpus                         | D6; separate from 1/2/4, normally after 4          | NS-01-NS-10; reviewed Tier C changes then empty manifest; explicit reasons for retained legacy fixtures                                                                    |
 
 Stable release requires 3C, not only hybrid success. Phase 5's real build qualifies production loading; transformed Jest backend tests do not. Required check configuration, not a green optional job, closes Phase 6.
 
@@ -99,15 +130,15 @@ Run `yarn test:package` separately and serially, never inside repository Jest: B
 
 ### Test layers and runners
 
-| Layer | Scope                                           | Existing runner                                             |
-| ----- | ----------------------------------------------- | ----------------------------------------------------------- |
-| L1    | Pure domain/API rules                           | Jest 30, node                                               |
-| L2    | Pages, tabs, cards and states                   | Jest/jsdom, RTL, jest-dom, user-event, Backstage test-utils |
-| L3    | Plugin/package contracts                        | Jest, node                                                  |
-| L4    | Host integration                                | RTL plus packed-install fixture                             |
-| L5    | Real browser, graph, keyboard and accessibility | Playwright 1.62, Chromium                                   |
-| L6    | Semantic graph records                          | One normalizer plus fixture/model and browser checks        |
-| L7    | Reviewed visuals                                | Storybook and Playwright                                    |
+| Layer | Scope                                           | Existing runner                                               |
+| ----- | ----------------------------------------------- | ------------------------------------------------------------- |
+| L1    | Pure domain/API rules                           | Jest 30, node                                                 |
+| L2    | Pages, tabs, cards and states                   | Jest/jsdom, RTL, jest-dom, user-event, Backstage test-utils   |
+| L3    | Plugin/package contracts                        | Jest, node                                                    |
+| L4    | Host integration                                | RTL plus packed-install fixture                               |
+| L5    | Real browser, graph, keyboard and accessibility | Playwright/Chromium pinned by the tested lockfile and receipt |
+| L6    | Semantic graph records                          | One normalizer plus fixture/model and browser checks          |
+| L7    | Reviewed visuals                                | Storybook and Playwright                                      |
 
 Use MSW for HTTP boundaries and `jest-canvas-mock` only for missing HTML canvas APIs in jsdom. A canvas stub cannot prove graph layout. Shared libraries use Vitest; the packed-consumer gate must cross that runner/module boundary rather than copy upstream tests.
 
@@ -127,7 +158,7 @@ Use MSW for HTTP boundaries and `jest-canvas-mock` only for missing HTML canvas 
 
 ### Appendix A: public and request inventory
 
-This is the reviewed legacy consumer surface. The root inventory includes the Phase 3 API exports; native extension IDs/paths need a separate approved inventory. Preserve the legacy baseline while adding it.
+This is the retained legacy consumer surface. Main also ships the native default export at `/alpha`: plugin ID `radius`, API extension `api:radius/radius`, and eight `page:radius/*` extensions named applications, environments, environment, recipes, resources, resource, resource-types and resource-type. `alpha.tsx` and its tests own exact paths, parameters and discovery metadata. Preserve both entries through the approved legacy window.
 
 | Surface                             | Exports / value                                                                                                                                                                                                                          |
 | ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -396,7 +427,7 @@ The tier rules above distinguish desired invariants from linked baseline defect 
 | GU-25  | C    | Committed/base-branch differences require manifest entry                               |
 | GU-25a | C    | Mutating a committed record reports an unapproved change                               |
 
-GU-17 injects Dagre failure at the real component boundary under Jest; do not add a product-only browser fault hook. GU-20 must reject both a renderer stub and missing stylesheet; `ApplicationTab.test.tsx`'s graph double cannot satisfy it.
+The old GU-17 local Dagre fault injection was retired with that implementation. The shared package owns layout-degradation tests; dashboard forwarding identity and public browser checks must not introduce another layout/error policy. This does not independently close #368. GU-20 must reject both a renderer stub and missing stylesheet; `ApplicationTab.test.tsx`'s graph double cannot satisfy it.
 
 #### Host integration: HU-01-HU-12
 
@@ -446,21 +477,23 @@ HOST-01-HOST-08 qualify installation/discovery, configured connections, proxy re
 
 Human-review Storybook captures for multi-tier graph in both themes, single/empty graph, every deploy status, populated/empty resource table, environment overview, resource-type detail and home. Rebaseline only with a stated product reason.
 
+For plugin appearance, compare the same loaded Radius page regions in native and generic hosts at root, plugin-prefix and nested app mounts, in light/dark. Check computed styles plus screenshots, not screenshots alone. Visit Catalog and Settings before and after Radius through same-document navigation; verify their styles and body attributes remain unchanged. Graph Open actions must use full resource IDs and mounted route refs, with back/forward/reload checks. Resource-definition icon checks must tie the actual request body, registry SVG, response hash/map and decoded rendered image/mask to the same exact archives.
+
 ### Appendix E: graph fixtures and records
 
-Before extraction, fixtures are in `packages/rad-components/src/__fixtures__/graph/`; records are in `src/__fixtures__/graph-records/`. The empty manifest is `src/__fixtures__/graph-expected-changes.md`. Move ownership with graph journeys during extraction.
+Dashboard-owned fixtures remain in `packages/rad-components/src/__fixtures__/graph/`; records remain in `src/__fixtures__/graph-records/`. The manifest is `src/__fixtures__/graph-expected-changes.md`. Canonical parser/query/layout/renderer tests moved upstream; host contracts and semantic records stay here. The [test ownership map](../../plugins/plugin-radius/README.md#phase-4-test-ownership) lists retired checks and their replacements.
 
 Fixtures: `empty.json`, `single-node.json`, `container-to-database.json`, `gateway-inbound.json`, `multi-tier.json`, `unparseable-connection.json`, `missing-target.json`, `self-reference.json`, `managed-cluster.json`, `deploy-status-matrix.json`, `unknown-type.json`, `duplicate-ids.json`, `both-namespaces.json`, `large-fan-out.json`.
 
-`graphRecord.ts` is the one semantic normalizer. Sort node ID, label, type, icon identity, badge kind and accessible name; sort resolved edge source/target/direction. Omit coordinates, colors, classes, nesting and transforms. Layout properties belong to GU-08/GU-09, not coordinate snapshots.
+`src/__test__/graphRecord.ts` is the dashboard's test-only semantic normalizer. Sort node ID, label, type, icon identity, badge kind and accessible name; sort resolved edge source/target/direction. Omit coordinates, colors, classes, nesting and transforms. Layout properties belong to GU-08/GU-09, not coordinate snapshots. `scripts/observe-shared-graph.ts` observes the actual shared renderer and CSS in Chromium.
 
 Use `not-yet-populated` for missing renderer icon/status support. `null` could mean deliberate removal and cannot identify #35/#89. Each known defect has an `isPresent` predicate for its own invariant; test healthy/violating records so constant predicates cannot pass. A populated icon must not clear a duplicate-ID defect.
 
 GU-22 compares generated versus committed records. GU-25 also compares committed records to `GRAPH_RECORD_BASE_REF`, then `origin/main`, and fails if neither is reachable. Checkout full history. A newly added fixture absent at base needs no baseline-change entry; it still needs reviewed requirements and fixture expectations.
 
-Every changed field needs a manifest entry with fixture, field, old/new values, reason and linked issue where applicable. Review the manifest, not snapshot churn. Reject undeclared edits even when implementation and committed records changed together. Report unchanged defect invariants, then empty the manifest after the phase. Never use it as a permanent allowlist.
+Every changed field needs a manifest entry with fixture, field, old/new values, reason and linked issue where applicable. Review the manifest, not snapshot churn. Reject undeclared edits even when implementation and committed records changed together. Main retains four reviewed #353/#357 record removals for the committed-to-base comparison, with positive regressions; those entries authorize only their exact changes. Clear them once the comparison base contains the approved records, not before. Never use the manifest as a permanent allowlist.
 
-The legacy corpus deliberately reaches `Applications.Core/containers` layout and `Applications.Core/gateways` edge-direction branches (#373). Current-type fixtures alone would skip them. Perform NS migration separately so baseline preservation cannot hide a type-model change.
+The record corpus remains authored in `Applications.Core/*` and `Applications.Datastores/*`; migrating it is separate. Main's #373 correction recognized only explicit built-ins, case-insensitively: `Applications.Core/containers` and `Radius.Compute/containers`; `Applications.Core/gateways` and `Radius.Compute/routes`. `Radius.Core` has no containers or gateways, and user-defined names get no special handling. #429 then removed the local classification/layout implementation in favor of the shared normalizer and renderer. Retain the public topology, mixed-namespace and real Chromium checks named in the ownership map above, not tests of deleted private branches.
 
 ### Appendix F: source coverage and assertion pitfalls
 
@@ -532,35 +565,34 @@ Before package adoption, a reviewed integration revision may contain only the ne
 
 ### Appendix I: tracked defects and safe test data
 
-`KNOWN-DEFECT` pins must change when their linked fix lands. Do not preserve a defect to keep the baseline green.
+This is a historical defect inventory, not a live issue-state list. `KNOWN-DEFECT` pins must change when their linked fix lands. Main's shared adoption replaces parser, topology, mutation, connection-split and partial-result pins with public regressions; see the ownership map in Appendix E. Do not preserve a defect to keep the baseline green, or close a broader issue from one narrow check.
 
-| Issue | Defect / owner of evidence                                                                                                     |
-| ----- | ------------------------------------------------------------------------------------------------------------------------------ |
-| #35   | Missing resource-type icon identity: GU-21/GU-23                                                                               |
-| #41   | Missing selectable dismissible resource details: GU-18                                                                         |
-| #89   | Missing deployment status: GU-21/GU-23                                                                                         |
-| #352  | Parser rejects legal names/types; card symptom includes scrollWidth error: RU-02, AC-08, EC-08                                 |
-| #353  | Unresolved connection targets silently lost/dangling: GU-04/GU-05a                                                             |
-| #354  | Model building mutates input: GU-05b                                                                                           |
-| #355  | Fixed per-call Dagre state: GU-08 is now a positive regression                                                                 |
-| #356  | Resource reads choose first cluster, graph POST last: CN-03/CN-04                                                              |
-| #357  | Missing self-loop/duplicate-ID validation: GU-06a                                                                              |
-| #358  | Publication identity/installability: PU-10/PU-17/PU-19/PU-26-PU-28 and design D5                                               |
-| #359  | rad-components ISC versus Apache-2.0 metadata: design D5, not a permanent test assertion                                       |
-| #360  | Loaded-machine page timeouts: T3; harness risk, not product pin                                                                |
-| #361  | Missing type description gets placeholder container docs: RT-07                                                                |
-| #362  | Off-route layout displays `undefined/undefined: undefined`: LY-04                                                              |
-| #363  | Output tab hides read-only nested properties and shows writable ones: RT-27                                                    |
-| #364  | Discord card `to=""` points home, lacks new-window hint: CC-05/CC-06                                                           |
-| #365  | Required `systemData: Record<string, never>` forces fixture casts: RS-14; replace with optional open-valued model tests on fix |
-| #366  | Sucrase cache key omits instrumentation: PU-35, upstream Jest module; zero current usage                                       |
-| #367  | Implicit, unscoped, inconsistently cancellable connection: CN-02/CN-05-CN-08, ER-01/ER-02                                      |
-| #368  | No graph empty/degraded-layout state: GU-15/GU-17                                                                              |
-| #369  | Partial namespace failure shown as complete: ER-08                                                                             |
-| #370  | Graph error has no retry action: GU-16                                                                                         |
-| #373  | Hard-coded legacy graph types: NS corpus and separate migration                                                                |
+| Issue | Defect / owner of evidence                                                                                                       |
+| ----- | -------------------------------------------------------------------------------------------------------------------------------- |
+| #35   | Missing resource-type icon identity: GU-21/GU-23                                                                                 |
+| #41   | Missing selectable dismissible resource details: GU-18                                                                           |
+| #89   | Missing deployment status: GU-21/GU-23                                                                                           |
+| #352  | Legal-name parser behavior now has positive shared/public regressions; retain separate card coverage: RU-02, AC-08, EC-08        |
+| #353  | Shared normalization now diagnoses/skips unresolved targets and retains owners: GU-04/GU-05a                                     |
+| #354  | Shared normalization preserves caller input: GU-05b                                                                              |
+| #355  | Fixed per-call Dagre state: GU-08 is now a positive regression                                                                   |
+| #356  | Common per-instance query context replaces the first/last split: CN-03/CN-04                                                     |
+| #357  | Shared normalization removes self-edges and coalesces duplicate IDs: GU-06a                                                      |
+| #358  | Publication identity/installability: PU-10/PU-17/PU-19/PU-26-PU-28 and design D5                                                 |
+| #359  | rad-components ISC versus Apache-2.0 metadata: design D5, not a permanent test assertion                                         |
+| #360  | Loaded-machine page timeouts: T3; harness risk, not product pin                                                                  |
+| #361  | Missing type description gets placeholder container docs: RT-07                                                                  |
+| #362  | Off-route layout displays `undefined/undefined: undefined`: LY-04                                                                |
+| #363  | Output tab hides read-only nested properties and shows writable ones: RT-27                                                      |
+| #364  | Discord card `to=""` points home, lacks new-window hint: CC-05/CC-06                                                             |
+| #365  | Required `systemData: Record<string, never>` forces fixture casts: RS-14; replace with optional open-valued model tests on fix   |
+| #366  | Sucrase cache key omits instrumentation: PU-35, upstream Jest module; zero current usage                                         |
+| #367  | Implicit, unscoped, inconsistently cancellable connection: CN-02/CN-05-CN-08, ER-01/ER-02                                        |
+| #368  | No graph empty/degraded-layout state: GU-15/GU-17                                                                                |
+| #369  | Default client now carries completeness/errors and views show partial warnings; metadata-free overrides remain compatible: ER-08 |
+| #370  | Graph error has no retry action: GU-16                                                                                           |
 
-Issues #361 and #363 share nearly duplicated 1100-line tab bodies in the 2693-line ResourceTypeDetailPage; retain that cause when fixing them. #352 needs visible-card regression coverage, not just parser cases. #356 needs the same two-cluster fixture on both paths before extraction.
+Issues #361 and #363 shared nearly duplicated tab bodies at the historical baseline; inspect the current source before a fix. #352 needs visible-card regression coverage, not just parser cases. Retain #356's same two-cluster fixture on both query paths.
 
 Withdrawn PU-16, PU-18 and FF-02 asserted unresolved private/license/export-policy choices. Resolving a decision must not break CI; design D5 owns those choices.
 
@@ -582,7 +614,7 @@ This is the audit trail for Phases 0-3, not the current release matrix. The [pre
 | Backend scaffold floor sequence | 62/n/a/50/71 to 93/n/a/100/100, later empty-set branch floor 100                                                                                                     |
 | Namespace research snapshot     | `Applications.` in 40 files, 57 API test occurrences; `Radius.` in 15. ResourceTypesTable excludes `Applications.`/`Microsoft.` despite legacy test corpus           |
 
-Phase 2 model tests use `buildGraphModel`; keep assertions when its adapter switches to shared code. `graphRecord.ts` owns normalization. Direct renderer journeys are `packages/rad-components/e2e-tests/appGraph.test.ts`; host list/detail/graph/error/timeout journeys are `packages/app/e2e-tests/radiusGraph.test.ts`. Both use actual styles/rendering; host proxies are deterministic. Initial graph tests against doubles were not evidence of graph behavior.
+At the Phase 2 snapshot, model tests used `buildGraphModel`. #429 deleted that private adapter and moved tests to the public normalizer and actual shared-renderer observation. Appendix E owns the current paths. Host list/detail/graph/error/timeout journeys remain in `packages/app/e2e-tests/radiusGraph.test.ts` with deterministic proxy responses. Initial graph tests against doubles were not evidence of graph behavior.
 
 GU-08 originally needed module isolation to reveal leaked Dagre state. After the maintainer-requested #355 fix it compares sequential/standalone layouts in both orders; isolation was removed. Other characterized defects remain linked, not blessed.
 

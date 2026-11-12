@@ -1,22 +1,19 @@
-import React, { PropsWithChildren } from 'react';
+import React from 'react';
 import { makeStyles } from '@material-ui/core';
-import {
-  Settings as SidebarSettings,
-  UserSettingsSignInAvatar,
-} from '@backstage/plugin-user-settings';
+import { UserSettingsSignInAvatar } from '@backstage/plugin-user-settings';
 import {
   Sidebar,
   sidebarConfig,
   SidebarDivider,
   SidebarGroup,
   SidebarItem,
-  SidebarPage,
   SidebarScrollWrapper,
   SidebarSpace,
   useSidebarOpenState,
   Link,
 } from '@backstage/core-components';
 import MenuIcon from '@material-ui/icons/Menu';
+import SettingsIcon from '@material-ui/icons/Settings';
 import {
   RadiusLogo,
   RadiusLogomarkReverse,
@@ -62,45 +59,42 @@ const SidebarLogo = () => {
   );
 };
 
-export const Root = ({ children }: PropsWithChildren<NonNullable<object>>) => (
-  <SidebarPage>
-    <Sidebar>
-      <SidebarLogo />
+export const RadiusSidebar = () => (
+  <Sidebar>
+    <SidebarLogo />
+    <SidebarDivider />
+    <SidebarGroup label="Menu" icon={<MenuIcon />}>
+      {/* Global nav, not org-specific */}
+      <SidebarItem icon={RadiusLogomarkReverse} to="/" text="Home" />
+      <SidebarItem
+        icon={ResourceIcon}
+        to="resource-types"
+        text="Resource Types"
+      />
+      <SidebarItem
+        icon={EnvironmentIcon}
+        to="environments"
+        text="Environments"
+      />
+      <SidebarItem
+        icon={ApplicationIcon}
+        to="applications"
+        text="Applications"
+      />
+      <SidebarItem icon={ResourceIcon} to="resources" text="Resources" />
+      <SidebarItem icon={RecipeIcon} to="recipes" text="Recipes" />
+      {/* End global nav */}
       <SidebarDivider />
-      <SidebarGroup label="Menu" icon={<MenuIcon />}>
-        {/* Global nav, not org-specific */}
-        <SidebarItem icon={RadiusLogomarkReverse} to="/" text="Home" />
-        <SidebarItem
-          icon={ResourceIcon}
-          to="resource-types"
-          text="Resource Types"
-        />
-        <SidebarItem
-          icon={EnvironmentIcon}
-          to="environments"
-          text="Environments"
-        />
-        <SidebarItem
-          icon={ApplicationIcon}
-          to="applications"
-          text="Applications"
-        />
-        <SidebarItem icon={ResourceIcon} to="resources" text="Resources" />
-        <SidebarItem icon={RecipeIcon} to="recipes" text="Recipes" />
-        {/* End global nav */}
-        <SidebarDivider />
-        <SidebarScrollWrapper />
-      </SidebarGroup>
-      <SidebarSpace />
-      <SidebarDivider />
-      <SidebarGroup
-        label="Settings"
-        icon={<UserSettingsSignInAvatar />}
-        to="/settings"
-      >
-        <SidebarSettings />
-      </SidebarGroup>
-    </Sidebar>
-    {children}
-  </SidebarPage>
+      <SidebarScrollWrapper />
+    </SidebarGroup>
+    <SidebarSpace />
+    <SidebarDivider />
+    <SidebarGroup
+      label="Settings"
+      icon={<UserSettingsSignInAvatar />}
+      to="/settings"
+    >
+      <SidebarItem icon={SettingsIcon} to="/settings" text="Settings" />
+    </SidebarGroup>
+  </Sidebar>
 );
