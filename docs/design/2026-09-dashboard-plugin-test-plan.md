@@ -194,7 +194,7 @@ IDs are stable. "Baseline" means a test exists in the recorded phase, possibly a
 | ID    | Requirement                                                                                              |
 | ----- | -------------------------------------------------------------------------------------------------------- |
 | RU-01 | Parse well-formed IDs into plane, group, type and name                                                   |
-| RU-02 | Reject malformed/empty/partial IDs; retain legal-name rejection pins until the linked parser fix         |
+| RU-02 | Reject malformed/empty/partial IDs; accept legal names/types (positive regression since Phase 4)         |
 | RU-03 | Map application/environment equivalence between `Applications.Core` and `Radius.Core` in both directions |
 | RU-04 | Unknown type takes the single-type path with no equivalents                                              |
 | RU-05 | Resource accessors handle absent, empty and partial properties                                           |
@@ -328,48 +328,48 @@ RU covers domain behavior; RS types emit no JavaScript and require exact-type/op
 
 The recorded Phase 3 baseline implements PU-01-PU-28 and PU-31-PU-35 through contract, artifact and policy suites, except withdrawn policy assertions. PU-29 is Phase 4 forwarding; PU-30 is release qualification.
 
-| ID     | Requirement                                                                                                                               |
-| ------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| PU-01  | Plugin registration ID is `radius`                                                                                                        |
-| PU-02  | Public exports match Appendix A exactly                                                                                                   |
-| PU-03  | Route refs have declared IDs                                                                                                              |
-| PU-04  | Route refs declare required caller parameters                                                                                             |
-| PU-05  | Root route ref is in plugin route map                                                                                                     |
-| PU-06  | API ref ID is `radius-api`                                                                                                                |
-| PU-07  | Exactly one factory binds that API ref                                                                                                    |
-| PU-07a | Invoke the real factory with fake Kubernetes API and assert its actual request                                                            |
-| PU-08  | Feature flag set is exactly `radius-catalog`                                                                                              |
-| PU-09  | All routable pages are named extensions                                                                                                   |
-| PU-10  | Public entry exposes API ref and `RadiusApi` type                                                                                         |
-| PP-01  | Artifact suite has a separate serial script and CI step, outside repository Jest                                                          |
-| PU-11  | Manifest declares `backstage.role: frontend-plugin`                                                                                       |
-| PU-12  | `files` is `dist` only; `publishConfig` uses built entries                                                                                |
-| PU-13  | `sideEffects: false` supports tree-shaking                                                                                                |
-| PU-14  | React/DOM/router are peers, not dependencies                                                                                              |
-| PU-15  | React peer range covers the host's React 18                                                                                               |
-| PU-16  | Withdrawn: private/public setting belongs to design D5                                                                                    |
-| PU-17  | Source declares graph workspace dependency; this alone proves no installability                                                           |
-| PU-18  | Withdrawn: license conflict belongs to design D5                                                                                          |
-| PU-19  | Pin current `@internal/plugin-radius` identity pending approved rename                                                                    |
-| PU-20  | Root config enforces floors in repository runs                                                                                            |
-| PU-21  | No ignored workspace-level floor                                                                                                          |
-| PU-22  | No `global` coverage group                                                                                                                |
-| PU-23  | Every workspace has exact full-source group or recorded exemption                                                                         |
-| PU-24  | Every group points at an existing workspace source directory, not a narrower path                                                         |
-| PU-25  | Require statements/lines; all declared floors finite and in (0,100]                                                                       |
-| PU-26  | Built runtime named exports match source                                                                                                  |
-| PU-27  | Emitted declarations compile in isolated packed consumer                                                                                  |
-| PU-27a | Resolution points at extracted candidates, not workspace source                                                                           |
-| PU-27b | Success/failure cleanup restores both source manifests byte-for-byte; source types still resolve to source                                |
-| PU-27c | Packed identity/role/entries/files/sideEffects/peer placement/range rewrite and no shipped `src` pass; no private/license decision pinned |
-| PU-28  | All eight real lazy extensions resolve through production host routes                                                                     |
-| PU-29  | Retained rad-components forwards only; no domain/layout/renderer or independent React Flow/Dagre                                          |
-| PU-30  | Final public manifest and approved license/notices pass before release                                                                    |
-| PU-31  | Exemption list remains empty unless reviewed policy changes                                                                               |
-| PU-32  | Narrowed groups leave an unguarded workspace and fail                                                                                     |
-| PU-33  | Reject zero/negative/non-finite/>100 floors                                                                                               |
-| PU-34  | Reject missing mandatory or zero optional floors                                                                                          |
-| PU-35  | No workspace selects Sucrase's instrumentation-blind cache transform                                                                      |
+| ID     | Requirement                                                                                                                                     |
+| ------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| PU-01  | Plugin registration ID is `radius`                                                                                                              |
+| PU-02  | Public exports match Appendix A exactly                                                                                                         |
+| PU-03  | Route refs have declared IDs                                                                                                                    |
+| PU-04  | Route refs declare required caller parameters                                                                                                   |
+| PU-05  | Root route ref is in plugin route map                                                                                                           |
+| PU-06  | API ref ID is `radius-api`                                                                                                                      |
+| PU-07  | Exactly one factory binds that API ref                                                                                                          |
+| PU-07a | Invoke the real factory with fake Kubernetes API and assert its actual request                                                                  |
+| PU-08  | Feature flag set is exactly `radius-catalog`                                                                                                    |
+| PU-09  | All routable pages are named extensions                                                                                                         |
+| PU-10  | Public entry exposes API ref and `RadiusApi` type                                                                                               |
+| PP-01  | Artifact suite has a separate serial script and CI step, outside repository Jest                                                                |
+| PU-11  | Manifest declares `backstage.role: frontend-plugin`                                                                                             |
+| PU-12  | `files` is `dist` only; `publishConfig` uses built entries                                                                                      |
+| PU-13  | `sideEffects: false` supports tree-shaking                                                                                                      |
+| PU-14  | React/DOM/router are peers, not dependencies                                                                                                    |
+| PU-15  | React peer range covers the host's React 18                                                                                                     |
+| PU-16  | Withdrawn: private/public setting belongs to design D5                                                                                          |
+| PU-17  | Source declares exact core/graph-react versions, no `workspace:` ranges or rad-components (`packaging.test.ts`); alone proves no installability |
+| PU-18  | Withdrawn: license conflict belongs to design D5                                                                                                |
+| PU-19  | Pin current `@internal/plugin-radius` identity pending approved rename                                                                          |
+| PU-20  | Root config enforces floors in repository runs                                                                                                  |
+| PU-21  | No ignored workspace-level floor                                                                                                                |
+| PU-22  | No `global` coverage group                                                                                                                      |
+| PU-23  | Every workspace has exact full-source group or recorded exemption                                                                               |
+| PU-24  | Every group points at an existing workspace source directory, not a narrower path                                                               |
+| PU-25  | Require statements/lines; all declared floors finite and in (0,100]                                                                             |
+| PU-26  | Built runtime named exports match source                                                                                                        |
+| PU-27  | Emitted declarations compile in isolated packed consumer                                                                                        |
+| PU-27a | Resolution points at extracted candidates, not workspace source                                                                                 |
+| PU-27b | Success/failure cleanup restores both source manifests byte-for-byte; source types still resolve to source                                      |
+| PU-27c | Packed identity/role/entries/files/sideEffects/peer placement/range rewrite and no shipped `src` pass; no private/license decision pinned       |
+| PU-28  | All eight real lazy extensions resolve through production host routes                                                                           |
+| PU-29  | Retained rad-components forwards only; no domain/layout/renderer or independent React Flow/Dagre                                                |
+| PU-30  | Final public manifest and approved license/notices pass before release                                                                          |
+| PU-31  | Exemption list remains empty unless reviewed policy changes                                                                                     |
+| PU-32  | Narrowed groups leave an unguarded workspace and fail                                                                                           |
+| PU-33  | Reject zero/negative/non-finite/>100 floors                                                                                                     |
+| PU-34  | Reject missing mandatory or zero optional floors                                                                                                |
+| PU-35  | No workspace selects Sucrase's instrumentation-blind cache transform                                                                            |
 
 Run artifact tests alone: `build`/`pack` rewrites source manifests, while other packaging tests read them. Use a private `os.tmpdir()` directory for tarballs/fixture and cleanup on failure. Store repository policy suites inside a workspace: a root probe produced "No tests found" with exit 0. A new policy workspace requires an explicit scan exclusion design, not an implicit exemption.
 
@@ -558,8 +558,8 @@ This is the mandatory test procedure for shared-library changes, not a new publi
 4. Report actual resolved artifact paths/digests, exact versions and direct/transitive core closure. Reject registry fallback, source aliases, workspace links, stale old renderers and mismatched identities.
 5. Compile packed declarations under dashboard TS6 and the approved external compiler; build frontend/backend output and verify entry discovery, CSS provenance and a single React. Shared React 18/19 results stay separate from the React 18 host.
 6. Serve production build/container output against controlled upstream data. Run impacted real graph and read/inspect journeys, nested navigation, API overrides, auth/failure handling and active frontend rows. A missing candidate/stylesheet must fail, not exercise fallback code.
-7. Tie completion to the candidate and consumer revisions. Fail closed on missing, stale, skipped, pending, cancelled, failed or mismatched evidence. Upload bounded redacted diagnostics; a dispatch receipt or successful package import is not qualification.
-8. Execute candidate code as untrusted: isolated read-only environment, no npm/GHCR/cloud/signing secrets, no privileged runner or inherited host credentials. Retrieve private source/artifacts outside candidate execution and expose only needed read-only inputs. Keep protected publication in a separate trusted job.
+7. Pin the protected coordinator and consumer workflows. Independently verify the producer repository, workflow, run, tested revision and artifact identity; never trust a candidate-supplied SHA, digest or success report. Invalidate results when the tested revision changes. Tie completion to the candidate and consumer revisions. Fail closed on missing, stale, skipped, pending, cancelled, failed or mismatched evidence. Upload bounded redacted diagnostics; a dispatch receipt or successful package import is not qualification.
+8. Execute candidate code as untrusted: isolated read-only environment, no npm/GHCR/cloud/signing secrets, no privileged runner or inherited host credentials. Retrieve private source/artifacts outside candidate execution and expose only needed read-only inputs. Keep protected publication in a separate trusted job. Keep the check-writing reporter separate from candidate execution.
 
 Before package adoption, a reviewed integration revision may contain only the needed host edits. After adoption, use the integrated consumer pin and reject legacy fallback. Re-run gates after any artifact/range rewriting. The [design's release section](./2026-09-radius-backstage-plugin.md#appendix-d-delivery-and-release) owns publication order, version coherence and rollback; FS-16 owns the restoration proof.
 
