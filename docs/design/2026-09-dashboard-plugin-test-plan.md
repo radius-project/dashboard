@@ -397,8 +397,8 @@ The tier rules above distinguish desired invariants from linked baseline defect 
 | GU-03  | A    | Every edge endpoint resolves in the same graph                                                                                  |
 | GU-04  | A    | Missing target is dropped/stubbed, not dangling; positive #353 regression                                                       |
 | GU-05  | A    | Unparseable connection does not drop its owning node                                                                            |
-| GU-05a | A    | Skip unparseable connections; positive #354 regression                                                                          |
-| GU-05b | A    | Do not mutate caller graph; positive #357 regression                                                                            |
+| GU-05a | A    | Skip unparseable connections; positive #353 regression                                                                          |
+| GU-05b | A    | Do not mutate caller graph; positive #354 regression                                                                            |
 | GU-06  | A    | No duplicate node or self-loop for self-reference; positive regression                                                          |
 | GU-06a | A    | Validate self-loop/duplicate-ID handling independently; positive regression                                                     |
 | GU-07  | A    | Same fixture yields same model and rendered remount result                                                                      |
@@ -497,7 +497,7 @@ The record corpus remains authored in `Applications.Core/*` and `Applications.Da
 
 ### Appendix F: source coverage and assertion pitfalls
 
-Phase 1 closed the 24 substantive gaps among 40 of 71 source files without colocated tests; the other 16 were barrels. Component prefixes identify the closed files. App `index.tsx` remains a real-DOM/config bootstrap covered by host journeys, not a unit test. Graph/sample data are exercised by fixtures/invariants. `setupTests.ts` is infrastructure.
+Phase 1 closed the 24 substantive gaps among 40 of 71 source files without colocated tests; the other 16 were barrels. Component prefixes identify the closed files. App `index.tsx` is a real-DOM/config bootstrap covered by FS-09 (`packages/app/src/index.test.tsx:12-19`) and host journeys. Graph/sample data are exercised by fixtures/invariants. `setupTests.ts` is infrastructure.
 
 Barrels are covered through imports: app Root; rad-components root/components/appgraph/resourcenode; plugin root/api/resources and six component indexes; backend-plugin root. Phase 0 deleted the unused plugin parser copy: eleven consumers and its own adjacent test already used rad-components. RU-01/RU-02 moved beside that implementation.
 
@@ -532,7 +532,7 @@ Require `./<workspace>/src/` groups, mandatory statements/lines and finite posit
 
 Floors are rounded down; a small regression inside that margin can pass. Raise a group's floor above its measured result in a negative test and verify the named failure.
 
-Both backend branch floors are 100% over an empty counter set; the first uncovered branch must fail. App's measured branch floor covers one counter; `index.tsx` contributes 0/3 statements/lines and no branches. A new branch needs coverage or a reviewed boundary change, not a relaxed floor.
+Both backend branch floors are 100% over an empty counter set; the first uncovered branch must fail. App's measured branch floor covers one counter. Historical pre-migration measurement: `index.tsx` contributed 0/3 statements/lines and no branches; FS-09 now exercises the bootstrap. A new branch needs coverage or a reviewed boundary change, not a relaxed floor.
 
 Root `/__docs__/` excludes Storybook examples, not shipped graph code. The old workspace glob `<rootDir>/**/__docs__/*` was not an effective regex. Preserve the root boundary and measured floor.
 
