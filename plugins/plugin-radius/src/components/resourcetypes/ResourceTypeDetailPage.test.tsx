@@ -805,7 +805,8 @@ describe('ResourceTypeDetailPage', () => {
   describe('theme-aware colors', () => {
     /**
      * Supplies the requested palette type and, when requested, distinctive
-     * semantic tokens that make accidental hard-coded colors easy to detect.
+     * host semantic tokens. The page must ignore these tokens and use the
+     * Radius theme, so the tests can detect host colors leaking in.
      */
     const WithTheme = ({
       type,

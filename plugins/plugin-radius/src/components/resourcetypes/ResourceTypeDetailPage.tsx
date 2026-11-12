@@ -36,8 +36,9 @@ import { withRadiusTheme } from '../../appearance';
 import { resourceTypesListPageRouteRef } from '../../routes';
 
 /**
- * Keep GitHub-flavored colors on code surfaces while allowing the surrounding
- * page to follow any Backstage light, dark, or branded theme.
+ * Keep GitHub-flavored colors on code surfaces. The page is wrapped in
+ * `withRadiusTheme`, so it uses the Radius light or dark theme that matches the
+ * host palette type, not a host's branded palette.
  */
 const getThemeColors = (theme: Theme) => {
   const isDark = theme.palette.type === 'dark';

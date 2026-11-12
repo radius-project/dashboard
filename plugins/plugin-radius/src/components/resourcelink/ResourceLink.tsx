@@ -4,12 +4,11 @@ import { parseLegacyResourceId as parseResourceId } from '@radius-project/core/d
 import { useResourceRoute } from './useResourceRoute';
 
 export const ResourceLink = (props: PropsWithChildren<{ id: string }>) => {
+  const route = useResourceRoute();
   const parsed = parseResourceId(props.id);
   if (!parsed) {
     throw new Error(`Invalid resource id ${props.id}`);
   }
-
-  const route = useResourceRoute();
 
   return <Link to={route(props.id)}>{props.children ?? parsed.name}</Link>;
 };
