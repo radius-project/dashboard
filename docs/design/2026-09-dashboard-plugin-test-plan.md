@@ -12,7 +12,7 @@ This plan owns test requirements and evidence. The design owns architecture, API
 
 Read the opening decisions, host matrix and phase table first. Reviewers of graph extraction also need [record-change controls](#appendix-e-graph-fixtures-and-records). CI owners need the [candidate protocol](#appendix-h-candidate-ci-protocol). Namespace changes have a separate [NS catalog](#namespace-migration-ns-01-ns-10).
 
-Phases 0-3 below record the qualified legacy baseline in this documentation branch. Later rows define required evidence, not an implementation progress report or a support promise. A passing legacy package does not qualify a native entry or a release. [Appendix J](#appendix-j-baseline-evidence) keeps historical measurements out of the review path.
+Phases 0-3 record the qualified legacy baseline. Phases 3A-3C (#416) and 4 (#429) are now on `main`. Phase 4 uses vendored, development-only core and graph-react packages from `ai-extensions`, with no publication and no host qualification claim. Later rows define required evidence, not a support promise. A passing legacy package does not qualify a native entry or a release. [Appendix J](#appendix-j-baseline-evidence) keeps historical measurements out of the review path.
 
 ## Decisions for test review
 
@@ -50,17 +50,17 @@ The design's [P-unit table](./2026-09-radius-backstage-plugin.md#appendix-d-deli
 | 1. Close behavior gaps, done        | 0                                                  | RU and component cases, BE-01-BE-05, backend/app entry tests; substantive gaps in Appendix F closed                                                                        |
 | 2. Freeze graph baseline, done      | 1                                                  | Real-renderer GU-01-GU-25, CN-01-CN-08, ER-01-ER-10; committed records, empty manifest, renderer/CSS removal fails                                                         |
 | 3. Current plugin artifact, done    | 0; can overlap 2                                   | PU source/dist/type contracts, executable API factory, all eight lazy routes, isolated build/pack and restored manifests; no approval of final publishing settings         |
-| 3A. Native Radius and backend audit | Design P8a inputs; legacy baseline                 | FS-01-FS-08 and BS-01-BS-04; removing a page/API extension fails; legacy entry still passes                                                                                |
-| 3B. Hybrid standalone               | 3A and frozen host journeys                        | FS-09-FS-12 with real backend; adapter inventory includes exact version, missing surface, mapping, owner, upstream reference and exit; prior tuple recorded                |
-| 3C. Native standalone               | 3B; native replacements for every required feature | FS-13-FS-16 in built output, including actual prior-image restoration; no required app/third-party converters                                                              |
-| 4. Shared-package adoption          | 2; qualified core/graph-react candidates           | PB checks, GU-22-GU-25, reviewed record diff; zero duplicate parser/query policy/layout/renderer; PU-29 if forwarding survives                                             |
+| 3A. Native Radius and backend audit, done | Design P8a inputs; legacy baseline                 | FS-01-FS-08 and BS-01-BS-04; removing a page/API extension fails; legacy entry still passes                                                                                |
+| 3B. Hybrid standalone, done         | 3A and frozen host journeys                        | FS-09-FS-12 with real backend; adapter inventory includes exact version, missing surface, mapping, owner, upstream reference and exit; prior tuple recorded                |
+| 3C. Native standalone, done         | 3B; native replacements for every required feature | FS-13-FS-16 in built output, including actual prior-image restoration; no required app/third-party converters                                                              |
+| 4. Shared-package adoption, done    | 2; qualified core/graph-react candidates           | PB checks, GU-22-GU-25, reviewed record diff; zero duplicate parser/query policy/layout/renderer; PU-29 if forwarding survives                                             |
 | 5. Installed hosts                  | 4; qualified artifacts; 3A for native row          | HU-01-HU-12, IA-01-IA-08, RX-01-RX-03 across the active host matrix; missing shipped files or a toy graph fail                                                             |
 | 6. Required CI gates                | Earlier checks exist                               | CP-01-CP-05, required contract/artifact/native/backend/record jobs, approved floors and no-decrease checks; bounded redacted failure evidence                              |
 | 7. Accessibility and reliability    | 5; namespace timing from D6                        | E2E-01-E2E-20, Appendix D visuals, no serious/critical axe findings in either theme; three consecutive stable scheduled runs                                               |
 | 8. Release qualification            | All launch gates, including 3C                     | HOST-01-HOST-08 in built published standalone/external hosts on disposable Radius/cluster; auth, absent-control-plane and cleanup checks; no skipped/simulated substitutes |
 | 9. Namespace corpus                 | D6; separate from 1/2/4, normally after 4          | NS-01-NS-10; reviewed Tier C changes then empty manifest; explicit reasons for retained legacy fixtures                                                                    |
 
-Stable release requires 3C, not only hybrid success. Phase 5's real build qualifies production loading; transformed Jest backend tests do not. Required check configuration, not a green optional job, closes Phase 6.
+Phases 5-9 are still open. Stable release requires 3C, not only hybrid success. Phase 5's real build qualifies production loading; transformed Jest backend tests do not. Required check configuration, not a green optional job, closes Phase 6.
 
 ## Working rules and checks
 
@@ -460,7 +460,7 @@ GU-22 compares generated versus committed records. GU-25 also compares committed
 
 Every changed field needs a manifest entry with fixture, field, old/new values, reason and linked issue where applicable. Review the manifest, not snapshot churn. Reject undeclared edits even when implementation and committed records changed together. Report unchanged defect invariants, then empty the manifest after the phase. Never use it as a permanent allowlist.
 
-The legacy corpus deliberately reaches `Applications.Core/containers` layout and `Applications.Core/gateways` edge-direction branches (#373). Current-type fixtures alone would skip them. Perform NS migration separately so baseline preservation cannot hide a type-model change.
+The record corpus remains authored in `Applications.Core/*` and `Applications.Datastores/*`. After #373, the graph code matches explicit, case-insensitive lists of built-in types: containers are `Applications.Core/containers` and `Radius.Compute/containers`; gateways are `Applications.Core/gateways` and `Radius.Compute/routes`. `Radius.Core` defines no containers or gateways types, and user-defined types with the same names get no special handling. Unit, graph-model and app E2E tests cover both type sets without changing the record corpus. Perform NS migration separately so baseline preservation cannot hide a type-model change.
 
 ### Appendix F: source coverage and assertion pitfalls
 
@@ -558,7 +558,7 @@ Before package adoption, a reviewed integration revision may contain only the ne
 | #368  | No graph empty/degraded-layout state: GU-15/GU-17                                                                              |
 | #369  | Partial namespace failure shown as complete: ER-08                                                                             |
 | #370  | Graph error has no retry action: GU-16                                                                                         |
-| #373  | Hard-coded legacy graph types: NS corpus and separate migration                                                                |
+| #373  | Fixed: graph type matching covers both type sets; NS corpus migration stays separate (D6)                                       |
 
 Issues #361 and #363 share nearly duplicated 1100-line tab bodies in the 2693-line ResourceTypeDetailPage; retain that cause when fixing them. #352 needs visible-card regression coverage, not just parser cases. #356 needs the same two-cluster fixture on both paths before extraction.
 

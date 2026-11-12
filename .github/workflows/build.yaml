@@ -18,7 +18,7 @@ env:
   CI_LINT: ${{ github.event_name == 'pull_request' }}
   CI_TEST: ${{ github.event_name == 'pull_request' || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) }}
   CI_PUBLISH_RELEASE: ${{ github.repository == 'radius-project/dashboard' && startsWith(github.ref, 'refs/tags/v') && github.event_name == 'push' }}
-  CI_PUBLISH_LATEST: ${{ github.repository == 'radius-project/dashboard' && github.ref == 'refs/heads/main' && github.event_name == 'push' }}
+  CI_PUBLISH_EDGE: ${{ github.repository == 'radius-project/dashboard' && github.ref == 'refs/heads/main' && github.event_name == 'push' }}
 
 jobs:
   build:
@@ -69,16 +69,29 @@ jobs:
       - name: Build Storybook
         run: yarn workspace @radapp.io/rad-components run build-storybook
 
+      - name: Install Playwright browser
+        run: yarn exec playwright install --with-deps chromium
+
       - name: Run Tests
-        if: ${{ env.CI_TEST == 'true' }}
         env:
           # Empty on push builds, where GU-25 falls back to origin/main.
           GRAPH_RECORD_BASE_REF: ${{ github.event.pull_request.base.sha }}
-        run: yarn run test:all
+        # main builds provide the baseline for Codecov pull request comparisons.
+        run: yarn run test:all --coverageDirectory=coverage --coverageReporters=lcov --coverageReporters=text
 
-      - name: Run E2E Tests
+      - name: Upload coverage to Codecov
+        if: ${{ github.repository == 'radius-project/dashboard' }}
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          files: ./coverage/lcov.info
+          disable_search: true
+          fail_ci_if_error: true
+
+      - name: Qualify Built Standalone Host
         if: ${{ env.CI_TEST == 'true' }}
-        run: yarn run test:e2e
+        env:
+          NODE_ENV: production
+        run: yarn run test:e2e:standalone
 
       - name: Run Component Browser Tests
         if: ${{ env.CI_TEST == 'true' }}
@@ -91,15 +104,17 @@ jobs:
   build-and-publish-container:
     name: Build and Publish Container
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 25
     concurrency:
       group: dashboard-container-${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && github.ref || github.run_id }}
       cancel-in-progress: false
     env:
-      BUILT_IMAGE: ghcr.io/radius-project/dashboard:latest
+      BUILT_IMAGE: ghcr.io/radius-project/dashboard:edge
     permissions:
       contents: read
       packages: write
+    outputs:
+      release-digest: ${{ steps.release-digest.outputs.digest }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -128,8 +143,8 @@ jobs:
         run: yarn run build:backend
 
       - name: Login to ghcr.io
-        if: ${{ env.CI_PUBLISH_LATEST == 'true' || env.CI_PUBLISH_RELEASE == 'true' }}
-        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        if: ${{ env.CI_PUBLISH_EDGE == 'true' || env.CI_PUBLISH_RELEASE == 'true' }}
+        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -163,16 +178,54 @@ jobs:
         if: ${{ always() }}
         run: docker stop dashboard-e2e || true
 
+      # TODO(#421): remove this gate and pinned image after the first native release restore run.
+      - name: Qualify image rollback
+        continue-on-error: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') }}
+        env:
+          PREVIOUS_IMAGE: ghcr.io/radius-project/dashboard@sha256:166dcc84f8399b6c7b2e060c22eda390763d9379001e24695a961154679daa44
+          PREVIOUS_REVISION: 4f243cc02166e1330fe5769683d2a70aca23ded1
+        run: |
+          git fetch --no-tags --depth=1 origin "${PREVIOUS_REVISION}"
+          candidate="$(docker image inspect "${BUILT_IMAGE}" --format '{{.Id}}')"
+          yarn run test:e2e:rollback "${PREVIOUS_IMAGE}" "${PREVIOUS_REVISION}" "${candidate}" "$(git rev-parse HEAD)"
+
       - name: Analyze Image
         uses: ./.github/actions/analyze-image
         with:
           image: ${{ env.BUILT_IMAGE }}
 
       - name: Push Image to ghcr.io (push to main)
-        if: ${{ env.CI_PUBLISH_LATEST == 'true' }}
+        if: ${{ env.CI_PUBLISH_EDGE == 'true' }}
         run: |
           docker push "${BUILT_IMAGE}"
 
       - name: Stage immutable image in ghcr.io (push to tag)
         if: ${{ env.CI_PUBLISH_RELEASE == 'true' }}
         run: node scripts/release-image.ts stage
+
+      - name: Resolve staged image digest
+        id: release-digest
+        if: ${{ env.CI_PUBLISH_RELEASE == 'true' }}
+        run: |
+          digest="$(docker buildx imagetools inspect \
+            "ghcr.io/radius-project/dashboard:${REL_VERSION}" \
+            --format '{{json .Manifest}}' | jq -er '.digest')"
+          echo "digest=${digest}" >> "${GITHUB_OUTPUT}"
+
+  # Signing runs in its own job, so no build or test dependency can request the
+  # OIDC token used to sign the release image provenance.
+  attest-release-image:
+    name: Attest Release Image
+    needs: build-and-publish-container
+    if: ${{ github.repository == 'radius-project/dashboard' && startsWith(github.ref, 'refs/tags/v') && github.event_name == 'push' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      id-token: write # Required to sign the provenance with Sigstore
+      attestations: write # Required to store the provenance attestation
+    steps:
+      - name: Attest release image provenance
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-name: ghcr.io/radius-project/dashboard
+          subject-digest: ${{ needs.build-and-publish-container.outputs.release-digest }}

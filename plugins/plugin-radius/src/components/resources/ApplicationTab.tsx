@@ -1,41 +1,19 @@
-import React from 'react';
-import { parseResourceId } from '@radapp.io/rad-components';
+import React, { useMemo } from 'react';
+import { parseLegacyResourceId } from '@radius-project/core/domain';
+import { normalizeLegacyLiveGraph } from '@radius-project/core/graph';
+import { RadiusGraph } from '@radius-project/graph-react';
+import '@radius-project/graph-react/styles.css';
 import {
   InfoCard,
   Progress,
   ResponseErrorPanel,
 } from '@backstage/core-components';
-import { kubernetesApiRef } from '@backstage/plugin-kubernetes';
 import { useApi } from '@backstage/core-plugin-api';
-import useAsync from 'react-use/lib/useAsync';
-import { AppGraph } from '@radapp.io/rad-components';
-import { makeStyles } from '@material-ui/core';
-import { radiusApiRef } from '../../plugin';
+import { makeStyles, useTheme } from '@material-ui/core';
+import { radiusApiRef } from '../../api/ref';
+import { useApplicationGraph } from './useApplicationGraph';
 
-export interface AppGraphData {
-  name: string;
-  resources: ResourceData[];
-}
-
-export interface ResourceData {
-  id: string;
-  name: string;
-  type: string;
-  provider: string;
-  provisioningState: string;
-  resources?: ResourceData[];
-  connections?: Connection[];
-}
-
-export interface Connection {
-  id: string;
-  name: string;
-  type: string;
-  provider: string;
-  direction: Direction;
-}
-
-export type Direction = 'Outbound' | 'Inbound';
+const graphOptions = { showLegend: false, enablePopup: false };
 
 const useStyles = makeStyles({
   container: {
@@ -46,96 +24,44 @@ const useStyles = makeStyles({
 
 export const ApplicationTab = ({ application }: { application: string }) => {
   const styles = useStyles();
-  const kubernetesApi = useApi(kubernetesApiRef);
+  const theme = useTheme();
   const radiusApi = useApi(radiusApiRef);
-
-  // Extract the resource type from the application id so we can pick the
-  // correct api-version for the getGraph call.
-  const parsedType = parseResourceId(application)?.type;
-  const [namespace, typeName] = parsedType?.split('/') ?? [
-    'unknown',
-    'unknown',
-  ];
-
-  const { value, loading, error } = useAsync(async (): Promise<
-    AppGraphData | undefined
-  > => {
-    let first = '';
-    const clusters = await kubernetesApi.getClusters();
-    for (const cluster of clusters) {
-      first = cluster.name;
+  const { value, loading, error } = useApplicationGraph(radiusApi, application);
+  const normalized = useMemo(() => {
+    if (!value) {
+      return {};
     }
-
-    // Resolve the supported api-version dynamically; fall back to the
-    // legacy hardcoded value if the lookup fails.
-    let apiVersionString = '2023-10-01-preview';
-    if (namespace && typeName) {
-      try {
-        const typeInfo = await radiusApi.getResourceType({
-          namespace,
-          typeName,
-        });
-        if (typeInfo.APIVersionList && typeInfo.APIVersionList.length > 0) {
-          apiVersionString = typeInfo.APIVersionList[0];
-        }
-      } catch {
-        // Fall back to the default api-version on lookup failure.
-      }
-    }
-
-    // Use an AbortController with a timeout so the request fails
-    // gracefully instead of spinning indefinitely when the backend does
-    // not support getGraph for this resource type.
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-    let response: Response;
     try {
-      response = await kubernetesApi.proxy({
-        clusterName: first,
-        path: `/apis/api.ucp.dev/v1alpha3/${application}/getGraph?api-version=${apiVersionString}`,
-        init: {
-          referrerPolicy: 'no-referrer',
-          mode: 'cors',
-          cache: 'no-cache',
-          method: 'POST',
-          signal: controller.signal,
-        },
-      });
-    } catch (e: unknown) {
-      if (e instanceof DOMException && e.name === 'AbortError') {
-        throw new Error(
-          'The application graph request timed out. The backend may not support getGraph for this resource type.',
-        );
-      }
-      throw e;
-    } finally {
-      clearTimeout(timeoutId);
+      return {
+        graph: normalizeLegacyLiveGraph(value.graph, value.context),
+      };
+    } catch (failure) {
+      return {
+        error: failure instanceof Error ? failure : new Error(String(failure)),
+      };
     }
-
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(`Request failed: ${response.status}:\n\n${text}`);
-    }
-
-    return (await response.json()) as AppGraphData;
-  }, [application]);
+  }, [value]);
+  const failure = error ?? normalized.error;
 
   if (loading) {
     return <Progress />;
-  } else if (error) {
-    return <ResponseErrorPanel error={error} />;
-  } else if (!value) {
+  } else if (failure) {
+    return <ResponseErrorPanel error={failure} />;
+  } else if (!normalized.graph) {
     return <Progress />;
   }
 
   return (
     <>
       <InfoCard
-        title={`Application Graph: ${parseResourceId(application)?.name}`}
+        title={`Application Graph: ${parseLegacyResourceId(application)?.name}`}
       >
         <div className={styles.container}>
-          <AppGraph graph={value!} />
+          <RadiusGraph
+            graph={normalized.graph}
+            options={graphOptions}
+            theme={{ colorScheme: theme.palette.type }}
+          />
         </div>
       </InfoCard>
     </>

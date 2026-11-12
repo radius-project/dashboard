@@ -30,6 +30,24 @@ This file is checked in but `.gitignored`'d. Feel free to make changes as needed
 
 The `app-config.dashboard.yaml` configuration is used when deployed as part of a Radius installation.
 
+### Frontend qualification
+
+`@internal/plugin-radius/alpha` is the native Radius frontend entry. The root entry remains
+available to legacy hosts. The standalone app owns guest sign-in.
+
+Build and qualify the standalone host with:
+
+```bash
+yarn workspace @internal/app build
+NODE_ENV=production yarn test:e2e:standalone
+```
+
+Run the image restore qualification with immutable image identities:
+
+```bash
+yarn test:e2e:rollback <previous image@digest> <previous revision> <candidate image ID or image@digest> <candidate revision>
+```
+
 ## Developing: rad-components
 
 **Launch Storybook to experiment with rad-components:**

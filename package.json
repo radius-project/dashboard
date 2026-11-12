@@ -4,7 +4,7 @@
   "repository": "git@github.com/radius-project/dashboard.git",
   "author": "The Radius Authors",
   "private": true,
-  "packageManager": "yarn@4.17.1",
+  "packageManager": "yarn@4.18.1",
   "engines": {
     "node": "24"
   },
@@ -20,9 +20,13 @@
     "tsc:full": "tsc --skipLibCheck false --incremental false",
     "clean": "backstage-cli repo clean",
     "test": "backstage-cli repo test",
-    "test:all": "yarn test:release-images && backstage-cli repo test --coverage",
+    "test:all": "yarn test:release-images && yarn test:qualification-runners && backstage-cli repo test --coverage",
     "test:release-images": "node --test scripts/release-image.test.ts",
+    "test:qualification-runners": "node --test scripts/qualify-plugin-host.test.ts scripts/shared-library-candidate.test.ts",
+    "verify:shared-candidate": "node scripts/shared-library-candidate.ts",
     "test:e2e": "playwright test",
+    "test:e2e:standalone": "node scripts/qualify-standalone-host.ts",
+    "test:e2e:rollback": "node scripts/qualify-standalone-rollback.ts",
     "test:e2e:components": "playwright test --config playwright.components.config.ts",
     "test:package": "node scripts/test-package.js",
     "fix": "backstage-cli repo fix",
@@ -54,14 +58,27 @@
     "typescript": "~6.0.3"
   },
   "resolutions": {
+    "@radius-project/core": "file:./vendor/shared-libraries/radius-project-core-0.1.0.tgz",
+    "@radius-project/graph-react": "file:./vendor/shared-libraries/radius-project-graph-react-0.1.0.tgz",
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "@backstage/backend-common": "^0.25.0",
-    "esbuild": "^0.27.4",
+    "esbuild": "^0.28.1",
     "jsonpath-plus": "^10.3.0",
     "mysql2": "^3",
     "adm-zip@npm:0.6.0": "0.6.1",
-    "undici@npm:7.29.0": "7.29.1"
+    "uuid@npm:^10.0.0": "11.1.1",
+    "undici@npm:7.29.0": "^7.30.1",
+    "undici@npm:7.29.1": "^7.30.1",
+    "prismjs@npm:~1.27.0": "^1.30.0",
+    "@octokit/request@npm:^6.0.0": "^8.4.1",
+    "@octokit/request@npm:^6.2.3": "^8.4.1",
+    "@octokit/request-error@npm:^3.0.0": "^5.1.1",
+    "@octokit/request-error@npm:^3.0.3": "^5.1.1",
+    "@octokit/plugin-paginate-rest@npm:^6.1.2": "^9.2.2",
+    "uuid@npm:^8.3.2": "^11.1.1",
+    "uuid@npm:^9.0.0": "^11.1.1",
+    "uuid@npm:^9.0.1": "^11.1.1"
   },
   "prettier": "@spotify/prettier-config",
   "lint-staged": {

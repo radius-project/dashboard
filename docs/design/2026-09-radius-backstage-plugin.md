@@ -30,7 +30,7 @@ This note uses the decision-first structure proposed in [radius-project/radius#1
 | D3  | [How are connections and access enforced?](#d3-connections-and-access) | Host Kubernetes proxy / new Radius gateway                           | Explicit cluster and plane through host-authorized transport. Approve the Radius/auth matrix                         | Cross-cluster data or unauthorized reads                  | Open   |
 | D4  | [How do we adopt shared graph code safely?](#d4-shared-graph-adoption) | Packed-library consumer CI / source-only tests / duplicate renderers | One renderer, React 18 host, isolated React 18/19 library tests, pinned consumer checks                              | A shared change breaks the installed dashboard            | Open   |
 | D5  | [What may be published?](#d5-publication-policy)                       | Versioned public libraries/plugin / keep private                     | Approve scopes, publication identity, license/notices and forwarding policy before publication                       | Uninstallable packages or unapproved code transfer        | Open   |
-| D6  | [When does the namespace corpus move?](#d6-resource-type-migration)    | Separate after extraction / combine changes                          | After Phase 4's record diff, before Phase 7 if preview support is required. Maintainers must choose that requirement | Tests hide model changes or miss current resource types   | Open   |
+| D6  | [When does the namespace corpus move?](#d6-resource-type-migration)    | Separate after extraction / combine changes                          | After Phase 4's record diff (Phase 4 is on `main`), before Phase 7 if preview support is required. Maintainers must choose that requirement | Tests hide model changes or miss current resource types   | Open   |
 
 Test-only choices about coverage targets, runner changes, timeout policy and the CI invocation contract are at the [start of the test plan](./2026-09-dashboard-plugin-test-plan.md#decisions-for-test-review). Package names and supported versions remain proposals until D2/D5 are resolved.
 
@@ -160,7 +160,7 @@ Resource reads and graph queries must use the same selected connection. Changing
 
 ##### D3: Connections and access
 
-**Context:** At the reviewed baseline, resource reads choose the first cluster and graph requests the last. Browser configuration cannot authorize either path.
+**Context:** At the reviewed baseline (`9d295b5`), resource reads choose the first cluster and graph requests the last. Phase 4 (#429) added validated, credential-free graph request context and stale-response rejection; resource reads still default to the first cluster unless an override is set (`plugins/plugin-radius/src/api/api.ts`). Browser configuration cannot authorize either path.
 
 | Option                                        | Advantage                                   | Cost                                             |
 | --------------------------------------------- | ------------------------------------------- | ------------------------------------------------ |
@@ -218,7 +218,7 @@ Resource reads and graph queries must use the same selected connection. Changing
 | Separate corpus change after extraction  | Record diffs identify one cause at a time | Legacy assumptions remain until that change |
 | Combine extraction and namespace changes | One fixture update                        | Cannot attribute graph differences          |
 
-**Proposed Option:** Run Phase 9 after Phase 4's reviewed record diff. Move it before Phase 7 if maintainers require preview-type support. Keep explicit legacy/Dapr coverage.
+**Proposed Option:** Run Phase 9 after Phase 4's reviewed record diff (Phase 4 landed in #429). Move it before Phase 7 if maintainers require preview-type support. Keep explicit legacy/Dapr coverage.
 
 **Consequences:** Recheck current upstream contracts; the [namespace research](#appendix-c-resource-type-model-changes) is a dated assessment, not a deprecation promise.
 
@@ -415,7 +415,7 @@ Rollback external hosts to the prior lockfile and standalone to its prior image 
 
 ### Appendix E: source evidence
 
-The original extraction assessment reviewed dashboard [`8a04d30`](https://github.com/radius-project/dashboard/tree/8a04d30c35cd95fa4eb65a48ee1a36157f2091cb) and shared-library draft [`9c86b40`](https://github.com/radius-project/ai-extensions/tree/9c86b4005f67010c5559bb24433a56fa6f4893d4). The frontend/backend review used dashboard [`9d295b5`](https://github.com/radius-project/dashboard/tree/9d295b5097c62d9c3fa9dab136172f34c1b912bf). Historical findings are not claims about every later branch.
+The original extraction assessment reviewed dashboard [`8a04d30`](https://github.com/radius-project/dashboard/tree/8a04d30c35cd95fa4eb65a48ee1a36157f2091cb) and shared-library draft [`9c86b40`](https://github.com/radius-project/ai-extensions/tree/9c86b4005f67010c5559bb24433a56fa6f4893d4). Phases 3A-3C (#416) and 4 (#429) have since landed on `main` (`409a569`): the native frontend entry and standalone host exist, and the vendored, development-only `@radius-project/core` and `graph-react` 0.1.0 packages replace the local parser, query policy, layout and renderer. Publication (D5) and host qualification stay open. The frontend/backend review used dashboard [`9d295b5`](https://github.com/radius-project/dashboard/tree/9d295b5097c62d9c3fa9dab136172f34c1b912bf). Historical findings are not claims about every later branch.
 
 | Finding                                                            | Source                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

@@ -1,6 +1,7 @@
 /* eslint-disable no-restricted-imports */
 import fs from 'fs';
 import path from 'path';
+import { createHash } from 'crypto';
 
 const repoRoot = path.resolve(__dirname, '../../..');
 
@@ -51,7 +52,74 @@ const isPrivateReachIn = (specifier: string) => {
 };
 
 describe('current package import boundaries', () => {
-  it('PB-04: the app consumes the plugin only through its public package entry point', () => {
+  it('PB-03: persists exact development artifacts, source/build evidence and received licenses with no machine paths', () => {
+    const directory = path.join(repoRoot, 'vendor/shared-libraries');
+    expect(
+      fs.readFileSync(path.join(directory, '.gitattributes'), 'utf8').trim(),
+    ).toBe('*.tgz binary');
+    const receipt = JSON.parse(
+      fs.readFileSync(path.join(directory, 'candidate.json'), 'utf8'),
+    ) as {
+      status: string;
+      sourceRevision: string;
+      core: { path: string; sha256: string; bytes: number };
+      graphReact: { path: string; sha256: string; bytes: number };
+      source: { tree: string; lockSha256: string; lockGitBlob: string };
+      licenses: { file: string; sha256: string }[];
+      build: {
+        evidence: string;
+        commands: { command: string; result: string }[];
+      };
+    };
+    const hash = (file: string) =>
+      createHash('sha256')
+        .update(fs.readFileSync(path.join(directory, file)))
+        .digest('hex');
+    const strings = (value: unknown): string[] => {
+      if (typeof value === 'string') return [value];
+      if (value && typeof value === 'object')
+        return Object.values(value).flatMap(strings);
+      return [];
+    };
+    expect(
+      strings(receipt).filter(value =>
+        /(?:^[A-Z]:[\\/]|\/mnt\/[a-z]\/)/i.test(value),
+      ),
+    ).toEqual([]);
+    expect(receipt.status).toContain('Not a published release');
+    expect(receipt.sourceRevision).toMatch(/^[a-f0-9]{40}$/);
+    expect(receipt.source.tree).toMatch(/^[a-f0-9]{40}$/);
+    expect(receipt.source.lockGitBlob).toMatch(/^[a-f0-9]{40}$/);
+    expect(receipt.source.lockSha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(receipt.build.evidence).toContain(
+      'Not an independent consumer source rebuild',
+    );
+    expect(receipt.build.commands.length).toBeGreaterThanOrEqual(4);
+    const root = JSON.parse(
+      fs.readFileSync(path.join(repoRoot, 'package.json'), 'utf8'),
+    );
+    for (const [name, artifact] of [
+      ['core', receipt.core],
+      ['graph-react', receipt.graphReact],
+    ] as const) {
+      expect(path.basename(artifact.path)).toBe(artifact.path);
+      expect(hash(artifact.path)).toBe(artifact.sha256);
+      expect(fs.statSync(path.join(directory, artifact.path)).size).toBe(
+        artifact.bytes,
+      );
+      expect(artifact.bytes).toBeLessThan(150000);
+      expect(root.resolutions[`@radius-project/${name}`]).toBe(
+        `file:./vendor/shared-libraries/${artifact.path}`,
+      );
+    }
+    expect(receipt.licenses).toHaveLength(3);
+    for (const license of receipt.licenses) {
+      expect(license.file.startsWith('licenses/')).toBe(true);
+      expect(license.file.split('/')).not.toContain('..');
+      expect(hash(license.file)).toBe(license.sha256);
+    }
+  });
+  it('PB-04: the app consumes only the reviewed public root and native plugin entries', () => {
     const appRoot = path.join(repoRoot, 'packages/app/src');
     const pluginRoot = path.join(repoRoot, 'plugins/plugin-radius');
     const imports = importSpecifiers(appRoot);
@@ -64,23 +132,38 @@ describe('current package import boundaries', () => {
     expect(pluginImports.length).toBeGreaterThan(0);
     expect(
       pluginImports.filter(
-        ({ specifier }) => specifier !== '@internal/plugin-radius',
+        ({ specifier }) =>
+          ![
+            '@internal/plugin-radius',
+            '@internal/plugin-radius/alpha',
+          ].includes(specifier),
       ),
     ).toEqual([]);
   });
 
-  it('PB-01a: the current graph dependency is consumed through its public entry point', () => {
+  it('PB-01: shared libraries use only reviewed browser-safe public entries', () => {
     const imports = importSpecifiers(
       path.join(repoRoot, 'plugins/plugin-radius/src'),
     );
     const graphImports = imports.filter(({ specifier }) =>
-      specifier.startsWith('@radapp.io/rad-components'),
+      specifier.startsWith('@radius-project/'),
     );
 
     expect(graphImports.length).toBeGreaterThan(0);
     expect(
       graphImports.filter(
-        ({ specifier }) => specifier !== '@radapp.io/rad-components',
+        ({ specifier }) =>
+          ![
+            '@radius-project/core/domain',
+            '@radius-project/core/graph',
+            '@radius-project/graph-react',
+            '@radius-project/graph-react/styles.css',
+          ].includes(specifier),
+      ),
+    ).toEqual([]);
+    expect(
+      imports.filter(({ specifier }) =>
+        specifier.startsWith('@radapp.io/rad-components'),
       ),
     ).toEqual([]);
   });
@@ -125,5 +208,32 @@ describe('current package import boundaries', () => {
       '@scope/sources/public',
       './relative/src/file',
     ].forEach(specifier => expect(isPrivateReachIn(specifier)).toBe(false));
+  });
+
+  it('PU-29: rad-components owns no parser, query policy, renderer or layout implementation', () => {
+    const directory = path.join(repoRoot, 'packages/rad-components/src');
+    const implementationFiles = sourceFiles(directory).filter(
+      file =>
+        !/[\\/]__(?:test|docs|fixtures)__[\\/]/.test(file) &&
+        !/[\\/](?:sampledata|setupTests)\.tsx?$/.test(file),
+    );
+    for (const file of implementationFiles) {
+      const source = fs.readFileSync(file, 'utf8');
+      expect(source).not.toMatch(
+        /\b(?:function|class)\b|=>|new RegExp|dagre|from ['"]reactflow/,
+      );
+    }
+    const manifest = JSON.parse(
+      fs.readFileSync(path.join(directory, '../package.json'), 'utf8'),
+    );
+    expect(manifest.dependencies).toEqual({
+      '@radius-project/core': '0.1.0',
+      '@radius-project/graph-react': '0.1.0',
+    });
+    // The root barrel statically loads the Flow11 ResourceNode entry.
+    expect(manifest.peerDependencies.reactflow).toBe('^11.11.4');
+    expect(manifest.peerDependenciesMeta?.reactflow).toBeUndefined();
+    expect(fs.existsSync(path.join(directory, 'graphModel.ts'))).toBe(false);
+    expect(fs.existsSync(path.join(directory, 'graphRecord.ts'))).toBe(false);
   });
 });

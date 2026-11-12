@@ -10,6 +10,7 @@ You can find our full **contributor documentation** including instructions at th
 - [Code building](docs/contributing/contributing-code/contributing-code-building/)
 - [Code developing](docs/contributing/contributing-code/contributing-code-developing/)
 - [Contributing issues](docs/contributing/contributing-issues/)
+- [Release backports](https://github.com/radius-project/.github/blob/main/eng/SYNC.md#release-backports)
 
 ## Current status
 
