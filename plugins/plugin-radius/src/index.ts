@@ -1,4 +1,5 @@
 export { featureRadiusCatalog } from './features';
+export { radiusThemes } from './appearance';
 export type { RadiusApplicationGraph, RadiusListResult } from './api';
 export {
   ApplicationListPage,

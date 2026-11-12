@@ -15,8 +15,9 @@ import { ApplicationTab } from './ApplicationTab';
 import { ApplicationResourcesTab } from './ApplicationResourcesTab';
 import { radiusApiRef } from '../../api/ref';
 import { isApplicationType } from '../../resources';
+import { withRadiusTheme } from '../../appearance';
 
-export const ResourcePage = () => {
+export const ResourcePage = withRadiusTheme(() => {
   const radiusApi = useApi(radiusApiRef);
   const params = useRouteRefParams(resourcePageRouteRef);
   const id = `/planes/radius/local/resourceGroups/${params.group}/providers/${params.namespace}/${params.type}/${params.name}`;
@@ -64,4 +65,4 @@ export const ResourcePage = () => {
       </TabbedLayout>
     </ResourceLayout>
   );
-};
+});

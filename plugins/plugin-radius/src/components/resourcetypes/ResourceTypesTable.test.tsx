@@ -19,6 +19,11 @@ type RT = {
   };
 };
 
+const mountedRoutes = {
+  '/plugins/radius/resource-types/:namespace/:typeName':
+    resourceTypeDetailPageRouteRef,
+};
+
 describe('ResourceTypesTable', () => {
   it('should display loading indicator while loading', async () => {
     // This is the boilerplate for an unresolved promise.
@@ -34,6 +39,7 @@ describe('ResourceTypesTable', () => {
       <TestApiProvider apis={[[radiusApiRef, api]]}>
         <ResourceTypesTable title="Testing" />
       </TestApiProvider>,
+      { mountedRoutes },
     );
 
     await waitFor(() => {
@@ -63,6 +69,7 @@ describe('ResourceTypesTable', () => {
       <TestApiProvider apis={[[radiusApiRef, api]]}>
         <ResourceTypesTable title="Testing" />
       </TestApiProvider>,
+      { mountedRoutes },
     );
     const alert = screen.getByRole('alert');
     expect(alert).toBeInTheDocument();
@@ -81,6 +88,7 @@ describe('ResourceTypesTable', () => {
       <TestApiProvider apis={[[radiusApiRef, api]]}>
         <ResourceTypesTable title="Testing" />
       </TestApiProvider>,
+      { mountedRoutes },
     );
     const table = screen.getByRole('table');
     expect(table).toBeInTheDocument();
@@ -124,10 +132,7 @@ describe('ResourceTypesTable', () => {
         <ResourceTypesTable title="Resource Types" />
       </TestApiProvider>,
       {
-        mountedRoutes: {
-          '/resource-types/:namespace/:typeName':
-            resourceTypeDetailPageRouteRef,
-        },
+        mountedRoutes,
       },
     );
 
@@ -171,7 +176,7 @@ describe('ResourceTypesTable', () => {
     expect(typeLink).toBeInTheDocument();
     expect(typeLink).toHaveAttribute(
       'href',
-      '/resource-types/Custom.Database/mongoDatabases',
+      '/plugins/radius/resource-types/Custom.Database/mongoDatabases',
     );
   });
 
@@ -237,10 +242,7 @@ describe('ResourceTypesTable', () => {
         <ResourceTypesTable title="Resource Types" />
       </TestApiProvider>,
       {
-        mountedRoutes: {
-          '/resource-types/:namespace/:typeName':
-            resourceTypeDetailPageRouteRef,
-        },
+        mountedRoutes,
       },
     );
 

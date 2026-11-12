@@ -3,7 +3,7 @@
   "version": "0.0.8",
   "description": "Components for use with Radius",
   "type": "module",
-  "main": "dist/index.cjs.js",
+  "main": "dist/index.esm.js",
   "module": "dist/index.esm.js",
   "types": "dist/index.d.ts",
   "backstage": {

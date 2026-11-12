@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { parseLegacyResourceId } from '@radius-project/core/domain';
 import { normalizeLegacyLiveGraph } from '@radius-project/core/graph';
 import { RadiusGraph } from '@radius-project/graph-react';
@@ -8,12 +9,13 @@ import {
   Progress,
   ResponseErrorPanel,
 } from '@backstage/core-components';
-import { useApi } from '@backstage/core-plugin-api';
+import { errorApiRef, useApi } from '@backstage/core-plugin-api';
 import { makeStyles, useTheme } from '@material-ui/core';
 import { radiusApiRef } from '../../api/ref';
 import { useApplicationGraph } from './useApplicationGraph';
+import { useResourceRoute } from '../resourcelink/useResourceRoute';
 
-const graphOptions = { showLegend: false, enablePopup: false };
+const graphOptions = { showLegend: true, enablePopup: true };
 
 const useStyles = makeStyles({
   container: {
@@ -25,7 +27,10 @@ const useStyles = makeStyles({
 export const ApplicationTab = ({ application }: { application: string }) => {
   const styles = useStyles();
   const theme = useTheme();
+  const navigate = useNavigate();
+  const resourceRoute = useResourceRoute();
   const radiusApi = useApi(radiusApiRef);
+  const errorApi = useApi(errorApiRef);
   const { value, loading, error } = useApplicationGraph(radiusApi, application);
   const normalized = useMemo(() => {
     if (!value) {
@@ -61,6 +66,20 @@ export const ApplicationTab = ({ application }: { application: string }) => {
             graph={normalized.graph}
             options={graphOptions}
             theme={{ colorScheme: theme.palette.type }}
+            callbacks={{
+              onNavigate: node => {
+                // The renderer falls back to the name when a resource has no id.
+                if (parseLegacyResourceId(node.id)) {
+                  navigate(`${resourceRoute(node.id)}/overview`);
+                } else {
+                  errorApi.post(
+                    new Error(
+                      `Cannot open "${node.id}": not a valid resource id.`,
+                    ),
+                  );
+                }
+              },
+            }}
           />
         </div>
       </InfoCard>

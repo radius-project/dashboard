@@ -168,6 +168,97 @@ Phase 4 still requires candidate-backed root/native host journeys, browser
 renderer/CSS negative checks, and reviewed graph record differences against the base.
 Run the preflight regression tests with `yarn test:qualification-runners`.
 
+#### Installed external frontend evidence
+
+Run `yarn test:e2e:installed` with `QUALIFICATION_EVIDENCE_DIRECTORY` set to an
+absolute, persistent directory outside the checkout. Do not use `/tmp` for this
+directory. The runner retains candidate archives, the clean consumer manifest
+and lockfile, the exact tested tuple, build metadata, browser records, and each
+command's log and result. A failed command retains its evidence and exits with
+an error. Each run creates a new consumer; it does not reuse an old install.
+
+For WSL or another system with a slow mounted drive, set
+`QUALIFICATION_WORK_DIRECTORY` to an absolute, native-filesystem directory
+outside the checkout. The runner creates a fresh consumer there. It retains
+logs in the evidence directory and copies archives, fixture sources, lockfiles,
+builds, and results there, but not `node_modules`.
+
+The runner builds and packs the plugin and forwarding package. It installs those
+tarballs and the pinned shared pair with Yarn, without repository dependency
+links. It compiles the installed public declarations and both host fixtures.
+It then extends the Phase 3/4 production browser runner with an isolated-input
+check, nested plugin mounts, a separate app base path, route-ref navigation,
+external bindings, host-owned fixture identity, and visible HTTP denial.
+The same graph observer checks real cards and rejects missing CSS and a stub
+renderer. The repository and installed lockfile hashes identify the tested
+tuple; this command does not establish a Backstage or compiler support range.
+
+By default, this is **external frontend evidence, not full Phase 5
+qualification**. Its HTTP fixture implements the Kubernetes API boundary.
+It is not a real Backstage backend or a Radius control plane.
+
+After building the dashboard container below, set
+`QUALIFICATION_CONTAINER_IMAGE=ghcr.io/radius-project/dashboard:edge` when
+running `yarn test:e2e:installed`. This repeats the same clean installed
+legacy/native browser journeys through the actual container backend and
+Kubernetes proxy to the declared fake upstream. It checks allowed GET/graph POST,
+visible upstream denial, missing authentication, and explicit startup failure
+with missing Kubernetes initialization config. The test host uses a controlled
+static token restricted to the Kubernetes plugin, not a production provider.
+Container evidence includes exact image identity, config, startup logs, and
+upstream request results. Docker uses `--pull=never`; no image is published.
+This mode requires Linux Docker host networking (`--network host`). Docker
+Desktop on Windows and macOS does not support it. Run it on a Linux host or in
+WSL with a native Docker engine.
+
+`QUALIFICATION_CONTAINER_IMAGE` names a locally built image. The `:edge` tag is
+only the local build tag. The runner never pulls or publishes this image.
+
+To run the existing four native-host baseline tests against the built image:
+
+```bash
+QUALIFICATION_CONTAINER_IMAGE=ghcr.io/radius-project/dashboard:edge \
+QUALIFICATION_EVIDENCE_DIRECTORY=/absolute/persistent/evidence \
+yarn test:e2e:standalone nativeHost.test.ts
+```
+
+Without `QUALIFICATION_CONTAINER_IMAGE`, `test:e2e:standalone` retains its real
+repository-backend setup. Both modes reuse `testBackendConfig` and the existing
+test implementation. The container mounts only the generated config, not source
+or dependencies. These baseline tests do not cover the full eight-route,
+nested-mount, base-path, and graph matrix in the container frontend.
+
+#### Full installed-host matrix
+
+To qualify all active hosts, enable the full matrix and the container row:
+
+```bash
+QUALIFICATION_FULL_HOST_MATRIX=true \
+QUALIFICATION_CONTAINER_IMAGE=ghcr.io/radius-project/dashboard:edge \
+QUALIFICATION_EVIDENCE_DIRECTORY=/absolute/persistent/evidence \
+QUALIFICATION_WORK_DIRECTORY=/absolute/native/work \
+QUALIFICATION_SOURCE_REVISION="$(git rev-parse HEAD)" \
+yarn test:e2e:installed
+```
+
+This mode builds the actual app and backend in the clean installed consumer.
+It runs the native standalone and container baseline tests, then the shared
+eight-route, nested-plugin-mount, root and `/nested` app-base, and graph journeys.
+It also checks backend service requirements and two-connection authorization
+and credential isolation against the declared fake upstream.
+
+In full-matrix mode, the image setting enables the container row. The runner
+builds a new local `radius-phase5-installed:<plugin-digest>` image from the clean
+consumer; it does not use the supplied image as the candidate. No image is
+published. Docker and Linux host networking are required.
+
+A successful full-matrix run with the container writes `phase5Complete: true`
+and an empty `openGates` list. Without full-matrix mode or the container row,
+the result has `phase5Complete: false` and lists the open gates.
+See the [requirement map](../../../../plugins/plugin-radius/README.md#phase-5-installed-host-evidence)
+for the executable checks and evidence limits. The shared candidate preflight
+still reports `hostQualified: false`.
+
 **Build the dashboard container**
 
 ```bash

@@ -5,6 +5,7 @@ import { renderInTestApp, TestApiProvider } from '@backstage/test-utils';
 import { RadiusApi } from '../../api';
 import { radiusApiRef } from '../../plugin';
 import { ApplicationProperties, ResourceList } from '../../resources';
+import { environmentListPageRouteRef } from '../../routes';
 
 describe('ApplicationListPage', () => {
   // Rendering an empty table is fine for now, we have good unit tests for the
@@ -21,11 +22,20 @@ describe('ApplicationListPage', () => {
       <TestApiProvider apis={[[radiusApiRef, api]]}>
         <ApplicationListPage />
       </TestApiProvider>,
+      {
+        mountedRoutes: {
+          '/plugins/radius/environments': environmentListPageRouteRef,
+        },
+      },
     );
     expect(
       screen.getByText('Displaying deployed applications.'),
     ).toBeInTheDocument();
     expect(screen.getByRole('table')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Environments' })).toHaveAttribute(
+      'href',
+      '/plugins/radius/environments',
+    );
 
     const table = screen.getByRole('table');
     expect(table).toBeInTheDocument();
