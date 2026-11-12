@@ -48,7 +48,9 @@ const scopedThemes = {
 export const withRadiusTheme = (Component: ComponentType) => {
   return function RadiusThemedPage() {
     const hostTheme = useTheme();
-    const theme = scopedThemes[hostTheme.palette.type];
+    const theme =
+      scopedThemes[hostTheme.palette.type as keyof typeof scopedThemes] ??
+      scopedThemes.light;
     return (
       <Mui5ThemeProvider theme={theme.v5}>
         <ThemeProvider theme={theme.v4}>

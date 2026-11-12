@@ -9,7 +9,7 @@ import {
   Progress,
   ResponseErrorPanel,
 } from '@backstage/core-components';
-import { useApi } from '@backstage/core-plugin-api';
+import { errorApiRef, useApi } from '@backstage/core-plugin-api';
 import { makeStyles, useTheme } from '@material-ui/core';
 import { radiusApiRef } from '../../api/ref';
 import { useApplicationGraph } from './useApplicationGraph';
@@ -30,6 +30,7 @@ export const ApplicationTab = ({ application }: { application: string }) => {
   const navigate = useNavigate();
   const resourceRoute = useResourceRoute();
   const radiusApi = useApi(radiusApiRef);
+  const errorApi = useApi(errorApiRef);
   const { value, loading, error } = useApplicationGraph(radiusApi, application);
   const normalized = useMemo(() => {
     if (!value) {
@@ -66,8 +67,18 @@ export const ApplicationTab = ({ application }: { application: string }) => {
             options={graphOptions}
             theme={{ colorScheme: theme.palette.type }}
             callbacks={{
-              onNavigate: node =>
-                navigate(`${resourceRoute(node.id)}/overview`),
+              onNavigate: node => {
+                // The renderer falls back to the name when a resource has no id.
+                if (parseLegacyResourceId(node.id)) {
+                  navigate(`${resourceRoute(node.id)}/overview`);
+                } else {
+                  errorApi.post(
+                    new Error(
+                      `Cannot open "${node.id}": not a valid resource id.`,
+                    ),
+                  );
+                }
+              },
             }}
           />
         </div>

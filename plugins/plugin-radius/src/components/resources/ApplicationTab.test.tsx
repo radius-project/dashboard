@@ -1,6 +1,7 @@
 import React from 'react';
 import { renderInTestApp, TestApiProvider } from '@backstage/test-utils';
 import { act, screen } from '@testing-library/react';
+import { errorApiRef } from '@backstage/core-plugin-api';
 import { useLocation } from 'react-router-dom';
 import {
   RadiusGraph,
@@ -51,13 +52,20 @@ const graphResponse = {
 
 const LocationProbe = () => <output>{useLocation().pathname}</output>;
 
+const errorApi = { post: jest.fn(), error$: jest.fn() };
+
 const renderTab = (
   api: Pick<RadiusApi, 'getApplicationGraph'>,
   id = application,
   prefix = '',
 ) =>
   renderInTestApp(
-    <TestApiProvider apis={[[radiusApiRef, api]]}>
+    <TestApiProvider
+      apis={[
+        [radiusApiRef, api],
+        [errorApiRef, errorApi],
+      ]}
+    >
       <ApplicationTab application={id} />
       <LocationProbe />
     </TestApiProvider>,
@@ -172,6 +180,29 @@ describe('ApplicationTab host adapter', () => {
       ).toBeInTheDocument();
     },
   );
+
+  it('reports an error for a node whose id is not a resource id', async () => {
+    await renderTab({
+      getApplicationGraph: jest.fn().mockResolvedValue({
+        graph: graphResponse,
+        context: {
+          connectionId: 'host',
+          plane: { type: 'radius', name: 'local' },
+          applicationId: application,
+        },
+      }),
+    });
+    await screen.findByText('frontend');
+    const callbacks = jest.mocked(RadiusGraph).mock.calls.at(-1)![0].callbacks;
+    const bare = { id: 'resource-0' } as GraphNodeData;
+    expect(() => act(() => callbacks?.onNavigate?.(bare))).not.toThrow();
+    expect(screen.queryByText(/overview$/)).not.toBeInTheDocument();
+    expect(errorApi.post).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: expect.stringContaining('resource-0'),
+      }),
+    );
+  });
 
   it('CN-03 / CN-04 / #356: GET and the mounted graph POST use the same resolved cluster and plane', async () => {
     const kube = {
