@@ -180,7 +180,7 @@ beforeAll(() => {
       repoRoot,
       'vendor',
       'shared-libraries',
-      'resource-icons-candidate.json',
+      'candidate.json',
     );
     const sharedReceipt = JSON.parse(
       fs.readFileSync(sharedReceiptPath, 'utf8'),

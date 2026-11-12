@@ -58,10 +58,7 @@ describe('current package import boundaries', () => {
       fs.readFileSync(path.join(directory, '.gitattributes'), 'utf8').trim(),
     ).toBe('*.tgz binary');
     const receipt = JSON.parse(
-      fs.readFileSync(
-        path.join(directory, 'resource-icons-candidate.json'),
-        'utf8',
-      ),
+      fs.readFileSync(path.join(directory, 'candidate.json'), 'utf8'),
     ) as {
       status: string;
       sourceRevision: string;

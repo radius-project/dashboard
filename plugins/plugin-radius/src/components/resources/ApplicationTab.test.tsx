@@ -57,23 +57,18 @@ const renderTab = (
 beforeEach(() => jest.clearAllMocks());
 
 describe('ApplicationTab host adapter', () => {
-  const definition = {
-    name: 'widgets',
-    properties: {
-      icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path fill="#2874a6" d="M4 4h24v24H4z"/></svg>',
-    },
-  };
-  const iconHash = createHash('sha256')
-    .update(definition.properties.icon)
-    .digest('hex');
+  const iconSvg =
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path fill="#2874a6" d="M4 4h24v24H4z"/></svg>';
+  const iconHash = createHash('sha256').update(iconSvg).digest('hex');
 
   it.each([
-    ['registered SVG', iconHash, definition.properties.icon],
-    ['missing SVG', iconHash, undefined],
-    ['invalid hash', 'not-an-icon-hash', definition.properties.icon],
+    ['registered SVG', iconHash, { [iconHash]: iconSvg }, iconSvg],
+    ['missing SVG', iconHash, {}, undefined],
+    ['non-SVG string', iconHash, { [iconHash]: 'not an svg' }, undefined],
+    ['invalid hash', 'not-an-icon-hash', { [iconHash]: iconSvg }, undefined],
   ])(
     'passes resource-type icon metadata through shared normalization: %s',
-    async (_label, hash, svg) => {
+    async (_label, hash, icons, expectedIcon) => {
       const applicationId = application.replace(
         'Applications.Core',
         'Radius.Core',
@@ -88,10 +83,7 @@ describe('ApplicationTab host adapter', () => {
       await renderTab(
         {
           getApplicationGraph: jest.fn().mockResolvedValue({
-            graph: {
-              resources: [resource],
-              icons: { [hash]: svg },
-            },
+            graph: { resources: [resource], icons },
             context: {
               connectionId: 'selected-cluster',
               plane: { type: 'radius', name: 'local' },
@@ -109,12 +101,9 @@ describe('ApplicationTab host adapter', () => {
         name: 'custom',
         type: 'Radius.Test/widgets',
       });
-      expect(normalized.resources[0].icon).toBe(
-        hash === iconHash ? svg : undefined,
-      );
+      expect(normalized.resources[0].icon).toBe(expectedIcon);
     },
   );
-
   it.each(['Applications.Core', 'Radius.Core'])(
     'GU-10 / E2E-19: renders %s with real context and the single legacy direction policy',
     async namespace => {

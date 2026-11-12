@@ -246,23 +246,22 @@ test.describe('Radius application graph journey', () => {
     ).toBeVisible();
   });
 
-  test('renders a registered resource-type SVG and retains nodes with missing or invalid icons', async ({
+  test('renders registered and monochrome resource-type SVGs and retains nodes with missing or invalid icons', async ({
     page,
-  }, testInfo) => {
-    await page.setViewportSize({ width: 1600, height: 900 });
-    const definition = {
-      name: 'widgets',
-      properties: {
-        icon: '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><path fill="#2874a6" d="M4 4h24v24H4z"/><circle fill="#f1c40f" cx="16" cy="16" r="8"/></svg>',
-      },
-    };
+  }) => {
+    const iconSvg =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><path fill="#2874a6" d="M4 4h24v24H4z"/><circle fill="#f1c40f" cx="16" cy="16" r="8"/></svg>';
+    const themedSvg =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><path fill="currentColor" d="M4 4h24v24H4z"/></svg>';
     const hash = (svg: string) =>
       createHash('sha256').update(svg).digest('hex');
-    const registeredHash = hash(definition.properties.icon);
+    const registeredHash = hash(iconSvg);
+    const themedHash = hash(themedSvg);
     const invalidSvg = '<svg not-valid-image';
     const invalidHash = hash(invalidSvg);
     const iconHashes = {
       registered: registeredHash,
+      themed: themedHash,
       missing: hash('missing'),
       invalid: invalidHash,
     };
@@ -289,7 +288,8 @@ test.describe('Radius application graph journey', () => {
               connections: [],
             })),
             icons: {
-              [registeredHash]: definition.properties.icon,
+              [registeredHash]: iconSvg,
+              [themedHash]: themedSvg,
               [invalidHash]: invalidSvg,
             },
           },
@@ -317,7 +317,7 @@ test.describe('Radius application graph journey', () => {
     const source = await image.getAttribute('src');
     expect(source).toMatch(/^data:image\/svg\+xml/);
     expect(decodeURIComponent(source!.slice(source!.indexOf(',') + 1))).toBe(
-      definition.properties.icon,
+      iconSvg,
     );
     for (const name of ['missing', 'invalid']) {
       const node = page.getByRole('group', { name, exact: true });
@@ -344,18 +344,13 @@ test.describe('Radius application graph journey', () => {
       await missingIcon.getAttribute('src'),
     );
     await expect(registered.locator('svg')).toHaveCount(0);
-    const graphScreenshot = testInfo.outputPath('resource-type-icons.png');
-    const nodeScreenshot = testInfo.outputPath('registered-resource-type.png');
-    await page.locator('.react-flow').screenshot({ path: graphScreenshot });
-    await registered.screenshot({ path: nodeScreenshot });
-    await testInfo.attach('Resource-type icon API fixture', {
-      path: graphScreenshot,
-      contentType: 'image/png',
-    });
-    await testInfo.attach('Registered resource-type SVG', {
-      path: nodeScreenshot,
-      contentType: 'image/png',
-    });
+    const themedNode = page.getByRole('group', { name: 'themed', exact: true });
+    const themed = themedNode.locator('span.rad-node__icon--themed');
+    await expect(themed).toBeVisible();
+    await expect(themed).toHaveCSS('mask-image', /url\("?data:image\/svg\+xml/);
+    await expect(
+      themedNode.locator('img[data-radius-part="icon"]'),
+    ).toHaveCount(0);
   });
 
   // KNOWN-DEFECT (#370): the visible error needs an accessible retry action.

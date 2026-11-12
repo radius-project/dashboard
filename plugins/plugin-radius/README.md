@@ -77,16 +77,15 @@ Shared library version `0.1.0` is development metadata, not proof of a registry
 release. Repository builds use exact vendored compiled archives and relative file
 resolutions. See the [candidate preflight instructions](../../docs/contributing/contributing-code/contributing-code-building/README.md#shared-library-candidate-preflight)
 for hash, source/build receipt, installed-byte, and qualification requirements.
-`vendor/shared-libraries/resource-icons-candidate.json` identifies the active
-pair. The original `candidate.json` and archives remain unchanged as baseline
-evidence; they do not qualify the new pair.
-The new archives were built by the producer. The receipt records their source
+`vendor/shared-libraries/candidate.json` identifies the active pair. Git history
+keeps the previous receipt and archives.
+The archives were built by the producer. The receipt records their source
 revision, hashes and signature checks; the dashboard did not rebuild them from source.
 Public registry distribution remains unqualified until an approved release.
 
 ## Phase 4 test ownership
 
-The source identity in `vendor/shared-libraries/resource-icons-candidate.json` fixes the upstream
+The source identity in `vendor/shared-libraries/candidate.json` fixes the upstream
 test versions below. Canonical code and its tests live in those shared packages,
 not in a second dashboard parser, query client, renderer, or layout.
 
