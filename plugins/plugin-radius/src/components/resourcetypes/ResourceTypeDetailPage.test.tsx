@@ -103,7 +103,8 @@ const readPropertyRows = () => {
     version: string;
     path: string;
     type: string;
-    required: string;
+    required: string | null;
+    description: string;
   }> = [];
 
   for (const table of screen.getAllByRole('table')) {
@@ -130,7 +131,9 @@ const readPropertyRows = () => {
         version,
         path: parentPath ? `${parentPath}.${name}` : name,
         type: cells[1].textContent?.trim() ?? '',
-        required: cells[2].textContent?.trim() ?? '',
+        required:
+          cells.length === 4 ? (cells[2].textContent?.trim() ?? '') : null,
+        description: cells[cells.length - 1].textContent?.trim() ?? '',
       });
     }
   }
@@ -552,14 +555,7 @@ describe('ResourceTypeDetailPage', () => {
     });
   });
 
-  /**
-   * The properties tab and the output-properties tab are near-duplicate blocks
-   * of about eleven hundred lines each that differ by one boolean. The
-   * top-level filter was inverted for the output tab, but the nested expansion
-   * filters were not, so the output tab reuses the properties tab's predicate
-   * for children. This test records the consequence rather than the code shape.
-   */
-  describe('duplicated tab logic', () => {
+  describe('nested read-only filtering', () => {
     const nestedSchema = withProperties({
       status: {
         type: 'object',
@@ -571,25 +567,446 @@ describe('ResourceTypeDetailPage', () => {
       },
     });
 
-    it('RT-27: KNOWN-DEFECT hides read-only children inside the read-only tab', async () => {
+    it('RT-27: shows read-only children and hides writable children in the output tab', async () => {
       await renderPage(makeResourceType(nestedSchema), '/output-properties');
 
       const rows = readPropertyRows();
 
-      // The parent is correctly selected as an output property.
       expect(rows).toContainEqual(expect.objectContaining({ path: 'status' }));
-
-      // But its read-only child is filtered out by the writable-property
-      // predicate, so `phase` is reachable from neither tab: the properties tab
-      // drops the parent, and the output tab drops the child.
-      expect(rows).not.toContainEqual(
+      expect(rows).toContainEqual(
         expect.objectContaining({ path: 'status.phase' }),
       );
-
-      // And the writable child is shown here, in the tab that exists to show
-      // only read-only values.
-      expect(rows).toContainEqual(
+      expect(rows).not.toContainEqual(
         expect.objectContaining({ path: 'status.note' }),
+      );
+    });
+  });
+
+  describe.each([
+    { tab: '/properties', readOnly: false },
+    { tab: '/output-properties', readOnly: true },
+  ])('$tab schema cases', ({ tab, readOnly }) => {
+    const version = '2023-10-01-preview';
+    const row = (
+      path: string,
+      type: string,
+      required = false,
+      description = 'No description available',
+    ) => {
+      const requiredText = required ? 'Yes' : 'No';
+      return {
+        version,
+        path,
+        type,
+        required: readOnly ? null : requiredText,
+        description,
+      };
+    };
+
+    it('RT-38: formats top-level types and filters fields on both tabs', async () => {
+      await renderPage(
+        makeResourceType(
+          withProperties(
+            {
+              connection: { $ref: '#/definitions/Connection', readOnly },
+              tags: { type: 'array', items: { type: 'string' }, readOnly },
+              ports: {
+                type: 'array',
+                items: { $ref: '#/definitions/Port' },
+                readOnly,
+              },
+              unknownItems: { type: 'array', readOnly },
+              metadata: {
+                type: 'object',
+                additionalProperties: { type: 'string' },
+                readOnly,
+              },
+              untyped: { readOnly },
+              implicitWritable: { type: 'boolean' },
+              explicitWritable: { type: 'integer', readOnly: false },
+              excluded: { type: 'string', readOnly: !readOnly },
+            },
+            ['connection'],
+          ),
+        ),
+        tab,
+      );
+
+      expect(readPropertyRows()).toEqual([
+        row('connection', 'Connection', true),
+        row('tags', 'string[]'),
+        row('ports', 'Port[]'),
+        row('unknownItems', 'array'),
+        row('metadata', 'map'),
+        row('untyped', 'object'),
+        ...(!readOnly
+          ? [
+              row('implicitWritable', 'boolean'),
+              row('explicitWritable', 'integer'),
+            ]
+          : []),
+      ]);
+    });
+
+    it.each([
+      'Schema',
+      'schema',
+      'nested Schema',
+      'definitions',
+      'resource',
+      'resourceType',
+    ])('RT-39: discovers fields under %s', async location => {
+      const schema = {
+        properties: {
+          value: {
+            type: 'string',
+            readOnly,
+            description: 'Discovered field.',
+          },
+        },
+        required: ['value'],
+      };
+      const locations: Record<
+        string,
+        ResourceTypeDetail['APIVersions'][string]
+      > = {
+        Schema: { Schema: schema },
+        schema: { schema } as ResourceTypeDetail['APIVersions'][string],
+        'nested Schema': { Schema: { Schema: schema } },
+        definitions: {
+          Schema: { definitions: { Empty: {}, Resource: schema } },
+        },
+        resource: { Schema: { resource: schema } },
+        resourceType: { Schema: { resourceType: schema } },
+      };
+
+      await renderPage(
+        makeResourceType({ APIVersions: { [version]: locations[location] } }),
+        tab,
+      );
+
+      expect(readPropertyRows()).toEqual([
+        row('value', 'string', true, 'Discovered field.'),
+      ]);
+    });
+
+    it('RT-40: does not create nested tables when every child is filtered out', async () => {
+      await renderPage(
+        makeResourceType(
+          withProperties({
+            settings: {
+              type: 'object',
+              readOnly,
+              properties: {
+                excluded: { type: 'string', readOnly: !readOnly },
+              },
+            },
+          }),
+        ),
+        tab,
+      );
+
+      expect(readPropertyRows()).toEqual([row('settings', 'object')]);
+      expect(screen.getAllByRole('table')).toHaveLength(1);
+      expect(screen.queryByRole('link', { name: 'settings' })).toBeNull();
+    });
+
+    it.each([
+      { kind: 'object', type: 'object' },
+      { kind: 'inferred object', type: 'object' },
+      { kind: 'array of objects', type: 'object[]' },
+      { kind: 'map of objects', type: 'map' },
+    ])(
+      'RT-35: renders complete rows for an $kind, including deeply nested fields',
+      async ({ kind, type }) => {
+        const properties = {
+          title: {
+            type: 'string',
+            readOnly,
+            description: '(Required) Display **title**.',
+          },
+          connection: { $ref: '#/definitions/Connection', readOnly },
+          tags: { type: 'array', items: { type: 'string' }, readOnly },
+          ports: {
+            type: 'array',
+            items: { $ref: '#/definitions/Port' },
+            readOnly,
+          },
+          unknownItems: { type: 'array', readOnly },
+          metadata: {
+            type: 'object',
+            additionalProperties: { type: 'string' },
+            readOnly,
+          },
+          untyped: { readOnly },
+          implicitWritable: { type: 'boolean' },
+          explicitWritable: { type: 'integer', readOnly: false },
+          excluded: { type: 'string', readOnly: !readOnly },
+          details: {
+            type: 'object',
+            readOnly,
+            description: '(Optional) Detail fields.',
+            properties: {
+              endpoint: {
+                readOnly,
+                properties: {
+                  host: {
+                    type: 'string',
+                    readOnly,
+                    description: '(Read-only) Endpoint host.',
+                  },
+                  excluded: { type: 'string', readOnly: !readOnly },
+                },
+                required: ['host'],
+              },
+              excluded: { type: 'string', readOnly: !readOnly },
+            },
+            required: ['endpoint'],
+          },
+        };
+        const objectSchema = {
+          type: 'object',
+          properties,
+          required: ['title', 'connection', 'excluded'],
+        };
+        const containers: Record<string, Record<string, unknown>> = {
+          object: objectSchema,
+          'inferred object': {
+            properties,
+            required: objectSchema.required,
+          },
+          'array of objects': { type: 'array', items: objectSchema },
+          'map of objects': {
+            type: 'object',
+            additionalProperties: objectSchema,
+          },
+        };
+
+        await renderPage(
+          makeResourceType(
+            withProperties(
+              {
+                settings: {
+                  ...containers[kind],
+                  readOnly,
+                  description: 'Settings description.',
+                },
+                excluded: { type: 'string', readOnly: !readOnly },
+              },
+              ['settings'],
+            ),
+          ),
+          tab,
+        );
+
+        const expected = [
+          row('settings', type, true, 'Settings description.'),
+          row('settings.title', 'string', true, 'Display title.'),
+          row('settings.connection', 'Connection', true),
+          row('settings.tags', 'string[]'),
+          row('settings.ports', 'Port[]'),
+          row('settings.unknownItems', 'array'),
+          row('settings.metadata', 'map'),
+          row('settings.untyped', 'object'),
+          row('settings.details', 'object', false, 'Detail fields.'),
+          row('settings.details.endpoint', 'object', true),
+          row(
+            'settings.details.endpoint.host',
+            'string',
+            true,
+            'Endpoint host.',
+          ),
+        ];
+        if (!readOnly) {
+          expected.push(
+            row('settings.implicitWritable', 'boolean'),
+            row('settings.explicitWritable', 'integer'),
+          );
+        }
+        if (kind === 'map of objects') {
+          expected.push(
+            row('settings.name', 'string', true, 'Settings description.'),
+          );
+        }
+        const byPath = (a: { path: string }, b: { path: string }) =>
+          a.path.localeCompare(b.path);
+
+        expect(readPropertyRows().sort(byPath)).toEqual(expected.sort(byPath));
+      },
+    );
+
+    it.each(['sibling', 'embedded'])(
+      'RT-36: renders fixed fields and %s additionalProperties without a duplicate row',
+      async location => {
+        const additionalProperties = {
+          type: 'object',
+          description: '(Optional) Dynamic settings.',
+          properties: {
+            value: {
+              type: 'string',
+              readOnly,
+              description: 'Dynamic value.',
+            },
+            excluded: { type: 'string', readOnly: !readOnly },
+          },
+          required: ['value'],
+        };
+        const fixedProperties = {
+          enabled: {
+            type: 'boolean',
+            readOnly,
+            description: 'Enable the setting.',
+          },
+          excluded: { type: 'string', readOnly: !readOnly },
+        };
+        const schema =
+          location === 'sibling'
+            ? {
+                properties: fixedProperties,
+                additionalProperties,
+              }
+            : {
+                properties: { ...fixedProperties, additionalProperties },
+              };
+
+        await renderPage(
+          makeResourceType(
+            withProperties({
+              settings: {
+                type: 'object',
+                readOnly,
+                required: ['enabled'],
+                ...schema,
+              },
+            }),
+          ),
+          tab,
+        );
+
+        expect(readPropertyRows()).toEqual([
+          row('settings', location === 'sibling' ? 'map' : 'object'),
+          row('settings.enabled', 'boolean', true, 'Enable the setting.'),
+          row('settings.Map of key/values', 'map', false, 'Dynamic settings.'),
+          row(
+            'settings.Map of key/values.value',
+            'string',
+            true,
+            'Dynamic value.',
+          ),
+        ]);
+      },
+    );
+
+    it('RT-36b: hides the map row when its schema belongs to the other tab', async () => {
+      await renderPage(
+        makeResourceType(
+          withProperties({
+            settings: {
+              type: 'object',
+              readOnly,
+              properties: {
+                enabled: { type: 'boolean', readOnly },
+              },
+              additionalProperties: { type: 'string', readOnly: !readOnly },
+            },
+          }),
+        ),
+        tab,
+      );
+
+      expect(readPropertyRows().map(r => r.path)).toEqual([
+        'settings',
+        'settings.enabled',
+      ]);
+    });
+
+    it('RT-36c: omits the nested table of a pure map when its schema belongs to the other tab', async () => {
+      await renderPage(
+        makeResourceType(
+          withProperties({
+            conns: {
+              type: 'object',
+              readOnly,
+              additionalProperties: {
+                type: 'object',
+                readOnly: !readOnly,
+                properties: { phase: { type: 'string', readOnly } },
+              },
+            },
+          }),
+        ),
+        tab,
+      );
+
+      expect(readPropertyRows().map(r => r.path)).toEqual(['conns']);
+    });
+
+    it('RT-36d: omits the nested table of a pure map when every child belongs to the other tab', async () => {
+      await renderPage(
+        makeResourceType(
+          withProperties({
+            conns: {
+              type: 'object',
+              readOnly,
+              additionalProperties: {
+                type: 'object',
+                properties: { phase: { type: 'string', readOnly: !readOnly } },
+              },
+            },
+          }),
+        ),
+        tab,
+      );
+
+      expect(readPropertyRows().map(r => r.path)).toEqual(['conns']);
+    });
+
+    it('RT-37: keeps API versions and parent paths distinct for output and input fields', async () => {
+      const schema = (type: string) => ({
+        Schema: {
+          properties: {
+            source: {
+              type: 'object',
+              readOnly,
+              properties: {
+                name: { type, readOnly, description: 'Source name.' },
+              },
+              required: ['name'],
+            },
+            target: {
+              type: 'object',
+              readOnly,
+              properties: {
+                name: { type: 'boolean', readOnly },
+              },
+            },
+          },
+          required: ['source'],
+        },
+      });
+
+      await renderPage(
+        makeResourceType({
+          APIVersions: {
+            '2023-10-01-preview': schema('string'),
+            '2025-08-01-preview': schema('integer'),
+          },
+        }),
+        tab,
+      );
+
+      expect(readPropertyRows()).toEqual(
+        [
+          { version: '2025-08-01-preview', type: 'integer' },
+          { version, type: 'string' },
+        ].flatMap(apiVersion =>
+          [
+            row('source', 'object', true),
+            row('target', 'object'),
+            row('source.name', apiVersion.type, true, 'Source name.'),
+            row('target.name', 'boolean'),
+          ].map(property => ({ ...property, version: apiVersion.version })),
+        ),
       );
     });
   });
@@ -746,48 +1163,56 @@ describe('ResourceTypeDetailPage', () => {
         path: 'name',
         type: 'string',
         required: 'Yes',
+        description: 'No description available',
       },
       {
         version: '2025-08-01-preview',
         path: 'source',
         type: 'object',
         required: 'No',
+        description: 'No description available',
       },
       {
         version: '2025-08-01-preview',
         path: 'target',
         type: 'object',
         required: 'No',
+        description: 'No description available',
       },
       {
         version: '2025-08-01-preview',
         path: 'source.name',
         type: 'integer',
         required: 'Yes',
+        description: 'No description available',
       },
       {
         version: '2025-08-01-preview',
         path: 'target.name',
         type: 'boolean',
         required: 'No',
+        description: 'No description available',
       },
       {
         version: '2023-10-01-preview',
         path: 'name',
         type: 'number',
         required: 'No',
+        description: 'No description available',
       },
       {
         version: '2023-10-01-preview',
         path: 'source',
         type: 'object',
         required: 'No',
+        description: 'No description available',
       },
       {
         version: '2023-10-01-preview',
         path: 'source.name',
         type: 'string',
         required: 'No',
+        description: 'No description available',
       },
     ]);
   });
