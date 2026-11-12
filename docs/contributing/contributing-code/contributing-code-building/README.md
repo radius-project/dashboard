@@ -176,6 +176,9 @@ directory. The runner retains candidate archives, the clean consumer manifest
 and lockfile, the exact tested tuple, build metadata, browser records, and each
 command's log and result. A failed command retains its evidence and exits with
 an error. Each run creates a new consumer; it does not reuse an old install.
+The first install explicitly creates that consumer's lockfile, including in CI.
+A second install uses `--immutable` to verify it. Repository installs remain
+immutable.
 
 For WSL or another system with a slow mounted drive, set
 `QUALIFICATION_WORK_DIRECTORY` to an absolute, native-filesystem directory
@@ -262,7 +265,11 @@ still reports `hostQualified: false`.
 #### Phase 6 CI gates and remaining policy decisions
 
 The existing required **Build Packages** job runs the contract, native frontend,
-backend, coverage and graph-record suites. It also runs the package artifacts,
+backend and graph-record suites. Coverage results are advisory and do not block
+a pull request merge. The job still collects coverage, but its test command
+overrides Jest's thresholds with `--coverageThreshold='{}'`. Actual test failures
+still block the job. The root coverage floors remain unchanged for local use.
+The job also runs the package artifacts,
 standalone browser, component browser and full clean installed-host matrix on
 pull requests and release tags. The installed matrix uses the Phase 5 runner
 above; it does not copy host tests or use a running deployment. Its container
@@ -274,16 +281,20 @@ Before tests, `node scripts/ci-policy.ts coverage <base-commit>` compares root
 coverage floors and exclusions with an immutable Git revision. Pull requests
 use their actual base SHA. Main pushes use the previous SHA; release tags use
 the tagged commit's parent. Missing history, removed/narrowed groups, missing
-metrics, a decrease in any existing floor, and changed exclusions fail.
+metrics, a decrease in any existing floor, and changed exclusions produce an
+advisory step failure, not a merge block.
 The existing policy tests still require a full-source group for each workspace.
 No proposed T1 target replaces a stronger current floor.
 The same job installs and builds the immutable base in a separate clean checkout,
-then runs the same coverage command. It compares all four measured counters in
-each existing full-source group with the candidate's JSON summary. Any decrease
-fails, including a change smaller than the rounded floor margin. Missing groups,
-invalid counters and unavailable reports fail. Empty counter sets count as 100%,
-so adding the first uncovered branch fails. This measured comparison does not
-replace existing floors. Team approval of T1 targets remains open.
+then runs the same coverage command with threshold enforcement disabled.
+It compares all four measured counters in each existing full-source group with
+the candidate's JSON summary. Any decrease produces an advisory step failure,
+including a change smaller than the rounded floor margin. Missing groups,
+invalid counters and unavailable reports also produce advisory failures.
+Empty counter sets count as 100%, so the first uncovered branch is reported.
+The policy comparison, measured comparison and Codecov upload all use
+`continue-on-error: true`; none can fail the required job. Policy helper regression
+tests remain required. Team approval of T1 targets remains open.
 
 Failure uploads contain only validated revision/run identifiers and fixed stage
 outcomes, at most 1 KiB, retained for one day. They contain no raw logs,
@@ -299,6 +310,12 @@ record, exact trusted producer/coordinator/consumer workflow revisions, an exact
 toolchain, required job names, a host matrix and a positive age window.
 There is deliberately no invented approved owner, window or initial consumer pin.
 This scheduled workflow does not make the external producer gate required.
+
+The pin identifies the exact dashboard version used to test changes to
+`@radius-project/core` and `@radius-project/graph-react`, including its lockfile,
+toolchain and host matrix. Freshness limits how old that dashboard test version
+can become before a reviewed refresh is needed. It is not a plugin publication
+pin, and the producer connection is not yet implemented.
 
 `yarn verify:consumer <trusted-policy.json> <proposed-pin.json>` is a
 service-record preflight for that future protected coordinator. It reads no

@@ -261,7 +261,7 @@ try {
       path.join(consumer, 'packages', 'backend', 'Dockerfile'),
     );
   }
-  runYarn(['install'], consumer);
+  runYarn(['install', '--no-immutable'], consumer);
   runYarn(['install', '--immutable'], consumer);
   const shared = verifySharedLibraryCandidate(
     candidate,
