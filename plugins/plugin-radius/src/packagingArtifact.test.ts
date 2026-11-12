@@ -192,6 +192,7 @@ beforeAll(() => {
     const dependencies = [
       '@backstage',
       '@material-ui',
+      '@mui',
       '@date-io',
       'react',
       'react-dom',
@@ -255,7 +256,7 @@ beforeAll(() => {
     fs.writeFileSync(
       path.join(consumerRoot, 'index.ts'),
       [
-        "import { ApplicationListPage, radiusApiRef, radiusPlugin } from '@internal/plugin-radius';",
+        "import { ApplicationListPage, radiusApiRef, radiusPlugin, radiusThemes } from '@internal/plugin-radius';",
         "import type { RadiusApi } from '@internal/plugin-radius';",
         "import nativeRadius from '@internal/plugin-radius/alpha';",
         'declare const api: RadiusApi;',
@@ -263,6 +264,7 @@ beforeAll(() => {
         'void ApplicationListPage;',
         'void radiusApiRef;',
         'void radiusPlugin.getId();',
+        "void radiusThemes.dark.getTheme('v4');",
         'const nativeId: string = nativeRadius.pluginId;',
         'void nativeId;',
         '',

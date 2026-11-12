@@ -26,6 +26,7 @@ import { RecipeTable } from './RecipeTable';
 import { aggregateRecipesFromEnvironment } from './recipeAggregation';
 import { RadiusListResult } from '../../api';
 import { ResourceQueryResult } from '../queryresult/ResourceQueryResult';
+import { withRadiusTheme } from '../../appearance';
 
 export const RecipeListPageContent2 = ({
   environments,
@@ -164,7 +165,7 @@ export const RecipeListPageContent = () => {
   );
 };
 
-export const RecipeListPage = () => {
+export const RecipeListPage = withRadiusTheme(() => {
   return (
     <Page themeId="radius-recipe-list">
       <Header
@@ -178,4 +179,4 @@ export const RecipeListPage = () => {
       </Content>
     </Page>
   );
-};
+});

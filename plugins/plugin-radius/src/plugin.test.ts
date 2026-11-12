@@ -51,6 +51,7 @@ describe('plugin contract', () => {
       'featureRadiusCatalog',
       'radiusApiRef',
       'radiusPlugin',
+      'radiusThemes',
       'recipeListPageRouteRef',
       'resourceListPageRouteRef',
       'resourcePageRouteRef',

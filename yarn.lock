@@ -5601,6 +5601,7 @@ __metadata:
     "@material-ui/core": "npm:^4.12.4"
     "@material-ui/icons": "npm:^4.11.3"
     "@material-ui/lab": "npm:^4.0.0-alpha.61"
+    "@mui/material": "npm:^5.12.2"
     "@radapp.io/rad-components": "workspace:^"
     "@radius-project/core": "npm:0.1.0"
     "@radius-project/graph-react": "npm:0.1.0"

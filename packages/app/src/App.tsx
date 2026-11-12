@@ -28,46 +28,9 @@ import {
 import { HomePageLayoutBlueprint } from '@backstage/plugin-home-react/alpha';
 import catalogGraph from '@backstage/plugin-catalog-graph/alpha';
 import { default as radius } from '@internal/plugin-radius/alpha';
+import { radiusThemes } from '@internal/plugin-radius';
 import kubernetes from '@backstage/plugin-kubernetes/alpha';
-import {
-  UnifiedThemeProvider,
-  createBaseThemeOptions,
-  createUnifiedTheme,
-  genPageTheme,
-  palettes,
-  shapes,
-} from '@backstage/theme';
-
-const lightTheme = createUnifiedTheme({
-  ...createBaseThemeOptions({
-    palette: {
-      ...palettes.light,
-      primary: {
-        main: '#db4c24',
-      },
-    },
-  }),
-  defaultPageTheme: 'other',
-  pageTheme: {
-    other: genPageTheme({ colors: ['#db4c24', '#db4c24'], shape: shapes.wave }),
-  },
-});
-
-const darkTheme = createUnifiedTheme({
-  ...createBaseThemeOptions({
-    // https://m2.material.io/inline-tools/color/
-    palette: {
-      ...palettes.dark,
-      primary: {
-        main: '#db4c24',
-      },
-    },
-  }),
-  defaultPageTheme: 'other',
-  pageTheme: {
-    other: genPageTheme({ colors: ['#db4c24', '#db4c24'], shape: shapes.wave }),
-  },
-});
+import { UnifiedThemeProvider } from '@backstage/theme';
 
 const host = createFrontendModule({
   pluginId: 'app',
@@ -93,7 +56,7 @@ const host = createFrontendModule({
           title: 'Light',
           variant: 'light',
           Provider: ({ children }) => (
-            <UnifiedThemeProvider theme={lightTheme}>
+            <UnifiedThemeProvider theme={radiusThemes.light}>
               {children}
             </UnifiedThemeProvider>
           ),
@@ -108,7 +71,7 @@ const host = createFrontendModule({
           title: 'Dark',
           variant: 'dark',
           Provider: ({ children }) => (
-            <UnifiedThemeProvider theme={darkTheme}>
+            <UnifiedThemeProvider theme={radiusThemes.dark}>
               {children}
             </UnifiedThemeProvider>
           ),
