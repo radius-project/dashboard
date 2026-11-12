@@ -106,6 +106,7 @@ jobs:
           (
             cd "${base_directory}" || exit 1
             corepack yarn install --immutable
+            corepack yarn exec playwright install chromium
             corepack yarn build:all
             GRAPH_RECORD_BASE_REF="${COVERAGE_BASE}" corepack yarn test:all --coverageThreshold='{}' --coverageDirectory=coverage --coverageReporters=json-summary
           )

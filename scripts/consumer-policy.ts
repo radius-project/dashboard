@@ -180,9 +180,15 @@ export async function verifyConsumerPin(
     'Consumer pin is stale or future-dated',
   );
   const readFile = async (name: string) => {
-    const file = object(
+    let file = object(
       await api(`${prefix}/contents/${name}?ref=${pin.revision}`),
     );
+    if (file.encoding === 'none') {
+      const blobSha = file.sha;
+      assert(sha(blobSha), 'Expected immutable GitHub file blob');
+      file = object(await api(`${prefix}/git/blobs/${blobSha}`));
+      assert.equal(file.sha, blobSha, 'GitHub file blob mismatch');
+    }
     assert.equal(file.encoding, 'base64', 'Expected GitHub file bytes');
     return Buffer.from(text(file.content).replaceAll('\n', ''), 'base64');
   };

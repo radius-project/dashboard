@@ -150,7 +150,7 @@ function fixture() {
     assert(Object.hasOwn(routes, route), `Unexpected GitHub request: ${route}`);
     return structuredClone(routes[route]);
   };
-  return { policy, pin, now, routes, run, jobs, artifact, api };
+  return { policy, pin, now, routes, run, jobs, artifact, api, lock };
 }
 
 test('CP-01/04: qualify immutable consumer tuple from independent service records', async () => {
@@ -158,6 +158,46 @@ test('CP-01/04: qualify immutable consumer tuple from independent service record
   const result = await verifyConsumerPin(f.policy, f.pin, f.api, f.now);
   assert.equal(result.artifactDigest, f.artifact.digest);
   assert.equal(result.consumerRevision, f.pin.revision);
+});
+
+test('CP-01: read large lockfiles through the immutable blob and reject substitutions', async () => {
+  const f = fixture();
+  const lock = Buffer.concat([
+    f.lock,
+    Buffer.from('\n#'),
+    Buffer.alloc(1024 * 1024, 'x'),
+  ]);
+  const blobSha = createHash('sha1')
+    .update(`blob ${lock.length}\0`)
+    .update(lock)
+    .digest('hex');
+  const prefix = 'repos/radius-project/dashboard';
+  const contentsRoute = `${prefix}/contents/yarn.lock?ref=${f.pin.revision}`;
+  const blobRoute = `${prefix}/git/blobs/${blobSha}`;
+  const blob = {
+    sha: blobSha,
+    encoding: 'base64',
+    content: lock.toString('base64'),
+  };
+  f.pin.lockSha256 = createHash('sha256').update(lock).digest('hex');
+  f.routes[contentsRoute] = {
+    encoding: 'none',
+    content: '',
+    sha: blobSha,
+    size: lock.length,
+  };
+  f.routes[blobRoute] = blob;
+  await verifyConsumerPin(f.policy, f.pin, f.api, f.now);
+  for (const invalid of [
+    { ...blob, sha: '0'.repeat(40) },
+    { ...blob, encoding: 'none' },
+    { ...blob, content: Buffer.from('substituted lock').toString('base64') },
+  ]) {
+    f.routes[blobRoute] = invalid;
+    await assert.rejects(verifyConsumerPin(f.policy, f.pin, f.api, f.now));
+  }
+  f.routes[contentsRoute] = { encoding: 'none', sha: 'main' };
+  await assert.rejects(verifyConsumerPin(f.policy, f.pin, f.api, f.now));
 });
 
 test('unapproved invocation policy cannot yield successful evidence', () => {

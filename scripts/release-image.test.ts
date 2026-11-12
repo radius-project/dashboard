@@ -810,6 +810,11 @@ test('the actual build chain, offline CI tests, validation gates, and edge publi
       ?.split('\n      - name:')[0];
     assert.ok(step, `Missing advisory coverage step: ${name}`);
     assert.match(step, /continue-on-error: true/);
+    if (
+      name === 'Compare measured coverage against the clean base (advisory)'
+    ) {
+      assert.match(step, /corepack yarn exec playwright install chromium/);
+    }
   }
   for (const name of ['Test CI policy helpers', 'Run Tests']) {
     const step = workflow
