@@ -162,6 +162,7 @@ try {
     '@backstage/plugin-kubernetes',
     '@backstage/theme',
     '@material-ui/core',
+    '@types/jest',
     '@types/react',
     '@types/react-dom',
     'react',
@@ -260,7 +261,7 @@ try {
       path.join(consumer, 'packages', 'backend', 'Dockerfile'),
     );
   }
-  runYarn(['install'], consumer);
+  runYarn(['install', '--no-immutable'], consumer);
   runYarn(['install', '--immutable'], consumer);
   const shared = verifySharedLibraryCandidate(
     candidate,

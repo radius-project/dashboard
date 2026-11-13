@@ -24,7 +24,7 @@ jobs:
   build:
     name: Build Packages
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 60
     permissions:
       contents: read
     steps:
@@ -52,6 +52,21 @@ jobs:
       - name: Install dependencies
         run: yarn install --immutable
 
+      - name: Test CI policy helpers
+        run: yarn test:ci-policy
+
+      - name: Compare base coverage policy (advisory)
+        id: policy
+        continue-on-error: true
+        env:
+          COVERAGE_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            COVERAGE_BASE="$(git rev-parse "${GITHUB_SHA}^")"
+          fi
+          echo "base=${COVERAGE_BASE}" >> "${GITHUB_OUTPUT}"
+          node scripts/ci-policy.ts coverage "${COVERAGE_BASE}"
+
       - name: Lint
         if: ${{ env.CI_LINT == 'true' }}
         run: yarn run lint:all
@@ -73,14 +88,35 @@ jobs:
         run: yarn exec playwright install --with-deps chromium
 
       - name: Run Tests
+        id: unit
         env:
           # Empty on push builds, where GU-25 falls back to origin/main.
           GRAPH_RECORD_BASE_REF: ${{ github.event.pull_request.base.sha }}
         # main builds provide the baseline for Codecov pull request comparisons.
-        run: yarn run test:all --coverageDirectory=coverage --coverageReporters=lcov --coverageReporters=text
+        run: yarn run test:all --coverageThreshold='{}' --coverageDirectory=coverage --coverageReporters=lcov --coverageReporters=text --coverageReporters=json-summary
+
+      - name: Compare measured coverage against the clean base (advisory)
+        id: coverage
+        continue-on-error: true
+        env:
+          COVERAGE_BASE: ${{ steps.policy.outputs.base }}
+        run: |
+          base_directory="$(mktemp -d "${RUNNER_TEMP}/phase6-coverage-XXXXXX")"
+          trap 'git worktree remove --force "${base_directory}"' EXIT
+          git worktree add --detach "${base_directory}" "${COVERAGE_BASE}"
+          (
+            cd "${base_directory}" || exit 1
+            corepack yarn install --immutable
+            corepack yarn exec playwright install chromium
+            corepack yarn build:all
+            GRAPH_RECORD_BASE_REF="${COVERAGE_BASE}" corepack yarn test:all --coverageThreshold='{}' --coverageDirectory=coverage --coverageReporters=json-summary
+          )
+          node scripts/ci-policy.ts measured "${base_directory}" \
+            "${base_directory}/coverage/coverage-summary.json" coverage/coverage-summary.json
 
       - name: Upload coverage to Codecov
         if: ${{ github.repository == 'radius-project/dashboard' }}
+        continue-on-error: true
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           files: ./coverage/lcov.info
@@ -88,18 +124,56 @@ jobs:
           fail_ci_if_error: true
 
       - name: Qualify Built Standalone Host
+        id: standalone
         if: ${{ env.CI_TEST == 'true' }}
         env:
           NODE_ENV: production
         run: yarn run test:e2e:standalone
 
       - name: Run Component Browser Tests
+        id: graph
         if: ${{ env.CI_TEST == 'true' }}
-        run: yarn run test:e2e:components
+        env:
+          PLAYWRIGHT_BROWSER_CHANNEL: chromium
+        run: yarn run test:e2e:components --retries=0
 
       - name: Qualify Package Artifacts
+        id: artifact
         if: ${{ env.CI_TEST == 'true' }}
         run: yarn run test:package
+
+      - name: Qualify clean installed frontend and backend matrix
+        id: installed
+        if: ${{ env.CI_TEST == 'true' }}
+        env:
+          QUALIFICATION_EVIDENCE_DIRECTORY: ${{ runner.temp }}/phase6-hosts
+          QUALIFICATION_FULL_HOST_MATRIX: 'true'
+          # Presence requests a new image from the clean installed backend.
+          # This is not a pre-existing deployment or baseline container.
+          QUALIFICATION_CONTAINER_IMAGE: build-clean-installed-backend
+          QUALIFICATION_SOURCE_REVISION: ${{ github.sha }}
+        run: yarn test:e2e:installed
+
+      - name: Write bounded failure evidence
+        if: ${{ failure() || cancelled() }}
+        env:
+          PHASE6_POLICY: ${{ steps.policy.outcome }}
+          PHASE6_UNIT: ${{ steps.unit.outcome }}
+          PHASE6_COVERAGE: ${{ steps.coverage.outcome }}
+          PHASE6_STANDALONE: ${{ steps.standalone.outcome }}
+          PHASE6_GRAPH: ${{ steps.graph.outcome }}
+          PHASE6_ARTIFACT: ${{ steps.artifact.outcome }}
+          PHASE6_INSTALLED: ${{ steps.installed.outcome }}
+        run: node scripts/ci-policy.ts evidence "${RUNNER_TEMP}/phase6-failure.json"
+
+      - name: Upload bounded failure evidence
+        if: ${{ failure() || cancelled() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: phase6-failure-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/phase6-failure.json
+          if-no-files-found: error
+          retention-days: 1
 
   build-and-publish-container:
     name: Build and Publish Container

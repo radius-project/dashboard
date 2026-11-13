@@ -23,6 +23,8 @@
     "test:all": "yarn test:release-images && yarn test:qualification-runners && backstage-cli repo test --coverage",
     "test:release-images": "node --test scripts/release-image.test.ts",
     "test:qualification-runners": "node --test scripts/qualify-plugin-host.test.ts scripts/shared-library-candidate.test.ts scripts/installed-host.test.ts",
+    "test:ci-policy": "node --test scripts/ci-policy.test.ts scripts/consumer-policy.test.ts",
+    "verify:consumer": "node scripts/consumer-policy.ts",
     "verify:shared-candidate": "node scripts/shared-library-candidate.ts",
     "test:e2e": "playwright test",
     "test:e2e:standalone": "node scripts/qualify-standalone-host.ts",

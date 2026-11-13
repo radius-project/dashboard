@@ -82,7 +82,8 @@ const invalidFloors = (candidate: typeof thresholds) =>
  * `coverageThreshold` inside a project config -- it warns and ignores it. A
  * per-workspace floor therefore enforces nothing in CI while looking like it
  * does, which is worse than having none. Floors live in the root config as path
- * groups, and these tests keep them there and keep them complete.
+ * groups, and these tests keep them there and keep them complete. CI overrides
+ * threshold enforcement so coverage remains advisory; local runs retain floors.
  */
 describe('coverage policy', () => {
   it('PU-20: defines coverage floors in the root config, where the repo-wide run honors them', () => {
