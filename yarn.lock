@@ -8462,16 +8462,16 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@radius-project/core@file:./vendor/shared-libraries/radius-project-core-0.1.0.tgz::locator=root%40workspace%3A.":
+"@radius-project/core@file:./vendor/shared-libraries/radius-project-core-0.1.0-icons-f89020ac197f.tgz::locator=root%40workspace%3A.":
   version: 0.1.0
-  resolution: "@radius-project/core@file:./vendor/shared-libraries/radius-project-core-0.1.0.tgz#./vendor/shared-libraries/radius-project-core-0.1.0.tgz::hash=c15307&locator=root%40workspace%3A."
-  checksum: 10c0/41428ef535d2c4479a4eaed861b60a2aedbe262aec4f3f21f2511246370aa8b4067e3f060062ad951327d35bedfad1ca077a41c2ce59b210da8ece856b5c325b
+  resolution: "@radius-project/core@file:./vendor/shared-libraries/radius-project-core-0.1.0-icons-f89020ac197f.tgz#./vendor/shared-libraries/radius-project-core-0.1.0-icons-f89020ac197f.tgz::hash=1051f1&locator=root%40workspace%3A."
+  checksum: 10c0/652677d56f9fcde0b0509c358bcc57b9055d0443e54a9e9729ab1a6d2c9a9f1e2786a1f65bf33661d8426008903f1a21928e48430fdf699a68c6dd41f50acdc5
   languageName: node
   linkType: hard
 
-"@radius-project/graph-react@file:./vendor/shared-libraries/radius-project-graph-react-0.1.0.tgz::locator=root%40workspace%3A.":
+"@radius-project/graph-react@file:./vendor/shared-libraries/radius-project-graph-react-0.1.0-icons-f89020ac197f.tgz::locator=root%40workspace%3A.":
   version: 0.1.0
-  resolution: "@radius-project/graph-react@file:./vendor/shared-libraries/radius-project-graph-react-0.1.0.tgz#./vendor/shared-libraries/radius-project-graph-react-0.1.0.tgz::hash=6b44d6&locator=root%40workspace%3A."
+  resolution: "@radius-project/graph-react@file:./vendor/shared-libraries/radius-project-graph-react-0.1.0-icons-f89020ac197f.tgz#./vendor/shared-libraries/radius-project-graph-react-0.1.0-icons-f89020ac197f.tgz::hash=b696fa&locator=root%40workspace%3A."
   dependencies:
     "@radius-project/core": "npm:0.1.0"
     "@xyflow/react": "npm:12.12.0"
@@ -8482,7 +8482,7 @@ __metadata:
   peerDependenciesMeta:
     reactflow:
       optional: true
-  checksum: 10c0/4344ccd30d464cf99ebc43ec36f58f31e707c0958bbf1a5aed211f95703c0bca51f5fec0b64ef8363f785bc309cd82283425b1e868ec3e51a4f7be4245fb2b59
+  checksum: 10c0/eca871d5cc643ea3ab7b097ac4a4753d5496173bf79208f2d304d61f87bb31e11b04394045ed7c7e8e0d2026873c31cee0de7f02838bf16dcc3e3096e7c9d7fe
   languageName: node
   linkType: hard
 

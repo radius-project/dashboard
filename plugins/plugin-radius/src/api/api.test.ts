@@ -50,6 +50,104 @@ function host(
 }
 
 describe('shared query client through the Backstage transport', () => {
+  it.each([
+    ['Radius.Core', '2025-08-01-preview', true],
+    ['Radius.Core', '2025-08-01', true],
+    ['Radius.Core', '2026-01-01-preview', true],
+    ['Radius.Core', '2025-07-31', false],
+    ['Radius.Core', 'unknown', false],
+    ['Applications.Core', '2025-08-01-preview', false],
+  ])(
+    'forwards the shared icon request policy for %s at %s',
+    async (namespace, version, includeIcons) => {
+      const kube = {
+        getClusters: jest
+          .fn()
+          .mockResolvedValue([{ name: 'selected-cluster' }]),
+        proxy: jest.fn().mockImplementation(({ path }) =>
+          Promise.resolve(
+            json(
+              path.includes('/resourceTypes/')
+                ? {
+                    ...typeInfo,
+                    Name: `${namespace}/applications`,
+                    ResourceProviderNamespace: namespace,
+                    APIVersionList: [version],
+                    APIVersions: { [version]: {} },
+                  }
+                : { resources: [] },
+            ),
+          ),
+        ),
+      };
+      const api = new RadiusApiImpl(kube);
+      const id = currentId.replace('Radius.Core', namespace);
+      await api.getApplicationGraph({ applicationId: id });
+
+      expect(kube.proxy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          clusterName: 'selected-cluster',
+          path: `${prefix}${id}/getGraph?api-version=${version}`,
+          init: expect.objectContaining({
+            method: 'POST',
+            ...(includeIcons
+              ? {
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ includeIcons: true }),
+                }
+              : {}),
+          }),
+        }),
+      );
+      const discovery = kube.proxy.mock.calls.find(
+        ([request]) => request.init.method === 'GET',
+      )![0];
+      expect(discovery.init.body).toBeUndefined();
+      expect(discovery.init.headers).toBeUndefined();
+      const graph = kube.proxy.mock.calls.find(
+        ([request]) => request.init.method === 'POST',
+      )![0];
+      expect(graph.init.body).toBe(
+        includeIcons ? JSON.stringify({ includeIcons: true }) : undefined,
+      );
+      expect(graph.init.headers).toEqual(
+        includeIcons ? { 'Content-Type': 'application/json' } : undefined,
+      );
+    },
+  );
+
+  it('reports a failed graph POST that carries the icon request body', async () => {
+    const kube = {
+      getClusters: jest.fn().mockResolvedValue([{ name: 'selected-cluster' }]),
+      proxy: jest.fn().mockImplementation(({ path, init }) => {
+        if (path.includes('/resourceTypes/')) {
+          return Promise.resolve(
+            json({
+              ...typeInfo,
+              Name: 'Radius.Core/applications',
+              ResourceProviderNamespace: 'Radius.Core',
+              APIVersionList: ['2025-08-01-preview'],
+              APIVersions: { '2025-08-01-preview': {} },
+            }),
+          );
+        }
+        expect(init.method).toBe('POST');
+        expect(init.body).toBe(JSON.stringify({ includeIcons: true }));
+        return Promise.resolve(
+          new Response('bad icon request', { status: 400 }),
+        );
+      }),
+    };
+    const api = new RadiusApiImpl(kube);
+
+    await expect(
+      api.getApplicationGraph({ applicationId: currentId }),
+    ).rejects.toThrow(/400/);
+    expect(
+      kube.proxy.mock.calls.filter(([r]) => r.init.method === 'POST'),
+    ).toHaveLength(1);
+  });
+
   it('CN-01 / CN-02 / CN-03 / CN-04: binds GET and graph POST to the first cluster and the same plane', async () => {
     const kube = host(request =>
       request.init?.method === 'POST'
