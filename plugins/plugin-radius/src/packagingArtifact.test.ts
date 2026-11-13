@@ -177,9 +177,18 @@ beforeAll(() => {
     );
     extractArchive(pluginArchive, pluginInstall);
     extractArchive(graphArchive, graphInstall);
+    const sharedReceiptPath = path.join(
+      repoRoot,
+      'vendor',
+      'shared-libraries',
+      'candidate.json',
+    );
+    const sharedReceipt = JSON.parse(
+      fs.readFileSync(sharedReceiptPath, 'utf8'),
+    ) as { core: { path: string }; graphReact: { path: string } };
     for (const [name, archive] of [
-      ['core', 'radius-project-core-0.1.0.tgz'],
-      ['graph-react', 'radius-project-graph-react-0.1.0.tgz'],
+      ['core', sharedReceipt.core.path],
+      ['graph-react', sharedReceipt.graphReact.path],
     ]) {
       extractArchive(
         path.join(repoRoot, 'vendor', 'shared-libraries', archive),
@@ -213,7 +222,7 @@ beforeAll(() => {
     const verified = JSON.parse(
       run(process.execPath, [
         path.join(repoRoot, 'scripts', 'shared-library-candidate.ts'),
-        path.join(repoRoot, 'vendor', 'shared-libraries', 'candidate.json'),
+        sharedReceiptPath,
         consumerRoot,
       ]),
     );
