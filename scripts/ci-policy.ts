@@ -17,6 +17,30 @@ type CoverageSummary = Record<
   Record<(typeof metrics)[number], { covered: number; total: number }>
 >;
 
+function validateCoverageGroups(groups: Floors | undefined) {
+  assert(groups && Object.keys(groups).length, 'Missing coverage groups');
+  for (const [group, floors] of Object.entries(groups)) {
+    assert(
+      /^\.\/(packages|plugins)\/[^/]+\/src\/$/.test(group) &&
+        !/[*!?]/.test(group) &&
+        !group.includes('/../') &&
+        !group.includes('/./'),
+      'Expected a full-source coverage directory',
+    );
+    assert(Object.keys(floors).length, `Missing coverage metrics: ${group}`);
+    for (const [metric, floor] of Object.entries(floors)) {
+      assert(
+        metrics.some(name => name === metric) &&
+          Number.isFinite(floor) &&
+          floor > 0 &&
+          floor <= 100,
+        `Coverage floor decreased or invalid: ${group}:${metric}`,
+      );
+    }
+  }
+  return groups;
+}
+
 export function compareMeasuredCoverage(
   manifest: CoverageManifest,
   baseRoot: string,
@@ -24,13 +48,8 @@ export function compareMeasuredCoverage(
   candidateRoot: string,
   candidate: CoverageSummary,
 ) {
-  const groups = manifest.jest?.coverageThreshold;
-  assert(groups && Object.keys(groups).length, 'Missing coverage groups');
+  const groups = validateCoverageGroups(manifest.jest?.coverageThreshold);
   const aggregate = (root: string, report: CoverageSummary, group: string) => {
-    assert(
-      group.startsWith('./') && group.endsWith('/') && !/[*!?]/.test(group),
-      'Expected a full-source coverage directory',
-    );
     const directory = group.slice(2);
     const totals = metrics.map(() => ({ covered: 0, total: 0 }));
     let files = 0;
@@ -85,9 +104,8 @@ export function compareCoveragePolicy(
   base: CoverageManifest,
   candidate: CoverageManifest,
 ) {
-  const before = base.jest?.coverageThreshold;
-  const after = candidate.jest?.coverageThreshold;
-  assert(before && after, 'Both revisions must define root coverage floors');
+  const before = validateCoverageGroups(base.jest?.coverageThreshold);
+  const after = validateCoverageGroups(candidate.jest?.coverageThreshold);
   for (const [group, metrics] of Object.entries(before)) {
     assert(after[group], `Removed coverage group: ${group}`);
     for (const [metric, floor] of Object.entries(metrics)) {
@@ -182,7 +200,7 @@ if (
     const results = Object.fromEntries(
       stages.map(stage => [
         stage,
-        process.env[`PHASE6_${stage.toUpperCase()}`] ?? 'skipped',
+        process.env[`PHASE6_${stage.toUpperCase()}`] || 'skipped',
       ]),
     );
     const content = failureEvidence(

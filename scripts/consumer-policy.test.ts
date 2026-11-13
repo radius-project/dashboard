@@ -229,6 +229,33 @@ test('CP-01: reject changed lock, toolchain, host matrix and mutable refs', asyn
   }
 });
 
+test('CP-01: policy cannot omit hosts or reuse the consumer as coordinator', async () => {
+  for (const hostMatrix of [
+    ['native-external'],
+    [...fixture().policy.hostMatrix!, 'unqualified-host'],
+    [
+      'legacy-external',
+      'native-external',
+      'native-standalone',
+      'native-standalone',
+    ],
+  ]) {
+    const f = fixture();
+    f.policy.hostMatrix = hostMatrix;
+    f.pin.hostMatrix = hostMatrix;
+    assert.throws(() => assertApprovedPolicy(f.policy), /hosts|host matrix/);
+    await assert.rejects(verifyConsumerPin(f.policy, f.pin, f.api, f.now));
+  }
+  const f = fixture();
+  f.policy.coordinator = { ...f.policy.consumer! };
+  f.run.referenced_workflows = [f.run.referenced_workflows[1]];
+  assert.throws(() => assertApprovedPolicy(f.policy), /distinct/);
+  await assert.rejects(
+    verifyConsumerPin(f.policy, f.pin, f.api, f.now),
+    /distinct/,
+  );
+});
+
 test('CP-05: reject expired/future pin or evidence; accept the exact approved age limit', async () => {
   const f = fixture();
   await verifyConsumerPin(f.policy, f.pin, f.api, f.now + 6 * 86_400_000);

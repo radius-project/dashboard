@@ -61,6 +61,79 @@ test('reject removed/narrowed groups, missing metrics and wider exclusions', () 
   assert.throws(() => compareCoveragePolicy(manifest(), next), /exclusions/);
 });
 
+test('validate added coverage groups and metrics while preserving existing groups', () => {
+  const base = manifest();
+  for (const group of [
+    './plugins/example/src/components/',
+    './plugins/../src/',
+    './plugins/*/src/',
+    'global',
+  ]) {
+    assert.throws(
+      () =>
+        compareCoveragePolicy(base, {
+          jest: {
+            ...base.jest,
+            coverageThreshold: {
+              ...base.jest.coverageThreshold,
+              [group]: { statements: 100 },
+            },
+          },
+        }),
+      /full-source/,
+    );
+  }
+  const partial = {
+    jest: {
+      coverageThreshold: {
+        './plugins/example/src/': { statements: 93 },
+      },
+    },
+  };
+  for (const floor of [0, -1, 105, NaN]) {
+    for (const group of [
+      './plugins/example/src/',
+      './packages/new-workspace/src/',
+    ]) {
+      assert.throws(
+        () =>
+          compareCoveragePolicy(partial, {
+            jest: {
+              coverageThreshold: {
+                ...partial.jest.coverageThreshold,
+                [group]: { statements: 93, branches: floor },
+              },
+            },
+          }),
+        /invalid/,
+      );
+    }
+  }
+  assert.throws(
+    () =>
+      compareCoveragePolicy(partial, {
+        jest: {
+          coverageThreshold: {
+            './plugins/example/src/': { statements: 93, unknown: 100 },
+          },
+        },
+      }),
+    /invalid/,
+  );
+  assert.throws(
+    () => compareCoveragePolicy({ jest: { coverageThreshold: {} } }, base),
+    /Missing coverage groups/,
+  );
+  compareCoveragePolicy(partial, {
+    jest: {
+      coverageThreshold: {
+        './plugins/example/src/': { statements: 95, branches: 100 },
+        './packages/new-workspace/src/': { lines: 90 },
+      },
+    },
+  });
+});
+
 test('compare the real immutable Git base and fail on unavailable revisions', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'coverage-base-'));
   const git = (...args: string[]) =>
@@ -124,6 +197,52 @@ test('failure evidence is bounded metadata, never arbitrary diagnostic text', ()
   assert.throws(() => failureEvidence('not-a-sha', '123', results));
 });
 
+test('evidence CLI defaults unset and empty outcomes without accepting invalid text', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'phase6-evidence-'));
+  const output = path.join(root, 'evidence.json');
+  const env: NodeJS.ProcessEnv = {
+    ...process.env,
+    GITHUB_SHA: 'a'.repeat(40),
+    GITHUB_RUN_ID: '123',
+    PHASE6_POLICY: '',
+    PHASE6_UNIT: 'failure',
+  };
+  for (const stage of [
+    'coverage',
+    'standalone',
+    'graph',
+    'artifact',
+    'installed',
+  ]) {
+    delete env[`PHASE6_${stage.toUpperCase()}`];
+  }
+  const run = () =>
+    execFileSync(
+      process.execPath,
+      [path.resolve('scripts', 'ci-policy.ts'), 'evidence', output],
+      { env, stdio: 'pipe' },
+    );
+  try {
+    run();
+    const evidence = JSON.parse(fs.readFileSync(output, 'utf8'));
+    assert.equal(evidence.stages.unit, 'failure');
+    for (const stage of [
+      'policy',
+      'coverage',
+      'standalone',
+      'graph',
+      'artifact',
+      'installed',
+    ]) {
+      assert.equal(evidence.stages[stage], 'skipped');
+    }
+    env.PHASE6_POLICY = 'invalid outcome';
+    assert.throws(run);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('measured non-decrease compares exact group ratios, not rounded floors', () => {
   const root = path.resolve('base');
   const candidateRoot = path.resolve('candidate');
@@ -147,6 +266,23 @@ test('measured non-decrease compares exact group ratios, not rounded floors', ()
       candidateRoot,
       next,
     );
+  assert.throws(
+    () =>
+      compareMeasuredCoverage(
+        {
+          jest: {
+            coverageThreshold: {
+              './plugins/example/src/components/': { lines: 100 },
+            },
+          },
+        },
+        root,
+        report(root),
+        candidateRoot,
+        report(candidateRoot),
+      ),
+    /full-source/,
+  );
   compare();
   compare(report(candidateRoot, 10000));
   assert.throws(() => compare(report(candidateRoot, 9998)), /decreased/);

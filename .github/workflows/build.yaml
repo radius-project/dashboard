@@ -102,6 +102,7 @@ jobs:
           COVERAGE_BASE: ${{ steps.policy.outputs.base }}
         run: |
           base_directory="$(mktemp -d "${RUNNER_TEMP}/phase6-coverage-XXXXXX")"
+          trap 'git worktree remove --force "${base_directory}"' EXIT
           git worktree add --detach "${base_directory}" "${COVERAGE_BASE}"
           (
             cd "${base_directory}" || exit 1

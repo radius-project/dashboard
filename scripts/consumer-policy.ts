@@ -125,6 +125,11 @@ export function assertApprovedPolicy(policy: ConsumerPolicy) {
     workflow(policy.consumer).path.startsWith('radius-project/dashboard/'),
     'Consumer must invoke dashboard-owned journeys',
   );
+  assert.notEqual(
+    policy.coordinator!.path,
+    policy.consumer!.path,
+    'Coordinator and consumer workflows must be distinct',
+  );
   for (const [label, entries] of [
     ['jobs', policy.requiredJobs],
     ['hosts', policy.hostMatrix],
@@ -141,6 +146,16 @@ export function assertApprovedPolicy(policy: ConsumerPolicy) {
       `Duplicate approved ${label}`,
     );
   }
+  assert.deepEqual(
+    [...policy.hostMatrix!].sort(),
+    [
+      'legacy-external',
+      'native-external',
+      'native-standalone',
+      'built-container',
+    ].sort(),
+    'Approved host matrix must include exactly the four required hosts',
+  );
 }
 
 // The caller must load policy from a protected, pinned coordinator checkout,

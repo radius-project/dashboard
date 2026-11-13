@@ -285,8 +285,12 @@ metrics, a decrease in any existing floor, and changed exclusions produce an
 advisory step failure, not a merge block.
 The existing policy tests still require a full-source group for each workspace.
 No proposed T1 target replaces a stronger current floor.
+Both policies must have nonempty full-source workspace groups. New groups and
+metrics are also checked; narrowed paths and invalid percentages are rejected.
 The same job installs and builds the immutable base in a separate clean checkout,
 then runs the same coverage command with threshold enforcement disabled.
+An exit trap removes that checkout, its build files and its Git worktree
+registration on success or failure, before downstream qualification starts.
 It compares all four measured counters in each existing full-source group with
 the candidate's JSON summary. Any decrease produces an advisory step failure,
 including a change smaller than the rounded floor margin. Missing groups,
@@ -299,6 +303,7 @@ tests remain required. Team approval of T1 targets remains open.
 Failure uploads contain only validated revision/run identifiers and fixed stage
 outcomes, at most 1 KiB, retained for one day. They contain no raw logs,
 request bodies, configuration, tokens, resource names, screenshots or traces.
+Unset or empty stage outcomes are recorded as `skipped`; invalid text is rejected.
 Detailed host evidence stays on the disposable runner and is not uploaded.
 Cancelled runners may stop before evidence upload; missing evidence is not a pass.
 Use `yarn test:ci-policy` for the positive and negative policy regressions.
@@ -339,6 +344,9 @@ An approved policy has `approval: {owner, date, reference}`, `maxPinAgeDays`,
 `toolchain: {node, packageManager, compiler, react}`. Workflow paths include the
 repository, for example `radius-project/dashboard/.github/workflows/consumer.yml`.
 Each revision is a full commit SHA. Toolchain versions are exact, not ranges.
+The host matrix must contain exactly `legacy-external`, `native-external`,
+`native-standalone` and `built-container`, without duplicates. Coordinator and
+consumer workflow paths must differ.
 A proposed pin has `revision`, `lockSha256`, `node`, `packageManager`, `compiler`,
 `react`, `hostMatrix`, `candidateRevision`, `runId` and `artifactId`.
 Its revision must equal the approved dashboard workflow revision.

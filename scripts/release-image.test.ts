@@ -814,6 +814,11 @@ test('the actual build chain, offline CI tests, validation gates, and edge publi
       name === 'Compare measured coverage against the clean base (advisory)'
     ) {
       assert.match(step, /corepack yarn exec playwright install chromium/);
+      assert.match(
+        step,
+        /trap 'git worktree remove --force "\$\{base_directory\}"' EXIT/,
+      );
+      assert.ok(step.indexOf('trap ') < step.indexOf('git worktree add'));
     }
   }
   for (const name of ['Test CI policy helpers', 'Run Tests']) {
