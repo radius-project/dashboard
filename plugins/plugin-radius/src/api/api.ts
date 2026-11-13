@@ -204,6 +204,12 @@ export class RadiusApiImpl implements RadiusApi {
         mode: 'cors',
         cache: 'no-cache',
         method: request.method,
+        ...(request.body !== undefined
+          ? {
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(request.body),
+            }
+          : {}),
         signal: request.signal,
       },
     });

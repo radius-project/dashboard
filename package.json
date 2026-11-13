@@ -61,8 +61,8 @@
     "typescript": "~6.0.3"
   },
   "resolutions": {
-    "@radius-project/core": "file:./vendor/shared-libraries/radius-project-core-0.1.0.tgz",
-    "@radius-project/graph-react": "file:./vendor/shared-libraries/radius-project-graph-react-0.1.0.tgz",
+    "@radius-project/core": "file:./vendor/shared-libraries/radius-project-core-0.1.0-icons-f89020ac197f.tgz",
+    "@radius-project/graph-react": "file:./vendor/shared-libraries/radius-project-graph-react-0.1.0-icons-f89020ac197f.tgz",
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "@backstage/backend-common": "^0.25.0",
