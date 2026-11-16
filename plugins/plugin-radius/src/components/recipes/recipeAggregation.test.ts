@@ -17,7 +17,7 @@ const pack: Resource<RecipePackProperties> = {
   id: PACK_ID,
   type: 'Radius.Core/recipePacks',
   name: 'aca-recipe-pack',
-  systemData: {} as Record<string, never>,
+  systemData: { createdBy: 'radius' },
   properties: {
     recipes: {
       'Applications.Dapr/stateStores': {
@@ -36,7 +36,7 @@ const otherPack: Resource<RecipePackProperties> = {
   id: OTHER_PACK_ID,
   type: 'Radius.Core/recipePacks',
   name: 'other-pack',
-  systemData: {} as Record<string, never>,
+  systemData: {},
   properties: {
     recipes: {
       'Applications.Datastores/redisCaches': {
@@ -51,7 +51,6 @@ const legacyEnvironment: Resource<EnvironmentProperties> = {
   id: '/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/legacy',
   type: 'Applications.Core/environments',
   name: 'legacy',
-  systemData: {} as Record<string, never>,
   properties: {
     provisioningState: 'Succeeded',
     recipes: {
@@ -75,7 +74,6 @@ const newEnvironment: Resource<EnvironmentProperties> = {
   id: '/planes/radius/local/resourceGroups/default/providers/Radius.Core/environments/new',
   type: 'Radius.Core/environments',
   name: 'new',
-  systemData: {} as Record<string, never>,
   properties: {
     provisioningState: 'Succeeded',
     recipes: {} as EnvironmentProperties['recipes'],

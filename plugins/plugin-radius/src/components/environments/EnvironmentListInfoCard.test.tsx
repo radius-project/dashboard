@@ -10,15 +10,14 @@ import { EnvironmentProperties, Resource } from '../../resources';
 const makeEnvironment = (
   name: string,
   id?: string,
-): Resource<EnvironmentProperties> =>
-  ({
-    id:
-      id ??
-      `/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/${name}`,
-    name,
-    type: 'Applications.Core/environments',
-    properties: {},
-  }) as Resource<EnvironmentProperties>;
+): Resource<EnvironmentProperties> => ({
+  id:
+    id ??
+    `/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/${name}`,
+  name,
+  type: 'Applications.Core/environments',
+  properties: { provisioningState: 'Succeeded', recipes: {} },
+});
 
 /**
  * `listEnvironments` is generic over the properties type, so an object literal

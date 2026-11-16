@@ -1,0 +1,79 @@
+{
+  "status": "Development-only compiled candidate. Not a published release.",
+  "sourceRevision": "82e5c47e387bfa0e1c46edbf08b62a2e0cca3278",
+  "source": {
+    "repository": "https://github.com/radius-project/ai-extensions",
+    "branch": "nicolejms-resource-metadata-contract",
+    "baseBranch": "nicolejms-resource-definition-graph-icons",
+    "baseRevision": "97b7243acbcae70932730466c92748ff8009fd9e",
+    "tree": "4e618f665b30ca79bc4920c898519d0e097b904a",
+    "lockFile": "pnpm-lock.yaml",
+    "lockSha256": "95c0f827534811d84b1a667c65201df085ff2b320f214681b02931a9d36de352",
+    "lockGitBlob": "4bcd9a6780b92345a155c16b7427a15b14a1b026",
+    "openPgpFingerprint": "062546FF1256CE6A7E60647035907BBA96F09526",
+    "signatureVerifiedByProducer": true,
+    "signatureVerifiedByGitHub": true,
+    "baselineRevision": "f89020ac197fd4fd266b3a61bbc99f9b933134bb",
+    "prerequisiteMerge": "f0a7ce1c401304b2fda7606126fd163e9c8f79e2",
+    "sourceStatusBeforeBuild": "",
+    "sourceStatusAfterBuild": ""
+  },
+  "core": {
+    "path": "radius-project-core-0.1.0-metadata-82e5c47e387b.tgz",
+    "sha256": "33cdc08b36bdaaecd19e332556689ec1a1e702558b052f66a0147319d0478249",
+    "bytes": 28722
+  },
+  "graphReact": {
+    "path": "radius-project-graph-react-0.1.0-metadata-82e5c47e387b.tgz",
+    "sha256": "4daa0067a566b1570039ffdde208f5bddf4dd39a1fc6575e6eff80c65b5f8308",
+    "bytes": 91706,
+    "stylesSha256": "b0f6a0ccaab445ded3cefdaf35f2921b9b5f212cbab9c30e3ee8f380ae8e83ff",
+    "baseSha256": "f325487e77a8c9c22f1e9197302161b03c4a04fb149cdd2ff899fa7283c64380"
+  },
+  "build": {
+    "node": "24.22.0",
+    "pnpm": "12.15.0",
+    "platform": "linux-x64, WSL Ubuntu",
+    "commands": [
+      {
+        "command": "pnpm run test:integration:libraries",
+        "result": "passed; scripts/build-libraries.mjs rebuilt both packages and scripts/test-libraries.mjs qualified these exact archive bytes offline under React 18.3.1 and 19.3.1"
+      },
+      {
+        "command": "pnpm exec vitest run packages/core/src/domain/resources.test.ts packages/core/src/domain/query.test.ts packages/core/src/domain/recipes.test.ts --maxWorkers=1",
+        "result": "passed; 58 tests"
+      },
+      {
+        "command": "pnpm exec tsc -p packages/core/tsconfig.json --noEmit",
+        "result": "passed; includes omitted, empty, populated and rejected-field compile-time resource proofs"
+      },
+      {
+        "command": "pnpm run typecheck",
+        "result": "passed across the workspace"
+      },
+      {
+        "command": "pnpm run lint",
+        "result": "passed across the workspace"
+      },
+      {
+        "command": "pnpm run format:check",
+        "result": "passed across the workspace"
+      },
+      {
+        "command": "git verify-commit HEAD",
+        "result": "passed; signature and required sign-off verified"
+      }
+    ],
+    "qualificationReports": [
+      "metadata-react-18-smoke.json",
+      "metadata-react-19-smoke.json"
+    ]
+  },
+  "limits": [
+    "The dependency branch is not integrated into upstream main and has no dependency pull request.",
+    "Version 0.1.0 is package metadata, not registry publication.",
+    "Producer qualification does not replace dashboard installation, tests or host qualification.",
+    "The graph-react archive and graph CSS bytes match the existing f89020ac197f candidate.",
+    "The packages were built from the same signed source revision; old vendor archives were not modified."
+  ]
+}

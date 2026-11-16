@@ -5,19 +5,14 @@ import { RadiusApi } from '../../api';
 import { radiusApiRef } from '../../plugin';
 import { ResourceTypesTable } from './ResourceTypesTable';
 import { resourceTypeDetailPageRouteRef } from '../../routes';
+import { Resource } from '../../resources';
 
-type RT = {
-  id: string;
-  name: string;
+type RT = Resource<{
+  namespace: string;
   type: string;
-  systemData: Record<string, never>;
-  properties: {
-    namespace: string;
-    type: string;
-    apiVersion: string;
-    apiVersions?: string[];
-  };
-};
+  apiVersion: string;
+  apiVersions?: string[];
+}>;
 
 const mountedRoutes = {
   '/plugins/radius/resource-types/:namespace/:typeName':

@@ -22,11 +22,10 @@ const assertType = <Condition extends true>(condition: Condition): Condition =>
   condition;
 
 /**
- * `resource.ts` is the domain model every page reads, and it is the one file in
- * Appendix F with no runtime code at all: it declares interfaces and nothing
- * else. A conventional render test cannot reach it, and coverage cannot see it,
- * so the model could be reshaped without a single assertion failing even though
- * every page depends on the shape.
+ * `resource.ts` reexports the shared domain types every page reads and has no
+ * runtime code. A conventional render test cannot reach it, and coverage cannot
+ * see it, so the model could be reshaped without a single assertion failing even
+ * though every page depends on the shape.
  *
  * These are therefore compile-time characterization tests. `assertType` checks
  * the exact property type and whether a key is optional, so the suite fails for
@@ -34,12 +33,11 @@ const assertType = <Condition extends true>(condition: Condition): Condition =>
  * happens to produce some TypeScript error.
  */
 describe('resource model', () => {
-  it('RS-01: requires id, type, name, systemData, and properties on every resource', () => {
+  it('RS-01: requires id, type, name, and properties without system metadata', () => {
     const resource: Resource = {
       id: '/planes/radius/local/resourceGroups/default/providers/Applications.Core/applications/demo-app',
       type: 'Applications.Core/applications',
       name: 'demo-app',
-      systemData: {},
       properties: { provisioningState: 'Succeeded' },
     };
 
@@ -47,7 +45,6 @@ describe('resource model', () => {
       'id',
       'name',
       'properties',
-      'systemData',
       'type',
     ]);
   });
@@ -265,42 +262,38 @@ describe('resource model', () => {
     expect(environment.providers?.aws).toBeUndefined();
   });
 
-  /**
-   * KNOWN-DEFECT, tracked by radius-project/dashboard#365.
-   *
-   * `systemData` is declared `Record<string, never>` and is required. The value
-   * type says "an object whose every property is of type `never`", which is
-   * satisfiable only by `{}` -- so the model can represent the field being
-   * present and empty, and nothing else. Real UCP responses return a populated
-   * `systemData` (`createdAt`, `createdBy`, and so on), and several resources
-   * the dashboard reads do not return it at all.
-   *
-   * The consequence is visible across the suite: because the field is required
-   * and unfillable, test fixtures cannot be written as plain typed literals and
-   * are cast with `as Resource<...>` instead, which discards checking of every
-   * other field at the same time. A modelling choice meant to tighten the type
-   * ended up being the reason the fixtures are untyped.
-   *
-   * Correct behavior is an optional field with an open value type. This test
-   * records what the model does today. Delete and replace the defect assertion
-   * when #365 is fixed; do not invert it into a permanent assertion for the
-   * corrected model.
-   */
-  it('RS-14: KNOWN-DEFECT systemData is required and can only ever be empty', () => {
-    const resource: Resource = {
+  it('RS-14: accepts optional, open-valued system metadata on typed resources', () => {
+    const resource: Resource<ApplicationProperties> = {
       id: '/id',
       type: 'Applications.Core/applications',
       name: 'demo-app',
-      systemData: {},
-      properties: {},
+      systemData: {
+        createdAt: '2026-11-16T18:00:00Z',
+        createdBy: 'radius',
+        lastModifiedAt: '2026-11-16T18:05:00Z',
+        revision: 2,
+        extension: { imported: true },
+      },
+      properties: {
+        provisioningState: 'Succeeded',
+        environment: '/environment/default',
+      },
     };
 
     expect(
-      assertType<IsExact<IsOptional<Resource, 'systemData'>, false>>(true),
+      assertType<IsExact<IsOptional<Resource, 'systemData'>, true>>(true),
     ).toBe(true);
     expect(
-      assertType<IsExact<Resource['systemData'], Record<string, never>>>(true),
+      assertType<
+        IsExact<Resource['systemData'], Record<string, unknown> | undefined>
+      >(true),
     ).toBe(true);
-    expect(resource.systemData).toEqual({});
+    expect(resource.systemData).toEqual({
+      createdAt: '2026-11-16T18:00:00Z',
+      createdBy: 'radius',
+      lastModifiedAt: '2026-11-16T18:05:00Z',
+      revision: 2,
+      extension: { imported: true },
+    });
   });
 });

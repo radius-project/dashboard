@@ -21,14 +21,14 @@ const listedResourceNames = (): string[] =>
 const environmentId =
   '/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/prod';
 
-const environment = {
+const environment: Resource<EnvironmentProperties> = {
   id: environmentId,
   name: 'prod',
   type: 'Applications.Core/environments',
-  properties: {},
-} as unknown as Resource<EnvironmentProperties>;
+  properties: { provisioningState: 'Succeeded', recipes: {} },
+};
 
-const makeResource = (name: string, environment_?: string) => ({
+const makeResource = (name: string, environment_?: string): Resource => ({
   id: `/planes/radius/local/resourceGroups/default/providers/Applications.Core/containers/${name}`,
   name,
   type: 'Applications.Core/containers',
@@ -47,9 +47,9 @@ type ResourcesApiStub = {
   }) => Promise<{ value: Resource[] }>;
 };
 
-const renderTab = async (resources: unknown[]) => {
+const renderTab = async (resources: Resource[]) => {
   const api: ResourcesApiStub = {
-    listResources: async () => ({ value: resources as Resource[] }),
+    listResources: async () => ({ value: resources }),
   };
 
   await renderInTestApp(

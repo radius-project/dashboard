@@ -24,7 +24,6 @@ const api: Pick<RadiusApi, 'getResourceById'> = {
     id: 'unused',
     type: 'Radius.Core/recipePacks',
     name: 'unused',
-    systemData: {} as Record<string, never>,
     properties: {} as T,
   }),
 };

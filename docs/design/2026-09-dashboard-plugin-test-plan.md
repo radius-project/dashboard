@@ -636,8 +636,8 @@ The backend plugin registration and lifecycle are now pinned by BE-01–BE-05, t
 Three things the closing increment had to work around, none of them defects in the code under test.
 `resources/resource.ts` emits no JavaScript, so RS is written as compile-time characterization:
 exact-type and optional-key helpers assert the intended model property rather than accepting any
-unrelated TypeScript error. When #365 is fixed, RS-14 is deleted and replaced with assertions for
-the corrected model rather than inverted into a permanent defect assertion. `packages/backend`'s
+unrelated TypeScript error. The #365 fix replaces the RS-14 defect assertion with checks for
+optional, open-valued metadata in the shared Resource contract. `packages/backend`'s
 entry point is nothing but `backend.add(import(…))`, which the CLI's
 default SWC options leave as a native dynamic import that Jest's CJS runtime refuses to execute;
 the workspace therefore carries a documented `jest.transform` override. And Backstage appends a
@@ -1062,7 +1062,7 @@ its issue is fixed, and that failure is the signal the fix landed, not a regress
 | #362  | `ResourceLayout` renders literal `undefined/undefined: undefined` off-route  | LY-04                |
 | #363  | Output-properties nested filtering — **fixed; object, array, and map children now select read-only fields** | RT-27, RT-35–RT-40 (regression) |
 | #364  | "Join us on Discord" navigates to the dashboard home page instead of Discord | CC-05, CC-06        |
-| #365  | `Resource.systemData` is required and typed `Record<string, never>`, so every fixture must be cast | RS-14 |
+| #365  | `Resource.systemData` accepts omitted or populated metadata through the shared contract | RS-01, RS-14 (regression) |
 | #366  | The Sucrase Jest transform's cache key ignores `instrument`, so an override that selects it reports 0% while its tests pass | PU-35 guardrail; fix is upstream |
 | #367  | Connection context is implicit, unscoped, and not consistently cancellable   | CN-02, CN-05–CN-08, ER-01, ER-02 |
 | #368  | The graph has no explicit empty state or degraded layout-failure state        | GU-15, GU-17         |
@@ -1116,12 +1116,12 @@ mode is misattribution: it surfaces as a coverage-threshold failure naming an un
 characterization is done before rearchitecture rather than after. `#364` is a one-character defect
 — `to=""` on a `LinkButton` — that renders a plausible-looking enabled button pointing at `/`, so
 it survives visual review; CC-05 pins the wrong href and CC-06 pins the missing "opens in a new
-window" hint that the two working cards have. `#365` is a type defect: `systemData` is declared
-required and `Record<string, never>`, meaning "an object with no properties", so no honest value
-satisfies it and every fixture in the repository casts around it. RS-14 now asserts the exact
-property type and requiredness, so it fails for the intended model change rather than for any
-unrelated TypeScript error. When #365 is fixed, the defect assertion is deleted and replaced with
-coverage of the corrected optional, open-valued field.
+window" hint that the two working cards have. `#365` was a type defect: `systemData` was required
+and typed `Record<string, never>`, so it could not describe omitted or populated control-plane
+metadata. The dashboard reexports `Resource` from `@radius-project/core/domain`. RS-01 now checks
+an envelope without metadata, and RS-14 checks the exact optional, open-valued type with populated
+metadata on a typed application. The card and environment-resource fixtures use checked literals
+instead of Resource casts, so their required properties remain checked.
 
 `#366` is recorded the way `#360` is: a harness defect with no `KNOWN-DEFECT` assertion pinning it,
 because there is no product behavior to characterize. It differs from every other row in two ways

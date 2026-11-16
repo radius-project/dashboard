@@ -10,15 +10,17 @@ import { ApplicationProperties, Resource } from '../../resources';
 const makeApplication = (
   name: string,
   id?: string,
-): Resource<ApplicationProperties> =>
-  ({
-    id:
-      id ??
-      `/planes/radius/local/resourceGroups/default/providers/Applications.Core/applications/${name}`,
-    name,
-    type: 'Applications.Core/applications',
-    properties: { environment: '/environment/default' },
-  }) as Resource<ApplicationProperties>;
+): Resource<ApplicationProperties> => ({
+  id:
+    id ??
+    `/planes/radius/local/resourceGroups/default/providers/Applications.Core/applications/${name}`,
+  name,
+  type: 'Applications.Core/applications',
+  properties: {
+    provisioningState: 'Succeeded',
+    environment: '/environment/default',
+  },
+});
 
 /**
  * `listApplications` is generic over the properties type, so an object literal

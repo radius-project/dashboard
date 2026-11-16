@@ -1,0 +1,20 @@
+{
+  "react": "18.3.1",
+  "core": "0.1.0",
+  "graphReact": "0.1.0",
+  "coreTarballSha256": "33cdc08b36bdaaecd19e332556689ec1a1e702558b052f66a0147319d0478249",
+  "graphTarballSha256": "4daa0067a566b1570039ffdde208f5bddf4dd39a1fc6575e6eff80c65b5f8308",
+  "runtime": "passed",
+  "declarations": "passed",
+  "browserBundle": "passed",
+  "chromiumComponent": "passed",
+  "css": "passed",
+  "hostStylesheetIsolation": "passed",
+  "baseOnlyRenderer": "passed",
+  "contextFreeLegacyAppGraph": "passed",
+  "optionalLegacyResourceNode": "passed",
+  "nativeWithoutFlow11": "passed",
+  "peers": "passed",
+  "installedTarballIntegrity": "verified",
+  "offline": true
+}
