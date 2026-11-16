@@ -2,6 +2,7 @@ import React from 'react';
 import { createHash } from 'node:crypto';
 import { renderInTestApp, TestApiProvider } from '@backstage/test-utils';
 import { act, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { errorApiRef } from '@backstage/core-plugin-api';
 import { useLocation } from 'react-router-dom';
 import {
@@ -321,15 +322,72 @@ describe('ApplicationTab host adapter', () => {
     expect(RadiusGraph).not.toHaveBeenCalled();
   });
 
-  it('GU-16 / ER-05: displays graph retrieval errors', async () => {
-    await renderTab({
-      getApplicationGraph: jest
-        .fn()
-        .mockRejectedValue(new Error('Request failed: 404')),
-    });
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Request failed: 404',
+  it.each([
+    ['request failure', new Error('Request failed: 503')],
+    ['normalization failure', { resources: null }],
+  ])(
+    'GU-16 / #370: retries a %s without navigation',
+    async (_label, failure) => {
+      const user = userEvent.setup();
+      const context = {
+        connectionId: 'host',
+        plane: { type: 'radius', name: 'local' },
+        applicationId: application,
+      };
+      let resolveRetry!: (result: {
+        graph: typeof graphResponse;
+        context: typeof context;
+      }) => void;
+      const getGraph = jest.fn();
+      if (failure instanceof Error) {
+        getGraph.mockRejectedValueOnce(failure);
+      } else {
+        getGraph.mockResolvedValueOnce({ graph: failure, context });
+      }
+      getGraph.mockImplementationOnce(
+        () =>
+          new Promise(resolve => {
+            resolveRetry = resolve;
+          }),
+      );
+      await renderTab({ getApplicationGraph: getGraph });
+      expect(await screen.findByRole('alert')).toBeVisible();
+      const location = screen.getByRole('status').textContent;
+      const retry = screen.getByRole('button', { name: 'Retry graph' });
+      retry.focus();
+      await user.keyboard('{Enter}');
+
+      expect(getGraph).toHaveBeenCalledTimes(2);
+      expect(getGraph.mock.calls[1][0].applicationId).toBe(application);
+      expect(getGraph.mock.calls[1][0].signal).not.toBe(
+        getGraph.mock.calls[0][0].signal,
+      );
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: 'Retry graph' }),
+      ).not.toBeInTheDocument();
+      expect(await screen.findByRole('progressbar')).toBeVisible();
+      await act(async () => resolveRetry({ graph: graphResponse, context }));
+      expect(await screen.findByText('frontend')).toBeVisible();
+      expect(screen.getByRole('status')).toHaveTextContent(location!);
+    },
+  );
+
+  it('GU-16 / #370: keeps retry available after another failed request', async () => {
+    const user = userEvent.setup();
+    const getGraph = jest
+      .fn()
+      .mockRejectedValueOnce(new Error('Request failed: 503'))
+      .mockRejectedValueOnce(new Error('Request failed: 502'));
+    await renderTab({ getApplicationGraph: getGraph });
+    await user.click(
+      await screen.findByRole('button', { name: 'Retry graph' }),
     );
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Request failed: 502',
+    );
+    expect(screen.getByRole('button', { name: 'Retry graph' })).toBeEnabled();
+    expect(getGraph).toHaveBeenCalledTimes(2);
   });
 
   it.each([

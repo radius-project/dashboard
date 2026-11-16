@@ -1067,7 +1067,7 @@ its issue is fixed, and that failure is the signal the fix landed, not a regress
 | #367  | Connection context is implicit, unscoped, and not consistently cancellable   | CN-02, CN-05–CN-08, ER-01, ER-02 |
 | #368  | The graph has no explicit empty state or degraded layout-failure state        | GU-15, GU-17         |
 | #369  | Partial namespace failures are silently presented as complete inventory      | ER-08                |
-| #370  | The graph request error state has no retry action                             | GU-16                |
+| #370  | Fixed: graph request, timeout, and normalization errors have a retry action   | GU-16                |
 
 Six notes on reading this table.
 
@@ -1512,7 +1512,7 @@ expected-change manifest.
 | GU-13 | B    | A connection between two named resources is represented in the rendered output — **done**            |
 | GU-14 | B    | Zoom, fit, and the graph controls are operable by mouse and by keyboard — **done**                   |
 | GU-15 | B    | An empty application renders an explicit empty state with an accessible message, not a blank canvas — **done, KNOWN-DEFECT** |
-| GU-16 | B    | A graph request failure renders a retryable error state, not an empty successful graph — **done, KNOWN-DEFECT** |
+| GU-16 | B    | A graph request failure renders a retryable error state, not an empty successful graph — **done** |
 | GU-17 | B    | A layout failure renders an explicitly degraded but usable presentation, not overlapping nodes — **done, KNOWN-DEFECT** |
 | GU-18 | B    | Selecting a node reveals its details, and focus is restored when the details close — **done, KNOWN-DEFECT** |
 | GU-19 | B    | The graph renders correctly in light and dark themes with the shared stylesheet loaded — **done**    |

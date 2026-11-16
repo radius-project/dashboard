@@ -10,7 +10,7 @@ import {
   ResponseErrorPanel,
 } from '@backstage/core-components';
 import { errorApiRef, useApi } from '@backstage/core-plugin-api';
-import { makeStyles, useTheme } from '@material-ui/core';
+import { Box, Button, makeStyles, useTheme } from '@material-ui/core';
 import { radiusApiRef } from '../../api/ref';
 import { useApplicationGraph } from './useApplicationGraph';
 import { useResourceRoute } from '../resourcelink/useResourceRoute';
@@ -31,7 +31,10 @@ export const ApplicationTab = ({ application }: { application: string }) => {
   const resourceRoute = useResourceRoute();
   const radiusApi = useApi(radiusApiRef);
   const errorApi = useApi(errorApiRef);
-  const { value, loading, error } = useApplicationGraph(radiusApi, application);
+  const { value, loading, error, retry } = useApplicationGraph(
+    radiusApi,
+    application,
+  );
   const normalized = useMemo(() => {
     if (!value) {
       return {};
@@ -51,7 +54,16 @@ export const ApplicationTab = ({ application }: { application: string }) => {
   if (loading) {
     return <Progress />;
   } else if (failure) {
-    return <ResponseErrorPanel error={failure} />;
+    return (
+      <>
+        <ResponseErrorPanel error={failure} />
+        <Box mt={2}>
+          <Button variant="outlined" color="primary" onClick={retry}>
+            Retry graph
+          </Button>
+        </Box>
+      </>
+    );
   } else if (!normalized.graph) {
     return <Progress />;
   }

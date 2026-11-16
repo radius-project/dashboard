@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { parseResourceId } from '@radius-project/core/domain';
 import { graphContextKey } from '@radius-project/core/graph';
 import { RadiusApi, RadiusApplicationGraph } from '../../api';
@@ -6,6 +6,7 @@ import { RadiusApi, RadiusApplicationGraph } from '../../api';
 interface GraphRequestState {
   api: RadiusApi;
   application: string;
+  attempt: number;
   loading: boolean;
   value?: RadiusApplicationGraph;
   error?: Error;
@@ -14,10 +15,13 @@ interface GraphRequestState {
 export function useApplicationGraph(
   api: RadiusApi,
   application: string,
-): GraphRequestState {
+): GraphRequestState & { retry: () => void } {
+  const [attempt, setAttempt] = useState(0);
+  const retry = useCallback(() => setAttempt(current => current + 1), []);
   const [state, setState] = useState<GraphRequestState>({
     api,
     application,
+    attempt,
     loading: true,
   });
 
@@ -42,10 +46,10 @@ export function useApplicationGraph(
       }
       active = false;
       clearTimeout(timeout);
-      setState({ api, application, ...result });
+      setState({ api, application, attempt, ...result });
     }
 
-    setState({ api, application, loading: true });
+    setState({ api, application, attempt, loading: true });
 
     async function load() {
       try {
@@ -95,10 +99,15 @@ export function useApplicationGraph(
       clearTimeout(timeout);
       controller.abort();
     };
-  }, [api, application]);
+  }, [api, application, attempt]);
 
   // Hide old data on the render that precedes the replacement request's effect.
-  return state.api === api && state.application === application
-    ? state
-    : { api, application, loading: true };
+  return {
+    ...(state.api === api &&
+    state.application === application &&
+    state.attempt === attempt
+      ? state
+      : { api, application, attempt, loading: true }),
+    retry,
+  };
 }
