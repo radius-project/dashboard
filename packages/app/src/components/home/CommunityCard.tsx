@@ -19,7 +19,7 @@ const actions = () => (
     >
       Good first issues
     </LinkButton>
-    <LinkButton size="small" variant="text" to="">
+    <LinkButton size="small" variant="text" to="https://aka.ms/radius/discord">
       Join us on Discord
     </LinkButton>
   </CardActions>
