@@ -42,6 +42,9 @@ The tab checks the returned application and plane, then uses the shared
 contextual legacy normalizer and `RadiusGraph`. Route or API replacement aborts
 old work and hides old data. A 10-second limit reports an error even if an override
 ignores its abort signal; late responses cannot replace that error.
+Request, timeout, and graph normalization errors include a **Retry graph** button.
+It sends a new graph request without reloading the resource page or changing the
+selected tab. The error and retry button are replaced by progress while it loads.
 
 The shared native card shows resource-type icons and the raw provisioning text.
 For discovered `Radius.Core/applications` API versions dated `2025-08-01` or
