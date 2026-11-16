@@ -366,42 +366,7 @@ export const ResourceTypeDetailPage = withRadiusTheme(() => {
     return parts;
   };
 
-  // Test markdown content with code blocks to verify copy button functionality
-  const testMarkdownContent = `# Resource Type Description
-
-This resource type defines containers that can be deployed in a Radius application.
-
-## Example Configuration
-
-Here's how to configure a container resource:
-
-\`\`\`yaml
-apiVersion: radapp.io/v1alpha3
-kind: Container
-metadata:
-  name: webapp
-spec:
-  image: nginx:latest
-  ports:
-    - containerPort: 80
-  environment:
-    - name: ENV_VAR
-      value: "example"
-\`\`\`
-
-## Another Code Example
-
-\`\`\`json
-{
-  "type": "Applications.Core/containers",
-  "name": "webapp",
-  "properties": {
-    "image": "nginx:latest"
-  }
-}
-\`\`\`
-
-This should test whether copy buttons appear properly.`;
+  const description = formatDescription(resourceType.Description);
 
   return (
     <Page themeId="tool">
@@ -422,10 +387,12 @@ This should test whether copy buttons appear properly.`;
             <Grid container spacing={3}>
               <Grid item xs={12}>
                 <div className={classes.markdownContainer}>
-                  {renderMarkdownWithCodeSnippets(
-                    resourceType.Description
-                      ? formatDescription(resourceType.Description)
-                      : testMarkdownContent,
+                  {description.trim() ? (
+                    renderMarkdownWithCodeSnippets(description)
+                  ) : (
+                    <Typography color="textSecondary">
+                      No description available for this resource type.
+                    </Typography>
                   )}
                 </div>
               </Grid>

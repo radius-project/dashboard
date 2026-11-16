@@ -1058,7 +1058,7 @@ its issue is fixed, and that failure is the signal the fix landed, not a regress
 | #358  | Publication/consumer blockers: final package name and publishability remain deferred; the API contract is exported and source `workspace:^` is proven to rewrite during local packing | PU-10, PU-17, PU-19, PU-26–PU-28; release checklist below |
 | #359  | `rad-components` declares ISC while the repository is Apache-2.0             | Release checklist below |
 | #360  | Five page suites can time out under loaded parallel execution and misreport as coverage failures | Phase 1 default-worker recheck; open guardrail |
-| #361  | A resource type with no description shows placeholder container documentation | RT-07                |
+| #361  | Missing resource-type descriptions — **fixed; empty and whitespace-only descriptions show a neutral message, not container documentation** | RT-07 (regression) |
 | #362  | `ResourceLayout` renders literal `undefined/undefined: undefined` off-route  | LY-04                |
 | #363  | Output-properties nested filtering — **fixed; object, array, and map children now select read-only fields** | RT-27, RT-35–RT-40 (regression) |
 | #364  | "Join us on Discord" navigates to the dashboard home page instead of Discord | CC-05, CC-06        |
@@ -1103,10 +1103,11 @@ nor a bad row but a blank card reporting `Cannot read properties of null (readin
 The parse failure never reaches the surface, so a test that only covered the parser would leave the
 real symptom unrecorded.
 
-`#361` and `#363` are both consequences of the same structure: `ResourceTypeDetailPage` is 2,693
-lines containing two near-duplicate eleven-hundred-line tab bodies that are meant to differ by one
-boolean. RT-27 and the schema matrix now guard the #363 fix, but the duplicate tab implementations
-remain. The placeholder-documentation defect in #361 is unchanged.
+`ResourceTypeDetailPage` still contains two near-duplicate tab bodies that are meant to differ by
+one boolean. RT-27 and the schema matrix guard the #363 fix. RT-07 guards the #361 fix through a
+custom `radiusApiRef`: empty and whitespace-only descriptions, including escaped newlines, show
+"No description available for this resource type." without example code or copy controls.
+RT-05, RT-08, and the interaction tests retain coverage for real Markdown and code blocks.
 
 `#360` is a harness defect rather than a product defect, which is why it is carried as an open
 decision rather than as a `KNOWN-DEFECT` assertion. It is listed here anyway because its failure

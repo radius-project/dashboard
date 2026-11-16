@@ -221,12 +221,15 @@ describe('ResourceTypeDetailPage', () => {
   describe('overview tab', () => {
     it('RT-05: renders the description supplied by the API', async () => {
       await renderPage(
-        makeResourceType({ Description: 'A database for storing things' }),
+        makeResourceType({ Description: 'A **database** for storing things' }),
       );
 
       expect(
-        screen.getByText('A database for storing things'),
+        screen.getByText('database', { selector: 'strong' }),
       ).toBeInTheDocument();
+      expect(
+        screen.queryByText('No description available for this resource type.'),
+      ).toBeNull();
     });
 
     it('RT-06: strips the requiredness markers the API embeds in prose', async () => {
@@ -239,32 +242,30 @@ describe('ResourceTypeDetailPage', () => {
       expect(screen.getByText('The image. The status.')).toBeInTheDocument();
     });
 
-    /**
-     * KNOWN-DEFECT, tracked by radius-project/dashboard#361.
-     *
-     * When a resource type has no description the page substitutes a block of
-     * developer placeholder prose describing `Applications.Core/containers`,
-     * complete with worked YAML and JSON examples. It is presented exactly like
-     * real documentation, so for any undescribed type the user is shown
-     * confident, specific, and wrong content.
-     *
-     * `RadiusApiImpl.getResourceType` currently defaults the description to a
-     * non-empty string, which hides this behind the real API. It is reachable
-     * for any host that supplies its own `radiusApiRef` — which is precisely
-     * what the plugin rearchitecture invites — so this records the behavior
-     * rather than treating it as unreachable.
-     */
-    it('RT-07: KNOWN-DEFECT substitutes placeholder container docs when the description is empty', async () => {
-      await renderPage(makeResourceType({ Description: '' }));
+    it.each(['', ' \t\r\n ', '\\n\\n'])(
+      'RT-07: shows a neutral empty state for description %j from a custom API',
+      async Description => {
+        await renderPage(
+          makeResourceType({
+            Name: 'databases',
+            ResourceProviderNamespace: 'Example.Data',
+            Description,
+          }),
+        );
 
-      expect(screen.getByText('Resource Type Description')).toBeInTheDocument();
-      expect(
-        screen.getByText(/This should test whether copy buttons appear/),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByText(/apiVersion: radapp\.io\/v1alpha3/),
-      ).toBeInTheDocument();
-    });
+        expect(
+          screen.getByText('No description available for this resource type.'),
+        ).toBeInTheDocument();
+        expect(screen.queryByText('Resource Type Description')).toBeNull();
+        expect(
+          screen.queryByText(/This should test whether copy buttons appear/),
+        ).toBeNull();
+        expect(
+          screen.queryByRole('button', { name: 'Copy to clipboard' }),
+        ).toBeNull();
+        expect(document.querySelector('pre, code')).toBeNull();
+      },
+    );
 
     it('RT-08: renders fenced code blocks with a copy control', async () => {
       await renderPage(
