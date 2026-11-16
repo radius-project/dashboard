@@ -1,8 +1,9 @@
 import React from 'react';
 import { renderInTestApp, TestApiProvider } from '@backstage/test-utils';
-import { screen } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { EnvironmentOverviewTab } from './EnvironmentOverviewTab';
 import { Resource, EnvironmentProperties } from '../../resources';
+import { DisplayRecipe } from '../recipes/recipeAggregation';
 import { RadiusApi } from '../../api';
 import { radiusApiRef } from '../../plugin';
 
@@ -14,8 +15,19 @@ jest.mock('./EnvironmentDetailsTable', () => ({
 }));
 
 jest.mock('../recipes/RecipeTable', () => ({
-  RecipeTable: ({ title }: { title: string }) => (
-    <div data-testid="recipe-table">RecipeTable - {title}</div>
+  RecipeTable: ({
+    title,
+    recipes,
+  }: {
+    title: string;
+    recipes: DisplayRecipe[];
+  }) => (
+    <div data-testid="recipe-table">
+      RecipeTable - {title}
+      {recipes.map(recipe => (
+        <span key={recipe.type}>{recipe.type}</span>
+      ))}
+    </div>
   ),
 }));
 
@@ -79,5 +91,55 @@ describe('EnvironmentOverviewTab', () => {
     // Check that both components are rendered
     expect(screen.getByTestId('environment-details-table')).toBeInTheDocument();
     expect(screen.getByTestId('recipe-table')).toBeInTheDocument();
+  });
+
+  it('reports failed pack discovery, keeps available recipes, and recovers on retry', async () => {
+    const packId =
+      '/planes/radius/local/resourceGroups/test-group/providers/Radius.Core/recipePacks/platform';
+    const getResourceById = jest
+      .fn()
+      .mockRejectedValueOnce(new Error('Request failed: 503: pack unavailable'))
+      .mockResolvedValue({
+        id: packId,
+        name: 'platform',
+        type: 'Radius.Core/recipePacks',
+        properties: {
+          recipes: {
+            'Radius.Data/redisCaches': {
+              kind: 'bicep',
+              source: 'ghcr.io/test/redis:latest',
+            },
+          },
+        },
+      });
+    await renderInTestApp(
+      <TestApiProvider apis={[[radiusApiRef, { getResourceById }]]}>
+        <EnvironmentOverviewTab
+          environment={{
+            ...mockEnvironment,
+            properties: {
+              ...mockEnvironment.properties,
+              recipePacks: [packId],
+            },
+          }}
+        />
+      </TestApiProvider>,
+    );
+
+    expect(
+      await screen.findByText(/Incomplete Radius inventory/),
+    ).toBeVisible();
+    expect(
+      screen.getByText('Applications.Datastores/redisCaches'),
+    ).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry inventory' }));
+    expect(await screen.findByText('Radius.Data/redisCaches')).toBeVisible();
+    await waitFor(() =>
+      expect(
+        screen.queryByText(/Incomplete Radius inventory/),
+      ).not.toBeInTheDocument(),
+    );
+    expect(getResourceById).toHaveBeenCalledTimes(2);
+    expect(getResourceById).toHaveBeenLastCalledWith({ id: packId });
   });
 });

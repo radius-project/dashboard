@@ -1,34 +1,28 @@
 import {
   InfoCard,
   LinkButton,
-  Progress,
-  ResponseErrorPanel,
   Table,
   TableColumn,
 } from '@backstage/core-components';
 import { useApi, useRouteRef } from '@backstage/core-plugin-api';
-import React from 'react';
-import useAsync from 'react-use/lib/useAsync';
+import React, { useCallback } from 'react';
 import { radiusApiRef } from '../../api/ref';
 import { ApplicationProperties, Resource } from '../../resources';
 import { ResourceLink } from '../resourcelink';
 import { resourcePageRouteRef } from '../../routes';
 import { parseLegacyResourceId as parseResourceId } from '@radius-project/core/domain';
 import { ResourceQueryResult } from '../queryresult/ResourceQueryResult';
+import { useInventoryQuery } from '../queryresult/useInventoryQuery';
 
 const ApplicationListInfoContent = () => {
   const route = useRouteRef(resourcePageRouteRef);
 
   const radiusApi = useApi(radiusApiRef);
-  const { value, loading, error } = useAsync(async () => {
-    return radiusApi.listApplications<ApplicationProperties>();
-  }, [radiusApi]);
-
-  if (loading) {
-    return <Progress data-testid="progress" />;
-  } else if (error) {
-    return <ResponseErrorPanel error={error} />;
-  }
+  const { value, loading, error, retry } = useInventoryQuery(
+    useCallback(async () => {
+      return radiusApi.listApplications<ApplicationProperties>();
+    }, [radiusApi]),
+  );
 
   const columns: TableColumn<Resource<ApplicationProperties>>[] = [
     {
@@ -64,7 +58,12 @@ const ApplicationListInfoContent = () => {
   ];
 
   return (
-    <ResourceQueryResult result={value}>
+    <ResourceQueryResult
+      result={value}
+      loading={loading}
+      error={error}
+      retry={retry}
+    >
       <Table
         columns={columns}
         components={{ Toolbar: _row => null }}

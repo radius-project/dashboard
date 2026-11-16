@@ -73,6 +73,16 @@ a warning for partial data and an error when an incomplete result has no
 resources. Metadata-free host overrides retain their prior contract; the plugin
 does not assume that those results prove completeness.
 
+Inventory lists, cards, and tables expose **Retry inventory** after partial or
+failed requests. Retry uses the same host API and does not switch connections
+after an authorization error. Available data stays visible during refresh.
+If the refresh fails, the view marks retained data as out of date and shows the
+error. A successful empty result clears old data; an incomplete empty result
+shows an error, not an empty inventory. The environments page uses one request
+for both its resource-group filter and table so they cannot disagree.
+The environment overview also reports failed recipe-pack discovery instead of
+silently dropping packs, and keeps available recipes visible with a retry action.
+
 ## Page appearance
 
 All eight Radius pages use the native dashboard's light or dark theme inside
