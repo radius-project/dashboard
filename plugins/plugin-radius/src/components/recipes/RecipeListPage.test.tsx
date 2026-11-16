@@ -314,4 +314,39 @@ describe('RecipeListPage', () => {
     ).not.toBeInTheDocument();
     expect(listEnvironments).toHaveBeenCalledTimes(3);
   });
+
+  it('keeps loaded pack recipes as stale when every pack fails on retry', async () => {
+    const getResourceById = jest
+      .fn()
+      .mockResolvedValueOnce(pack)
+      .mockRejectedValueOnce(new Error('Second pack unavailable'))
+      .mockRejectedValue(new Error('Pack refresh unavailable'));
+    await renderPage({
+      listEnvironments: jest.fn().mockResolvedValue({
+        value: [
+          {
+            ...packEnvironment,
+            properties: {
+              ...packEnvironment.properties,
+              recipePacks: [PACK_ID, `${PACK_ID}-missing`],
+            },
+          },
+        ],
+      }),
+      getResourceById,
+    });
+
+    expect(await screen.findByText('Radius.Data/redisCaches')).toBeVisible();
+    expect(screen.getByText(/Incomplete Radius inventory/)).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry inventory' }));
+
+    expect(
+      await screen.findByText(/Radius inventory is out of date/),
+    ).toBeVisible();
+    expect(screen.getByText('Radius.Data/redisCaches')).toBeVisible();
+    expect(
+      screen.getAllByText(/Pack refresh unavailable/).length,
+    ).toBeGreaterThan(0);
+    expect(getResourceById).toHaveBeenCalledTimes(4);
+  });
 });

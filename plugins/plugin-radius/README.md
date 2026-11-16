@@ -82,6 +82,9 @@ shows an error, not an empty inventory. The environments page uses one request
 for both its resource-group filter and table so they cannot disagree.
 The environment overview also reports failed recipe-pack discovery instead of
 silently dropping packs, and keeps available recipes visible with a retry action.
+If every recipe-pack request fails on retry, the overview and recipe list keep
+previously loaded recipes and mark them as out of date. Inline recipes stay
+visible when the initial recipe-pack load fails.
 
 ## Page appearance
 

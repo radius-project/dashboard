@@ -5,6 +5,7 @@ import { RecipePackProperties, Resource } from '../../resources';
 export async function loadRecipePacks(
   api: Pick<RadiusApi, 'getResourceById'>,
   packIds: Iterable<string>,
+  previous?: Record<string, Resource<RecipePackProperties>>,
 ) {
   const requested = Array.from(new Set(packIds));
   const results = await Promise.allSettled(
@@ -19,6 +20,25 @@ export async function loadRecipePacks(
     } else {
       errors.push({ resourceId: requested[index], error: result.reason });
     }
+  }
+
+  if (
+    errors.length > 0 &&
+    errors.length === requested.length &&
+    Object.keys(previous ?? {}).length > 0
+  ) {
+    throw new Error(
+      `Recipe-pack refresh failed.\n${errors
+        .map(
+          failure =>
+            `${failure.resourceId}: ${
+              failure.error instanceof Error
+                ? failure.error.message
+                : String(failure.error)
+            }`,
+        )
+        .join('\n')}`,
+    );
   }
 
   return { packsById, errors };

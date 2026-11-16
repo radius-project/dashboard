@@ -2,14 +2,14 @@ import { useEffect, useMemo } from 'react';
 import useAsyncRetry from 'react-use/lib/useAsyncRetry';
 
 // Callers memoize query so retained data belongs to that request only.
-export function useInventoryQuery<T>(query: () => Promise<T>) {
+export function useInventoryQuery<T>(query: (previous?: T) => Promise<T>) {
   const retained = useMemo<{ query: typeof query; value?: T }>(
     () => ({ query }),
     [query],
   );
   const state = useAsyncRetry(async () => {
     try {
-      return { query, value: await query(), error: undefined };
+      return { query, value: await query(retained.value), error: undefined };
     } catch (error) {
       return {
         query,
@@ -17,7 +17,7 @@ export function useInventoryQuery<T>(query: () => Promise<T>) {
         error: error instanceof Error ? error : new Error(String(error)),
       };
     }
-  }, [query]);
+  }, [query, retained]);
   const result =
     state.value?.query === retained.query ? state.value : undefined;
 

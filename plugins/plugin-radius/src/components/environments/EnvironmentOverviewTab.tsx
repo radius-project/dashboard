@@ -20,7 +20,8 @@ export const EnvironmentOverviewTab = (props: {
   );
   const { value, loading, error, retry } = useInventoryQuery(
     useCallback(
-      () => loadRecipePacks(radiusApi, packIds),
+      (previous?: Awaited<ReturnType<typeof loadRecipePacks>>) =>
+        loadRecipePacks(radiusApi, packIds, previous?.packsById),
       [radiusApi, packIds],
     ),
   );

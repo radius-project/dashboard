@@ -142,4 +142,55 @@ describe('EnvironmentOverviewTab', () => {
     expect(getResourceById).toHaveBeenCalledTimes(2);
     expect(getResourceById).toHaveBeenLastCalledWith({ id: packId });
   });
+
+  it('keeps loaded pack recipes as stale when every pack fails on retry', async () => {
+    const packId =
+      '/planes/radius/local/resourceGroups/test-group/providers/Radius.Core/recipePacks/platform';
+    const getResourceById = jest
+      .fn()
+      .mockResolvedValueOnce({
+        id: packId,
+        name: 'platform',
+        type: 'Radius.Core/recipePacks',
+        properties: {
+          recipes: {
+            'Radius.Data/redisCaches': {
+              kind: 'bicep',
+              source: 'ghcr.io/test/redis:latest',
+            },
+          },
+        },
+      })
+      .mockRejectedValueOnce(new Error('Second pack unavailable'))
+      .mockRejectedValue(new Error('Pack refresh unavailable'));
+    await renderInTestApp(
+      <TestApiProvider apis={[[radiusApiRef, { getResourceById }]]}>
+        <EnvironmentOverviewTab
+          environment={{
+            ...mockEnvironment,
+            properties: {
+              ...mockEnvironment.properties,
+              recipePacks: [packId, `${packId}-missing`],
+            },
+          }}
+        />
+      </TestApiProvider>,
+    );
+
+    expect(await screen.findByText('Radius.Data/redisCaches')).toBeVisible();
+    expect(screen.getByText(/Incomplete Radius inventory/)).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry inventory' }));
+
+    expect(
+      await screen.findByText(/Radius inventory is out of date/),
+    ).toBeVisible();
+    expect(screen.getByText('Radius.Data/redisCaches')).toBeVisible();
+    expect(
+      screen.getByText('Applications.Datastores/redisCaches'),
+    ).toBeVisible();
+    expect(
+      screen.getAllByText(/Pack refresh unavailable/).length,
+    ).toBeGreaterThan(0);
+    expect(getResourceById).toHaveBeenCalledTimes(4);
+  });
 });

@@ -23,6 +23,11 @@ import { withRadiusTheme } from '../../appearance';
 import { useInventoryQuery } from '../queryresult/useInventoryQuery';
 import { loadRecipePacks } from './loadRecipePacks';
 
+type RecipeInventory = {
+  environments: RadiusListResult<EnvironmentProperties>;
+  packsById: Record<string, Resource<RecipePackProperties>>;
+};
+
 export const RecipeListPageContent2 = ({
   environments,
   packsById,
@@ -78,35 +83,36 @@ export const RecipeListPageContent2 = ({
 export const RecipeListPageContent = () => {
   const radiusApi = useApi(radiusApiRef);
   const { value, loading, error, retry } = useInventoryQuery(
-    useCallback(async (): Promise<{
-      environments: RadiusListResult<EnvironmentProperties>;
-      packsById: Record<string, Resource<RecipePackProperties>>;
-    }> => {
-      const environments = await radiusApi.listEnvironments();
+    useCallback(
+      async (previous?: RecipeInventory): Promise<RecipeInventory> => {
+        const environments = await radiusApi.listEnvironments();
 
-      // Collect every recipe pack id referenced by any environment, then fetch
-      // each pack individually via getResourceById. Recipe packs are not part of
-      // the environment resource itself — the environment only carries the ids.
-      const packIds = new Set<string>();
-      for (const env of environments.value) {
-        for (const id of env.properties?.recipePacks ?? []) {
-          packIds.add(id);
+        // Collect every recipe pack id referenced by any environment, then fetch
+        // each pack individually via getResourceById. Recipe packs are not part of
+        // the environment resource itself — the environment only carries the ids.
+        const packIds = new Set<string>();
+        for (const env of environments.value) {
+          for (const id of env.properties?.recipePacks ?? []) {
+            packIds.add(id);
+          }
         }
-      }
 
-      const { packsById, errors: packErrors } = await loadRecipePacks(
-        radiusApi,
-        packIds,
-      );
-      const errors = [...(environments.errors ?? []), ...packErrors];
+        const { packsById, errors: packErrors } = await loadRecipePacks(
+          radiusApi,
+          packIds,
+          previous?.packsById,
+        );
+        const errors = [...(environments.errors ?? []), ...packErrors];
 
-      return {
-        environments: errors.length
-          ? { ...environments, complete: false, errors }
-          : environments,
-        packsById,
-      };
-    }, [radiusApi]),
+        return {
+          environments: errors.length
+            ? { ...environments, complete: false, errors }
+            : environments,
+          packsById,
+        };
+      },
+      [radiusApi],
+    ),
   );
 
   const loadedPackIds = new Set(
