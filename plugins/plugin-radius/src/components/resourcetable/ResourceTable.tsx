@@ -1,23 +1,18 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { Resource } from '../../resources';
-import {
-  Progress,
-  ResponseErrorPanel,
-  Table,
-  TableColumn,
-} from '@backstage/core-components';
+import { Table, TableColumn } from '@backstage/core-components';
 import {
   OptionalResourceLink,
   ResourceLink,
 } from '../resourcelink/ResourceLink';
 import { useApi } from '@backstage/core-plugin-api';
-import useAsync from 'react-use/lib/useAsync';
 import { radiusApiRef } from '../../api/ref';
 import { parseLegacyResourceId as parseResourceId } from '@radius-project/core/domain';
 import { isEnvironmentType, isApplicationType } from '../../resources';
 import { ResourceQueryResult } from '../queryresult/ResourceQueryResult';
+import { useInventoryQuery } from '../queryresult/useInventoryQuery';
 
-const DataTable = (props: {
+export const ResourceDataTable = (props: {
   resources: Resource[];
   title: string;
   filters?: { environment?: string; application?: string };
@@ -181,21 +176,22 @@ export const ResourceTable = (props: {
   resourceGroupFilter?: string;
 }) => {
   const radiusApi = useApi(radiusApiRef);
-  const { value, loading, error } = useAsync(async () => {
-    return radiusApi.listResources<{ [key: string]: unknown }>({
-      resourceType: props.resourceType,
-    });
-  }, [radiusApi, props.resourceType]);
-
-  if (loading) {
-    return <Progress data-testid="progress" />;
-  } else if (error) {
-    return <ResponseErrorPanel error={error} />;
-  }
+  const { value, loading, error, retry } = useInventoryQuery(
+    useCallback(async () => {
+      return radiusApi.listResources<{ [key: string]: unknown }>({
+        resourceType: props.resourceType,
+      });
+    }, [radiusApi, props.resourceType]),
+  );
 
   return (
-    <ResourceQueryResult result={value}>
-      <DataTable
+    <ResourceQueryResult
+      result={value}
+      loading={loading}
+      error={error}
+      retry={retry}
+    >
+      <ResourceDataTable
         resources={value?.value || []}
         title={props.title}
         filters={props.filters}

@@ -1,16 +1,11 @@
-import React, { useState } from 'react';
-import {
-  Table,
-  TableColumn,
-  Progress,
-  ResponseErrorPanel,
-  Link,
-} from '@backstage/core-components';
+import React, { useCallback, useState } from 'react';
+import { Table, TableColumn, Link } from '@backstage/core-components';
 import { Checkbox, FormControlLabel, Box } from '@material-ui/core';
-import useAsync from 'react-use/lib/useAsync';
 import { useApi, useRouteRef } from '@backstage/core-plugin-api';
 import { radiusApiRef } from '../../api/ref';
 import { resourceTypeDetailPageRouteRef } from '../../routes';
+import { ResourceQueryResult } from '../queryresult/ResourceQueryResult';
+import { useInventoryQuery } from '../queryresult/useInventoryQuery';
 
 type RT = {
   id: string;
@@ -28,17 +23,16 @@ export const ResourceTypesTable = (props: { title: string }) => {
   const [showOtherResourceTypes, setShowOtherResourceTypes] = useState(false);
   const radiusApi = useApi(radiusApiRef);
   const detailRoute = useRouteRef(resourceTypeDetailPageRouteRef);
-  const { value, loading, error } = useAsync(async () => {
-    // call the API method we added
-    return (await radiusApi.listResourceTypes()) as
-      | {
-          value: RT[];
-        }
-      | undefined;
-  }, [radiusApi]);
-
-  if (loading) return <Progress />;
-  if (error) return <ResponseErrorPanel error={error} />;
+  const { value, loading, error, retry } = useInventoryQuery(
+    useCallback(async () => {
+      // call the API method we added
+      return (await radiusApi.listResourceTypes()) as
+        | {
+            value: RT[];
+          }
+        | undefined;
+    }, [radiusApi]),
+  );
 
   // Filter resource types based on checkbox state
   // Hide commonly built-in namespaces by default to reduce clutter
@@ -83,30 +77,37 @@ export const ResourceTypesTable = (props: { title: string }) => {
   ];
 
   return (
-    <Box>
-      <Table
-        key={`table-${showOtherResourceTypes}`}
-        title={props.title}
-        options={{ search: false, paging: false }}
-        columns={columns}
-        data={filteredData}
-      />
-      <Box mt={2}>
-        <FormControlLabel
-          control={
-            <Checkbox
-              checked={showOtherResourceTypes}
-              onChange={e => setShowOtherResourceTypes(e.target.checked)}
-              color="primary"
-            />
-          }
-          label={
-            <span style={{ color: '#656d76', fontSize: '14px' }}>
-              Show all resource types
-            </span>
-          }
+    <ResourceQueryResult
+      result={value}
+      loading={loading}
+      error={error}
+      retry={retry}
+    >
+      <Box>
+        <Table
+          key={`table-${showOtherResourceTypes}`}
+          title={props.title}
+          options={{ search: false, paging: false }}
+          columns={columns}
+          data={filteredData}
         />
+        <Box mt={2}>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={showOtherResourceTypes}
+                onChange={e => setShowOtherResourceTypes(e.target.checked)}
+                color="primary"
+              />
+            }
+            label={
+              <span style={{ color: '#656d76', fontSize: '14px' }}>
+                Show all resource types
+              </span>
+            }
+          />
+        </Box>
       </Box>
-    </Box>
+    </ResourceQueryResult>
   );
 };

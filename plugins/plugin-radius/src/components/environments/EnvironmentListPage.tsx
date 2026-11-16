@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Grid,
   Typography,
@@ -14,16 +14,15 @@ import {
   Content,
   Breadcrumbs,
   Link,
-  Progress,
-  ResponseErrorPanel,
 } from '@backstage/core-components';
-import { ResourceTable } from '../resourcetable';
+import { ResourceDataTable } from '../resourcetable';
 import { useApi } from '@backstage/core-plugin-api';
-import useAsync from 'react-use/lib/useAsync';
 import { radiusApiRef } from '../../api/ref';
 import { Resource } from '../../resources';
 import { parseLegacyResourceId as parseResourceId } from '@radius-project/core/domain';
 import { withRadiusTheme } from '../../appearance';
+import { ResourceQueryResult } from '../queryresult/ResourceQueryResult';
+import { useInventoryQuery } from '../queryresult/useInventoryQuery';
 
 const EnvironmentListPageContent = ({
   environments,
@@ -98,7 +97,8 @@ const EnvironmentListPageContent = ({
           </Grid>
         )}
         <Grid item>
-          <ResourceTable
+          <ResourceDataTable
+            resources={environments}
             title="Environments"
             resourceType="Applications.Core/environments"
             resourceGroupFilter={
@@ -113,39 +113,15 @@ const EnvironmentListPageContent = ({
 
 export const EnvironmentListPage = withRadiusTheme(() => {
   const radiusApi = useApi(radiusApiRef);
-  const { value, loading, error } = useAsync(
-    async () =>
-      radiusApi.listResources<{ [key: string]: unknown }>({
-        resourceType: 'Applications.Core/environments',
-      }),
-    [radiusApi],
+  const { value, loading, error, retry } = useInventoryQuery(
+    useCallback(
+      async () =>
+        radiusApi.listResources<{ [key: string]: unknown }>({
+          resourceType: 'Applications.Core/environments',
+        }),
+      [radiusApi],
+    ),
   );
-
-  if (loading) {
-    return (
-      <Page themeId="radius-environment-list">
-        <Header
-          title="Environments"
-          subtitle="Displaying environments where applications can be deployed."
-        />
-        <Content>
-          <Progress data-testid="progress" />
-        </Content>
-      </Page>
-    );
-  } else if (error) {
-    return (
-      <Page themeId="radius-environment-list">
-        <Header
-          title="Environments"
-          subtitle="Displaying environments where applications can be deployed."
-        />
-        <Content>
-          <ResponseErrorPanel error={error} />
-        </Content>
-      </Page>
-    );
-  }
 
   return (
     <Page themeId="radius-environment-list">
@@ -154,7 +130,14 @@ export const EnvironmentListPage = withRadiusTheme(() => {
         subtitle="Displaying environments where applications can be deployed."
       />
       <Content>
-        <EnvironmentListPageContent environments={value?.value || []} />
+        <ResourceQueryResult
+          result={value}
+          loading={loading}
+          error={error}
+          retry={retry}
+        >
+          <EnvironmentListPageContent environments={value?.value || []} />
+        </ResourceQueryResult>
       </Content>
     </Page>
   );
