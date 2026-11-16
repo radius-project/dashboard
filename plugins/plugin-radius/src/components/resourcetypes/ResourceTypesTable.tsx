@@ -11,6 +11,7 @@ import useAsync from 'react-use/lib/useAsync';
 import { useApi, useRouteRef } from '@backstage/core-plugin-api';
 import { radiusApiRef } from '../../api/ref';
 import { resourceTypeDetailPageRouteRef } from '../../routes';
+import { useConnectionLink } from '../../connection';
 
 type RT = {
   id: string;
@@ -28,6 +29,7 @@ export const ResourceTypesTable = (props: { title: string }) => {
   const [showOtherResourceTypes, setShowOtherResourceTypes] = useState(false);
   const radiusApi = useApi(radiusApiRef);
   const detailRoute = useRouteRef(resourceTypeDetailPageRouteRef);
+  const scopeLink = useConnectionLink();
   const { value, loading, error } = useAsync(async () => {
     // call the API method we added
     return (await radiusApi.listResourceTypes()) as
@@ -60,10 +62,12 @@ export const ResourceTypesTable = (props: { title: string }) => {
       type: 'string',
       render: (row: RT) => (
         <Link
-          to={detailRoute({
-            namespace: row.properties.namespace,
-            typeName: row.properties.type,
-          })}
+          to={scopeLink(
+            detailRoute({
+              namespace: row.properties.namespace,
+              typeName: row.properties.type,
+            }),
+          )}
         >
           {row.properties.type}
         </Link>

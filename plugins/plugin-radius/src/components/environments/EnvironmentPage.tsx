@@ -13,12 +13,16 @@ import { useApi, useRouteRefParams } from '@backstage/core-plugin-api';
 import { environmentPageRouteRef } from '../../routes';
 import { radiusApiRef } from '../../api/ref';
 import { EnvironmentResourcesTab } from './EnvironmentResourcesTab';
-import { withRadiusTheme } from '../../appearance';
+import { withRadiusPage, useRadiusConnection } from '../../connection';
 
-export const EnvironmentPage = withRadiusTheme(() => {
+export const EnvironmentPage = withRadiusPage(() => {
   const radiusApi = useApi(radiusApiRef);
+  const plane = useRadiusConnection()?.plane ?? {
+    type: 'radius',
+    name: 'local',
+  };
   const params = useRouteRefParams(environmentPageRouteRef);
-  const id = `/planes/radius/local/resourceGroups/${params.group}/providers/${params.namespace}/${params.type}/${params.name}`;
+  const id = `/planes/${plane.type}/${plane.name}/resourceGroups/${params.group}/providers/${params.namespace}/${params.type}/${params.name}`;
 
   const { value, loading, error } = useAsync(async (): Promise<
     Resource<EnvironmentProperties>

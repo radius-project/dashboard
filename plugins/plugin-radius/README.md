@@ -19,16 +19,61 @@ Backstage owns the Kubernetes proxy, authentication, HTTP errors, and JSON
 decoding. The shared client owns resource paths, API-version discovery, namespace
 merging, and recipe aggregation.
 
-The default API resolves the first configured Kubernetes cluster and the
-`radius/local` plane once per API instance. Resource GET and graph POST requests
-use that same context. The existing constructor still accepts one Kubernetes API
-argument; its optional second argument supplies an explicit connection and plane.
-This adds no picker or configuration UI. Discovery methods retain their explicit
-cluster and plane options without changing the instance's default context.
+The default API exposes one shared selected connection for pages, cards,
+resource GETs, and graph POSTs. A connection is a Kubernetes cluster name plus
+a Radius plane type and name. One available connection is selected automatically.
+With two or more, the user must select one before any resource request.
+
+Hosts can restrict the available cluster/plane pairs through frontend config:
+
+```yaml
+radius:
+  connections:
+    - clusterName: production
+      plane:
+        type: radius
+        name: local
+    - clusterName: production
+      plane:
+        type: radius
+        name: team
+```
+
+In configured or discovered mode, only cluster names returned by the host Kubernetes API are offered. This list
+does not grant access or contain credentials. Without `radius.connections`,
+each host cluster is offered with its `radius/local` plane. An empty list offers
+no connections. Both frontend registration systems read the same config schema.
+The constructor still accepts one Kubernetes API argument. Its optional second
+argument pins a host-supplied context; its optional third argument supplies the
+approved pairs. Discovery methods retain their explicit cluster and plane
+options without changing the selected context.
 Malformed resource IDs and IDs outside the selected plane fail before proxy
 access.
 
+The selector is shared through the API instance, not a page-local first-cluster
+choice. Connection identity travels in the `radiusConnection` query parameter;
+route refs still supply the host path and nested mount. Direct links and browser
+history restore that exact cluster and plane. Unknown or removed selections
+block resource reads and show recovery guidance; the plugin never silently
+switches to a remaining connection. Use **Refresh connections** after a host
+configuration change. The plugin also checks on window focus and before reads.
+
+Changing or removing the selected connection aborts old transport work and
+rejects its result even if the proxy ignores cancellation. Each selection gets
+a new context-bound shared query client and request queue. Old view data is not reused.
+Page and card state remounts when cluster or plane changes. Environment filter
+keys include both identities; the default API does not reuse the old global key.
+
 Hosts can still override the public `radiusApiRef`. Existing overrides do not
+have to implement the optional `connections` store. Such overrides keep control
+of selection, link context, and cancellation, and retain the prior filter key.
+Connection-aware overrides can supply `RadiusConnections`: an immutable
+`getSnapshot()` value, `subscribe(listener)`, `refresh()`, and `select(key)`.
+The key is the JSON array `[connectionId, plane.type, plane.name]`. The snapshot
+contains available `connections`, optional `selected` and `selectionKey`, `loaded`,
+and an optional recovery `error`. Notify subscribers when the snapshot changes.
+The plugin does not replace a host API or bypass it with a Kubernetes request.
+Existing overrides also do not
 have to implement the new optional `getApplicationGraph({applicationId, signal})`
 method. A graph-capable override returns the public `RadiusApplicationGraph`
 shape: `{graph, context}`. `graph` is the unmodified query response; `context`

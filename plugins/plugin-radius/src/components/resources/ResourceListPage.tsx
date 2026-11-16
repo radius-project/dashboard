@@ -2,9 +2,9 @@ import React from 'react';
 import { Grid } from '@material-ui/core';
 import { Header, Page, Content } from '@backstage/core-components';
 import { ResourceTable } from '../resourcetable';
-import { withRadiusTheme } from '../../appearance';
+import { withRadiusPage } from '../../connection';
 
-export const ResourceListPage = withRadiusTheme(() => (
+export const ResourceListPage = withRadiusPage(() => (
   <Page themeId="radius-resource-list">
     <Header title="Resources" subtitle="Displaying deployed resources." />
     <Content>
