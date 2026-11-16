@@ -1,6 +1,7 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { ConfigReader } from '@backstage/config';
+import type { ConfigApi } from '@backstage/core-plugin-api';
 import { createApp } from '@backstage/frontend-defaults';
 import radius, { radiusApiExtension } from '@internal/plugin-radius/alpha';
 import kubernetes from '@backstage/plugin-kubernetes/alpha';
@@ -82,12 +83,19 @@ const apiOverride = createFrontendModule({
         return [
           ApiBlueprint.dataRefs.factory({
             ...factory,
-            factory({ kubernetesApi }: { kubernetesApi: KubernetesApi }) {
+            factory({
+              kubernetesApi,
+              config,
+            }: {
+              kubernetesApi: KubernetesApi;
+              config: ConfigApi;
+            }) {
               const selected =
                 new URLSearchParams(location.search).get('connection') ??
                 'packed-cluster';
               document.documentElement.dataset.radiusApiConnection = selected;
               return factory.factory({
+                config,
                 kubernetesApi: {
                   async getClusters() {
                     const clusters = await kubernetesApi.getClusters();
@@ -98,10 +106,7 @@ const apiOverride = createFrontendModule({
                       throw new Error(
                         `Unknown host-selected Radius connection: ${selected}`,
                       );
-                    return [
-                      chosen,
-                      ...clusters.filter(cluster => cluster !== chosen),
-                    ];
+                    return [chosen];
                   },
                   proxy: (options: Parameters<KubernetesApi['proxy']>[0]) =>
                     kubernetesApi.proxy(options),
