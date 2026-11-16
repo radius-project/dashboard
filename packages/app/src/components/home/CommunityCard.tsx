@@ -19,6 +19,13 @@ const actions = () => (
     >
       Good first issues
     </LinkButton>
+    <LinkButton
+      size="small"
+      variant="text"
+      to="https://github.com/radius-project/dashboard/issues?q=is%3Aissue+state%3Aopen+label%3A%22good+first+issue%22"
+    >
+      Dashboard good first issues
+    </LinkButton>
     <LinkButton size="small" variant="text" to="https://aka.ms/radius/discord">
       Join us on Discord
     </LinkButton>

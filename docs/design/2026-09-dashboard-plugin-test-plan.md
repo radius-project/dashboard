@@ -1117,7 +1117,8 @@ characterization is done before rearchitecture rather than after. `#364` is a on
 — `to=""` on a `LinkButton` — that renders a plausible-looking enabled button pointing at `/`, so
 it survives visual review. This is now fixed: CC-05 checks the public invite URL
 `https://aka.ms/radius/discord` and the new-window target; CC-06 checks the "Opens in a new
-window" hint on all three actions. `#365` is a type defect: `systemData` is declared
+window" hint on all four actions, including the added dashboard good first issues link
+covered by CC-08. `#365` is a type defect: `systemData` is declared
 required and `Record<string, never>`, meaning "an object with no properties", so no honest value
 satisfies it and every fixture in the repository casts around it. RS-14 now asserts the exact
 property type and requiredness, so it fails for the intended model change rather than for any

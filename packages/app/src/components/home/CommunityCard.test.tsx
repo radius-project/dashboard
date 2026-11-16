@@ -52,7 +52,7 @@ describe('CommunityCard', () => {
     expect(discord).toHaveAttribute('target', '_blank');
   });
 
-  it('CC-06: offers exactly the three documented actions', async () => {
+  it('CC-06: offers exactly the four documented actions', async () => {
     await renderInTestApp(<CommunityCard />);
 
     expect(
@@ -60,6 +60,7 @@ describe('CommunityCard', () => {
     ).toEqual([
       'Visit on Github, Opens in a new window',
       'Good first issues, Opens in a new window',
+      'Dashboard good first issues, Opens in a new window',
       'Join us on Discord, Opens in a new window',
     ]);
   });
@@ -70,5 +71,19 @@ describe('CommunityCard', () => {
     );
 
     expect(container.querySelector('.host-supplied')).not.toBeNull();
+  });
+
+  it('CC-08: opens the dashboard good first issues search in a new window', async () => {
+    await renderInTestApp(<CommunityCard />);
+
+    const dashboardIssues = screen.getByRole('button', {
+      name: /^Dashboard good first issues/,
+    });
+
+    expect(dashboardIssues).toHaveAttribute(
+      'href',
+      'https://github.com/radius-project/dashboard/issues?q=is%3Aissue+state%3Aopen+label%3A%22good+first+issue%22',
+    );
+    expect(dashboardIssues).toHaveAttribute('target', '_blank');
   });
 });
