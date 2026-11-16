@@ -44,7 +44,10 @@ export class RadiusConnectionStore implements RadiusConnections {
 
   constructor(
     private readonly discover: () => Promise<readonly RadiusConnection[]>,
-    private readonly invalidate: () => void,
+    private readonly invalidate: (
+      automaticSelection: boolean,
+      error?: Error,
+    ) => void,
   ) {}
 
   getSnapshot = () => this.state;
@@ -56,12 +59,13 @@ export class RadiusConnectionStore implements RadiusConnections {
     };
   };
 
-  private update(state: RadiusConnectionState) {
+  private update(state: RadiusConnectionState, automaticSelection = false) {
     if (
       JSON.stringify(this.state.selected) !== JSON.stringify(state.selected) ||
+      this.state.selectionKey !== state.selectionKey ||
       this.state.error?.message !== state.error?.message
     ) {
-      this.invalidate();
+      this.invalidate(automaticSelection, state.error);
     }
     this.state = state;
     this.listeners.forEach(listener => listener());
@@ -106,13 +110,16 @@ export class RadiusConnectionStore implements RadiusConnections {
                 'The selected Radius connection was removed. Select another connection or ask your administrator to restore it.',
               );
             }
-            this.update({
-              loaded: true,
-              connections,
-              selected,
-              selectionKey: selected ? connectionKey(selected) : selectionKey,
-              error,
-            });
+            this.update(
+              {
+                loaded: true,
+                connections,
+                selected,
+                selectionKey: selected ? connectionKey(selected) : selectionKey,
+                error,
+              },
+              !selectionKey && Boolean(selected),
+            );
           },
           error => {
             this.update({

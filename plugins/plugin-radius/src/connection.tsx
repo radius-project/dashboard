@@ -5,6 +5,7 @@ import React, {
   useContext,
   useEffect,
   useId,
+  useRef,
   useSyncExternalStore,
 } from 'react';
 import { useApi } from '@backstage/core-plugin-api';
@@ -74,21 +75,26 @@ function SelectedConnection({
   const navigate = useNavigate();
   const requested = new URLSearchParams(location.search).get(parameter);
   const selectedKey = state.selected && connectionKey(state.selected);
+  const previousRequest = useRef<{
+    connections: RadiusConnections;
+    key: string | null;
+  }>();
 
   useEffect(() => {
-    if (requested && requested !== connections.getSnapshot().selectionKey) {
-      connections.select(requested);
+    const previous = previousRequest.current;
+    previousRequest.current = { connections, key: requested };
+    if (
+      requested &&
+      (!previous ||
+        previous.connections !== connections ||
+        previous.key !== requested)
+    ) {
+      if (requested !== connections.getSnapshot().selectionKey) {
+        connections.select(requested);
+      }
+      return;
     }
-    void connections.refresh();
-    const refresh = () => {
-      void connections.refresh();
-    };
-    window.addEventListener('focus', refresh);
-    return () => window.removeEventListener('focus', refresh);
-  }, [connections, requested]);
-
-  useEffect(() => {
-    if (!requested && state.selected) {
+    if (state.selected && requested !== selectedKey) {
       navigate(
         scopeConnectionLink(
           `${location.pathname}${location.search}${location.hash}`,
@@ -97,7 +103,16 @@ function SelectedConnection({
         { replace: true },
       );
     }
-  }, [requested, state.selected, location, navigate]);
+  }, [connections, requested, selectedKey, state.selected, location, navigate]);
+
+  useEffect(() => {
+    void connections.refresh();
+    const refresh = () => {
+      void connections.refresh();
+    };
+    window.addEventListener('focus', refresh);
+    return () => window.removeEventListener('focus', refresh);
+  }, [connections, requested]);
 
   const select = (key: string) => {
     const query = new URLSearchParams(location.search);

@@ -317,15 +317,13 @@ async function main() {
         if (message.type() === 'error') consoleErrors.push(message.text());
       });
       const selectedPath = (pathname: string) =>
-        standaloneOrigin
-          ? pathname
-          : `${pathname}?${new URLSearchParams({
-              radiusConnection: JSON.stringify([
-                'packed-cluster',
-                'radius',
-                'local',
-              ]),
-            })}`;
+        `${pathname}?${new URLSearchParams({
+          radiusConnection: JSON.stringify([
+            'packed-cluster',
+            'radius',
+            'local',
+          ]),
+        })}`;
       const navigate = async (url: string) => {
         await page.goto(url);
         if (installed && !standaloneOrigin) {
@@ -337,8 +335,7 @@ async function main() {
             .click({ timeout: 15_000 });
         }
         if (
-          !standaloneOrigin &&
-          forbidden !== true &&
+          (forbidden !== true || Boolean(backendUrl)) &&
           !(installed && system === 'native') &&
           !new URL(url).searchParams.has('radiusConnection')
         ) {

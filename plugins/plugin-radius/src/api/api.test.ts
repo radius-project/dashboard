@@ -722,6 +722,38 @@ describe('shared query client through the Backstage transport', () => {
     expect(kube.proxy).toHaveBeenCalledTimes(2);
   });
 
+  it.each(['unselected', 'unavailable', 'undiscovered'])(
+    'CN-05: cancels a preflight read after explicit selection from %s state',
+    async state => {
+      const kube = host();
+      const clusters = [
+        { name: 'first-cluster', authProvider: 'test' },
+        { name: 'second-cluster', authProvider: 'test' },
+      ];
+      kube.getClusters.mockResolvedValue(clusters);
+      const api = new RadiusApiImpl(kube);
+      if (state !== 'undiscovered') await api.connections.refresh();
+      if (state === 'unavailable') api.connections.select('removed');
+      let release!: (value: typeof clusters) => void;
+      kube.getClusters.mockReturnValueOnce(
+        new Promise(resolve => {
+          release = resolve;
+        }),
+      );
+      const oldRequest = api.getResourceById({ id: applicationId });
+      api.connections.select(
+        connectionKey({
+          connectionId: 'second-cluster',
+          plane: { type: 'radius', name: 'local' },
+        }),
+      );
+      await expect(oldRequest).rejects.toThrow('Radius connection changed');
+      release(clusters);
+      await api.connections.refresh();
+      expect(kube.proxy).not.toHaveBeenCalled();
+    },
+  );
+
   it('CN-05: does not move an old operation to the new cluster while host discovery is pending', async () => {
     const kube = host();
     const clusters = [

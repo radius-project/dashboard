@@ -106,13 +106,15 @@ export class RadiusApiImpl implements RadiusApi {
               plane: { type: 'radius', name: 'local' },
             }));
       },
-      () => {
-        this.controller.abort(
-          new Error(
-            'The Radius connection changed. Select a connection and reload the view.',
-          ),
-        );
-        this.controller = new AbortController();
+      (automaticSelection, error) => {
+        if (!automaticSelection) {
+          this.controller.abort(
+            new Error(
+              `The Radius connection changed. ${error?.message ?? 'Select a connection and reload the view.'}`,
+            ),
+          );
+          this.controller = new AbortController();
+        }
         this.defaultClient = undefined;
       },
     );
@@ -223,14 +225,10 @@ export class RadiusApiImpl implements RadiusApi {
     },
   ): Promise<T> {
     const previousSignal = this.controller.signal;
-    const previousSelection = this.connections.getSnapshot().selected;
     override?.signal?.throwIfAborted();
-    let preflightSignal = override?.signal;
-    if (previousSelection) {
-      preflightSignal = override?.signal
-        ? AbortSignal.any([previousSignal, override.signal])
-        : previousSignal;
-    }
+    const preflightSignal = override?.signal
+      ? AbortSignal.any([previousSignal, override.signal])
+      : previousSignal;
     const context = override?.clusterName
       ? {
           connectionId: override.clusterName,
@@ -239,10 +237,8 @@ export class RadiusApiImpl implements RadiusApi {
             name: 'local',
           },
         }
-      : await (preflightSignal
-          ? this.abortable(this.resolveContext(), preflightSignal)
-          : this.resolveContext());
-    if (previousSelection) previousSignal.throwIfAborted();
+      : await this.abortable(this.resolveContext(), preflightSignal);
+    previousSignal.throwIfAborted();
     if (
       !override?.clusterName &&
       connectionKey(context) !== this.connections.getSnapshot().selectionKey

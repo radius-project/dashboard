@@ -1,5 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { TestApiProvider, renderInTestApp } from '@backstage/test-utils';
 import { ConfigReader } from '@backstage/config';
 import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom';
@@ -165,6 +171,28 @@ it('CN-07: opens a direct connection link without using the first plane', async 
       r.path.includes('/planes/radius/second/'),
     ),
   ).toBe(true);
+});
+
+it('keeps content and links in sync when the host changes the shared selection', async () => {
+  const { api } = await setup(
+    `/resources/app?radiusConnection=${encodeURIComponent(connectionKey(first))}`,
+  );
+  await screen.findByText('first:first app:0');
+  await act(async () => {
+    api.connections.select(connectionKey(second));
+  });
+  await screen.findByText('second:second app:0');
+  const location = screen.getByTestId('location').textContent!;
+  expect(
+    new URLSearchParams(location.slice(location.indexOf('?'))).get(
+      'radiusConnection',
+    ),
+  ).toBe(connectionKey(second));
+  const link = new URL(
+    screen.getByRole('link', { name: 'App Graph' }).getAttribute('href')!,
+    'https://host.test',
+  );
+  expect(link.searchParams.get('radiusConnection')).toBe(connectionKey(second));
 });
 
 it('CN-08: blocks unknown links until the user chooses an available connection', async () => {
