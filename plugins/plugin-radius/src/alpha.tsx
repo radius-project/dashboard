@@ -9,7 +9,9 @@ import {
   convertLegacyRouteRefs,
 } from '@backstage/core-compat-api';
 import { kubernetesApiRef } from '@backstage/plugin-kubernetes';
+import { configApiRef } from '@backstage/core-plugin-api';
 import { RadiusApiImpl } from './api/api';
+import { configuredConnections } from './api/connections';
 import { radiusApiRef } from './api/ref';
 import { featureRadiusCatalog } from './features';
 import {
@@ -39,8 +41,13 @@ export const radiusApiExtension = ApiBlueprint.make({
   params: defineParams =>
     defineParams({
       api: radiusApiRef,
-      deps: { kubernetesApi: kubernetesApiRef },
-      factory: ({ kubernetesApi }) => new RadiusApiImpl(kubernetesApi),
+      deps: { kubernetesApi: kubernetesApiRef, config: configApiRef },
+      factory: ({ kubernetesApi, config }) =>
+        new RadiusApiImpl(
+          kubernetesApi,
+          undefined,
+          configuredConnections(config),
+        ),
     }),
 });
 

@@ -15,9 +15,11 @@ import { ResourceLink } from '../resourcelink';
 import { resourcePageRouteRef } from '../../routes';
 import { parseLegacyResourceId as parseResourceId } from '@radius-project/core/domain';
 import { ResourceQueryResult } from '../queryresult/ResourceQueryResult';
+import { withRadiusConnection, useConnectionLink } from '../../connection';
 
 const ApplicationListInfoContent = () => {
   const route = useRouteRef(resourcePageRouteRef);
+  const scopeLink = useConnectionLink();
 
   const radiusApi = useApi(radiusApiRef);
   const { value, loading, error } = useAsync(async () => {
@@ -55,8 +57,12 @@ const ApplicationListInfoContent = () => {
         });
         return (
           <>
-            <LinkButton to={`${base}/application`}>App Graph</LinkButton>
-            <LinkButton to={`${base}/resources`}>Resources</LinkButton>
+            <LinkButton to={scopeLink(`${base}/application`)}>
+              App Graph
+            </LinkButton>
+            <LinkButton to={scopeLink(`${base}/resources`)}>
+              Resources
+            </LinkButton>
           </>
         );
       },
@@ -80,10 +86,10 @@ const ApplicationListInfoContent = () => {
   );
 };
 
-export const ApplicationListInfoCard = () => {
+export const ApplicationListInfoCard = withRadiusConnection(() => {
   return (
     <InfoCard title="Applications">
       <ApplicationListInfoContent />
     </InfoCard>
   );
-};
+});

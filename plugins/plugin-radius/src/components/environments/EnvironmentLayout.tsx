@@ -13,12 +13,14 @@ import {
   environmentPageRouteRef,
 } from '../../routes';
 import { Resource, EnvironmentProperties } from '../../resources';
+import { useConnectionLink } from '../../connection';
 
 export const EnvironmentLayout = (
   props: PropsWithChildren<{ environment: Resource<EnvironmentProperties> }>,
 ) => {
   const params = useRouteRefParams(environmentPageRouteRef);
   const environmentsRoute = useRouteRef(environmentListPageRouteRef);
+  const scopeLink = useConnectionLink();
 
   return (
     <Page themeId="radius-environment-details">
@@ -30,7 +32,7 @@ export const EnvironmentLayout = (
         <Box mb={3}>
           <Breadcrumbs aria-label="breadcrumb">
             <Link to="/">Home</Link>
-            <Link to={environmentsRoute()}>Environments</Link>
+            <Link to={scopeLink(environmentsRoute())}>Environments</Link>
             <Typography>{props.environment.name}</Typography>
           </Breadcrumbs>
         </Box>

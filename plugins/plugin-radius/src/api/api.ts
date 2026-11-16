@@ -16,6 +16,12 @@ import {
   ResourceType,
   ResourceTypeProperties,
 } from '@radius-project/core/domain';
+import {
+  connectionKey,
+  RadiusConnection,
+  RadiusConnections,
+  RadiusConnectionStore,
+} from './connections';
 
 // Existing host overrides can still return the original { value } envelope.
 export interface RadiusListResult<
@@ -31,6 +37,7 @@ export interface RadiusApplicationGraph {
 }
 
 export interface RadiusApi {
+  readonly connections?: RadiusConnections;
   getResourceById<T = Record<string, unknown>>(
     opts: { id: string } & QueryOptions,
   ): Promise<Resource<T>>;
@@ -61,9 +68,10 @@ export interface RadiusApi {
 }
 
 export class RadiusApiImpl implements RadiusApi {
-  private contextPromise?: Promise<RadiusQueryContext>;
+  readonly connections: RadiusConnections;
   private defaultClient?: RadiusQueryClient;
   private readonly suppliedContext?: RadiusQueryContext;
+  private controller = new AbortController();
 
   constructor(
     private readonly kubernetesApi: Pick<
@@ -71,6 +79,7 @@ export class RadiusApiImpl implements RadiusApi {
       'getClusters' | 'proxy'
     >,
     context?: RadiusQueryContext,
+    connections?: readonly RadiusConnection[],
   ) {
     if (context) {
       this.suppliedContext = {
@@ -78,30 +87,75 @@ export class RadiusApiImpl implements RadiusApi {
         plane: { ...context.plane },
       };
     }
+    const configured = connections?.map(c => ({
+      connectionId: c.connectionId,
+      plane: { ...c.plane },
+    }));
+    this.connections = new RadiusConnectionStore(
+      async () => {
+        if (this.suppliedContext) {
+          return [this.suppliedContext];
+        }
+        const clusters = await this.kubernetesApi.getClusters();
+        return configured
+          ? configured.filter(c =>
+              clusters.some(cluster => cluster.name === c.connectionId),
+            )
+          : clusters.map(cluster => ({
+              connectionId: cluster.name,
+              plane: { type: 'radius', name: 'local' },
+            }));
+      },
+      () => {
+        this.controller.abort(
+          new Error(
+            'The Radius connection changed. Select a connection and reload the view.',
+          ),
+        );
+        this.controller = new AbortController();
+        this.defaultClient = undefined;
+      },
+    );
   }
 
   async getResourceById<T = Record<string, unknown>>(
     opts: { id: string } & QueryOptions,
   ): Promise<Resource<T>> {
-    return (await this.client()).getResourceById<T>(opts);
+    return this.run(
+      (client, _context, signal) =>
+        client.getResourceById<T>({ ...opts, signal }),
+      opts,
+    );
   }
 
   async listResources<T = Record<string, unknown>>(
     opts?: ResourceListOptions,
   ): Promise<RadiusListResult<T>> {
-    return (await this.client()).listResources<T>(opts);
+    return this.run(
+      (client, _context, signal) =>
+        client.listResources<T>({ ...opts, signal }),
+      opts,
+    );
   }
 
   async listApplications<T = ApplicationProperties>(
     opts?: Omit<ResourceListOptions, 'resourceType'>,
   ): Promise<RadiusListResult<T>> {
-    return (await this.client()).listApplications<T>(opts);
+    return this.run(
+      (client, _context, signal) =>
+        client.listApplications<T>({ ...opts, signal }),
+      opts,
+    );
   }
 
   async listEnvironments<T = EnvironmentProperties>(
     opts?: Omit<ResourceListOptions, 'resourceType'>,
   ): Promise<RadiusListResult<T>> {
-    return (await this.client()).listEnvironments<T>(opts);
+    return this.run(
+      (client, _context, signal) =>
+        client.listEnvironments<T>({ ...opts, signal }),
+      opts,
+    );
   }
 
   async listResourceTypes(opts?: {
@@ -109,9 +163,13 @@ export class RadiusApiImpl implements RadiusApi {
     resourceProviderName?: string;
     signal?: AbortSignal;
   }): Promise<ResourceList<ResourceTypeProperties>> {
-    return (await this.client(opts)).listResourceTypes({
-      signal: opts?.signal,
-    });
+    return this.run(
+      (client, _context, signal) =>
+        client.listResourceTypes({
+          signal,
+        }),
+      opts,
+    );
   }
 
   async getResourceType(opts: {
@@ -121,55 +179,58 @@ export class RadiusApiImpl implements RadiusApi {
     clusterName?: string;
     signal?: AbortSignal;
   }): Promise<ResourceType> {
-    return (await this.client(opts)).getResourceType(opts);
+    return this.run(
+      (client, _context, signal) => client.getResourceType({ ...opts, signal }),
+      opts,
+    );
   }
 
   async getApplicationGraph(
     opts: { applicationId: string } & QueryOptions,
   ): Promise<RadiusApplicationGraph> {
-    const context = await this.resolveContext();
-    const graph = await (await this.client()).getApplicationGraph(opts);
-    return {
-      graph,
-      context: {
-        connectionId: context.connectionId,
-        plane: { ...context.plane },
-        applicationId: opts.applicationId,
-      },
-    };
+    return this.run(
+      async (client, context, signal) => ({
+        graph: await client.getApplicationGraph({ ...opts, signal }),
+        context: {
+          ...context,
+          plane: { ...context.plane },
+          applicationId: opts.applicationId,
+        },
+      }),
+      opts,
+    );
   }
 
   private async resolveContext(): Promise<RadiusQueryContext> {
-    if (this.suppliedContext) {
-      return this.suppliedContext;
-    }
-    if (!this.contextPromise) {
-      this.contextPromise = this.kubernetesApi.getClusters().then(clusters => {
-        const first = clusters[0];
-        if (!first) {
-          throw new Error('No kubernetes clusters found');
-        }
-        return {
-          connectionId: first.name,
-          plane: { type: 'radius', name: 'local' },
-        };
-      });
-    }
-    const pending = this.contextPromise;
-    try {
-      return await pending;
-    } catch (error) {
-      if (this.contextPromise === pending) {
-        this.contextPromise = undefined;
-      }
-      throw error;
-    }
+    await this.connections.refresh();
+    const { selected, error } = this.connections.getSnapshot();
+    if (error) throw error;
+    if (!selected)
+      throw new Error('Select a Radius connection before loading resources.');
+    return selected;
   }
 
-  private async client(override?: {
-    planeName?: string;
-    clusterName?: string;
-  }): Promise<RadiusQueryClient> {
+  private async run<T>(
+    operation: (
+      client: RadiusQueryClient,
+      context: RadiusQueryContext,
+      signal: AbortSignal,
+    ) => Promise<T>,
+    override?: {
+      planeName?: string;
+      clusterName?: string;
+      signal?: AbortSignal;
+    },
+  ): Promise<T> {
+    const previousSignal = this.controller.signal;
+    const previousSelection = this.connections.getSnapshot().selected;
+    override?.signal?.throwIfAborted();
+    let preflightSignal = override?.signal;
+    if (previousSelection) {
+      preflightSignal = override?.signal
+        ? AbortSignal.any([previousSignal, override.signal])
+        : previousSignal;
+    }
     const context = override?.clusterName
       ? {
           connectionId: override.clusterName,
@@ -178,24 +239,73 @@ export class RadiusApiImpl implements RadiusApi {
             name: 'local',
           },
         }
-      : await this.resolveContext();
+      : await (preflightSignal
+          ? this.abortable(this.resolveContext(), preflightSignal)
+          : this.resolveContext());
+    if (previousSelection) previousSignal.throwIfAborted();
+    if (
+      !override?.clusterName &&
+      connectionKey(context) !== this.connections.getSnapshot().selectionKey
+    ) {
+      throw new Error('The Radius connection changed. Reload this view.');
+    }
+    const sessionSignal = this.controller.signal;
+    const signal = override?.signal
+      ? AbortSignal.any([sessionSignal, override.signal])
+      : sessionSignal;
+    signal.throwIfAborted();
     const port = {
-      request: <T>(request: RadiusQueryRequest) => this.request<T>(request),
+      request: <R>(request: RadiusQueryRequest) =>
+        this.request<R>(request, sessionSignal),
     };
+    let client: RadiusQueryClient;
     if (override?.planeName || override?.clusterName) {
-      return createRadiusQueryClient(port, {
+      client = createRadiusQueryClient(port, {
         connectionId: override.clusterName || context.connectionId,
         plane: {
           ...context.plane,
           name: override.planeName || context.plane.name,
         },
       });
+    } else {
+      this.defaultClient ??= createRadiusQueryClient(port, context);
+      client = this.defaultClient;
     }
-    this.defaultClient ??= createRadiusQueryClient(port, context);
-    return this.defaultClient;
+    return this.abortable(operation(client, context, signal), signal);
   }
 
-  private async request<T>(request: RadiusQueryRequest): Promise<T> {
+  private abortable<T>(work: Promise<T>, signal: AbortSignal): Promise<T> {
+    return new Promise((resolve, reject) => {
+      const abort = () => {
+        signal.removeEventListener('abort', abort);
+        reject(signal.reason);
+      };
+      signal.addEventListener('abort', abort, { once: true });
+      if (signal.aborted) abort();
+      work
+        .then(value => {
+          if (signal.aborted) reject(signal.reason);
+          else resolve(value);
+        }, reject)
+        .finally(() => signal.removeEventListener('abort', abort));
+    });
+  }
+
+  private async request<T>(
+    request: RadiusQueryRequest,
+    sessionSignal: AbortSignal,
+  ): Promise<T> {
+    const signal = request.signal
+      ? AbortSignal.any([sessionSignal, request.signal])
+      : sessionSignal;
+    signal.throwIfAborted();
+    return this.abortable(this.send<T>(request, signal), signal);
+  }
+
+  private async send<T>(
+    request: RadiusQueryRequest,
+    signal: AbortSignal,
+  ): Promise<T> {
     const response = await this.kubernetesApi.proxy({
       clusterName: request.connectionId,
       path: request.path,
@@ -210,7 +320,7 @@ export class RadiusApiImpl implements RadiusApi {
               body: JSON.stringify(request.body),
             }
           : {}),
-        signal: request.signal,
+        signal,
       },
     });
     if (!response.ok) {

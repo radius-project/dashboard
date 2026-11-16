@@ -8,9 +8,9 @@ import {
   Link,
 } from '@backstage/core-components';
 import { ResourceTypesTable } from './ResourceTypesTable';
-import { withRadiusTheme } from '../../appearance';
+import { withRadiusPage } from '../../connection';
 
-export const ResourceTypesListPage = withRadiusTheme(() => (
+export const ResourceTypesListPage = withRadiusPage(() => (
   <Page themeId="radius-resource-types-list">
     <Header
       title="Resource Types"

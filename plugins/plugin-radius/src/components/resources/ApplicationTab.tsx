@@ -70,7 +70,7 @@ export const ApplicationTab = ({ application }: { application: string }) => {
               onNavigate: node => {
                 // The renderer falls back to the name when a resource has no id.
                 if (parseLegacyResourceId(node.id)) {
-                  navigate(`${resourceRoute(node.id)}/overview`);
+                  navigate(resourceRoute(node.id, 'overview'));
                 } else {
                   errorApi.post(
                     new Error(

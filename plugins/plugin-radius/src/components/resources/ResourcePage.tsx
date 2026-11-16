@@ -15,12 +15,16 @@ import { ApplicationTab } from './ApplicationTab';
 import { ApplicationResourcesTab } from './ApplicationResourcesTab';
 import { radiusApiRef } from '../../api/ref';
 import { isApplicationType } from '../../resources';
-import { withRadiusTheme } from '../../appearance';
+import { withRadiusPage, useRadiusConnection } from '../../connection';
 
-export const ResourcePage = withRadiusTheme(() => {
+export const ResourcePage = withRadiusPage(() => {
   const radiusApi = useApi(radiusApiRef);
+  const plane = useRadiusConnection()?.plane ?? {
+    type: 'radius',
+    name: 'local',
+  };
   const params = useRouteRefParams(resourcePageRouteRef);
-  const id = `/planes/radius/local/resourceGroups/${params.group}/providers/${params.namespace}/${params.type}/${params.name}`;
+  const id = `/planes/${plane.type}/${plane.name}/resourceGroups/${params.group}/providers/${params.namespace}/${params.type}/${params.name}`;
 
   const { value, loading, error } = useAsync(async (): Promise<Resource> => {
     return radiusApi.getResourceById({ id });
