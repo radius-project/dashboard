@@ -1,6 +1,7 @@
 import React, {
   ComponentType,
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useId,
@@ -59,11 +60,15 @@ function SelectedConnection({
   connections,
   children,
 }: React.PropsWithChildren<{ connections: RadiusConnections }>) {
-  const state = useSyncExternalStore(
-    connections.subscribe,
-    connections.getSnapshot,
-    connections.getSnapshot,
+  const subscribe = useCallback(
+    (listener: () => void) => connections.subscribe(listener),
+    [connections],
   );
+  const getSnapshot = useCallback(
+    () => connections.getSnapshot(),
+    [connections],
+  );
+  const state = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
   const location = useLocation();
   const labelId = useId();
   const navigate = useNavigate();

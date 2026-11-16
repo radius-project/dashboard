@@ -5,7 +5,11 @@ import { ConfigReader } from '@backstage/config';
 import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom';
 import { radiusApiRef } from './api/ref';
 import { RadiusApiImpl } from './api/api';
-import { configuredConnections, connectionKey } from './api/connections';
+import {
+  configuredConnections,
+  connectionKey,
+  RadiusConnectionStore,
+} from './api/connections';
 import {
   useConnectionLink,
   useRadiusConnection,
@@ -205,6 +209,53 @@ it('keeps API overrides that own connection selection usable', () => {
   expect(
     screen.queryByRole('button', { name: 'Radius connection' }),
   ).not.toBeInTheDocument();
+});
+
+it('preserves class-method host stores and a stable subscription across selections', async () => {
+  class HostConnections {
+    private readonly store = new RadiusConnectionStore(
+      async () => [first, second],
+      () => {},
+    );
+
+    getSnapshot() {
+      return this.store.getSnapshot();
+    }
+
+    subscribe(listener: () => void) {
+      return this.store.subscribe(listener);
+    }
+
+    refresh() {
+      return this.store.refresh();
+    }
+
+    select(key: string) {
+      this.store.select(key);
+    }
+  }
+  const connections = new HostConnections();
+  const subscribe = jest.spyOn(connections, 'subscribe');
+  const View = withRadiusConnection(() => (
+    <output data-testid="host-plane">
+      {useRadiusConnection()?.plane.name}
+    </output>
+  ));
+  await renderInTestApp(
+    <TestApiProvider apis={[[radiusApiRef, { connections }]]}>
+      <View />
+    </TestApiProvider>,
+  );
+  await screen.findByText('Select a Radius connection to load resources.');
+  await choose('same-cluster / radius/first');
+  await waitFor(() =>
+    expect(screen.getByTestId('host-plane')).toHaveTextContent('first'),
+  );
+  await choose('same-cluster / radius/second');
+  await waitFor(() =>
+    expect(screen.getByTestId('host-plane')).toHaveTextContent('second'),
+  );
+  expect(subscribe).toHaveBeenCalledTimes(1);
 });
 
 it('loads only operator-configured cluster/plane pairs from host config', () => {
