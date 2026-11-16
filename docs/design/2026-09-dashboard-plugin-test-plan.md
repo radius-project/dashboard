@@ -548,9 +548,9 @@ Priority order, highest regression risk first:
 
 1. `resources/resource.ts`, `resourceId.ts`, `resourceTypes.ts` — the domain model every page reads.
    `resourceId.ts` is **done**: the existing suite is now tagged RU-01 (well-formed ids) and RU-02
-   (rejected ids) against the live `rad-components` implementation, including two `KNOWN-DEFECT`
-   cases recording inputs it wrongly rejects (names containing `.` or `_`, and resource types
-   containing a digit). Both are legal Radius names. `resource.ts` (RS-01–RS-14) and
+   (rejected ids) against the live `rad-components` implementation. The shared core parser now
+   accepts legal names containing `.` or `_` and resource types containing a digit. These two
+   former defect cases are positive regression tests. `resource.ts` (RS-01–RS-14) and
    `resourceTypes.ts` are also covered.
 2. `ResourceListPage`, `ResourceLayout`, `OverviewTab`, `DetailsTab`, `ApplicationResourcesTab`,
    `EnvironmentResourcesTab` — the untested spine of resource navigation.
@@ -1049,7 +1049,7 @@ its issue is fixed, and that failure is the signal the fix landed, not a regress
 | #35   | Graph nodes do not expose resource-type icon identity                     | GU-21, GU-23         |
 | #41   | Selecting a graph node does not reveal dismissible resource details       | GU-18                |
 | #89   | Graph nodes do not expose deployment status                               | GU-21, GU-23         |
-| #352  | `parseResourceId` rejects legal names and types; `ResourceLink` then throws | RU-02, AC-08, EC-08  |
+| #352  | Legal names and types are accepted; unparseable `ResourceLink` cells show plain text instead of throwing — **fixed** | RU-02, AC-08, EC-08, `ResourceLink.test.tsx` |
 | #353  | Graph silently drops connections whose target cannot be resolved — **fixed; omitted connections are reported in the graph** | GU-04, GU-05a |
 | #354  | `initialNodes` mutates the graph payload it is given                        | GU-05b               |
 | #355  | Graph layout state leaks between applications via a module-level Dagre graph — **fixed in this PR at maintainer request; GU-08 is now a positive invariant, not a characterization pin** | GU-08 (regression) |
@@ -1097,11 +1097,16 @@ and the test proves `RadiusApi` chooses the first while `ApplicationTab` chooses
 divergence can therefore be shown to have been preserved or deliberately fixed during extraction
 rather than disappearing with the old call site.
 
-`#352` is pinned in three places because it fails at three depths. `RU-02` records the inputs the
-parser rejects; `AC-08` and `EC-08` record what a user actually sees, which is neither a bad link
-nor a bad row but a blank card reporting `Cannot read properties of null (reading 'scrollWidth')`.
-The parse failure never reaches the surface, so a test that only covered the parser would leave the
-real symptom unrecorded.
+`#352` now has positive regression tests at the parser and host boundaries. `RU-02` checks that the
+shared parser accepts legal names and types; `AC-08` and `EC-08` check that both cards retain
+healthy rows and links for those inputs. `ResourceLink.test.tsx` also checks an actual table with
+one malformed ID: that cell shows the ID as plain text, has an accessible label that explains why
+no link is available, and leaves healthy links visible. Provided children are preserved in both
+links and fallback text. Valid links still use the host route refs, including nested mounts.
+An empty ID shows `Invalid resource ID`. The fallback does not call the route builder or hide
+the malformed row. The former render failure and misleading `scrollWidth` error are no longer
+expected behavior. IDs without a resource group remain outside the legacy parser's contract and
+use the same plain-text fallback.
 
 `#361` and `#363` are both consequences of the same structure: `ResourceTypeDetailPage` is 2,693
 lines containing two near-duplicate eleven-hundred-line tab bodies that are meant to differ by one
