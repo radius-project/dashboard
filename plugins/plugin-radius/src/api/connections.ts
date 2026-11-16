@@ -118,7 +118,7 @@ export class RadiusConnectionStore implements RadiusConnections {
                 selectionKey: selected ? connectionKey(selected) : selectionKey,
                 error,
               },
-              !selectionKey && Boolean(selected),
+              Boolean(selected),
             );
           },
           error => {

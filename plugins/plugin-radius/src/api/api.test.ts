@@ -722,6 +722,36 @@ describe('shared query client through the Backstage transport', () => {
     expect(kube.proxy).toHaveBeenCalledTimes(2);
   });
 
+  it.each(['removal', 'discovery failure'])(
+    'CN-08: the first read recovers the retained connection after %s',
+    async failure => {
+      const kube = host();
+      const api = new RadiusApiImpl(kube);
+      await api.getResourceById({ id: applicationId });
+      const selectionKey = api.connections.getSnapshot().selectionKey;
+      if (failure === 'removal') {
+        kube.getClusters.mockResolvedValueOnce([]);
+      } else {
+        kube.getClusters.mockRejectedValueOnce(new Error('Forbidden'));
+      }
+      await expect(api.getResourceById({ id: applicationId })).rejects.toThrow(
+        failure === 'removal'
+          ? 'No Radius connections are available'
+          : 'check your host access. Forbidden',
+      );
+      expect(api.connections.getSnapshot().selected).toBeUndefined();
+      await expect(api.getResourceById({ id: applicationId })).resolves.toEqual(
+        application,
+      );
+      expect(api.connections.getSnapshot().selectionKey).toBe(selectionKey);
+      expect(
+        kube.proxy.mock.calls.filter(([request]) =>
+          request.path.includes('/resourceTypes/'),
+        ),
+      ).toHaveLength(2);
+    },
+  );
+
   it.each(['unselected', 'unavailable', 'undiscovered'])(
     'CN-05: cancels a preflight read after explicit selection from %s state',
     async state => {
