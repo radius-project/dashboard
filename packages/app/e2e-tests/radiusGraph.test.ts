@@ -256,11 +256,14 @@ test.describe('Radius application graph journey', () => {
     const themedHash = hash(themedSvg);
     const invalidSvg = '<svg not-valid-image';
     const invalidHash = hash(invalidSvg);
+    const invalidThemedSvg = '<svg fill="currentColor"><path';
+    const invalidThemedHash = hash(invalidThemedSvg);
     const iconHashes = {
       registered: registeredHash,
       themed: themedHash,
       missing: hash('missing'),
       invalid: invalidHash,
+      invalidThemed: invalidThemedHash,
     };
     await page.route(/\/resourceTypes\/applications\?/, route =>
       route.fulfill({
@@ -288,6 +291,7 @@ test.describe('Radius application graph journey', () => {
               [registeredHash]: iconSvg,
               [themedHash]: themedSvg,
               [invalidHash]: invalidSvg,
+              [invalidThemedHash]: invalidThemedSvg,
             },
           },
         });
@@ -316,10 +320,11 @@ test.describe('Radius application graph journey', () => {
     expect(decodeURIComponent(source!.slice(source!.indexOf(',') + 1))).toBe(
       iconSvg,
     );
-    for (const name of ['missing', 'invalid']) {
+    for (const name of ['missing', 'invalid', 'invalidThemed']) {
       const node = page.getByRole('group', { name, exact: true });
       await expect(node).toBeVisible();
       await expect(node).toContainText('widgets');
+      await expect(node.locator('span.rad-node__icon--themed')).toHaveCount(0);
       const fallback = node.locator('img[data-radius-part="icon"]');
       await expect(fallback).toBeVisible();
       await expect

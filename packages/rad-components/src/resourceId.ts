@@ -7,7 +7,10 @@ export interface ResourceId {
   name: string;
 }
 
-export function parseResourceId(resourceId: string): ResourceId | undefined {
+export function parseResourceId(resourceId: unknown): ResourceId | undefined {
+  if (typeof resourceId !== 'string') {
+    return undefined;
+  }
   const parsed = parseSharedResourceId(resourceId);
   if (
     parsed?.plane?.type.toLowerCase() !== 'radius' ||

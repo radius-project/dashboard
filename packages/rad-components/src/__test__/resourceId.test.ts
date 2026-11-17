@@ -7,6 +7,12 @@ import { parseResourceId } from '../resourceId';
  * keep doing, including the inputs it currently rejects.
  */
 describe('parseResourceId', () => {
+  it.each([undefined, null, 42, {}, []])(
+    'rejects non-string input %j without throwing',
+    value => {
+      expect(parseResourceId(value)).toBeUndefined();
+    },
+  );
   it('RU-01: parses an environment resource ID', () => {
     const parsed = parseResourceId(
       '/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/test-environment',

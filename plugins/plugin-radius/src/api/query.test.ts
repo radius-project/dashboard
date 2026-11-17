@@ -1,4 +1,5 @@
 import { createRadiusQueryClient } from './query';
+import { QuerySession } from './querySession';
 import type { RadiusQueryPort, RadiusQueryRequest } from './queryContracts';
 
 function deferred() {
@@ -53,6 +54,30 @@ function harness(
 }
 
 describe('public Radius query operations', () => {
+  it('passes a released slot onward when the awakened request is cancelled', async () => {
+    const release = deferred();
+    const request = jest
+      .fn()
+      .mockReturnValueOnce(release.promise)
+      .mockResolvedValue({});
+    const session = new QuerySession({ request }, context, 1);
+    const controller = new AbortController();
+    const first = session.request('/first', 'version');
+    const second = session.request('/second', 'version', controller.signal);
+    const third = session.request('/third', 'version');
+    const cancelled = second.catch((error: unknown) => error);
+    release.resolve();
+    queueMicrotask(() =>
+      controller.abort(new Error('awakened request cancelled')),
+    );
+    const [, failure] = await Promise.all([first, cancelled, third]);
+    expect(failure).toEqual(new Error('awakened request cancelled'));
+    expect(request.mock.calls.map(([call]) => call.path)).toEqual([
+      `${prefix}/first?api-version=version`,
+      `${prefix}/third?api-version=version`,
+    ]);
+  });
+
   it('uses the selected connection and original ID with per-type version order and no mutation', async () => {
     const upstream = resource();
     const { client, calls } = harness(({ path }) =>

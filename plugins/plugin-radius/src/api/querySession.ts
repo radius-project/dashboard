@@ -86,7 +86,10 @@ export class QuerySession {
         waiting.add(ready);
         signal?.addEventListener('abort', aborted, { once: true });
       });
-      signal?.throwIfAborted();
+      if (signal?.aborted) {
+        this.waiting.values().next().value?.();
+        signal.throwIfAborted();
+      }
     }
     this.active++;
     try {

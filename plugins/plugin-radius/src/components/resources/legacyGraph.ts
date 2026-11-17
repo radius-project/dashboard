@@ -83,9 +83,14 @@ export function legacyGraphToLive(
   context: GraphContext,
 ): LiveGraph {
   const seen = new Set<string>();
+  const duplicates = new Set<string>();
   const resources = [];
   for (const resource of graph.resources) {
-    if (!resource.id || !resource.type || seen.has(resource.id)) {
+    if (!resource.id || !resource.type) {
+      continue;
+    }
+    if (seen.has(resource.id)) {
+      duplicates.add(resource.id);
       continue;
     }
     seen.add(resource.id);
@@ -103,5 +108,20 @@ export function legacyGraphToLive(
       ),
     });
   }
-  return normalizeLiveGraph({ resources, icons: graph.icons }, context);
+  const normalized = normalizeLiveGraph(
+    { resources, icons: graph.icons },
+    context,
+  );
+  return {
+    ...normalized,
+    warnings: [
+      ...normalized.warnings,
+      ...Array.from(duplicates, resourceId => ({
+        code: 'duplicate-resource' as const,
+        severity: 'warning' as const,
+        resourceId,
+        message: `Duplicate resource ignored; first record retained: ${resourceId}`,
+      })),
+    ],
+  };
 }

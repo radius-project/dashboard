@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { parseResourceId } from '@radapp.io/rad-components/resourceId';
 import type { LiveGraph } from '@radius-project/core/graph';
@@ -53,6 +53,27 @@ export const ApplicationTab = ({ application }: { application: string }) => {
       };
     }
   }, [value]);
+  useEffect(() => {
+    const images: HTMLImageElement[] = [];
+    for (const resource of normalized.graph?.resources ?? []) {
+      const { icon } = resource;
+      if (!icon) {
+        continue;
+      }
+      const image = new Image();
+      image.onerror = () => {
+        setFailedIcons(previous => ({ ...previous, [resource.id]: icon }));
+      };
+      image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(icon)}`;
+      images.push(image);
+    }
+    return () => {
+      for (const image of images) {
+        image.onerror = null;
+        image.removeAttribute('src');
+      }
+    };
+  }, [normalized.graph]);
   const graph = useMemo<LiveGraph | undefined>(() => {
     if (!normalized.graph) {
       return undefined;
@@ -98,25 +119,7 @@ export const ApplicationTab = ({ application }: { application: string }) => {
     <InfoCard
       title={`Application Graph: ${parseResourceId(application)?.name}`}
     >
-      <div
-        className={styles.container}
-        onErrorCapture={event => {
-          if (
-            !(event.target instanceof HTMLImageElement) ||
-            event.target.dataset.radiusPart !== 'icon'
-          ) {
-            return;
-          }
-          const id =
-            event.target.closest<HTMLElement>('.react-flow__node')?.dataset.id;
-          const icon = graph.resources.find(
-            resource => resource.id === id,
-          )?.icon;
-          if (id && icon) {
-            setFailedIcons(previous => ({ ...previous, [id]: icon }));
-          }
-        }}
-      >
+      <div className={styles.container}>
         <RadiusGraph
           graph={graph}
           options={graphOptions}

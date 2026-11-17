@@ -125,6 +125,28 @@ describe('user-defined graph types', () => {
 });
 
 describe('AppGraph component', () => {
+  it.each([42, null, undefined])(
+    'retains usable nodes and reports malformed connection ID %j',
+    invalidId => {
+      const owner = resource('Applications.Core/containers', 'owner');
+      const graph = JSON.parse(
+        JSON.stringify({
+          name: 'malformed',
+          resources: [
+            {
+              ...owner,
+              connections: [{ id: invalidId, direction: 'Inbound' }],
+            },
+          ],
+        }),
+      );
+      render(<AppGraph graph={graph} />);
+      expect(screen.getByText('owner')).toBeVisible();
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'Unresolved or self connection ignored:',
+      );
+    },
+  );
   // GU-17 replaces Dagre.layout on the shared module object. Without this the
   // throwing implementation survives into every later test in this file.
   afterEach(() => jest.restoreAllMocks());

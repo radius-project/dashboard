@@ -126,8 +126,56 @@ describe('legacyGraphToLive', () => {
     ]);
 
     expect(graph.resources.map(r => r.name)).toEqual(['frontend']);
+    expect(graph.warnings).toContainEqual(
+      expect.objectContaining({
+        code: 'duplicate-resource',
+        resourceId: frontend.id,
+      }),
+    );
   });
 
+  it.each([false, true])(
+    'reports duplicate IDs while retaining the first status and connections (conflict=%s)',
+    conflict => {
+      const owner = { ...frontend, connections: [connection(db, 'Inbound')] };
+      const duplicate = conflict
+        ? { ...frontend, provisioningState: 'Failed' }
+        : owner;
+      const graph = live([owner, duplicate, db]);
+      expect(
+        graph.resources.find(r => r.id === owner.id)?.provisioningState,
+      ).toBe('Succeeded');
+      expect(edges(graph)).toEqual([[owner.id, db.id]]);
+      expect(graph.warnings).toContainEqual(
+        expect.objectContaining({
+          code: 'duplicate-resource',
+          resourceId: owner.id,
+        }),
+      );
+    },
+  );
+
+  it.each([42, null, undefined])(
+    'retains usable topology with a malformed connection ID %j',
+    invalidId => {
+      const graph = live(
+        JSON.parse(
+          JSON.stringify([
+            {
+              ...frontend,
+              connections: [
+                { ...connection(db, 'Inbound'), id: invalidId },
+                connection(db, 'Inbound'),
+              ],
+            },
+            db,
+          ]),
+        ),
+      );
+      expect(edges(graph)).toEqual([[frontend.id, db.id]]);
+      expect(graph.warnings.length).toBeGreaterThan(0);
+    },
+  );
   it('falls back to the id name when a resource has no name', () => {
     const [mapped] = live([{ ...frontend, name: '' }]).resources;
 
