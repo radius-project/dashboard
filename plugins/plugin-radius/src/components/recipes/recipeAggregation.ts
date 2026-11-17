@@ -1,4 +1,4 @@
-import { parseResourceId } from '@radapp.io/rad-components';
+import { parseResourceId } from '@radapp.io/rad-components/resourceId';
 import {
   EnvironmentProperties,
   RecipePackProperties,

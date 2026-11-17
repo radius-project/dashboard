@@ -73,7 +73,7 @@ describe('current package import boundaries', () => {
     ).toEqual([]);
   });
 
-  it('PB-01a: the current graph dependency is consumed through its public entry point', () => {
+  it('PB-01a: the plugin uses only the parser entry, without pulling in the compatibility renderer', () => {
     const imports = importSpecifiers(
       path.join(repoRoot, 'plugins/plugin-radius/src'),
     );
@@ -84,7 +84,7 @@ describe('current package import boundaries', () => {
     expect(graphImports.length).toBeGreaterThan(0);
     expect(
       graphImports.filter(
-        ({ specifier }) => specifier !== '@radapp.io/rad-components',
+        ({ specifier }) => specifier !== '@radapp.io/rad-components/resourceId',
       ),
     ).toEqual([]);
   });
@@ -123,6 +123,7 @@ describe('current package import boundaries', () => {
     // names that merely contain the letters of a private segment.
     [
       '@radapp.io/rad-components',
+      '@radapp.io/rad-components/resourceId',
       '@backstage/core-plugin-api',
       '@backstage/plugin-catalog-react/alpha',
       'react-dom/client',

@@ -1,5 +1,5 @@
 {
-  "status": "Development-only archives built from ai-extensions main d1fdac09, which includes merged pull request 1272. The dashboard supplies the remaining gaps itself (legacy resource-ID parser, query client, legacy gateway direction rule). Not a published release.",
+  "status": "Development-only archives built from ai-extensions main d1fdac09, which includes merged pull request 1272. The dashboard supplies the resource-ID compatibility wrapper, query client, legacy gateway direction rule, and browser image-error fallback. Not a published release.",
   "sourceRevision": "d1fdac091afac1c1a4d69cea2415f5e3f08b8d28",
   "core": {
     "path": "radius-project-core-0.1.0-main-d1fdac091afa.tgz",
@@ -71,7 +71,7 @@
     "Replace this pair with an archive built from a newer main when the shared libraries change or when a registry release exists.",
     "Only this matched pair is selected by repository-relative resolutions, including the graph-to-core dependency.",
     "Library smoke checks do not qualify dashboard consumers, installed hosts, containers, or cloud deployments.",
-    "The dashboard keeps its own legacy resource-ID parser, query client, and resource and recipe types because core does not export them.",
+    "The dashboard wraps the shared resource-ID parser to retain its plane:string/group/type/name contract, and keeps its query client and resource and recipe types locally.",
     "The dashboard keeps the legacy gateway and route edge-direction rule and applies it before normalizeLiveGraph.",
     "The reactflow 11 AppGraph in rad-components stays in the dashboard because graph-react has no compat entry.",
     "ApplicationTab feeds the live path of RadiusGraph, which shows raw provisioning text, the details status row and live warnings.",

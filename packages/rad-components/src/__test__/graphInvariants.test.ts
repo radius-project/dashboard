@@ -130,17 +130,18 @@ const assertRelationships = (model: GraphModel, expected: Relationship[]) => {
 };
 
 describe('graph invariants', () => {
-  describe('GU-01: every resource yields exactly one node', () => {
+  describe('GU-01: every resource identity yields exactly one node', () => {
     it.each(allFixtures)('%s', (_name, fixture) => {
       const graph = load(fixture);
       const model = buildGraphModel(graph);
 
-      expect(model.nodes).toHaveLength(graph.resources.length);
+      expect(model.nodes).toHaveLength(
+        new Set(graph.resources.map(r => r.id)).size,
+      );
     });
   });
 
   describe('GU-02: every retained connection yields exactly one edge', () => {
-    // Invalid/self connections are defect pins below, not desired topology.
     it.each(retainedConnectionFixtures)('%s', (name, fixture) => {
       expect(expectedRelationships).toHaveProperty(name);
       assertRelationships(
@@ -181,15 +182,7 @@ describe('graph invariants', () => {
   });
 
   describe('GU-03: every edge endpoint resolves to a node in the same graph', () => {
-    // `missing-target` and `unparseable-connection` are excluded and covered by
-    // GU-04 and GU-05a, which state the current behavior for endpoints that do
-    // not resolve.
-    const resolvable = allFixtures.filter(
-      ([name]) =>
-        name !== 'missing-target' && name !== 'unparseable-connection',
-    );
-
-    it.each(resolvable)('%s', (_name, fixture) => {
+    it.each(allFixtures)('%s', (_name, fixture) => {
       const model = buildGraphModel(load(fixture));
       const ids = new Set(model.nodes.map(node => node.id));
 
@@ -200,19 +193,10 @@ describe('graph invariants', () => {
     });
   });
 
-  /**
-   * KNOWN-DEFECT: a connection whose target is not in the graph produces an
-   * edge pointing at a node that does not exist. React Flow drops such an edge
-   * silently, so a real dependency simply vanishes from the diagram with no
-   * error anywhere. The requirement is that it is dropped or stubbed
-   * deliberately; today it is neither.
-   */
-  it('GU-04: KNOWN-DEFECT a connection to an absent resource leaves a dangling edge', () => {
+  it('GU-04: omits a connection to an absent resource', () => {
     const model = buildGraphModel(load(missingTarget));
-    const ids = new Set(model.nodes.map(node => node.id));
-
-    expect(model.edges).toHaveLength(1);
-    expect(ids.has(model.edges[0].source)).toBe(false);
+    expect(model.nodes).toHaveLength(1);
+    expect(model.edges).toEqual([]);
   });
 
   it('GU-05: an unparseable connection id does not drop its owning node', () => {
@@ -222,36 +206,19 @@ describe('graph invariants', () => {
     expect(model.nodes[0].label).toBe('webapp');
   });
 
-  /**
-   * KNOWN-DEFECT: the parse result is used only to decide whether to rewrite the
-   * direction; the edge-building loop that follows runs over every connection
-   * regardless. So an unparseable connection id is *not* skipped — it produces
-   * an edge to a node that does not exist, and the dependency disappears from
-   * the diagram with no error. GU-05 protects the owning node; this test separately
-   * pins the incorrect connection handling until it is fixed.
-   */
-  it('GU-05a: KNOWN-DEFECT an unparseable connection still produces a dangling edge', () => {
+  it('GU-05a: omits an unparseable connection', () => {
     const model = buildGraphModel(load(unparseableConnection));
-    const ids = new Set(model.nodes.map(node => node.id));
-
-    expect(model.edges).toHaveLength(1);
-    expect(ids.has(model.edges[0].source)).toBe(false);
+    expect(model.edges).toEqual([]);
   });
 
-  /**
-   * KNOWN-DEFECT: `initialNodes` rewrites `connection.direction` in place, so it
-   * mutates the caller's data. A caller that renders the same graph object
-   * twice, or that holds it in React state, is silently handed different input
-   * the second time. This is the input-side counterpart to the shared
-   * module-level layout graph in GU-08.
-   */
-  it("GU-05b: KNOWN-DEFECT building the model mutates the caller's graph", () => {
+  it("GU-05b: building the model preserves the caller's frozen connection", () => {
     const graph = load(gatewayInbound);
     expect(graph.resources[0].connections?.[0].direction).toBe('Inbound');
+    Object.freeze(graph.resources[0].connections![0]);
 
     buildGraphModel(graph);
 
-    expect(graph.resources[0].connections?.[0].direction).toBe('Outbound');
+    expect(graph.resources[0].connections?.[0].direction).toBe('Inbound');
   });
 
   it('GU-06: a self-referential connection produces no duplicate node', () => {
@@ -260,15 +227,10 @@ describe('graph invariants', () => {
     expect(model.nodes).toHaveLength(1);
   });
 
-  /**
-   * KNOWN-DEFECT: a self-referential connection produces a self-loop, which the
-   * requirement says must not happen.
-   */
-  it('GU-06a: KNOWN-DEFECT a self-referential connection produces a self-loop', () => {
+  it('GU-06a: omits a self-referential connection', () => {
     const model = buildGraphModel(load(selfReference));
 
-    expect(model.edges).toHaveLength(1);
-    expect(model.edges[0].source).toBe(model.edges[0].target);
+    expect(model.edges).toEqual([]);
   });
 
   describe('GU-07: building the same fixture twice is deterministic', () => {
@@ -379,15 +341,11 @@ describe('graph invariants', () => {
       expect(model.nodes[0].label).toBe('webapp');
     });
 
-    /**
-     * KNOWN-DEFECT: two resources sharing an id produce two nodes with the same
-     * id. React Flow requires unique node ids, so one silently wins.
-     */
-    it('KNOWN-DEFECT duplicate resource ids produce duplicate node ids', () => {
+    it('coalesces duplicate resource ids', () => {
       const model = buildGraphModel(load(duplicateIds));
       const ids = new Set(model.nodes.map(node => node.id));
 
-      expect(model.nodes).toHaveLength(2);
+      expect(model.nodes).toHaveLength(1);
       expect(ids.size).toBe(1);
     });
   });

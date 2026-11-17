@@ -16,16 +16,20 @@ It is only meant for local development, and the setup for it can be found inside
 
 The Application graph tab renders with `RadiusGraph` from `@radius-project/graph-react`, built from ai-extensions `main`. The dashboard owns everything that the shared libraries do not export:
 
-- `api/api.ts` is the dashboard's own Radius client. It owns resource paths, API-version discovery, namespace merging, and recipe aggregation. Backstage owns the Kubernetes proxy, authentication, HTTP errors, and JSON decoding.
-- `ApplicationTab.tsx` sends the graph POST through the Kubernetes proxy with a 10-second limit. For `Radius.Core/applications` API versions dated `2025-08-01` or later (stable or `-preview`), it sends `{includeIcons: true}`. All other versions send no body.
+- `api/api.ts` selects one connection and plane for all queries and adapts the Backstage Kubernetes proxy. The dashboard's `api/query*.ts` modules own resource paths, API-version discovery, namespace merging, response checks, and partial-result errors. Backstage owns authentication and transport.
+- `ApplicationTab.tsx` loads the graph through the host's `RadiusApi.getApplicationGraph` override. The default implementation uses the same connection as resource queries. `useApplicationGraph.ts` applies a 10-second limit to the complete load, including discovery and body decoding, and cancels requests on route changes or unmount. For `Radius.Core/applications` API versions dated `2025-08-01` or later (stable or `-preview`), the query client sends `{includeIcons: true}`. All other versions send no body.
 - `components/resources/legacyGraph.ts` converts the legacy graph payload (`Applications.Core`, Dapr, and `Radius.Core`) to the live graph that `normalizeLiveGraph` accepts. It applies the old edge direction rule, including the gateway and route reversal, before `normalizeLiveGraph` runs. It passes the raw `provisioningState`, the icon hashes, and the icons through. `normalizeLiveGraph` checks the icons and warns about invalid ones.
 - The Open control navigates with the host's route reference. An ID that is not a valid resource ID reports an error and does not navigate.
+- If an SVG passes normalization but fails browser image decoding, the dashboard removes that icon, reports a warning, and lets the shared renderer use its generic icon.
 
-The shared core has no query client and no legacy resource-ID parser, so the dashboard keeps both. The pull request lets the live graph path accept `Applications.Core/applications` and pass resource-definition icons. For this reason the adapter uses the live path. That path shows the raw provisioning text, the details status row, and the warnings. See `vendor/shared-libraries/candidate.json` for the limits.
+The shared core has no query client. The dashboard keeps query behavior locally and wraps the shared `parseResourceId` function to retain its existing `plane: string`, `group`, `type`, and `name` contract. The pinned main libraries accept `Applications.Core/applications` on the live graph path and pass resource-definition icons. That path shows the raw provisioning text, the details status row, and the warnings. See `vendor/shared-libraries/candidate.json` for the limits.
 
-The public `rad-components` `AppGraph` still uses its own React Flow 11 renderer, as it did before Phase 4. The plugin and its package declare React and ReactDOM `^18.3.1`, because `graph-react` requires it.
+The public `rad-components` `AppGraph` keeps its React Flow 11 compatibility renderer. It updates when graph props change, does not mutate connections, and reports duplicate IDs and invalid edges. `reactflow` remains a required peer so public `ResourceNode` consumers share their host's provider. Both frontend packages require React and ReactDOM `^18.3.1`.
 
-Inventory methods keep the `{value}` result envelope.
+The plugin imports `@radapp.io/rad-components/resourceId`, a parser-only public entry. This avoids loading the Flow 11 renderer and its CSS into the shared live graph host. The root entry still exports the parser and the compatibility components.
+
+Inventory methods retain the `{value}` envelope and add optional `complete` and `errors` fields. Existing host overrides remain valid. Partial results show usable rows with a warning; a failed query with no usable rows shows an error.
+
 ## Page appearance
 
 All eight Radius pages use the native dashboard's light or dark theme inside
@@ -46,8 +50,9 @@ Shared library version `0.1.0` is development metadata, not proof of a registry 
 
 - `legacyGraph.test.ts` covers the adapter: edge direction, dropped connections, duplicates, raw status, and icons.
 - `ApplicationTab.test.tsx` covers the request body rules, the 10-second limit, navigation, and the live graph and context passed to `RadiusGraph`.
-- `graphInvariants.test.ts` and `graphRecords.test.ts` keep the dashboard's graph topology records. The four record entries in `graph-expected-changes.md` declare the pre-Phase-4 records that this branch restores.
+- `graphInvariants.test.ts` and `graphRecords.test.ts` keep the dashboard's repaired topology records. The four entries in `graph-expected-changes.md` retain the approved removal of duplicate nodes and invalid edges.
 - `importBoundaries.test.ts`, `packaging.test.ts`, and `packagingArtifact.test.ts` check public entries and the packed plugin.
+
 ## Phase 5 installed-host evidence
 
 `yarn test:package` remains a linked-dependency smoke

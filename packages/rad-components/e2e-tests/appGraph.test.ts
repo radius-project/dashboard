@@ -29,6 +29,23 @@ const graphContract = async (page: Page) => ({
 });
 
 test.describe('real AppGraph renderer', () => {
+  test('GU-05b / GU-10: accepts frozen connections and replaces graph props', async ({
+    page,
+  }) => {
+    const errors: Error[] = [];
+    page.on('pageerror', error => errors.push(error));
+    await page.goto(harnessStoryUrl('replacement-harness'));
+    await expect(node(page, 'frontend')).toBeVisible();
+    await expect(edge(page, 'edge', 'frontend')).toBeVisible();
+    await page
+      .getByRole('button', { name: 'Replace graph', exact: true })
+      .click();
+    await expect(node(page, 'solo')).toBeVisible();
+    await expect(node(page, 'frontend')).toHaveCount(0);
+    await expect(page.locator('.react-flow__edge')).toHaveCount(0);
+    expect(errors).toEqual([]);
+  });
+
   for (const [story, target] of [
     [
       'missing-target',
@@ -202,15 +219,13 @@ test.describe('real AppGraph renderer', () => {
     await expect.poll(() => viewport.getAttribute('style')).not.toBe(zoomed);
   });
 
-  // KNOWN-DEFECT (#368): the correct behavior is an explicit accessible empty state.
-  test('GU-15: KNOWN-DEFECT an empty graph is a blank canvas without an empty-state message', async ({
-    page,
-  }) => {
+  test('GU-15: explains an empty graph', async ({ page }) => {
     await page.goto(storyUrl('empty'));
 
-    await expect(page.locator('.react-flow')).toBeVisible();
     await expect(page.locator('.react-flow__node')).toHaveCount(0);
-    await expect(page.getByText(/no resources|empty graph/i)).toHaveCount(0);
+    await expect(page.getByRole('status')).toHaveText(
+      'No resources in this application.',
+    );
   });
 
   // KNOWN-DEFECT (#41): selection should open dismissible details and restore focus on close.
@@ -254,7 +269,9 @@ test.describe('real AppGraph renderer', () => {
     await expect(node(page, 'frontend')).toHaveCount(0);
 
     await page.goto(harnessStoryUrl('stylesheet-removed'));
-    await expect(node(page, 'frontend')).toBeHidden();
-    await expect(page.locator('.react-flow__controls')).toBeHidden();
+    await expect(page.getByText('Graph stylesheet disabled')).toBeVisible();
+    await expect
+      .poll(async () => (await graphContract(page)).stylesheet)
+      .toBe(false);
   });
 });

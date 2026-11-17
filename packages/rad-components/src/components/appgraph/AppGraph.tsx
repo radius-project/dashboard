@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import {
   ReactFlow,
   Edge,
@@ -19,47 +19,54 @@ import { parseResourceId } from '../../resourceId';
 const nodeTypes = { default: ResourceNode };
 
 const LayoutFlow = (props: { graph: AppGraphData }) => {
-  const initial = initialNodes(props.graph);
-  const layoutedNodes = getLayoutedElements(initial.nodes, initial.edges, {
-    direction: 'TB',
-  });
+  const initial = useMemo(() => initialNodes(props.graph), [props.graph]);
+  const layoutedNodes = useMemo(
+    () =>
+      getLayoutedElements(initial.nodes, initial.edges, { direction: 'TB' }),
+    [initial],
+  );
 
   const { fitView } = useReactFlow();
   const [nodes, setNodes, onNodesChange] = useNodesState(layoutedNodes.nodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(layoutedNodes.edges);
 
-  useCallback(
-    (direction: string) => {
-      const layouted = getLayoutedElements(nodes, edges, { direction });
+  useEffect(() => {
+    setNodes(layoutedNodes.nodes);
+    setEdges(layoutedNodes.edges);
+    const frame = window.requestAnimationFrame(() => fitView());
+    return () => window.cancelAnimationFrame(frame);
+  }, [layoutedNodes, setNodes, setEdges, fitView]);
 
-      setNodes([...layouted.nodes]);
-      setEdges([...layouted.edges]);
-
-      window.requestAnimationFrame(() => {
-        fitView();
-      });
-    },
-    [nodes, edges, setNodes, setEdges, fitView],
-  );
-
-  // Notes on our usage of ReactFlow:
-  //
-  // - We're using an uncontrolled flow: https://reactflow.dev/learn/advanced-use/uncontrolled-flow
-  // - We implemented a custom node type: https://reactflow.dev/learn/customization/custom-nodes
-  // - We're using Dagre for layout: https://reactflow.dev/learn/layouting/layouting#dagre
+  const warnings = [
+    ...initial.warnings,
+    ...(layoutedNodes.error ? [layoutedNodes.error] : []),
+  ];
 
   return (
-    <ReactFlow
-      defaultNodes={nodes}
-      defaultEdges={edges}
-      defaultEdgeOptions={{ type: 'bezier', animated: true }}
-      nodeTypes={nodeTypes}
-      onNodesChange={onNodesChange}
-      onEdgesChange={onEdgesChange}
-      fitView
-    >
-      <Controls showInteractive={false} />
-    </ReactFlow>
+    <>
+      {warnings.length > 0 && (
+        <div role="status">
+          {warnings.map((warning, index) => (
+            <div key={`${index}-${warning}`}>{warning}</div>
+          ))}
+        </div>
+      )}
+      {initial.nodes.length === 0 ? (
+        <div role="status">No resources in this application.</div>
+      ) : (
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          defaultEdgeOptions={{ type: 'bezier', animated: true }}
+          nodeTypes={nodeTypes}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          fitView
+        >
+          <Controls showInteractive={false} />
+        </ReactFlow>
+      )}
+    </>
   );
 };
 
@@ -67,7 +74,7 @@ export type AppGraphProps = { graph: AppGraphData };
 
 function AppGraph(props: AppGraphProps) {
   return (
-    <div {...props} style={{ height: '100%', width: '100%' }}>
+    <div style={{ height: '100%', width: '100%' }}>
       <ReactFlowProvider>
         <LayoutFlow graph={props.graph} />
       </ReactFlowProvider>
@@ -94,14 +101,38 @@ const isResourceType = (type: string, types: Set<string>) =>
 export function initialNodes(graph: AppGraphData): {
   nodes: Node<Resource>[];
   edges: Edge[];
+  warnings: string[];
 } {
   const nodes: Node<Resource>[] = [];
   const edges: Edge[] = [];
+  const warnings: string[] = [];
+  const resources = new Map<string, Resource>();
+  const signatures = new Map<string, string>();
+  for (const resource of graph.resources) {
+    const signature = JSON.stringify([
+      resource.name,
+      resource.type,
+      resource.provider,
+      resource.provisioningState,
+      resource.connections ?? [],
+    ]);
+    if (resources.has(resource.id)) {
+      warnings.push(
+        signatures.get(resource.id) === signature
+          ? `Duplicate resource ignored: ${resource.id}`
+          : `Conflicting duplicate resource ignored: ${resource.id}`,
+      );
+      continue;
+    }
+    resources.set(resource.id, resource);
+    signatures.set(resource.id, signature);
+  }
+  const edgeIds = new Set<string>();
 
   // Very simple layout scheme here for nodes.
   const orderData: { [order: number]: number } = {};
 
-  for (const resource of graph.resources) {
+  for (const resource of resources.values()) {
     // The computed 'Order' is used to compute the 'y' coordinate for the initial layout.
     // This is computed based on the number of inbound connections (or whether it's a container).
     const order =
@@ -125,48 +156,39 @@ export function initialNodes(graph: AppGraphData): {
       type: 'default',
     });
 
-    if (resource.connections) {
-      for (const connection of resource.connections) {
-        // We have a bug where the connections have the wrong direction.
-        const parsedConnection = parseResourceId(connection.id);
-        if (!parsedConnection) {
-          continue;
-        }
-
-        if (
-          connection.direction === 'Inbound' &&
-          isResourceType(parsedConnection.type, GATEWAY_TYPES)
-        ) {
-          connection.direction = 'Outbound';
-        }
+    for (const connection of resource.connections ?? []) {
+      const parsedConnection = parseResourceId(connection.id);
+      if (
+        !parsedConnection ||
+        !resources.has(connection.id) ||
+        connection.id === resource.id
+      ) {
+        warnings.push(
+          `Unresolved or self connection ignored: ${resource.id} -> ${connection.id}`,
+        );
+        continue;
       }
-
-      for (const connection of resource.connections) {
-        if (connection.direction === 'Inbound') {
-          edges.push({
-            id: `${connection.id}-${resource.id}`,
-            source: resource.id,
-            target: connection.id,
-          });
-        } else {
-          edges.push({
-            id: `${resource.id}-${connection.id}`,
-            source: connection.id,
-            target: resource.id,
-          });
-        }
+      const ownerIsSource =
+        connection.direction === 'Inbound' &&
+        !isResourceType(parsedConnection.type, GATEWAY_TYPES);
+      const source = ownerIsSource ? resource.id : connection.id;
+      const target = ownerIsSource ? connection.id : resource.id;
+      const id = JSON.stringify([source, target]);
+      if (!edgeIds.has(id)) {
+        edgeIds.add(id);
+        edges.push({ id, source, target });
       }
     }
   }
 
-  return { nodes, edges };
+  return { nodes, edges, warnings };
 }
 
 export function getLayoutedElements(
   nodes: Node[],
   edges: Edge[],
   options: { direction: string },
-): { nodes: Node[]; edges: Edge[] } {
+): { nodes: Node[]; edges: Edge[]; error?: string } {
   // Built per call. A module-scoped graph accumulated every node and edge it
   // had ever been given, so a second render laid out against the union of all
   // previous graphs: stale nodes kept influencing positions and removed ones
@@ -177,16 +199,22 @@ export function getLayoutedElements(
   edges.forEach(edge => g.setEdge(edge.source, edge.target));
   nodes.forEach(node => g.setNode(node.id, node as NodeLabel));
 
-  Dagre.layout(g);
-
-  return {
-    nodes: nodes.map(node => {
-      const { x, y } = g.node(node.id);
-
-      return { ...node, position: { x, y } };
-    }),
-    edges,
-  };
+  try {
+    Dagre.layout(g);
+    return {
+      nodes: nodes.map(node => {
+        const { x, y } = g.node(node.id);
+        return { ...node, position: { x, y } };
+      }),
+      edges,
+    };
+  } catch (error) {
+    return {
+      nodes,
+      edges,
+      error: `Graph layout failed: ${error instanceof Error ? error.message : String(error)}`,
+    };
+  }
 }
 
 export default AppGraph;

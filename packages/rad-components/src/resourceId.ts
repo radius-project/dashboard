@@ -1,5 +1,4 @@
-const RESOURCE_ID_REGEX =
-  /^\/planes\/radius\/(?<plane>[0-9a-zA-Z-]+)\/resourceGroups\/(?<group>[0-9a-zA-Z-]+)\/providers\/(?<namespace>[a-zA-Z\\.]+)\/(?<type>[a-zA-Z]+)\/(?<name>[0-9a-zA-Z-]+)$/i;
+import { parseResourceId as parseSharedResourceId } from '@radius-project/core/domain';
 
 export interface ResourceId {
   plane: string;
@@ -9,11 +8,21 @@ export interface ResourceId {
 }
 
 export function parseResourceId(resourceId: string): ResourceId | undefined {
-  const match = RESOURCE_ID_REGEX.exec(resourceId);
-  if (!match) {
+  const parsed = parseSharedResourceId(resourceId);
+  if (
+    parsed?.plane?.type.toLowerCase() !== 'radius' ||
+    parsed.scopes.length !== 1 ||
+    parsed.scopes[0].type.toLowerCase() !== 'resourcegroups' ||
+    !parsed.resourceGroup ||
+    parsed.segments.length !== 1
+  ) {
     return undefined;
   }
 
-  const { plane, group, namespace, type, name } = match.groups ?? {};
-  return { plane, group, type: `${namespace}/${type}`, name };
+  return {
+    plane: parsed.plane.name,
+    group: parsed.resourceGroup,
+    type: parsed.type,
+    name: parsed.name,
+  };
 }

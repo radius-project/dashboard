@@ -150,13 +150,7 @@ describe('EnvironmentListInfoCard', () => {
     expect(screen.getByRole('link', { name: 'staging' })).toBeInTheDocument();
   });
 
-  /**
-   * KNOWN-DEFECT, tracked by radius-project/dashboard#352. See the equivalent
-   * case in `ApplicationListInfoCard.test.tsx` for the reasoning; it is
-   * repeated here because the two cards parse ids independently and could
-   * diverge during the extraction.
-   */
-  it('EC-08: KNOWN-DEFECT one unparseable id destroys the card and misreports the cause', async () => {
+  it('EC-08 / #352: legal underscores retain healthy rows and environment navigation', async () => {
     const api: EnvApiStub = {
       listEnvironments: async () => ({
         value: [
@@ -169,21 +163,14 @@ describe('EnvironmentListInfoCard', () => {
       }),
     };
 
-    const consoleError = jest
-      .spyOn(console, 'error')
-      .mockImplementation(() => {});
-
-    try {
-      await renderCard(api);
-
-      await waitFor(() => {
-        expect(screen.getByText(/Something Went Wrong/i)).toBeInTheDocument();
-      });
-
-      expect(screen.queryByText('healthy')).toBeNull();
-      expect(document.body.textContent).not.toMatch(/Invalid resource id/);
-    } finally {
-      consoleError.mockRestore();
-    }
+    await renderCard(api);
+    expect(await screen.findByRole('link', { name: 'healthy' })).toBeVisible();
+    expect(
+      screen.getByRole('link', { name: 'with_underscore' }),
+    ).toHaveAttribute(
+      'href',
+      '/environment/default/Applications.Core/environments/with_underscore',
+    );
+    expect(screen.queryByText(/Something Went Wrong/i)).toBeNull();
   });
 });

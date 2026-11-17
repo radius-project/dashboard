@@ -1,8 +1,10 @@
-import { parseResourceId } from '@radapp.io/rad-components';
+import { parseResourceId } from '@radapp.io/rad-components/resourceId';
 import {
   normalizeLiveGraph,
   type GraphContext,
+  type GraphResource,
   type LiveGraph,
+  type ResourceConnection,
 } from '@radius-project/core/graph';
 
 export type Direction = 'Outbound' | 'Inbound';
@@ -46,8 +48,16 @@ const GATEWAY_TYPES = new Set([
  * connection maps to `Inbound`. A legacy gateway or route target reports the
  * opposite direction, so it also maps to `Inbound`.
  */
-const liveDirection = (connection: Connection): Direction => {
-  const targetType = parseResourceId(connection.id)?.type.toLowerCase();
+const liveDirection = (connection: ResourceConnection) => {
+  if (
+    connection.direction !== 'Inbound' &&
+    connection.direction !== 'Outbound'
+  ) {
+    return connection.direction;
+  }
+  const targetType = connection.id
+    ? parseResourceId(connection.id)?.type.toLowerCase()
+    : undefined;
   const toGateway = targetType !== undefined && GATEWAY_TYPES.has(targetType);
   return connection.direction === 'Inbound' && !toGateway
     ? 'Outbound'
@@ -62,7 +72,14 @@ const liveDirection = (connection: Connection): Direction => {
  * icons and unreadable ids as warnings instead of dropping them silently.
  */
 export function legacyGraphToLive(
-  graph: AppGraphData,
+  graph: {
+    name?: string;
+    resources: readonly (GraphResource & {
+      provider?: string;
+      iconHash?: string | null;
+    })[];
+    icons?: Record<string, string | null>;
+  },
   context: GraphContext,
 ): LiveGraph {
   const seen = new Set<string>();
@@ -79,10 +96,11 @@ export function legacyGraphToLive(
       provider: resource.provider,
       provisioningState: resource.provisioningState,
       iconHash: resource.iconHash,
-      connections: (resource.connections ?? []).map(connection => ({
-        id: connection.id,
-        direction: liveDirection(connection),
-      })),
+      connections: (resource.connections ?? []).map(connection =>
+        connection === null
+          ? null
+          : { id: connection.id, direction: liveDirection(connection) },
+      ),
     });
   }
   return normalizeLiveGraph({ resources, icons: graph.icons }, context);

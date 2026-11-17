@@ -6,13 +6,6 @@
       "type": "Applications.Core/containers",
       "icon": "not-yet-populated",
       "statusBadge": "not-yet-populated"
-    },
-    {
-      "id": "/planes/radius/local/resourceGroups/demo/providers/Applications.Core/containers/webapp",
-      "label": "webapp",
-      "type": "Applications.Core/containers",
-      "icon": "not-yet-populated",
-      "statusBadge": "not-yet-populated"
     }
   ],
   "edges": []

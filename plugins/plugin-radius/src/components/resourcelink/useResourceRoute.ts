@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { useRouteRef } from '@backstage/core-plugin-api';
-import { parseResourceId } from '@radapp.io/rad-components';
+import { parseResourceId } from '@radapp.io/rad-components/resourceId';
 import { environmentPageRouteRef, resourcePageRouteRef } from '../../routes';
 import { isEnvironmentType } from '../../resources';
 

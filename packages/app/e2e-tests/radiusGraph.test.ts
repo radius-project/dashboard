@@ -60,6 +60,11 @@ const graphTypes = (namespace: string) =>
         gateway: 'Applications.Core/gateways',
       };
 
+const graphEdge = (page: Page, source: string, target: string) =>
+  page.locator(
+    `.react-flow__edge[data-id=${JSON.stringify(JSON.stringify([source, target]))}]`,
+  );
+
 async function fulfillRadiusRequest(route: Route) {
   const url = decodeURIComponent(route.request().url());
 
@@ -184,28 +189,32 @@ test.describe('Radius application graph journey', () => {
       await page.getByRole('tab', { name: 'App Graph' }).click();
 
       await expect(
-        page.getByRole('button', {
+        page.getByRole('group', {
           name: /^frontend/,
-        }),
-      ).toBeVisible();
-      await expect(
-        page.getByRole('button', {
-          name: /^Edge from .*backend.* to .*frontend/,
         }),
       ).toBeVisible();
       const { container, gateway } = graphTypes(item.type.split('/')[0]);
       const providers = '/planes/radius/local/resourceGroups/demo/providers';
       await expect(
-        page.getByRole('button', {
-          name: `Edge from ${providers}/${gateway}/edge to ${providers}/${container}/frontend`,
-          exact: true,
-        }),
+        graphEdge(
+          page,
+          `${providers}/${container}/backend`,
+          `${providers}/${container}/frontend`,
+        ),
       ).toBeVisible();
       await expect(
-        page.getByRole('button', {
-          name: `Edge from ${providers}/${container}/frontend to ${providers}/${gateway}/edge`,
-          exact: true,
-        }),
+        graphEdge(
+          page,
+          `${providers}/${gateway}/edge`,
+          `${providers}/${container}/frontend`,
+        ),
+      ).toBeVisible();
+      await expect(
+        graphEdge(
+          page,
+          `${providers}/${container}/frontend`,
+          `${providers}/${gateway}/edge`,
+        ),
       ).toHaveCount(0);
 
       await page.goto('/applications');
@@ -220,7 +229,7 @@ test.describe('Radius application graph journey', () => {
       '/resources/demo/Applications.Core/applications/legacy-app/application',
     );
     await expect(
-      page.getByRole('button', {
+      page.getByRole('group', {
         name: /^frontend/,
       }),
     ).toBeVisible();
@@ -228,7 +237,7 @@ test.describe('Radius application graph journey', () => {
     await page.reload();
 
     await expect(
-      page.getByRole('button', {
+      page.getByRole('group', {
         name: /^frontend/,
       }),
     ).toBeVisible();

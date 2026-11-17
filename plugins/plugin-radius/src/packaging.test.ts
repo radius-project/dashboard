@@ -129,6 +129,8 @@ describe('package contract', () => {
    */
   it('PU-17: records the graph workspace dependency before extraction', () => {
     expect(pkg.dependencies?.['@radapp.io/rad-components']).toBe('workspace:^');
+    expect(pkg.dependencies?.['@radius-project/core']).toBe('0.1.0');
+    expect(pkg.dependencies?.['@radius-project/graph-react']).toBe('0.1.0');
 
     const workspaceRanges = Object.entries(pkg.dependencies ?? {})
       .filter(([, range]) => String(range).startsWith('workspace:'))

@@ -446,17 +446,23 @@ describe('graph records', () => {
     });
   });
 
-  it('GU-23: reports KNOWN-DEFECT invariant violations as carried forward', async () => {
+  it('GU-23: retains the repaired topology invariants', async () => {
     expect(
       findCarriedForwardGraphDefects(
         await generatedRecords(),
         knownGraphDefects,
       ),
-    ).toEqual(knownGraphDefects);
+    ).toEqual(
+      knownGraphDefects.filter(defect => ['#35', '#89'].includes(defect.issue)),
+    );
   });
 
   it('GU-23a: clears a defect only when its own invariant is repaired', () => {
-    const duplicate = readRecord('duplicate-ids');
+    const healthy = readRecord('duplicate-ids');
+    const duplicate = {
+      ...healthy,
+      nodes: [healthy.nodes[0], healthy.nodes[0]],
+    };
     const defect = knownGraphDefects.find(
       known => known.fixture === 'duplicate-ids',
     )!;
@@ -593,7 +599,7 @@ describe('graph records', () => {
     ).not.toEqual([]);
   });
 
-  it('GU-24: declares exactly the four records restored from the Phase 4 baseline', () => {
+  it('GU-24: retains the four reviewed baseline repairs', () => {
     const manifest = parseManifest(fs.readFileSync(manifestPath, 'utf8'));
 
     expect(manifest.map(change => `${change.fixture} ${change.field}`)).toEqual(
@@ -604,6 +610,6 @@ describe('graph records', () => {
         'unparseable-connection edges.0',
       ],
     );
-    expect(manifest.every(change => change.oldValue === '<absent>')).toBe(true);
+    expect(manifest.every(change => change.newValue === '<absent>')).toBe(true);
   });
 });

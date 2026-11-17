@@ -11,6 +11,21 @@ export interface ResourceList<T = { [key: string]: unknown }> {
   value: Resource<T>[];
 }
 
+export interface ResourceTypeProperties {
+  namespace: string;
+  type: string;
+  apiVersion: string;
+  apiVersions?: string[];
+}
+
+export interface ResourceType {
+  Name: string;
+  Description: string;
+  ResourceProviderNamespace: string;
+  APIVersions: Record<string, { Schema?: unknown }>;
+  APIVersionList: string[];
+}
+
 export interface ApplicationProperties {
   provisioningState: string;
   environment: string;

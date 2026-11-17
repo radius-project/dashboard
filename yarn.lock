@@ -8446,6 +8446,7 @@ __metadata:
     "@backstage/cli-defaults": "npm:^0.1.6"
     "@dagrejs/dagre": "npm:^3.1.1"
     "@juggle/resize-observer": "npm:^3.4.0"
+    "@radius-project/core": "npm:0.1.0"
     "@storybook/addon-a11y": "npm:^10.6.2"
     "@storybook/addon-docs": "npm:^10.6.2"
     "@storybook/addon-links": "npm:^10.6.2"
@@ -8473,8 +8474,9 @@ __metadata:
     typescript: "npm:^6.0.3"
     vite: "npm:^8.3.4"
   peerDependencies:
-    react: ^16.13.1 || ^17.0.2 || ^18.0.0
-    react-dom: ^16.13.1 || ^17.0.2 || ^18.0.0
+    react: ^18.3.1
+    react-dom: ^18.3.1
+    reactflow: ^11.11.4
   languageName: unknown
   linkType: soft
 

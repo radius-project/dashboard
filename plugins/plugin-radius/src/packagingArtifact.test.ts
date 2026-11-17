@@ -177,9 +177,27 @@ beforeAll(() => {
     );
     extractArchive(pluginArchive, pluginInstall);
     extractArchive(graphArchive, graphInstall);
+    const sharedReceiptPath = path.join(
+      repoRoot,
+      'vendor',
+      'shared-libraries',
+      'candidate.json',
+    );
+    const sharedReceipt = readJson<{
+      core: { path: string };
+      graphReact: { path: string };
+    }>(sharedReceiptPath);
+    for (const [name, archive] of [
+      ['core', sharedReceipt.core.path],
+      ['graph-react', sharedReceipt.graphReact.path],
+    ]) {
+      extractArchive(
+        path.join(repoRoot, 'vendor', 'shared-libraries', archive),
+        path.join(consumerRoot, 'node_modules', '@radius-project', name),
+      );
+    }
 
-    // Only third-party dependencies and the vendored main-built Radius shared
-    // libraries are linked, never workspace source.
+    // Radius packages come from archives; only third-party dependencies are linked.
     const dependencies = [
       '@backstage',
       '@material-ui',
@@ -190,7 +208,6 @@ beforeAll(() => {
       'react-router-dom',
       'react-use',
       'react-error-boundary',
-      '@radius-project',
       '@xyflow',
       '@dagrejs',
       'dagre',
@@ -202,6 +219,21 @@ beforeAll(() => {
         path.join(repoRoot, 'node_modules', name),
         destination,
         'junction',
+      );
+    }
+    const verified = JSON.parse(
+      run(process.execPath, [
+        path.join(repoRoot, 'scripts', 'shared-library-candidate.ts'),
+        sharedReceiptPath,
+        consumerRoot,
+      ]),
+    );
+    if (
+      verified.stage !== 'installed-bytes' ||
+      verified.hostQualified !== false
+    ) {
+      throw new Error(
+        'Expected exact installed shared artifacts before host qualification',
       );
     }
     for (const [name, entry] of [
@@ -224,6 +256,7 @@ beforeAll(() => {
         '--packages=external',
         `--outfile=${path.join(consumerRoot, `${name}.cjs`)}`,
         `--alias:${entry}=${require.resolve(entry, { paths: [consumerRoot] })}`,
+        `--alias:@radapp.io/rad-components/resourceId=${path.join(graphInstall, 'dist', 'resourceId.esm.js')}`,
         `--alias:@radapp.io/rad-components=${path.join(graphInstall, 'dist', 'index.esm.js')}`,
       ]);
     }
@@ -239,6 +272,9 @@ beforeAll(() => {
         "import { ApplicationListPage, radiusApiRef, radiusPlugin, radiusThemes } from '@internal/plugin-radius';",
         "import type { RadiusApi } from '@internal/plugin-radius';",
         "import nativeRadius from '@internal/plugin-radius/alpha';",
+        "import { parseResourceId } from '@radapp.io/rad-components/resourceId';",
+        'const plane: string | undefined = parseResourceId("/planes/radius/local/resourceGroups/demo/providers/Radius.Data/neo4jDatabases/neo4j")?.plane;',
+        'void plane;',
         'declare const api: RadiusApi;',
         'void api.listApplications();',
         'void ApplicationListPage;',
@@ -479,7 +515,11 @@ afterAll(() => {
         consumerRoot,
       ]);
       for (const system of ['legacy', 'native']) {
-        expect(result).toContain(`FS-03/08 PASS: packed ${system}`);
+        for (const basePath of ['/', '/nested']) {
+          expect(result).toContain(
+            `FS-03/08 PASS: packed ${system}, app base ${basePath}`,
+          );
+        }
       }
     } catch (error) {
       if (error instanceof Error && 'stderr' in error) {
@@ -500,7 +540,50 @@ afterAll(() => {
         paths: [consumerRoot],
       }),
     ).toBe(path.join(graphInstall, 'package.json'));
+    for (const origin of [pluginInstall, graphInstall]) {
+      for (const name of ['core', 'graph-react']) {
+        expect(
+          require.resolve(`@radius-project/${name}/package.json`, {
+            paths: [origin],
+          }),
+        ).toBe(
+          path.join(
+            consumerRoot,
+            'node_modules',
+            '@radius-project',
+            name,
+            'package.json',
+          ),
+        );
+      }
+      for (const name of ['react', 'react-dom', 'reactflow']) {
+        expect(
+          fs.realpathSync(require.resolve(name, { paths: [origin] })),
+        ).toBe(
+          fs.realpathSync(require.resolve(name, { paths: [consumerRoot] })),
+        );
+      }
+    }
   });
+
+  it('PU-29 / GU-09: observes packed local Flow11 components and the shared live renderer', () => {
+    try {
+      const observed = JSON.parse(
+        run(process.execPath, [
+          path.join(repoRoot, 'scripts', 'observe-shared-graph.ts'),
+          consumerRoot,
+        ]),
+      );
+      expect(Object.keys(observed)).toHaveLength(14);
+      expect(observed['multi-tier'].nodes).toHaveLength(4);
+      expect(observed['multi-tier'].edges).toHaveLength(3);
+    } catch (error) {
+      if (error instanceof Error && 'stderr' in error) {
+        throw new Error(String(error.stderr), { cause: error });
+      }
+      throw error;
+    }
+  }, 120_000);
 
   it('PU-27b: restores both source manifests after build and pack', () => {
     expect(pluginManifestLifecycle.after).toBe(pluginManifestLifecycle.before);

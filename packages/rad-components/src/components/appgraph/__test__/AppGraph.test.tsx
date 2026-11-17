@@ -139,17 +139,72 @@ describe('AppGraph component', () => {
     expect(name).toBeInTheDocument();
   });
 
-  /**
-   * KNOWN-DEFECT: layout failures escape the renderer rather than producing a
-   * degraded graph with an explanation. Tracked by #368.
-   */
-  it('GU-17: KNOWN-DEFECT propagates a graph layout failure', () => {
+  it('GU-17: retains the graph and explains a layout failure', () => {
     jest.spyOn(Dagre, 'layout').mockImplementation(() => {
       throw new Error('layout failed');
     });
 
-    expect(() =>
-      render(<AppGraph graph={sampledata.DemoApplication} />),
-    ).toThrow('layout failed');
+    render(<AppGraph graph={sampledata.DemoApplication} />);
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Graph layout failed: layout failed',
+    );
+    expect(
+      screen.getByRole('link', { name: 'React Flow attribution' }),
+    ).toBeVisible();
+  });
+
+  it('GU-15: explains an empty graph', () => {
+    render(<AppGraph graph={{ name: 'empty', resources: [] }} />);
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'No resources in this application.',
+    );
+  });
+
+  it('GU-10: replaces visible nodes when the graph changes', () => {
+    const first = {
+      name: 'first',
+      resources: [resource('Applications.Core/containers', 'first')],
+    };
+    const second = {
+      name: 'second',
+      resources: [resource('Applications.Core/containers', 'second')],
+    };
+    const view = render(<AppGraph graph={first} />);
+    expect(screen.getByText('first')).toBeVisible();
+    view.rerender(<AppGraph graph={second} />);
+    expect(screen.queryByText('first')).not.toBeInTheDocument();
+    expect(screen.getByText('second')).toBeVisible();
+  });
+
+  it.each([false, true])(
+    'retains the first duplicate and reports conflict=%s',
+    conflict => {
+      const first = resource('Applications.Core/containers', 'first');
+      const duplicate = { ...first, name: conflict ? 'conflict' : first.name };
+      render(
+        <AppGraph
+          graph={{ name: 'duplicates', resources: [first, duplicate] }}
+        />,
+      );
+      expect(screen.getAllByText('first')).toHaveLength(1);
+      expect(screen.queryByText('conflict')).not.toBeInTheDocument();
+      expect(screen.getByRole('status')).toHaveTextContent(
+        conflict
+          ? 'Conflicting duplicate resource ignored:'
+          : 'Duplicate resource ignored:',
+      );
+    },
+  );
+
+  it('coalesces repeated directed connections without changing input', () => {
+    const first = resource('Applications.Core/containers', 'first');
+    const second = resource('Applications.Core/containers', 'second');
+    const connection = { ...second, direction: 'Outbound' as const };
+    const graph: AppGraphData = {
+      name: 'repeated',
+      resources: [{ ...first, connections: [connection, connection] }, second],
+    };
+    expect(initialNodes(graph).edges).toHaveLength(1);
+    expect(graph.resources[0].connections).toHaveLength(2);
   });
 });
