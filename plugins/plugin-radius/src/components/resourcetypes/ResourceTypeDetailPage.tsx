@@ -269,7 +269,7 @@ export const ResourceTypeDetailPage = withRadiusTheme(() => {
   } = useAsync(async () => {
     if (!namespace || !typeName) return undefined;
     return await radiusApi.getResourceType({ namespace, typeName });
-  }, [radiusApi, namespace, typeName]);
+  }, [namespace, typeName]);
 
   if (loading) return <Progress />;
   if (error) return <ResponseErrorPanel error={error} />;

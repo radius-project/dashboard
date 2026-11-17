@@ -10,19 +10,20 @@ import { useApi, useRouteRef } from '@backstage/core-plugin-api';
 import React from 'react';
 import useAsync from 'react-use/lib/useAsync';
 import { radiusApiRef } from '../../api/ref';
-import { EnvironmentProperties, Resource } from '../../resources';
+import { EnvironmentProperties, Resource, ResourceList } from '../../resources';
 import { ResourceLink } from '../resourcelink';
 import { environmentPageRouteRef } from '../../routes';
-import { parseLegacyResourceId as parseResourceId } from '@radius-project/core/domain';
-import { ResourceQueryResult } from '../queryresult/ResourceQueryResult';
+import { parseResourceId } from '@radapp.io/rad-components';
 
 const EnvironmentListInfoContent = () => {
   const route = useRouteRef(environmentPageRouteRef);
 
   const radiusApi = useApi(radiusApiRef);
-  const { value, loading, error } = useAsync(async () => {
-    return radiusApi.listEnvironments<EnvironmentProperties>();
-  }, [radiusApi]);
+  const { value, loading, error } = useAsync(
+    async (): Promise<ResourceList<EnvironmentProperties>> => {
+      return radiusApi.listEnvironments<EnvironmentProperties>();
+    },
+  );
 
   if (loading) {
     return <Progress data-testid="progress" />;
@@ -64,19 +65,12 @@ const EnvironmentListInfoContent = () => {
   ];
 
   return (
-    <ResourceQueryResult result={value}>
-      <Table
-        columns={columns}
-        components={{ Toolbar: _row => null }}
-        options={{
-          search: false,
-          paging: false,
-          padding: 'dense',
-          pageSize: 5,
-        }}
-        data={value?.value || []}
-      />
-    </ResourceQueryResult>
+    <Table
+      columns={columns}
+      components={{ Toolbar: _row => null }}
+      options={{ search: false, paging: false, padding: 'dense', pageSize: 5 }}
+      data={value?.value || []}
+    />
   );
 };
 

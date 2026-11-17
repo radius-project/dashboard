@@ -31,13 +31,10 @@ for (const scenario of ['launch', 'journey', 'journey-and-close']) {
         export const expect = () => {};
       `;
       const buildSource = `
-        export async function build(options) {
+        export async function build() {
           return { metafile: { inputs: {
             'plugin-radius/dist/alpha.esm.js': {},
             'plugin-radius/dist/index.esm.js': {},
-          }, outputs: {
-            [options.outdir + '/native.js']: { inputs: {}, imports: [] },
-            [options.outdir + '/legacy.js']: { inputs: {}, imports: [] },
           } } };
         }
       `;

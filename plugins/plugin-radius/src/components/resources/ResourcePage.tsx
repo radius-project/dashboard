@@ -24,7 +24,7 @@ export const ResourcePage = withRadiusTheme(() => {
 
   const { value, loading, error } = useAsync(async (): Promise<Resource> => {
     return radiusApi.getResourceById({ id });
-  }, [radiusApi, id]);
+  }, [id]);
 
   if (loading) {
     return <Progress />;

@@ -21,8 +21,8 @@ import { ResourceTable } from '../resourcetable';
 import { useApi } from '@backstage/core-plugin-api';
 import useAsync from 'react-use/lib/useAsync';
 import { radiusApiRef } from '../../api/ref';
-import { Resource } from '../../resources';
-import { parseLegacyResourceId as parseResourceId } from '@radius-project/core/domain';
+import { ResourceList, Resource } from '../../resources';
+import { parseResourceId } from '@radapp.io/rad-components';
 import { withRadiusTheme } from '../../appearance';
 
 const EnvironmentListPageContent = ({
@@ -114,11 +114,11 @@ const EnvironmentListPageContent = ({
 export const EnvironmentListPage = withRadiusTheme(() => {
   const radiusApi = useApi(radiusApiRef);
   const { value, loading, error } = useAsync(
-    async () =>
+    async (): Promise<ResourceList<{ [key: string]: unknown }>> =>
       radiusApi.listResources<{ [key: string]: unknown }>({
         resourceType: 'Applications.Core/environments',
       }),
-    [radiusApi],
+    [],
   );
 
   if (loading) {

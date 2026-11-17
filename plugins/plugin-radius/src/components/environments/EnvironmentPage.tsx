@@ -24,7 +24,7 @@ export const EnvironmentPage = withRadiusTheme(() => {
     Resource<EnvironmentProperties>
   > => {
     return radiusApi.getResourceById<EnvironmentProperties>({ id });
-  }, [radiusApi, id]);
+  }, [id]);
 
   if (loading) {
     return <Progress />;

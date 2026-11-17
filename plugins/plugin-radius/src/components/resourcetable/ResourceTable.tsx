@@ -1,5 +1,5 @@
 import React from 'react';
-import { Resource } from '../../resources';
+import { Resource, ResourceList } from '../../resources';
 import {
   Progress,
   ResponseErrorPanel,
@@ -13,9 +13,8 @@ import {
 import { useApi } from '@backstage/core-plugin-api';
 import useAsync from 'react-use/lib/useAsync';
 import { radiusApiRef } from '../../api/ref';
-import { parseLegacyResourceId as parseResourceId } from '@radius-project/core/domain';
+import { parseResourceId } from '@radapp.io/rad-components';
 import { isEnvironmentType, isApplicationType } from '../../resources';
-import { ResourceQueryResult } from '../queryresult/ResourceQueryResult';
 
 const DataTable = (props: {
   resources: Resource[];
@@ -181,11 +180,13 @@ export const ResourceTable = (props: {
   resourceGroupFilter?: string;
 }) => {
   const radiusApi = useApi(radiusApiRef);
-  const { value, loading, error } = useAsync(async () => {
-    return radiusApi.listResources<{ [key: string]: unknown }>({
-      resourceType: props.resourceType,
-    });
-  }, [radiusApi, props.resourceType]);
+  const { value, loading, error } = useAsync(
+    async (): Promise<ResourceList<{ [key: string]: unknown }>> => {
+      return radiusApi.listResources<{ [key: string]: unknown }>({
+        resourceType: props.resourceType,
+      });
+    },
+  );
 
   if (loading) {
     return <Progress data-testid="progress" />;
@@ -194,14 +195,12 @@ export const ResourceTable = (props: {
   }
 
   return (
-    <ResourceQueryResult result={value}>
-      <DataTable
-        resources={value?.value || []}
-        title={props.title}
-        filters={props.filters}
-        resourceType={props.resourceType}
-        resourceGroupFilter={props.resourceGroupFilter}
-      />
-    </ResourceQueryResult>
+    <DataTable
+      resources={value?.value || []}
+      title={props.title}
+      filters={props.filters}
+      resourceType={props.resourceType}
+      resourceGroupFilter={props.resourceGroupFilter}
+    />
   );
 };
