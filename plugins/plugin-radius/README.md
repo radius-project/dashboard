@@ -136,31 +136,31 @@ and enable dependency build scripts in the clean consumer.
 The table maps executable checks, not a claim that every gate has passed.
 Full closure below requires full-matrix mode with a container.
 
-| Requirement | Executable evidence | Remaining scope |
-| --- | --- | --- |
-| HU-01 | `qualify-plugin-host.ts --installed`: actual legacy/native `createApp`; same journey drives clean standalone/container production output; browser errors fail | One pinned tuple, not a support range |
-| HU-02 | Shared journey visits all eight headings for every active host and base path | None in the controlled matrix |
-| HU-03 | External fixture follows a real bound applications ref; standalone/container baseline follows catalog graph's bound entity ref | Catalog baseline uses controlled entity responses |
-| HU-04 | Named host/sidebar links must exist with exact accessible names | Full accessibility audit belongs to Phase 7 |
-| HU-05 | Fixture and real standalone sidebar links call `useRouteRef`; browser checks destinations | Host-owned Home/Settings paths are unchanged |
-| HU-06 | All active hosts mount Radius at `/plugins/radius` | None in the controlled matrix |
-| HU-07 | Each active host runs with root and `/nested` app base paths; real ingress strips the base path for static assets | None in the controlled matrix |
-| HU-08 | Same candidate archive supplies packed root and `/alpha`; clean standalone/container use `/alpha` | No temporary hybrid support promise |
-| HU-09 | Host-owned fixture identity supplies HTTP credentials; real backend rejects missing identity | Controlled fixture/static auth is not a production provider |
-| HU-10 | Real proxy GET/graph POST return upstream 403; list and graph errors remain visible; shared 24-case connection contract | Controlled auth/upstream only |
-| HU-11 | All active hosts reuse one Phase 3/4 journey with host-specific transport and sign-in setup | Existing host-feature baseline is additional evidence |
-| HU-12 | Actual six-plugin backend, missing-service rejection, failed initialization exit, discovery/catalog, and two-connection GET/POST isolation; scaffold 404 | Real production providers belong to Phase 8 |
-| IA-01 | Clean consumer installs four tarballs; only app/backend host code is copied; plugin build inputs must stay inside consumer | Private backend is not published as a plugin |
-| IA-02 | Installed declarations/fixtures and clean host compile; production frontend/backend build; clean production Dockerfile build | `skipLibCheck` is retained, not full dependency declaration checking |
-| IA-03 | Exact direct/plugin/forwarding/graph-transitive candidate resolution in the complete clean host tree | Recorded installed lock is part of the tuple |
-| IA-04 | Compiled shared inputs are required; workspace source and Flow11 browser inputs fail | Continue public forwarding-contract and import-boundary tests |
-| IA-05 | Complete clean host tree must contain one React and one ReactDOM copy; image uses its built frontend | No React 19 host claim |
-| IA-06 | Exact archive CSS bytes, build input/output CSS, loaded browser rules and computed graph controls in all active hosts; altered CSS fails | None in the controlled matrix |
-| IA-07 | Actual registration/routes, clean six-plugin backend, real Kubernetes proxy and shared connection contract against fake upstream | Real Radius belongs to Phase 8 |
-| IA-08 | Static production bundles and actual built container; no dev server or mocked shared renderer | None in the controlled matrix |
-| RX-01 | Whole clean dashboard tree has one React 18 pair; duplicate/non-18 host peers fail | Exact recorded tuple only |
-| RX-02 | Every active host uses shared cards, edges, fit/zoom; forwarding observer also runs | No isolated-library result substitutes for a host |
-| RX-03 | A React 19 negative test fails the host tree check | No React 19 Backstage support claim |
+| Requirement | Executable evidence                                                                                                                                           | Remaining scope                                                      |
+|-------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------|
+| HU-01       | `qualify-plugin-host.ts --installed`: actual legacy/native `createApp`; same journey drives clean standalone/container production output; browser errors fail | One pinned tuple, not a support range                                |
+| HU-02       | Shared journey visits all eight headings for every active host and base path                                                                                  | None in the controlled matrix                                        |
+| HU-03       | External fixture follows a real bound applications ref; standalone/container baseline follows catalog graph's bound entity ref                                | Catalog baseline uses controlled entity responses                    |
+| HU-04       | Named host/sidebar links must exist with exact accessible names                                                                                               | Full accessibility audit belongs to Phase 7                          |
+| HU-05       | Fixture and real standalone sidebar links call `useRouteRef`; browser checks destinations                                                                     | Host-owned Home/Settings paths are unchanged                         |
+| HU-06       | All active hosts mount Radius at `/plugins/radius`                                                                                                            | None in the controlled matrix                                        |
+| HU-07       | Each active host runs with root and `/nested` app base paths; real ingress strips the base path for static assets                                             | None in the controlled matrix                                        |
+| HU-08       | Same candidate archive supplies packed root and `/alpha`; clean standalone/container use `/alpha`                                                             | No temporary hybrid support promise                                  |
+| HU-09       | Host-owned fixture identity supplies HTTP credentials; real backend rejects missing identity                                                                  | Controlled fixture/static auth is not a production provider          |
+| HU-10       | Real proxy GET/graph POST return upstream 403; list and graph errors remain visible; shared 24-case connection contract                                       | Controlled auth/upstream only                                        |
+| HU-11       | All active hosts reuse one Phase 3/4 journey with host-specific transport and sign-in setup                                                                   | Existing host-feature baseline is additional evidence                |
+| HU-12       | Actual six-plugin backend, missing-service rejection, failed initialization exit, discovery/catalog, and two-connection GET/POST isolation; scaffold 404      | Real production providers belong to Phase 8                          |
+| IA-01       | Clean consumer installs four tarballs; only app/backend host code is copied; plugin build inputs must stay inside consumer                                    | Private backend is not published as a plugin                         |
+| IA-02       | Installed declarations/fixtures and clean host compile; production frontend/backend build; clean production Dockerfile build                                  | `skipLibCheck` is retained, not full dependency declaration checking |
+| IA-03       | Exact direct/plugin/forwarding/graph-transitive candidate resolution in the complete clean host tree                                                          | Recorded installed lock is part of the tuple                         |
+| IA-04       | Compiled shared inputs are required; workspace source and Flow11 browser inputs fail                                                                          | Continue public forwarding-contract and import-boundary tests        |
+| IA-05       | Complete clean host tree must contain one React and one ReactDOM copy; image uses its built frontend                                                          | No React 19 host claim                                               |
+| IA-06       | Exact archive CSS bytes, build input/output CSS, loaded browser rules and computed graph controls in all active hosts; altered CSS fails                      | None in the controlled matrix                                        |
+| IA-07       | Actual registration/routes, clean six-plugin backend, real Kubernetes proxy and shared connection contract against fake upstream                              | Real Radius belongs to Phase 8                                       |
+| IA-08       | Static production bundles and actual built container; no dev server or mocked shared renderer                                                                 | None in the controlled matrix                                        |
+| RX-01       | Whole clean dashboard tree has one React 18 pair; duplicate/non-18 host peers fail                                                                            | Exact recorded tuple only                                            |
+| RX-02       | Every active host uses shared cards, edges, fit/zoom; forwarding observer also runs                                                                           | No isolated-library result substitutes for a host                    |
+| RX-03       | A React 19 negative test fails the host tree check                                                                                                            | No React 19 Backstage support claim                                  |
 
 `scripts/installed-host.test.ts` checks duplicate resolution, duplicate React,
 React 19, missing shared/CSS build inputs, old renderer inputs, and inputs outside
