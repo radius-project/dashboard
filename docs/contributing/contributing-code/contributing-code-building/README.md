@@ -192,7 +192,8 @@ Dashboard backend, a lockfile, or a copy of the portal. The packages stay privat
 No npm publication, release upload or registry access change is part of this command.
 Checksums detect changed bytes; they do not prove who built the bundle.
 
-For upstream `v*` tag builds, CI produces these files for the GitHub Release:
+When a `v*` release is published in the Dashboard repository, its release event
+supplies the version tag. Dashboard CI builds and tests the plugin, then attaches:
 
 - `radius-backstage-plugin-<tag>.tar.gz`
 - `radius-backstage-plugin-<tag>.tar.gz.sha256`
@@ -203,13 +204,16 @@ the tested bundle, packages, compiler and installed lockfile, without raw logs
 or machine paths. It is frontend fixture evidence, not production auth approval.
 
 CI transfers the exact tested archive through a seven-day workflow artifact.
-The Radius release controller attaches the artifact for the release's Dashboard
-commit after creating the draft and before publishing it. It does not rebuild the
-bundle or publish an npm package. Failed tests, missing evidence, modified source
-or a source-commit mismatch prevent artifact creation.
+A separate Dashboard job checks the checksum and uses `gh release upload` to add
+the files to that Dashboard release. Radius only supplies the release/version
+notification; it does not download the plugin or include it in the Radius release
+package. No npm package is published. Failed tests, missing evidence, modified
+source or a source-commit mismatch prevent upload.
 
-Dashboard's tag workflow does not upload to the release itself, so it cannot race
-the controller's draft creation. Older releases do not gain assets automatically.
+The published-release trigger ensures the Dashboard release exists before upload.
+If the plugin build or upload fails, rerun the failed Dashboard workflow jobs.
+Existing assets are not overwritten; remove partial plugin uploads before retrying.
+Older releases do not gain assets automatically.
 
 Before handing a bundle to another user, test its exact contents:
 
