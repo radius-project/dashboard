@@ -816,6 +816,10 @@ test('the actual build chain, offline CI tests, validation gates, and edge publi
   assert.match(workflow, /release:\s+types:\s+- published/);
   assert.match(
     workflow,
+    /GRAPH_RECORD_BASE_REF: \$\{\{ github\.event_name == 'release' && github\.sha \|\| github\.event\.pull_request\.base\.sha \}\}/,
+  );
+  assert.match(
+    workflow,
     /CI_PUBLISH_PLUGIN: \$\{\{ github\.repository == 'radius-project\/dashboard' && startsWith\(github\.ref, 'refs\/tags\/v'\) && github\.event_name == 'release' \}\}/,
   );
   const bundleQualification = workflow

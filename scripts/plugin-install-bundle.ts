@@ -75,6 +75,7 @@ export function buildPluginInstallBundle(
   const stagedArchive = path.join(staging, 'bundle.tar.gz');
   const contents = path.join(staging, 'contents');
   fs.mkdirSync(path.join(contents, 'archives'), { recursive: true });
+  const published: string[] = [];
   try {
     runYarn(['tsc']);
     const pluginPath = 'archives/plugin-radius.tgz';
@@ -199,14 +200,22 @@ a broad Backstage support promise.
     verifyPluginInstallBundle(contents);
     execFileSync('tar', ['-czf', stagedArchive, '-C', contents, '.']);
     const digest = bundleFileSha256(stagedArchive);
-    fs.renameSync(stagedArchive, archive);
+    fs.linkSync(stagedArchive, archive);
+    published.push(archive);
     fs.renameSync(contents, output);
-    fs.writeFileSync(
-      `${archive}.sha256`,
-      `${digest}  ${path.basename(archive)}\n`,
-      { flag: 'wx' },
-    );
+    published.push(output);
+    const checksum = fs.openSync(`${archive}.sha256`, 'wx');
+    published.push(`${archive}.sha256`);
+    try {
+      fs.writeFileSync(checksum, `${digest}  ${path.basename(archive)}\n`);
+    } finally {
+      fs.closeSync(checksum);
+    }
     return { directory: output, archive, sha256: digest };
+  } catch (error) {
+    for (const file of published.reverse())
+      fs.rmSync(file, { recursive: true, force: true });
+    throw error;
   } finally {
     fs.rmSync(staging, { recursive: true, force: true });
   }

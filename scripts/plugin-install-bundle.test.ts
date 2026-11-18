@@ -15,6 +15,25 @@ import {
   type PluginInstallBundle,
 } from './verify-plugin-bundle.ts';
 
+function packFixture(
+  root: string,
+  file: string,
+  name: string,
+  version: string,
+) {
+  const contents = path.join(root, 'package');
+  fs.mkdirSync(contents);
+  fs.writeFileSync(
+    path.join(contents, 'package.json'),
+    JSON.stringify({ name, version }),
+  );
+  try {
+    execFileSync('tar', ['-czf', path.join(root, file), '-C', root, 'package']);
+  } finally {
+    fs.rmSync(contents, { recursive: true, force: true });
+  }
+}
+
 function fixture(
   run: (root: string, bundle: PluginInstallBundle, save: () => void) => void,
 ) {
@@ -37,7 +56,8 @@ function fixture(
     ['@radius-project/graph-react', 'graph.tgz'],
   ]) {
     const relative = `archives/${file}`;
-    write(relative, name);
+    packFixture(root, relative, name, '0.1.0');
+    bundle.files[relative] = bundleFileSha256(path.join(root, relative));
     bundle.packages[name] = {
       path: relative,
       version: '0.1.0',
@@ -139,6 +159,70 @@ test('reject an archive directory symlink', () => {
   });
 });
 
+test('reject a bundle manifest symlink', t => {
+  fixture(root => {
+    const manifest = path.join(root, 'bundle.json');
+    const target = path.join(root, 'linked-manifest.json');
+    fs.renameSync(manifest, target);
+    try {
+      fs.symlinkSync(target, manifest, 'file');
+    } catch (error) {
+      if (
+        process.platform === 'win32' &&
+        error instanceof Error &&
+        'code' in error &&
+        error.code === 'EPERM'
+      ) {
+        t.skip('File symlinks require Windows privileges');
+        return;
+      }
+      throw error;
+    }
+    assert.throws(() => verifyPluginInstallBundle(root), /regular bundle.json/);
+  });
+});
+
+test('reject unlisted files rather than retaining unchecked bundle contents', () => {
+  fixture(root => {
+    const extra = path.join(root, 'unlisted.txt');
+    fs.writeFileSync(extra, 'unchecked');
+    assert.throws(
+      () => verifyPluginInstallBundle(root),
+      /Unexpected bundle root/,
+    );
+    fs.unlinkSync(extra);
+    fs.writeFileSync(path.join(root, 'archives', 'unlisted.txt'), 'unchecked');
+    assert.throws(
+      () => verifyPluginInstallBundle(root),
+      /Unexpected bundle archive/,
+    );
+  });
+});
+
+test('recorded package identities must match the real packed manifests', () => {
+  fixture((root, bundle, save) => {
+    verifyPluginInstallBundle(root);
+    for (const artifact of Object.values(bundle.packages)) {
+      artifact.version = '9.9.9';
+      save();
+      assert.throws(
+        () => verifyPluginInstallBundle(root),
+        /archive version mismatch/,
+      );
+      artifact.version = '0.1.0';
+    }
+    const plugin = bundle.packages['@internal/plugin-radius'];
+    packFixture(root, plugin.path, '@internal/wrong-plugin', plugin.version);
+    plugin.sha256 = bundleFileSha256(path.join(root, plugin.path));
+    bundle.files[plugin.path] = plugin.sha256;
+    save();
+    assert.throws(
+      () => verifyPluginInstallBundle(root),
+      /archive name mismatch/,
+    );
+  });
+});
+
 test('install settings and candidate must select the recorded packages even when their file hashes match', () => {
   fixture((root, bundle, save) => {
     const settings = path.join(root, 'install-settings.json');
@@ -212,4 +296,49 @@ test('bundle builder rejects in-repository output and existing destinations befo
     );
     assert.equal(called, false);
   });
+});
+
+test('destinations that appear during a build keep their bytes and only this run is rolled back', () => {
+  const repository = path.resolve(import.meta.dirname, '..');
+  const plugin = JSON.parse(
+    fs.readFileSync(
+      path.join(repository, 'plugins', 'plugin-radius', 'package.json'),
+      'utf8',
+    ),
+  );
+  for (const collision of ['archive', 'directory', 'checksum']) {
+    fixture(root => {
+      packFixture(root, 'archives/plugin.tgz', plugin.name, plugin.version);
+      const output = path.join(root, 'output');
+      const archive = `${output}.tar.gz`;
+      const marker =
+        collision === 'archive'
+          ? archive
+          : collision === 'checksum'
+            ? `${archive}.sha256`
+            : path.join(output, 'keep.txt');
+      assert.throws(
+        () =>
+          buildPluginInstallBundle(repository, output, args => {
+            if (args[0] === 'tsc') {
+              if (collision === 'directory') fs.mkdirSync(output);
+              fs.writeFileSync(marker, 'other build output');
+            }
+            if (args.includes('pack'))
+              fs.copyFileSync(
+                path.join(root, 'archives', 'plugin.tgz'),
+                args[args.length - 1],
+              );
+          }),
+        /EEXIST|ENOTEMPTY|EPERM|EACCES/,
+      );
+      assert.equal(fs.readFileSync(marker, 'utf8'), 'other build output');
+      assert.equal(fs.existsSync(archive), collision === 'archive');
+      assert.equal(fs.existsSync(output), collision === 'directory');
+      assert.equal(
+        fs.existsSync(`${archive}.sha256`),
+        collision === 'checksum',
+      );
+    });
+  }
 });

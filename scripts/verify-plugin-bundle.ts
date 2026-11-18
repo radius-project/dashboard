@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -42,8 +43,13 @@ export function pluginInstallSettings(bundle: PluginInstallBundle) {
 }
 
 export function verifyPluginInstallBundle(directory: string) {
+  const manifest = path.join(directory, 'bundle.json');
+  assert(
+    fs.lstatSync(manifest).isFile(),
+    'Expected a regular bundle.json file',
+  );
   const bundle: PluginInstallBundle = JSON.parse(
-    fs.readFileSync(path.join(directory, 'bundle.json'), 'utf8'),
+    fs.readFileSync(manifest, 'utf8'),
   );
   assert.equal(bundle.formatVersion, 1, 'Unsupported plugin bundle format');
   assert.match(bundle.source.revision, /^[a-f0-9]{40}$/);
@@ -83,11 +89,46 @@ export function verifyPluginInstallBundle(directory: string) {
       `${file}: SHA-256 mismatch`,
     );
   }
+  assert.deepEqual(
+    fs.readdirSync(directory).sort(),
+    [
+      'bundle.json',
+      'archives',
+      ...expectedFiles.filter(file => !file.includes('/')),
+    ].sort(),
+    'Unexpected bundle root entries',
+  );
+  assert.deepEqual(
+    fs.readdirSync(path.join(directory, 'archives')).sort(),
+    expectedFiles
+      .filter(file => file.startsWith('archives/'))
+      .map(file => path.basename(file))
+      .sort(),
+    'Unexpected bundle archive entries',
+  );
   for (const [name, artifact] of Object.entries(bundle.packages)) {
     assert.match(artifact.path, /^archives\/[a-zA-Z0-9._-]+\.tgz$/);
     assert.equal(typeof artifact.version, 'string');
     assert(artifact.version.length > 0, `${name}: missing version`);
     assert.equal(artifact.sha256, bundle.files[artifact.path]);
+    const packed = JSON.parse(
+      execFileSync(
+        'tar',
+        [
+          '-xOf',
+          path.resolve(directory, artifact.path),
+          '--',
+          'package/package.json',
+        ],
+        { encoding: 'utf8' },
+      ),
+    );
+    assert.equal(packed.name, name, `${name}: archive name mismatch`);
+    assert.equal(
+      packed.version,
+      artifact.version,
+      `${name}: archive version mismatch`,
+    );
   }
   const candidate = JSON.parse(
     fs.readFileSync(path.join(directory, 'archives', 'candidate.json'), 'utf8'),

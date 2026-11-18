@@ -235,8 +235,24 @@ To consume the bundle in a standard Backstage portal:
 
 1. Check the transfer archive's SHA-256 against the trusted sender's value before
    extraction. On Linux, run `sha256sum -c radius-plugin-bundle.tar.gz.sha256`.
-   On PowerShell, use `Get-FileHash radius-plugin-bundle.tar.gz -Algorithm SHA256`
-   and compare the result with that value.
+      For a downloaded release, keep the archive name unchanged and use the matching
+      release filename instead:
+
+      ```bash
+      tag=v0.63.0 # Use the version you downloaded.
+      sha256sum -c "radius-backstage-plugin-${tag}.tar.gz.sha256"
+      ```
+
+      On PowerShell:
+
+      ```powershell
+      $tag = 'v0.63.0' # Use the version you downloaded.
+      Get-Content "radius-backstage-plugin-$tag.tar.gz.sha256"
+      Get-FileHash "radius-backstage-plugin-$tag.tar.gz" -Algorithm SHA256
+      ```
+
+      Compare the hash with the sidecar value. The shorter
+      `radius-plugin-bundle.tar.gz` name above applies only to local builds.
 1. Extract the archive into a directory named `radius-plugin-bundle` at the
    portal root. Run `node radius-plugin-bundle/verify.mts` with Node.js 24.
 1. Merge `install-settings.json`'s `app.dependencies` into `packages/app/package.json`

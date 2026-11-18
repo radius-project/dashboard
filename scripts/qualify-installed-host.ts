@@ -73,7 +73,7 @@ function run(
   env: NodeJS.ProcessEnv = {},
 ) {
   const log = path.join(recordDirectory, `command-${commands.length + 1}.log`);
-  const fd = fs.openSync(log, 'w');
+  const fd = fs.openSync(log, 'w+');
   const record = {
     command: [command, ...args],
     cwd,
@@ -94,7 +94,20 @@ function run(
     });
     record.result = 'passed';
   } catch (error) {
-    console.error(fs.readFileSync(log, 'utf8').slice(-8000));
+    try {
+      const size = fs.fstatSync(fd).size;
+      const tail = Buffer.alloc(Math.min(size, 8000));
+      const length = fs.readSync(
+        fd,
+        tail,
+        0,
+        tail.length,
+        Math.max(0, size - tail.length),
+      );
+      console.error(tail.subarray(0, length).toString('utf8'));
+    } catch (logError) {
+      console.error('Unable to read command log:', logError);
+    }
     throw error;
   } finally {
     fs.closeSync(fd);
