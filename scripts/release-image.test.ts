@@ -780,7 +780,7 @@ test('the actual build chain, offline CI tests, validation gates, and edge publi
   );
   assert.equal(
     rootPackage.scripts['test:qualification-runners'],
-    'node --test scripts/qualify-plugin-host.test.ts scripts/shared-library-candidate.test.ts scripts/installed-host.test.ts',
+    'node --test scripts/qualify-plugin-host.test.ts scripts/shared-library-candidate.test.ts scripts/installed-host.test.ts scripts/plugin-install-bundle.test.ts',
   );
   assert.match(
     rootPackage.scripts['test:all'],
@@ -812,6 +812,15 @@ test('the actual build chain, offline CI tests, validation gates, and edge publi
   assert.match(coverageUpload, /files: \.\/coverage\/lcov\.info/);
   assert.match(coverageUpload, /disable_search: true/);
   assert.match(coverageUpload, /fail_ci_if_error: true/);
+  const bundleQualification = workflow
+    .split('- name: Qualify Plugin Install Bundle')[1]
+    ?.split('\n  build-and-publish-container:')[0];
+  assert.ok(bundleQualification, 'CI must qualify the plugin install bundle');
+  assert.match(
+    bundleQualification,
+    /QUALIFICATION_EVIDENCE_DIRECTORY: \$\{\{ runner\.temp \}\}\/radius-plugin-bundle-evidence/,
+  );
+  assert.match(bundleQualification, /run: yarn run test:e2e:installed/);
   assert.match(workflow, /- name: Build Image\s+run: yarn run build-image/);
   assert.match(workflow, /run: node scripts\/release-image.ts stage/);
   assert.doesNotMatch(workflow, /REL_CHANNEL/);

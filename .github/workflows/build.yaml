@@ -24,7 +24,7 @@ jobs:
   build:
     name: Build Packages
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 30
     permissions:
       contents: read
     steps:
@@ -100,6 +100,12 @@ jobs:
       - name: Qualify Package Artifacts
         if: ${{ env.CI_TEST == 'true' }}
         run: yarn run test:package
+
+      - name: Qualify Plugin Install Bundle
+        if: ${{ env.CI_TEST == 'true' }}
+        env:
+          QUALIFICATION_EVIDENCE_DIRECTORY: ${{ runner.temp }}/radius-plugin-bundle-evidence
+        run: yarn run test:e2e:installed
 
   build-and-publish-container:
     name: Build and Publish Container
