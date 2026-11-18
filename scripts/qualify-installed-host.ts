@@ -14,6 +14,16 @@ import {
   verifySharedLibraryCandidate,
   type SharedLibraryCandidate,
 } from './shared-library-candidate.ts';
+import {
+  buildPluginInstallBundle,
+  packWorkspace,
+  yarnInvocation,
+} from './plugin-install-bundle.ts';
+import {
+  bundleFileSha256,
+  pluginInstallSettings,
+  verifyPluginInstallBundle,
+} from './verify-plugin-bundle.ts';
 
 const root = process.cwd();
 const fullMatrix = process.env.QUALIFICATION_FULL_HOST_MATRIX === 'true';
@@ -63,7 +73,7 @@ function run(
   env: NodeJS.ProcessEnv = {},
 ) {
   const log = path.join(recordDirectory, `command-${commands.length + 1}.log`);
-  const fd = fs.openSync(log, 'w');
+  const fd = fs.openSync(log, 'w+');
   const record = {
     command: [command, ...args],
     cwd,
@@ -83,6 +93,22 @@ function run(
       stdio: ['ignore', fd, fd],
     });
     record.result = 'passed';
+  } catch (error) {
+    try {
+      const size = fs.fstatSync(fd).size;
+      const tail = Buffer.alloc(Math.min(size, 8000));
+      const length = fs.readSync(
+        fd,
+        tail,
+        0,
+        tail.length,
+        Math.max(0, size - tail.length),
+      );
+      console.error(tail.subarray(0, length).toString('utf8'));
+    } catch (logError) {
+      console.error('Unable to read command log:', logError);
+    }
+    throw error;
   } finally {
     fs.closeSync(fd);
     fs.writeFileSync(
@@ -92,20 +118,13 @@ function run(
   }
 }
 
-const runYarn = (args: string[], cwd = root) => run(yarn!, args, cwd);
+const runYarn = (args: string[], cwd = root) => {
+  const invocation = yarnInvocation(args);
+  run(invocation.command, invocation.args, cwd);
+};
 const repositoryManifest = JSON.parse(
   fs.readFileSync(path.join(root, 'package.json'), 'utf8'),
 );
-const receiptPath = path.join(
-  root,
-  'vendor',
-  'shared-libraries',
-  'candidate.json',
-);
-const candidate = JSON.parse(
-  fs.readFileSync(receiptPath, 'utf8'),
-) as SharedLibraryCandidate;
-const candidateDirectory = path.dirname(receiptPath);
 const artifacts: Record<string, { file: string; sha256: string }> = {};
 const hostManifests = fullMatrix
   ? ['app', 'backend'].map(name => ({
@@ -120,34 +139,53 @@ const hostManifests = fullMatrix
   : [];
 
 try {
-  // Backstage builds read the declarations emitted by the repository compiler.
-  runYarn(['tsc']);
-  for (const [name, workspace] of [
-    ['plugin', 'plugins/plugin-radius'],
-    ['forwarding', 'packages/rad-components'],
-  ]) {
-    const directory = path.join(root, workspace);
-    const manifestFile = path.join(directory, 'package.json');
-    const before = fs.readFileSync(manifestFile, 'utf8');
-    const manifest = JSON.parse(before);
-    const file = path.join(archives, `${name}.tgz`);
-    try {
-      runYarn(['workspace', manifest.name, 'build']);
-      runYarn(['workspace', manifest.name, 'pack', '--out', file]);
-    } finally {
-      if (fs.readFileSync(manifestFile, 'utf8') !== before)
-        fs.writeFileSync(manifestFile, before);
-    }
-    artifacts[manifest.name] = { file, sha256: sha256(file) };
+  const bundleDirectory = path.join(consumer, 'radius-plugin-bundle');
+  const suppliedBundle = process.env.QUALIFICATION_PLUGIN_BUNDLE;
+  if (suppliedBundle) {
+    assert(
+      path.isAbsolute(suppliedBundle),
+      'QUALIFICATION_PLUGIN_BUNDLE must be absolute',
+    );
+    verifyPluginInstallBundle(suppliedBundle);
+    fs.cpSync(suppliedBundle, bundleDirectory, { recursive: true });
+  } else {
+    const built = buildPluginInstallBundle(
+      root,
+      path.join(consumer, 'bundle-build'),
+      args => runYarn(args),
+    );
+    fs.mkdirSync(bundleDirectory);
+    run('tar', ['-xzf', built.archive, '-C', bundleDirectory]);
   }
-  for (const [name, archive] of [
-    ['@radius-project/core', candidate.core],
-    ['@radius-project/graph-react', candidate.graphReact],
-  ] as const) {
-    const file = path.join(archives, path.basename(archive.path));
-    fs.copyFileSync(path.resolve(candidateDirectory, archive.path), file);
-    artifacts[name] = { file, sha256: sha256(file) };
-  }
+  const bundle = verifyPluginInstallBundle(bundleDirectory);
+  const bundleIdentity = {
+    ...bundle,
+    manifestSha256: bundleFileSha256(path.join(bundleDirectory, 'bundle.json')),
+  };
+  const settings = pluginInstallSettings(bundle);
+  const candidateDirectory = path.join(bundleDirectory, 'archives');
+  const receiptPath = path.join(candidateDirectory, 'candidate.json');
+  const candidate: SharedLibraryCandidate = JSON.parse(
+    fs.readFileSync(receiptPath, 'utf8'),
+  );
+  verifySharedLibraryCandidate(candidate, candidateDirectory);
+  for (const [name, artifact] of Object.entries(bundle.packages))
+    artifacts[name] = {
+      file: path.join(bundleDirectory, artifact.path),
+      sha256: artifact.sha256,
+    };
+  const forwardingFile = path.join(archives, 'forwarding.tgz');
+  if (suppliedBundle) runYarn(['tsc']);
+  const forwarding = packWorkspace(
+    root,
+    'packages/rad-components',
+    forwardingFile,
+    args => runYarn(args),
+  );
+  artifacts[forwarding.name] = {
+    file: forwardingFile,
+    sha256: sha256(forwardingFile),
+  };
   const dependencies: Record<string, string> = {};
   const packageNames = new Set([
     '@backstage/app-defaults',
@@ -177,7 +215,8 @@ try {
     dependencies[name] = installedPackage(root, name).manifest.version;
   }
   for (const [name, artifact] of Object.entries(artifacts)) {
-    dependencies[name] = `file:./archives/${path.basename(artifact.file)}`;
+    dependencies[name] =
+      `file:./${path.relative(consumer, artifact.file).replaceAll('\\', '/')}`;
   }
   fs.copyFileSync(receiptPath, path.join(archives, 'candidate.json'));
   fs.writeFileSync(
@@ -196,6 +235,7 @@ try {
         consumer,
         dependencies,
         artifacts,
+        bundle: bundleIdentity,
       },
       null,
       2,
@@ -203,14 +243,23 @@ try {
   );
   const resolutions = {
     ...repositoryManifest.resolutions,
-    '@radius-project/core': dependencies['@radius-project/core'],
-    '@radius-project/graph-react': dependencies['@radius-project/graph-react'],
+    ...settings.root.resolutions,
     '@types/react': dependencies['@types/react'],
     '@types/react-dom': dependencies['@types/react-dom'],
   };
+  const rootDependencies = { ...dependencies };
+  if (!fullMatrix) {
+    delete rootDependencies['@internal/plugin-radius'];
+    const app = path.join(consumer, 'packages', 'app');
+    fs.mkdirSync(app, { recursive: true });
+    fs.writeFileSync(
+      path.join(app, 'package.json'),
+      `${JSON.stringify({ name: 'radius-portal-app', private: true, ...settings.app }, null, 2)}\n`,
+    );
+  }
   fs.writeFileSync(
     path.join(consumer, 'package.json'),
-    `${JSON.stringify({ name: 'radius-installed-host', private: true, packageManager: repositoryManifest.packageManager, dependencies, resolutions, ...(fullMatrix ? { workspaces: ['packages/*'] } : {}) }, null, 2)}\n`,
+    `${JSON.stringify({ name: 'radius-installed-host', private: true, packageManager: repositoryManifest.packageManager, dependencies: rootDependencies, resolutions, workspaces: ['packages/*'] }, null, 2)}\n`,
   );
   fs.writeFileSync(
     path.join(consumer, '.yarnrc.yml'),
@@ -237,7 +286,9 @@ try {
           name === '@internal/app'
             ? 'workspace:*'
             : artifacts[name]
-              ? `file:../../archives/${path.basename(artifacts[name].file)}`
+              ? name === '@internal/plugin-radius'
+                ? settings.app.dependencies['@internal/plugin-radius']
+                : `file:../../${path.relative(consumer, artifacts[name].file).replaceAll('\\', '/')}`
               : dependencies[name],
         ]),
       );
@@ -260,7 +311,7 @@ try {
       path.join(consumer, 'packages', 'backend', 'Dockerfile'),
     );
   }
-  runYarn(['install'], consumer);
+  runYarn(['install', '--no-immutable'], consumer);
   runYarn(['install', '--immutable'], consumer);
   const shared = verifySharedLibraryCandidate(
     candidate,
@@ -487,6 +538,7 @@ try {
         sourceRevision: process.env.QUALIFICATION_SOURCE_REVISION ?? null,
         dependencies,
         artifacts,
+        bundle: bundleIdentity,
         shared,
         react,
       },
@@ -505,6 +557,9 @@ try {
   if (consumer !== recordDirectory) {
     for (const name of [
       'archives',
+      'radius-plugin-bundle',
+      'bundle-build.tar.gz',
+      'bundle-build.tar.gz.sha256',
       'fixture',
       'package.json',
       'yarn.lock',

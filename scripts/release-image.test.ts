@@ -780,7 +780,7 @@ test('the actual build chain, offline CI tests, validation gates, and edge publi
   );
   assert.equal(
     rootPackage.scripts['test:qualification-runners'],
-    'node --test scripts/qualify-plugin-host.test.ts scripts/shared-library-candidate.test.ts scripts/installed-host.test.ts',
+    'node --test scripts/qualify-plugin-host.test.ts scripts/shared-library-candidate.test.ts scripts/installed-host.test.ts scripts/plugin-install-bundle.test.ts',
   );
   assert.match(
     rootPackage.scripts['test:all'],
@@ -810,8 +810,67 @@ test('the actual build chain, offline CI tests, validation gates, and edge publi
   );
   assert.match(coverageUpload, /uses: codecov\/codecov-action@[a-f0-9]{40}/);
   assert.match(coverageUpload, /files: \.\/coverage\/lcov\.info/);
+  assert.match(coverageUpload, /cleanup: true/);
   assert.match(coverageUpload, /disable_search: true/);
   assert.match(coverageUpload, /fail_ci_if_error: true/);
+  assert.match(workflow, /release:\s+types:\s+- published/);
+  assert.match(
+    workflow,
+    /GRAPH_RECORD_BASE_REF: \$\{\{ github\.event_name == 'release' && github\.sha \|\| github\.event\.pull_request\.base\.sha \}\}/,
+  );
+  assert.match(
+    workflow,
+    /CI_PUBLISH_PLUGIN: \$\{\{ github\.repository == 'radius-project\/dashboard' && startsWith\(github\.ref, 'refs\/tags\/v'\) && github\.event_name == 'release' \}\}/,
+  );
+  const bundleQualification = workflow
+    .split('- name: Qualify Plugin Install Bundle')[1]
+    ?.split('\n  build-and-publish-container:')[0];
+  assert.ok(bundleQualification, 'CI must qualify the plugin install bundle');
+  assert.match(
+    bundleQualification,
+    /if: \$\{\{ env\.CI_TEST == 'true' \|\| env\.CI_PUBLISH_PLUGIN == 'true' \}\}/,
+  );
+  assert.match(
+    bundleQualification,
+    /QUALIFICATION_EVIDENCE_DIRECTORY: \$\{\{ runner\.temp \}\}\/radius-plugin-bundle-evidence/,
+  );
+  assert.match(bundleQualification, /run: yarn run test:e2e:installed/);
+  assert.match(
+    bundleQualification,
+    /cp "\$\{record\}\/bundle-build\.tar\.gz" "\$\{BUNDLE_ASSETS\}\/\$\{archive\}"/,
+  );
+  assert.match(
+    bundleQualification,
+    /uses: actions\/upload-artifact@[a-f0-9]{40}/,
+  );
+  assert.match(bundleQualification, /if-no-files-found: error/);
+  assert.match(
+    bundleQualification,
+    /if: \$\{\{ env\.CI_PUBLISH_PLUGIN == 'true' \}\}/,
+  );
+  const bundlePublication = workflow.split('\n  publish-plugin-bundle:')[1];
+  assert.ok(bundlePublication, 'Dashboard must publish its own plugin bundle');
+  assert.match(bundlePublication, /needs: build\r?\n/);
+  assert.match(bundlePublication, /github\.event_name == 'release'/);
+  assert.match(bundlePublication, /permissions:\s+contents: write/);
+  assert.match(
+    bundlePublication,
+    /artifact-ids: \$\{\{ needs\.build\.outputs\.plugin-bundle-artifact-id \}\}/,
+  );
+  assert.match(
+    bundlePublication,
+    /sha256sum -c "radius-backstage-plugin-\$\{GITHUB_REF_NAME\}\.tar\.gz\.sha256"/,
+  );
+  assert.match(bundlePublication, /gh release upload "\$\{GITHUB_REF_NAME\}"/);
+  assert.match(bundlePublication, /GH_REPO: \$\{\{ github\.repository \}\}/);
+  assert.doesNotMatch(
+    bundlePublication,
+    /actions\/checkout|yarn install|bundle:plugin|--clobber|gh release create/,
+  );
+  assert.match(
+    workflow,
+    /name: Build and Publish Container\s+if: \$\{\{ github\.event_name != 'release' \}\}/,
+  );
   assert.match(workflow, /- name: Build Image\s+run: yarn run build-image/);
   assert.match(workflow, /run: node scripts\/release-image.ts stage/);
   assert.doesNotMatch(workflow, /REL_CHANNEL/);

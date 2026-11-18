@@ -87,6 +87,13 @@ backgrounds in sync without a second theme definition.
 
 ## Development artifacts
 
+Use `yarn bundle:plugin <new-output-directory-outside-checkout>` to build a
+portable private install bundle with this plugin, its exact shared dependencies,
+checksums and generated host install settings. The
+[bundle guide](../../docs/contributing/contributing-code/contributing-code-building/README.md#plugin-install-bundle)
+covers verification, clean-host testing and setup. This avoids manual archive
+selection and does not publish an npm package.
+
 Shared library version `0.1.0` is development metadata, not proof of a registry
 release. Repository builds use exact vendored compiled archives and relative file
 resolutions. See the [candidate preflight instructions](../../docs/contributing/contributing-code/contributing-code-building/README.md#shared-library-candidate-preflight)
