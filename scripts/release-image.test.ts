@@ -821,6 +821,39 @@ test('the actual build chain, offline CI tests, validation gates, and edge publi
     /QUALIFICATION_EVIDENCE_DIRECTORY: \$\{\{ runner\.temp \}\}\/radius-plugin-bundle-evidence/,
   );
   assert.match(bundleQualification, /run: yarn run test:e2e:installed/);
+  assert.match(
+    bundleQualification,
+    /node scripts\/release-plugin-bundle\.ts prepare/,
+  );
+  assert.match(
+    bundleQualification,
+    /uses: actions\/upload-artifact@[a-f0-9]{40}/,
+  );
+  assert.match(bundleQualification, /if-no-files-found: error/);
+  const bundlePublication = workflow.split('\n  publish-plugin-bundle:')[1];
+  assert.ok(bundlePublication, 'A separate job must attach the tested bundle');
+  assert.match(bundlePublication, /needs: \[build, attest-release-image\]/);
+  assert.match(
+    bundlePublication,
+    /if: \$\{\{ github\.repository == 'radius-project\/dashboard' && startsWith\(github\.ref, 'refs\/tags\/v'\) && github\.event_name == 'push' \}\}/,
+  );
+  assert.match(bundlePublication, /permissions:\s+contents: write/);
+  assert.match(
+    bundlePublication,
+    /artifact-ids: \$\{\{ needs\.build\.outputs\.plugin-bundle-artifact-id \}\}/,
+  );
+  assert.match(
+    bundlePublication,
+    /uses: actions\/download-artifact@[a-f0-9]{40}/,
+  );
+  assert.match(
+    bundlePublication,
+    /node scripts\/release-plugin-bundle\.ts publish/,
+  );
+  assert.doesNotMatch(
+    bundlePublication,
+    /yarn install|bundle:plugin|--clobber|gh release create/,
+  );
   assert.match(workflow, /- name: Build Image\s+run: yarn run build-image/);
   assert.match(workflow, /run: node scripts\/release-image.ts stage/);
   assert.doesNotMatch(workflow, /REL_CHANNEL/);
