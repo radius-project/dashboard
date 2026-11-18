@@ -199,23 +199,21 @@ Release for that exact tag:
 - `radius-backstage-plugin-<tag>.tar.gz.sha256`
 - `radius-backstage-plugin-<tag>.qualification.json`
 
-Download them from the release's **Assets** list. The qualification file binds
-the transfer archive and manifest hashes to the tested packages, compiler,
-installed lockfile and workflow run. It excludes raw logs and machine paths.
-It is frontend fixture evidence, not production authorization approval.
+Download them from the release's **Assets** list. The qualification file records
+the tested bundle, packages, compiler and installed lockfile, without raw logs
+or machine paths. It is frontend fixture evidence, not production auth approval.
 
 CI transfers the exact tested archive through a seven-day workflow artifact.
-A separate job waits for the package checks and container attestation, verifies
-the bytes again, then uploads them. It does not rebuild the bundle or publish
-an npm package. Identical assets are retained; different existing assets cause
-a failure rather than an overwrite. Uploads are read back and checked.
+A separate job waits for the package checks and container attestation, checks
+the archive checksum, and runs `gh release upload`. It does not rebuild the bundle
+or publish an npm package. Failed tests, missing evidence, modified source or a
+source-commit mismatch prevent upload.
 
 The matching GitHub Release must already exist, as a draft or published release.
 The job does not create or publish releases or change their notes. If it is
-missing, create the release for the existing tag and rerun the publication job
-while its workflow artifact is still available. Failed tests, missing evidence,
-modified source or a source-commit mismatch prevent publication. Older releases
-without this workflow do not gain assets automatically.
+missing, create it for the existing tag and rerun the upload job within seven
+days. Existing assets are not overwritten; remove any bundle assets left by a
+partial upload before retrying. Older releases do not gain assets automatically.
 
 Before handing a bundle to another user, test its exact contents:
 

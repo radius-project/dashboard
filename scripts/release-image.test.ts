@@ -823,7 +823,7 @@ test('the actual build chain, offline CI tests, validation gates, and edge publi
   assert.match(bundleQualification, /run: yarn run test:e2e:installed/);
   assert.match(
     bundleQualification,
-    /node scripts\/release-plugin-bundle\.ts prepare/,
+    /cp "\$\{record\}\/bundle-build\.tar\.gz" "\$\{BUNDLE_ASSETS\}\/\$\{archive\}"/,
   );
   assert.match(
     bundleQualification,
@@ -848,11 +848,13 @@ test('the actual build chain, offline CI tests, validation gates, and edge publi
   );
   assert.match(
     bundlePublication,
-    /node scripts\/release-plugin-bundle\.ts publish/,
+    /sha256sum -c "radius-backstage-plugin-\$\{GITHUB_REF_NAME\}\.tar\.gz\.sha256"/,
   );
+  assert.match(bundlePublication, /gh release upload "\$\{GITHUB_REF_NAME\}"/);
+  assert.match(bundlePublication, /GH_REPO: \$\{\{ github\.repository \}\}/);
   assert.doesNotMatch(
     bundlePublication,
-    /yarn install|bundle:plugin|--clobber|gh release create/,
+    /actions\/checkout|actions\/setup-node|yarn install|bundle:plugin|--clobber|gh release create/,
   );
   assert.match(workflow, /- name: Build Image\s+run: yarn run build-image/);
   assert.match(workflow, /run: node scripts\/release-image.ts stage/);
