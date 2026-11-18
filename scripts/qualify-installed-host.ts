@@ -143,8 +143,8 @@ try {
   }
   const bundle = verifyPluginInstallBundle(bundleDirectory);
   const bundleIdentity = {
-    manifestSha256: bundleFileSha256(path.join(bundleDirectory, 'bundle.json')),
     ...bundle,
+    manifestSha256: bundleFileSha256(path.join(bundleDirectory, 'bundle.json')),
   };
   const settings = pluginInstallSettings(bundle);
   const candidateDirectory = path.join(bundleDirectory, 'archives');

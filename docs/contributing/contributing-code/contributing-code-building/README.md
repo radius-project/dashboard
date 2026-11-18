@@ -182,7 +182,7 @@ be outside the checkout and must not exist. The command verifies the pinned shar
 archives, compiles declarations, builds and packs the frontend plugin, and creates:
 
 - `radius-plugin-bundle/`: the plugin archive, the two shared archives, their
-  unchanged producer receipt, `bundle.json`, `verify.ts`, install settings and
+  unchanged producer receipt, `bundle.json`, `verify.mts`, install settings and
   a short setup guide.
 - `radius-plugin-bundle.tar.gz` and its `.sha256` sidecar: the same bundle for transfer.
 
@@ -238,7 +238,7 @@ To consume the bundle in a standard Backstage portal:
    On PowerShell, use `Get-FileHash radius-plugin-bundle.tar.gz -Algorithm SHA256`
    and compare the result with that value.
 1. Extract the archive into a directory named `radius-plugin-bundle` at the
-   portal root. Run `node radius-plugin-bundle/verify.ts` with Node.js 24.
+   portal root. Run `node radius-plugin-bundle/verify.mts` with Node.js 24.
 1. Merge `install-settings.json`'s `app.dependencies` into `packages/app/package.json`
    and `root.resolutions` into the portal root `package.json`. The generated paths
    assume this standard workspace layout. Review conflicts rather than replacing

@@ -61,9 +61,9 @@ function fixture(
   write('README.md', 'Development build');
   fs.copyFileSync(
     path.join(import.meta.dirname, 'verify-plugin-bundle.ts'),
-    path.join(root, 'verify.ts'),
+    path.join(root, 'verify.mts'),
   );
-  bundle.files['verify.ts'] = bundleFileSha256(path.join(root, 'verify.ts'));
+  bundle.files['verify.mts'] = bundleFileSha256(path.join(root, 'verify.mts'));
   const save = () =>
     fs.writeFileSync(path.join(root, 'bundle.json'), JSON.stringify(bundle));
   save();
@@ -74,8 +74,9 @@ function fixture(
   }
 }
 
-test('portable bundle verifies after a tar round trip without repository dependencies', () => {
+test('portable bundle verifies inside a CommonJS portal after a tar round trip without repository dependencies', () => {
   fixture((root, bundle) => {
+    fs.writeFileSync(path.join(root, 'package.json'), '{"type":"commonjs"}');
     const unpacked = path.join(root, 'moved bundle');
     fs.mkdirSync(unpacked);
     const archive = path.join(root, 'bundle.tar.gz');
@@ -88,13 +89,13 @@ test('portable bundle verifies after a tar round trip without repository depende
       'bundle.json',
       'install-settings.json',
       'README.md',
-      'verify.ts',
+      'verify.mts',
     ]);
     execFileSync('tar', ['-xzf', archive, '-C', unpacked]);
     assert.deepEqual(verifyPluginInstallBundle(unpacked), bundle);
     const output = execFileSync(
       process.execPath,
-      [path.join(unpacked, 'verify.ts')],
+      [path.join(unpacked, 'verify.mts')],
       { cwd: os.tmpdir(), encoding: 'utf8' },
     );
     assert.match(output, /Verified plugin bundle/);
@@ -122,6 +123,19 @@ test('changed or missing packages fail instead of verifying an incomplete bundle
     assert.throws(() => verifyPluginInstallBundle(root), /SHA-256 mismatch/);
     fs.unlinkSync(file);
     assert.throws(() => verifyPluginInstallBundle(root), /ENOENT/);
+  });
+});
+
+test('reject an archive directory symlink', () => {
+  fixture(root => {
+    const archives = path.join(root, 'archives');
+    const target = path.join(root, 'linked-archives');
+    fs.renameSync(archives, target);
+    fs.symlinkSync(target, archives, 'junction');
+    assert.throws(
+      () => verifyPluginInstallBundle(root),
+      /Expected a real archives directory/,
+    );
   });
 });
 

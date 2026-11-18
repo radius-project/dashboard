@@ -57,17 +57,21 @@ export function verifyPluginInstallBundle(directory: string) {
   );
   const expectedFiles = [
     'README.md',
-    'verify.ts',
+    'verify.mts',
     'install-settings.json',
     'archives/candidate.json',
     ...bundlePackageNames.map(name => bundle.packages[name].path),
   ];
   assert.equal(new Set(expectedFiles).size, 7, 'Duplicate bundle paths');
   assert.deepEqual(Object.keys(bundle.files).sort(), expectedFiles.sort());
+  assert(
+    fs.lstatSync(path.join(directory, 'archives')).isDirectory(),
+    'Expected a real archives directory',
+  );
   for (const [file, digest] of Object.entries(bundle.files)) {
     assert.match(
       file,
-      /^(?:README\.md|verify\.ts|install-settings\.json|archives\/[a-zA-Z0-9._-]+(?:\.tgz|\.json))$/,
+      /^(?:README\.md|verify\.mts|install-settings\.json|archives\/[a-zA-Z0-9._-]+(?:\.tgz|\.json))$/,
       'Invalid bundle path',
     );
     const absolute = path.join(directory, file);

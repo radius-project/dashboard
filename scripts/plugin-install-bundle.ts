@@ -117,7 +117,7 @@ export function buildPluginInstallBundle(
     );
     fs.copyFileSync(
       path.join(root, 'scripts', 'verify-plugin-bundle.ts'),
-      path.join(contents, 'verify.ts'),
+      path.join(contents, 'verify.mts'),
     );
     const repository = JSON.parse(
       fs.readFileSync(path.join(root, 'package.json'), 'utf8'),
@@ -153,7 +153,7 @@ Checksums detect changed bytes; they do not prove publisher identity.
 
 1. Copy this complete directory to the portal root as radius-plugin-bundle.
 2. With Node.js 24 and tar installed, run:
-   node radius-plugin-bundle/verify.ts
+   node radius-plugin-bundle/verify.mts
 3. Merge install-settings.json's app.dependencies into packages/app/package.json
    and root.resolutions into the portal root package.json. Preserve existing
    settings. If a Radius dependency or resolution already exists, review it first.
@@ -186,7 +186,7 @@ a broad Backstage support promise.
     );
     for (const file of [
       'README.md',
-      'verify.ts',
+      'verify.mts',
       'install-settings.json',
       'archives/candidate.json',
       ...Object.values(packages).map(identity => identity.path),
