@@ -93,6 +93,9 @@ function run(
       stdio: ['ignore', fd, fd],
     });
     record.result = 'passed';
+  } catch (error) {
+    console.error(fs.readFileSync(log, 'utf8').slice(-8000));
+    throw error;
   } finally {
     fs.closeSync(fd);
     fs.writeFileSync(
