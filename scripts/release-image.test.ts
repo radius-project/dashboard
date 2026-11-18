@@ -810,6 +810,7 @@ test('the actual build chain, offline CI tests, validation gates, and edge publi
   );
   assert.match(coverageUpload, /uses: codecov\/codecov-action@[a-f0-9]{40}/);
   assert.match(coverageUpload, /files: \.\/coverage\/lcov\.info/);
+  assert.match(coverageUpload, /cleanup: true/);
   assert.match(coverageUpload, /disable_search: true/);
   assert.match(coverageUpload, /fail_ci_if_error: true/);
   const bundleQualification = workflow
@@ -830,32 +831,7 @@ test('the actual build chain, offline CI tests, validation gates, and edge publi
     /uses: actions\/upload-artifact@[a-f0-9]{40}/,
   );
   assert.match(bundleQualification, /if-no-files-found: error/);
-  const bundlePublication = workflow.split('\n  publish-plugin-bundle:')[1];
-  assert.ok(bundlePublication, 'A separate job must attach the tested bundle');
-  assert.match(bundlePublication, /needs: \[build, attest-release-image\]/);
-  assert.match(
-    bundlePublication,
-    /if: \$\{\{ github\.repository == 'radius-project\/dashboard' && startsWith\(github\.ref, 'refs\/tags\/v'\) && github\.event_name == 'push' \}\}/,
-  );
-  assert.match(bundlePublication, /permissions:\s+contents: write/);
-  assert.match(
-    bundlePublication,
-    /artifact-ids: \$\{\{ needs\.build\.outputs\.plugin-bundle-artifact-id \}\}/,
-  );
-  assert.match(
-    bundlePublication,
-    /uses: actions\/download-artifact@[a-f0-9]{40}/,
-  );
-  assert.match(
-    bundlePublication,
-    /sha256sum -c "radius-backstage-plugin-\$\{GITHUB_REF_NAME\}\.tar\.gz\.sha256"/,
-  );
-  assert.match(bundlePublication, /gh release upload "\$\{GITHUB_REF_NAME\}"/);
-  assert.match(bundlePublication, /GH_REPO: \$\{\{ github\.repository \}\}/);
-  assert.doesNotMatch(
-    bundlePublication,
-    /actions\/checkout|actions\/setup-node|yarn install|bundle:plugin|--clobber|gh release create/,
-  );
+  assert.doesNotMatch(workflow, /\n  publish-plugin-bundle:|gh release upload/);
   assert.match(workflow, /- name: Build Image\s+run: yarn run build-image/);
   assert.match(workflow, /run: node scripts\/release-image.ts stage/);
   assert.doesNotMatch(workflow, /REL_CHANNEL/);

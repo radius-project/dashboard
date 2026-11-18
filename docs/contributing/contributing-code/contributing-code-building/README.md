@@ -192,8 +192,7 @@ Dashboard backend, a lockfile, or a copy of the portal. The packages stay privat
 No npm publication, release upload or registry access change is part of this command.
 Checksums detect changed bytes; they do not prove who built the bundle.
 
-For upstream `v*` tag builds, CI attaches these files to the existing GitHub
-Release for that exact tag:
+For upstream `v*` tag builds, CI produces these files for the GitHub Release:
 
 - `radius-backstage-plugin-<tag>.tar.gz`
 - `radius-backstage-plugin-<tag>.tar.gz.sha256`
@@ -204,16 +203,13 @@ the tested bundle, packages, compiler and installed lockfile, without raw logs
 or machine paths. It is frontend fixture evidence, not production auth approval.
 
 CI transfers the exact tested archive through a seven-day workflow artifact.
-A separate job waits for the package checks and container attestation, checks
-the archive checksum, and runs `gh release upload`. It does not rebuild the bundle
-or publish an npm package. Failed tests, missing evidence, modified source or a
-source-commit mismatch prevent upload.
+The Radius release controller attaches the artifact for the release's Dashboard
+commit after creating the draft and before publishing it. It does not rebuild the
+bundle or publish an npm package. Failed tests, missing evidence, modified source
+or a source-commit mismatch prevent artifact creation.
 
-The matching GitHub Release must already exist, as a draft or published release.
-The job does not create or publish releases or change their notes. If it is
-missing, create it for the existing tag and rerun the upload job within seven
-days. Existing assets are not overwritten; remove any bundle assets left by a
-partial upload before retrying. Older releases do not gain assets automatically.
+Dashboard's tag workflow does not upload to the release itself, so it cannot race
+the controller's draft creation. Older releases do not gain assets automatically.
 
 Before handing a bundle to another user, test its exact contents:
 
