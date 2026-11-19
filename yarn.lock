@@ -8480,16 +8480,16 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@radius-project/core@file:./vendor/shared-libraries/radius-project-core-0.1.0-main-d1fdac091afa.tgz::locator=root%40workspace%3A.":
+"@radius-project/core@file:./vendor/shared-libraries/radius-project-core-0.1.0-main-04d780b72f7e.tgz::locator=root%40workspace%3A.":
   version: 0.1.0
-  resolution: "@radius-project/core@file:./vendor/shared-libraries/radius-project-core-0.1.0-main-d1fdac091afa.tgz#./vendor/shared-libraries/radius-project-core-0.1.0-main-d1fdac091afa.tgz::hash=011d6d&locator=root%40workspace%3A."
+  resolution: "@radius-project/core@file:./vendor/shared-libraries/radius-project-core-0.1.0-main-04d780b72f7e.tgz#./vendor/shared-libraries/radius-project-core-0.1.0-main-04d780b72f7e.tgz::hash=011d6d&locator=root%40workspace%3A."
   checksum: 10c0/687ae08c734ded438a90a5ea896fc2c39ff96e8bdd9711cd8efd3065ec4b4ab7c33f07d8489d4c18d52f647e31d19dc79ee5ce38c4fba6af036a6c6b96dc8a7d
   languageName: node
   linkType: hard
 
-"@radius-project/graph-react@file:./vendor/shared-libraries/radius-project-graph-react-0.1.0-main-d1fdac091afa.tgz::locator=root%40workspace%3A.":
+"@radius-project/graph-react@file:./vendor/shared-libraries/radius-project-graph-react-0.1.0-main-04d780b72f7e.tgz::locator=root%40workspace%3A.":
   version: 0.1.0
-  resolution: "@radius-project/graph-react@file:./vendor/shared-libraries/radius-project-graph-react-0.1.0-main-d1fdac091afa.tgz#./vendor/shared-libraries/radius-project-graph-react-0.1.0-main-d1fdac091afa.tgz::hash=f7dc51&locator=root%40workspace%3A."
+  resolution: "@radius-project/graph-react@file:./vendor/shared-libraries/radius-project-graph-react-0.1.0-main-04d780b72f7e.tgz#./vendor/shared-libraries/radius-project-graph-react-0.1.0-main-04d780b72f7e.tgz::hash=f7dc51&locator=root%40workspace%3A."
   dependencies:
     "@radius-project/core": "npm:0.1.0"
     "@xyflow/react": "npm:12.12.0"

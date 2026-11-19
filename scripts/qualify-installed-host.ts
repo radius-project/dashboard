@@ -260,7 +260,11 @@ try {
       path.join(consumer, 'packages', 'backend', 'Dockerfile'),
     );
   }
-  runYarn(['install'], consumer);
+  fs.copyFileSync(
+    path.join(root, 'yarn.lock'),
+    path.join(consumer, 'yarn.lock'),
+  );
+  runYarn(['install', '--no-immutable'], consumer);
   runYarn(['install', '--immutable'], consumer);
   const shared = verifySharedLibraryCandidate(
     candidate,

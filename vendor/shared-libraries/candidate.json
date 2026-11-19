@@ -1,13 +1,13 @@
 {
-  "status": "Development-only archives built from ai-extensions main d1fdac09, which includes merged pull request 1272. The dashboard supplies the resource-ID compatibility wrapper, query client, legacy gateway direction rule, and browser image-error fallback. Not a published release.",
-  "sourceRevision": "d1fdac091afac1c1a4d69cea2415f5e3f08b8d28",
+  "status": "Development-only archives rebuilt from ai-extensions main 04d780b7, which includes merged pull request 1283. The compiled pair is byte-identical to the previous main pair. The dashboard supplies the resource-ID compatibility wrapper, query client, legacy gateway direction rule, and browser image-error fallback. Not a published release.",
+  "sourceRevision": "04d780b72f7ed93f3330b5946444e11193e99316",
   "core": {
-    "path": "radius-project-core-0.1.0-main-d1fdac091afa.tgz",
+    "path": "radius-project-core-0.1.0-main-04d780b72f7e.tgz",
     "sha256": "64e31db76931ffc91093088b79e1409bc00c9cade2ef0979cf2c22775a126394",
     "bytes": 20328
   },
   "graphReact": {
-    "path": "radius-project-graph-react-0.1.0-main-d1fdac091afa.tgz",
+    "path": "radius-project-graph-react-0.1.0-main-04d780b72f7e.tgz",
     "sha256": "3e6dc9928a905540341992c670aced2af392a3cfa1f3cf238e05178f7d17b4ca",
     "bytes": 88387,
     "stylesSha256": "b0f6a0ccaab445ded3cefdaf35f2921b9b5f212cbab9c30e3ee8f380ae8e83ff",
@@ -16,17 +16,17 @@
   "source": {
     "repository": "https://github.com/radius-project/ai-extensions",
     "ref": "refs/heads/main",
-    "tree": "a92dd7f6ba800602bcddcaa19c1e7d5d6b1bf708",
+    "tree": "2f22e1b699a9c432d71641ea06d18c77b8956b59",
     "lockFile": "pnpm-lock.yaml",
-    "lockSha256": "fbc4a5eb84222d3571c3272ef07bcfd144002df70c02987c2944c083de06cdc4",
-    "lockGitBlob": "40348edd7e9cd610e5be7cb0d0e334259731055a",
+    "lockSha256": "147ae0e05f043015a2df74b93deecaf70ab352b4153f1d02289de6e57bfcbd76",
+    "lockGitBlob": "05ce7bdefc2411ee227e308dbf50806cdeb17b3b",
     "signatureVerifiedByConsumer": false,
-    "pullRequest": "https://github.com/radius-project/ai-extensions/pull/1272",
-    "mergedPullRequestHead": "6629ef0c7f20154725b8ec5527057f1075a92d48",
-    "previousMainRevision": "da9eb8b968f85ec46045ccdd501dc24937a158da"
+    "pullRequest": "https://github.com/radius-project/ai-extensions/pull/1283",
+    "mergedPullRequestCommit": "49f43405281af69ef5cd42a4acce6363ce70aa80",
+    "previousMainRevision": "d1fdac091afac1c1a4d69cea2415f5e3f08b8d28"
   },
   "build": {
-    "evidence": "Built in WSL from main d1fdac09 with the frozen lockfile. The source tree is identical to the tree of the merged pull request head, so the archives are byte-identical to the earlier pull-request pair. Existing upstream scripts built declarations, JavaScript and CSS, and packed both libraries. The upstream test:integration:libraries script then checked the packed output with offline React 18 and 19 consumers. The CSS and license files are byte-identical to the earlier main pair.",
+    "evidence": "Rebuilt from a clean git archive of main 04d780b7 on native WSL storage with the frozen lockfile. Existing upstream scripts built declarations, JavaScript and CSS, packed both libraries, and checked the packed output with offline React 18 and 19 consumers in real Chromium. Both archive SHA-256 values match the previous main pair exactly. Pull request 1283 changes the Canvas SDK adapter and adapter-shared exports; its stack adds core source-only orchestration, not the public graph/domain package entries. No producer files were changed.",
     "sourceStatusBeforeBuild": "",
     "node": "24.22.0",
     "pnpm": "12.15.0",
@@ -41,10 +41,22 @@
         "result": "passed: React 18 and 19 runtime, declarations, browser bundle, real Chromium, CSS isolation, peer identity and installed archive integrity (offline)"
       },
       {
-        "command": "pnpm --dir packages/core pack --pack-destination \"$PWD/.artifacts/libraries/pair\" && pnpm --dir packages/graph-react pack --pack-destination \"$PWD/.artifacts/libraries/pair\"",
-        "result": "passed; produced the two archives recorded above"
+        "command": "sha256sum .artifacts/libraries/packages/*.tgz",
+        "result": "passed; the integration script packed the two archives recorded above; both hashes match the previous main pair"
       }
     ]
+  },
+  "publicEntries": {
+    "core": {
+      "dist/graph/index.d.ts": "1779979130626c1cd7b4b43a6a21315a0a2400f485596041736ab075b2d74be9",
+      "dist/domain/index.d.ts": "0a4480a891aebc4bebbf3e532be23558e51bef356c91e4b865154eb28a123341",
+      "dist/graph/index.js": "9e1fd6e1eb12f89cc664218269d774b2a76d07b93f0ba4387b9aff014c96a92c",
+      "dist/domain/index.js": "39efac2a5a3ec254d30840ea8cc52261c03b3bf6e6dfb9b1a88563263b8e671b"
+    },
+    "graphReact": {
+      "dist/index.d.ts": "2ea55b43853f037c0618a8fe9e5f6aec2c0fc75bae377dfbbb922f578ffe723d",
+      "dist/index.js": "61c54f4b83029df80198d9788236c519c07700e9be852590cd7b6cc7ab6837d3"
+    }
   },
   "licenses": [
     {

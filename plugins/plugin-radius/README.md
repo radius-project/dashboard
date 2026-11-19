@@ -66,6 +66,13 @@ entries. Native Radius uses explicit feature registration, not a Radius plugin
 converter. The fixture host owns navigation, external route bindings, and its
 test identity. No automatic guest sign-in is enabled.
 
+The fresh consumer starts from the repository lockfile to retain the tested
+Backstage dependency tuple. Its first install updates that seed for the packed
+dependencies, including in CI, then a second immutable install checks the
+result. No checkout dependency links or installed modules are copied. Resolving
+all transitive ranges from scratch can load two Backstage app-context copies
+and does not test the repository's recorded tuple.
+
 The runner retains `commands.json`, command logs, `tuple.json`, archives, an
 installed lockfile, production `browser/metafile.json`, HTTP evidence, and graph
 records. Only a successful run writes `qualification.json`. By default,

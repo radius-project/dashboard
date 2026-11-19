@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
   assertCandidateResolution,
   assertInside,
@@ -11,6 +13,75 @@ import {
   installedPackage,
   isInsidePath,
 } from './installed-host.ts';
+
+test('clean installed host seeds the tested dependency tuple and can update its lockfile in CI', () => {
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const evidence = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'installed-host-seed-'),
+  );
+  try {
+    const childProcessSource = `
+      import assert from 'node:assert/strict';
+      import fs from 'node:fs';
+      import path from 'node:path';
+      export function execFileSync(command, args, options) {
+        const output = args.indexOf('--out');
+        if (output !== -1) fs.writeFileSync(args[output + 1], 'test archive');
+        if (args[0] !== 'install') return;
+        assert.deepEqual(args, ['install', '--no-immutable']);
+        assert.equal(options.env.CI, 'true');
+        assert.equal(fs.existsSync(path.join(options.cwd, 'node_modules')), false);
+        assert.equal(
+          fs.readFileSync(path.join(options.cwd, 'yarn.lock'), 'utf8'),
+          fs.readFileSync(${JSON.stringify(path.join(root, 'yarn.lock'))}, 'utf8'),
+        );
+        console.log('Clean install retains the tested dependency tuple in CI');
+        throw new Error('Injected stop before package installation');
+      }
+    `;
+    const result = spawnSync(
+      process.execPath,
+      [
+        '--input-type=module',
+        '-e',
+        `
+          import { registerHooks } from 'node:module';
+          registerHooks({
+            resolve(specifier, context, nextResolve) {
+              return specifier === 'node:child_process'
+                ? { url: 'data:text/javascript,' + encodeURIComponent(${JSON.stringify(childProcessSource)}), shortCircuit: true }
+                : nextResolve(specifier, context);
+            },
+          });
+          await import(${JSON.stringify(pathToFileURL(path.join(root, 'scripts', 'qualify-installed-host.ts')).href)});
+        `,
+      ],
+      {
+        cwd: root,
+        encoding: 'utf8',
+        timeout: 15_000,
+        env: {
+          ...process.env,
+          CI: 'true',
+          npm_execpath: 'qualification-yarn',
+          QUALIFICATION_EVIDENCE_DIRECTORY: evidence,
+          QUALIFICATION_WORK_DIRECTORY: '',
+          QUALIFICATION_FULL_HOST_MATRIX: '',
+          QUALIFICATION_CONTAINER_IMAGE: '',
+        },
+      },
+    );
+    assert.ifError(result.error);
+    assert.equal(result.status, 1, result.stdout + result.stderr);
+    assert.match(
+      result.stdout,
+      /Clean install retains the tested dependency tuple in CI/,
+    );
+    assert.match(result.stderr, /Injected stop before package installation/);
+  } finally {
+    fs.rmSync(evidence, { recursive: true, force: true });
+  }
+});
 
 function fixture(
   run: (
