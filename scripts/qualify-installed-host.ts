@@ -203,6 +203,7 @@ try {
   );
   const resolutions = {
     ...repositoryManifest.resolutions,
+    '@radapp.io/rad-components': dependencies['@radapp.io/rad-components'],
     '@radius-project/core': dependencies['@radius-project/core'],
     '@radius-project/graph-react': dependencies['@radius-project/graph-react'],
     '@types/react': dependencies['@types/react'],

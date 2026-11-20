@@ -1,6 +1,7 @@
 export interface AppGraph {
   name: string;
   resources: Resource[];
+  icons?: Record<string, string>;
 }
 
 export interface Resource {
@@ -9,6 +10,8 @@ export interface Resource {
   type: string;
   provider: string;
   provisioningState: string;
+  icon?: string;
+  iconHash?: string;
   resources?: Resource[];
   connections?: Connection[];
 }

@@ -2,7 +2,7 @@ import React from 'react';
 import '@testing-library/jest-dom';
 import { render, screen } from '@testing-library/react';
 import Dagre from '@dagrejs/dagre';
-import AppGraph, { initialNodes } from '../AppGraph';
+import AppGraph, { getLayoutedElements, initialNodes } from '../AppGraph';
 import { AppGraph as AppGraphData, Direction } from '../../../graph';
 import * as sampledata from '../../../sampledata';
 
@@ -125,6 +125,62 @@ describe('user-defined graph types', () => {
 });
 
 describe('AppGraph component', () => {
+  it('reports null connections while retaining valid nodes and edges without changing input', () => {
+    const owner = resource('Applications.Core/containers', 'owner');
+    const target = resource('Applications.Datastores/redisCaches', 'cache');
+    const graph = JSON.parse(
+      JSON.stringify({
+        name: 'null-connection',
+        resources: [
+          {
+            ...owner,
+            connections: [null, { ...target, direction: 'Inbound' }],
+          },
+          target,
+        ],
+      }),
+    );
+    Object.freeze(graph.resources[0].connections);
+    Object.freeze(graph.resources[0]);
+    const { nodes, edges, warnings } = initialNodes(graph);
+    expect(nodes).toHaveLength(2);
+    expect(edges).toEqual([
+      expect.objectContaining({ source: owner.id, target: target.id }),
+    ]);
+    expect(warnings).toEqual([
+      `Invalid connection ignored: ${owner.id} -> null`,
+    ]);
+    expect(graph.resources[0].connections[0]).toBeNull();
+    render(<AppGraph graph={graph} />);
+    expect(screen.getByText('owner')).toBeVisible();
+    expect(screen.getByText('cache')).toBeVisible();
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Invalid connection ignored:',
+    );
+  });
+
+  it.each([
+    '/subscriptions/sub/resourceGroups/demo/providers/Microsoft.Storage/storageAccounts/store',
+    '/planes/azure/public/subscriptions/sub/resourceGroups/demo/providers/Microsoft.Storage/storageAccounts/store',
+    '/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.S3/buckets/store',
+    '/planes/radius/local/resourceGroups/demo/providers/Contoso.Data/databases/store/tables/items',
+  ])('retains connections to a shared resource identity %s', id => {
+    const owner = resource('Applications.Core/containers', 'owner');
+    const target = { ...resource('Contoso.Data/stores', 'store'), id };
+    const { nodes, edges, warnings } = initialNodes({
+      name: 'identity',
+      resources: [
+        { ...owner, connections: [{ ...target, direction: 'Inbound' }] },
+        target,
+      ],
+    });
+    expect(nodes).toHaveLength(2);
+    expect(edges).toEqual([
+      expect.objectContaining({ source: owner.id, target: id }),
+    ]);
+    expect(warnings).toEqual([]);
+  });
+
   it.each([42, null, undefined])(
     'retains usable nodes and reports malformed connection ID %j',
     invalidId => {
@@ -173,6 +229,30 @@ describe('AppGraph component', () => {
     expect(
       screen.getByRole('link', { name: 'React Flow attribution' }),
     ).toBeVisible();
+    const initial = initialNodes({
+      name: 'fallback',
+      resources: [
+        resource('Applications.Core/containers', 'first'),
+        resource('Applications.Core/containers', 'second'),
+        resource('Applications.Core/containers', 'third'),
+      ],
+    });
+    initial.nodes[0].width = 320;
+    const originalPositions = initial.nodes.map(node => ({ ...node.position }));
+    const fallback = getLayoutedElements(initial.nodes, initial.edges, {
+      direction: 'TB',
+    });
+    expect(fallback.error).toContain('layout failed');
+    expect(fallback.nodes.map(node => node.id)).toEqual(
+      initial.nodes.map(node => node.id),
+    );
+    for (let index = 1; index < fallback.nodes.length; index++) {
+      const previous = fallback.nodes[index - 1];
+      expect(fallback.nodes[index].position.x).toBeGreaterThanOrEqual(
+        previous.position.x + previous.width!,
+      );
+    }
+    expect(initial.nodes.map(node => node.position)).toEqual(originalPositions);
   });
 
   it('GU-15: explains an empty graph', () => {

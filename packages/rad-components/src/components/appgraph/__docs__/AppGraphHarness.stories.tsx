@@ -93,3 +93,35 @@ export const RemountHarness: Story = {
     );
   },
 };
+
+export const MixedConnections: Story = {
+  render: () => {
+    const owner = {
+      id: '/planes/radius/local/resourceGroups/demo/providers/Applications.Core/containers/owner',
+      name: 'owner',
+      type: 'Applications.Core/containers',
+      provider: 'radius',
+      provisioningState: 'Succeeded',
+    };
+    const storage = {
+      id: '/subscriptions/sub/resourceGroups/demo/providers/Microsoft.Storage/storageAccounts/storage',
+      name: 'storage',
+      type: 'Microsoft.Storage/storageAccounts',
+      provider: 'azure',
+      provisioningState: 'Succeeded',
+    };
+    const graph = JSON.parse(
+      JSON.stringify({
+        name: 'mixed-connections',
+        resources: [
+          {
+            ...owner,
+            connections: [null, { ...storage, direction: 'Inbound' }],
+          },
+          storage,
+        ],
+      }),
+    );
+    return <Example graph={graph} />;
+  },
+};

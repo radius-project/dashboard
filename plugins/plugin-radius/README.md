@@ -26,6 +26,13 @@ The shared core has no query client. The dashboard keeps query behavior locally 
 
 The public `rad-components` `AppGraph` keeps its React Flow 11 compatibility renderer. It updates when graph props change, does not mutate connections, and reports duplicate IDs and invalid edges. `reactflow` remains a required peer so public `ResourceNode` consumers share their host's provider. Both frontend packages require React and ReactDOM `^18.3.1`.
 
+Its topology uses the shared identity parser for Azure ARM, non-Radius planes,
+and nested UCP resources. The narrower Radius parser remains the navigation
+contract. Null connections produce a warning without hiding usable nodes or
+edges, and layout failures retain nodes in a non-overlapping row. Public graph
+inputs retain optional `icons`, `icon`, and `iconHash` metadata even though this
+compact renderer does not display it.
+
 The plugin imports `@radapp.io/rad-components/resourceId`, a parser-only public entry. This avoids loading the Flow 11 renderer and its CSS into the shared live graph host. The root entry still exports the parser and the compatibility components.
 
 Inventory methods retain the `{value}` envelope and add optional `complete` and `errors` fields. Existing host overrides remain valid. Partial results show usable rows with a warning; a failed query with no usable rows shows an error.
@@ -72,6 +79,10 @@ dependencies, including in CI, then a second immutable install checks the
 result. No checkout dependency links or installed modules are copied. Resolving
 all transitive ranges from scratch can load two Backstage app-context copies
 and does not test the repository's recorded tuple.
+
+The consumer resolutions also route the plugin's forwarding dependency to the
+packed `rad-components` archive. Qualification checks that the plugin and host
+resolve the same forwarding entry, not a separate registry copy.
 
 The runner retains `commands.json`, command logs, `tuple.json`, archives, an
 installed lockfile, production `browser/metafile.json`, HTTP evidence, and graph

@@ -31,6 +31,11 @@ test('clean installed host seeds the tested dependency tuple and can update its 
         assert.deepEqual(args, ['install', '--no-immutable']);
         assert.equal(options.env.CI, 'true');
         assert.equal(fs.existsSync(path.join(options.cwd, 'node_modules')), false);
+        const manifest = JSON.parse(fs.readFileSync(path.join(options.cwd, 'package.json'), 'utf8'));
+        assert.equal(
+          manifest.resolutions['@radapp.io/rad-components'],
+          manifest.dependencies['@radapp.io/rad-components'],
+        );
         assert.equal(
           fs.readFileSync(path.join(options.cwd, 'yarn.lock'), 'utf8'),
           fs.readFileSync(${JSON.stringify(path.join(root, 'yarn.lock'))}, 'utf8'),
@@ -206,8 +211,12 @@ test('IA-04/06/08: require compiled candidates and CSS, reject source and old re
   });
 });
 
-test('IA-03: plugin and forwarding consumers must resolve the direct shared candidates', () => {
-  for (const duplicate of [false, true]) {
+test('IA-03: plugin must resolve the forwarding archive and shared candidates directly', () => {
+  for (const duplicate of [
+    undefined,
+    '@radius-project/graph-react',
+    '@radapp.io/rad-components',
+  ]) {
     fixture((root, write) => {
       for (const name of [
         '@internal/plugin-radius',
@@ -241,11 +250,11 @@ test('IA-03: plugin and forwarding consumers must resolve the direct shared cand
       write('node_modules/@radius-project/graph-react/dist/index.js');
       if (duplicate) {
         write(
-          'node_modules/@internal/plugin-radius/node_modules/@radius-project/graph-react/package.json',
+          `node_modules/@internal/plugin-radius/node_modules/${duplicate}/package.json`,
           '{"main":"index.js"}',
         );
         write(
-          'node_modules/@internal/plugin-radius/node_modules/@radius-project/graph-react/index.js',
+          `node_modules/@internal/plugin-radius/node_modules/${duplicate}/index.js`,
         );
         assert.throws(
           () => assertCandidateResolution(root),

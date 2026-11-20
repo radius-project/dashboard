@@ -29,6 +29,31 @@ const graphContract = async (page: Page) => ({
 });
 
 test.describe('real AppGraph renderer', () => {
+  test('retains the Azure edge and reports a null connection without crashing', async ({
+    page,
+  }) => {
+    const errors: Error[] = [];
+    page.on('pageerror', error => errors.push(error));
+    await page.goto(harnessStoryUrl('mixed-connections'));
+    await expect(node(page, 'owner')).toBeVisible();
+    await expect(node(page, 'storage')).toBeVisible();
+    const connection = edge(page, 'owner', 'storage');
+    await expect(connection).toHaveCount(1);
+    await expect
+      .poll(() =>
+        connection
+          .locator('.react-flow__edge-path')
+          .evaluate(element => (element as SVGPathElement).getTotalLength()),
+      )
+      .toBeGreaterThan(0);
+    await expect(page.locator('.react-flow__node')).toHaveCount(2);
+    await expect(page.locator('.react-flow__edge')).toHaveCount(1);
+    await expect(page.getByRole('status')).toContainText(
+      'Invalid connection ignored:',
+    );
+    expect(errors).toEqual([]);
+  });
+
   test('GU-05b / GU-10: accepts frozen connections and replaces graph props', async ({
     page,
   }) => {

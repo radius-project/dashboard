@@ -10,11 +10,11 @@ import {
   Controls,
 } from 'reactflow';
 import Dagre, { NodeLabel } from '@dagrejs/dagre';
+import { parseResourceId } from '@radius-project/core/domain';
 import { AppGraph as AppGraphData, Resource } from '../../graph';
 import { ResourceNode } from '../resourcenode/index';
 
 import 'reactflow/dist/style.css';
-import { parseResourceId } from '../../resourceId';
 
 const nodeTypes = { default: ResourceNode };
 
@@ -124,7 +124,14 @@ export function initialNodes(graph: AppGraphData): {
       );
       continue;
     }
-    resources.set(resource.id, resource);
+    const connections = (resource.connections ?? []).filter(connection => {
+      if (connection === null) {
+        warnings.push(`Invalid connection ignored: ${resource.id} -> null`);
+        return false;
+      }
+      return true;
+    });
+    resources.set(resource.id, { ...resource, connections });
     signatures.set(resource.id, signature);
   }
   const edgeIds = new Set<string>();
@@ -157,7 +164,10 @@ export function initialNodes(graph: AppGraphData): {
     });
 
     for (const connection of resource.connections ?? []) {
-      const parsedConnection = parseResourceId(connection.id);
+      const parsedConnection =
+        typeof connection.id === 'string'
+          ? parseResourceId(connection.id)
+          : undefined;
       if (
         !parsedConnection ||
         !resources.has(connection.id) ||
@@ -209,8 +219,13 @@ export function getLayoutedElements(
       edges,
     };
   } catch (error) {
+    let x = 0;
     return {
-      nodes,
+      nodes: nodes.map(node => {
+        const positioned = { ...node, position: { x, y: 0 } };
+        x += (node.width ?? 175) + 50;
+        return positioned;
+      }),
       edges,
       error: `Graph layout failed: ${error instanceof Error ? error.message : String(error)}`,
     };
