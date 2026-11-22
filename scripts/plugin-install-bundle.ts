@@ -202,8 +202,10 @@ a broad Backstage support promise.
     const digest = bundleFileSha256(stagedArchive);
     fs.linkSync(stagedArchive, archive);
     published.push(archive);
-    fs.renameSync(contents, output);
+    fs.mkdirSync(output);
     published.push(output);
+    for (const entry of fs.readdirSync(contents))
+      fs.renameSync(path.join(contents, entry), path.join(output, entry));
     const checksum = fs.openSync(`${archive}.sha256`, 'wx');
     published.push(`${archive}.sha256`);
     try {

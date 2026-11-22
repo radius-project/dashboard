@@ -131,8 +131,10 @@ jobs:
             {stage, bundle, entries, node, packageManager, compiler, installedLockSha256}
           ' "${record}/qualification.json" > "${BUNDLE_ASSETS}/radius-backstage-plugin-${GITHUB_REF_NAME}.qualification.json"
           cp "${record}/bundle-build.tar.gz" "${BUNDLE_ASSETS}/${archive}"
+          read -r digest _ < "${record}/bundle-build.tar.gz.sha256"
           cd "${BUNDLE_ASSETS}" || exit 1
-          sha256sum "${archive}" > "${archive}.sha256"
+          printf '%s  %s\n' "${digest}" "${archive}" > "${archive}.sha256"
+          sha256sum -c "${archive}.sha256"
 
       - name: Retain Qualified Plugin Release Assets
         id: plugin-bundle-upload

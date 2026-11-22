@@ -43,6 +43,10 @@ export function pluginInstallSettings(bundle: PluginInstallBundle) {
 }
 
 export function verifyPluginInstallBundle(directory: string) {
+  assert(
+    fs.lstatSync(directory).isDirectory(),
+    'Expected a real plugin bundle directory',
+  );
   const manifest = path.join(directory, 'bundle.json');
   assert(
     fs.lstatSync(manifest).isFile(),

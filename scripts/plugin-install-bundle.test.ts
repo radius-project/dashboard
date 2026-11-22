@@ -159,6 +159,21 @@ test('reject an archive directory symlink', () => {
   });
 });
 
+test('reject a linked bundle root before the runner copies it', () => {
+  fixture(root => {
+    const link = `${root}-link`;
+    fs.symlinkSync(root, link, 'junction');
+    try {
+      assert.throws(
+        () => verifyPluginInstallBundle(link),
+        /Expected a real plugin bundle directory/,
+      );
+    } finally {
+      fs.unlinkSync(link);
+    }
+  });
+});
+
 test('reject a bundle manifest symlink', t => {
   fixture(root => {
     const manifest = path.join(root, 'bundle.json');
@@ -306,7 +321,12 @@ test('destinations that appear during a build keep their bytes and only this run
       'utf8',
     ),
   );
-  for (const collision of ['archive', 'directory', 'checksum']) {
+  for (const collision of [
+    'archive',
+    'directory',
+    'empty-directory',
+    'checksum',
+  ]) {
     fixture(root => {
       packFixture(root, 'archives/plugin.tgz', plugin.name, plugin.version);
       const output = path.join(root, 'output');
@@ -321,8 +341,10 @@ test('destinations that appear during a build keep their bytes and only this run
         () =>
           buildPluginInstallBundle(repository, output, args => {
             if (args[0] === 'tsc') {
-              if (collision === 'directory') fs.mkdirSync(output);
-              fs.writeFileSync(marker, 'other build output');
+              if (collision === 'directory' || collision === 'empty-directory')
+                fs.mkdirSync(output);
+              if (collision !== 'empty-directory')
+                fs.writeFileSync(marker, 'other build output');
             }
             if (args.includes('pack'))
               fs.copyFileSync(
@@ -332,9 +354,14 @@ test('destinations that appear during a build keep their bytes and only this run
           }),
         /EEXIST|ENOTEMPTY|EPERM|EACCES/,
       );
-      assert.equal(fs.readFileSync(marker, 'utf8'), 'other build output');
+      if (collision === 'empty-directory')
+        assert.deepEqual(fs.readdirSync(output), []);
+      else assert.equal(fs.readFileSync(marker, 'utf8'), 'other build output');
       assert.equal(fs.existsSync(archive), collision === 'archive');
-      assert.equal(fs.existsSync(output), collision === 'directory');
+      assert.equal(
+        fs.existsSync(output),
+        collision === 'directory' || collision === 'empty-directory',
+      );
       assert.equal(
         fs.existsSync(`${archive}.sha256`),
         collision === 'checksum',

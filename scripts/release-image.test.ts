@@ -1,6 +1,13 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
+import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { after, before, test } from 'node:test';
@@ -757,6 +764,82 @@ test('the CLI rejects unknown commands without attempting a build', () => {
     result.stderr,
     /Usage: node scripts\/release-image.ts <build\|stage>/,
   );
+});
+
+test('release asset preparation rejects a changed transfer archive with the original evidence', t => {
+  const tools = spawnSync(
+    'bash',
+    ['-c', 'command -v jq && command -v sha256sum'],
+    { encoding: 'utf8' },
+  );
+  if (tools.error || tools.status !== 0) {
+    t.skip('Release shell test requires bash, jq and sha256sum');
+    return;
+  }
+  const workflow = readFileSync(
+    join(root, '.github', 'workflows', 'build.yaml'),
+    'utf8',
+  );
+  const block = workflow
+    .split('- name: Prepare Plugin Release Assets')[1]
+    ?.split('\n      - name:')[0];
+  assert.ok(block);
+  const script = block
+    .split('run: |')[1]
+    .trimEnd()
+    .replace(/^ {10}/gm, '');
+  const directory = mkdtempSync(join(tmpdir(), 'plugin-release-preparation-'));
+  try {
+    const evidence = join(directory, 'evidence');
+    const record = join(evidence, 'installed-host-fixture');
+    const assets = join(directory, 'assets');
+    mkdirSync(record, { recursive: true });
+    const revision = 'a'.repeat(40);
+    const original = Buffer.from('tested transfer archive');
+    const digest = createHash('sha256').update(original).digest('hex');
+    writeFileSync(
+      join(record, 'qualification.json'),
+      JSON.stringify({
+        stage: 'installed-external-frontend',
+        bundle: { source: { revision, dirty: false } },
+      }),
+    );
+    writeFileSync(join(record, 'bundle-build.tar.gz'), original);
+    writeFileSync(
+      join(record, 'bundle-build.tar.gz.sha256'),
+      `${digest}  bundle-build.tar.gz\n`,
+    );
+    const run = () =>
+      spawnSync('bash', ['-euo', 'pipefail', '-c', script], {
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          BUNDLE_EVIDENCE: evidence,
+          BUNDLE_ASSETS: assets,
+          GITHUB_SHA: revision,
+          GITHUB_REF_NAME: 'v0.63.0-rc.1',
+        },
+      });
+    const passed = run();
+    assert.ifError(passed.error);
+    assert.equal(passed.status, 0, passed.stderr);
+    const archive = 'radius-backstage-plugin-v0.63.0-rc.1.tar.gz';
+    assert.deepEqual(readFileSync(join(assets, archive)), original);
+    assert.equal(
+      readFileSync(join(assets, `${archive}.sha256`), 'utf8'),
+      `${digest}  ${archive}\n`,
+    );
+    writeFileSync(
+      join(record, 'bundle-build.tar.gz'),
+      'changed after extraction',
+    );
+    const failed = run();
+    assert.ifError(failed.error);
+    assert.notEqual(failed.status, 0);
+    assert.match(failed.stdout + failed.stderr, /FAILED|did NOT match/);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 });
 
 test('the actual build chain, offline CI tests, validation gates, and edge publishing remain wired', () => {
