@@ -244,6 +244,7 @@ try {
   const resolutions = {
     ...repositoryManifest.resolutions,
     ...settings.root.resolutions,
+    '@backstage/core-app-api': dependencies['@backstage/core-app-api'],
     '@types/react': dependencies['@types/react'],
     '@types/react-dom': dependencies['@types/react-dom'],
   };
