@@ -1,7 +1,7 @@
 import React from 'react';
 import { createHash } from 'node:crypto';
 import { renderInTestApp, TestApiProvider } from '@backstage/test-utils';
-import { act, screen } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { errorApiRef } from '@backstage/core-plugin-api';
 import { useLocation } from 'react-router-dom';
@@ -21,7 +21,20 @@ jest.mock('@radius-project/graph-react', () => ({
   RadiusGraph: jest.fn(({ graph }: RadiusGraphProps) => (
     <div data-testid="graph-adapter">
       {graph.resources.map(resource => (
-        <span key={resource.id}>{resource.name}</span>
+        <div
+          key={resource.id}
+          className="react-flow__node"
+          data-id={resource.id}
+        >
+          <span>{resource.name}</span>
+          {resource.icon && (
+            <img
+              data-radius-part="icon"
+              alt={`${resource.name} icon`}
+              src={resource.icon}
+            />
+          )}
+        </div>
       ))}
     </div>
   )),
@@ -82,11 +95,105 @@ const renderTab = (
   );
 
 beforeEach(() => jest.clearAllMocks());
+afterEach(() => jest.restoreAllMocks());
 
 describe('ApplicationTab host adapter', () => {
   const iconSvg =
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path fill="#2874a6" d="M4 4h24v24H4z"/></svg>';
   const iconHash = createHash('sha256').update(iconSvg).digest('hex');
+
+  it.each(['<svg not-valid-image', '<svg fill="currentColor"><path'])(
+    'falls back after a decode error and permits a replacement icon: %s',
+    async invalidSvg => {
+      const probes: HTMLImageElement[] = [];
+      jest.spyOn(window, 'Image').mockImplementation(() => {
+        const probe = document.createElement('img');
+        probes.push(probe);
+        return probe;
+      });
+      const invalidHash = createHash('sha256').update(invalidSvg).digest('hex');
+      const customId = `${resourceGroup}/providers/Radius.Test/widgets/custom`;
+      const response = (
+        svg: string,
+        hash: string,
+        applicationId = application,
+      ) => ({
+        graph: {
+          resources: [
+            {
+              id: customId,
+              name: 'custom',
+              type: 'Radius.Test/widgets',
+              iconHash: hash,
+            },
+            {
+              id: `${customId}-healthy`,
+              name: 'healthy',
+              type: 'Radius.Test/widgets',
+              iconHash,
+            },
+          ],
+          icons: { [hash]: svg, [iconHash]: iconSvg },
+        },
+        context: {
+          connectionId: 'host',
+          plane: { type: 'radius', name: 'local' },
+          applicationId,
+        },
+      });
+      const getApplicationGraph = jest
+        .fn()
+        .mockResolvedValue(response(invalidSvg, invalidHash));
+      const api = { getApplicationGraph };
+      const view = await renderTab(api);
+      await screen.findByAltText('custom icon');
+      expect(probes[0].src).toContain(encodeURIComponent(invalidSvg));
+      fireEvent.error(probes[0]);
+      await waitFor(() => {
+        const { graph } = jest.mocked(RadiusGraph).mock.calls.at(-1)![0];
+        expect(graph.resources[0].icon).toBeUndefined();
+        expect(graph.resources[1].icon).toBe(iconSvg);
+        expect(graph).toMatchObject({
+          kind: 'live',
+          warnings: expect.arrayContaining([
+            expect.objectContaining({
+              code: 'invalid-icon',
+              resourceId: customId,
+            }),
+          ]),
+        });
+      });
+      expect(screen.getByText('custom')).toBeVisible();
+
+      const nextApplication = application.replace('test-app', 'next-app');
+      getApplicationGraph.mockResolvedValue(
+        response(iconSvg, iconHash, nextApplication),
+      );
+      view.rerender(
+        <TestApiProvider
+          apis={[
+            [radiusApiRef, api],
+            [errorApiRef, errorApi],
+          ]}
+        >
+          <ApplicationTab application={nextApplication} />
+        </TestApiProvider>,
+      );
+      expect(await screen.findByAltText('custom icon')).toHaveAttribute(
+        'src',
+        iconSvg,
+      );
+      expect(probes[0].onerror).toBeNull();
+      expect(
+        jest.mocked(RadiusGraph).mock.calls.at(-1)![0].graph,
+      ).toMatchObject({
+        kind: 'live',
+        warnings: [],
+      });
+      view.unmount();
+      expect(probes.at(-1)!.onerror).toBeNull();
+    },
+  );
 
   it.each([
     ['registered SVG', iconHash, { [iconHash]: iconSvg }, iconSvg],
