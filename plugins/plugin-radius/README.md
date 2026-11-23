@@ -12,66 +12,32 @@ You can also serve the plugin in isolation by running `yarn start` in the plugin
 This method of serving the plugin provides quicker iteration speed and a faster startup and hot reloads.
 It is only meant for local development, and the setup for it can be found inside the [/dev](./dev) directory.
 
-## Shared query contract
+## Graph tab and shared libraries
 
-The default Radius API uses the compiled `@radius-project/core/domain` client.
-Backstage owns the Kubernetes proxy, authentication, HTTP errors, and JSON
-decoding. The shared client owns resource paths, API-version discovery, namespace
-merging, and recipe aggregation.
+The Application graph tab renders with `RadiusGraph` from `@radius-project/graph-react`, built from ai-extensions `main`. The dashboard owns everything that the shared libraries do not export:
 
-The default API resolves the first configured Kubernetes cluster and the
-`radius/local` plane once per API instance. Resource GET and graph POST requests
-use that same context. The existing constructor still accepts one Kubernetes API
-argument; its optional second argument supplies an explicit connection and plane.
-This adds no picker or configuration UI. Discovery methods retain their explicit
-cluster and plane options without changing the instance's default context.
-Malformed resource IDs and IDs outside the selected plane fail before proxy
-access.
+- `api/api.ts` selects one connection and plane for all queries and adapts the Backstage Kubernetes proxy. The dashboard's `api/query*.ts` modules own resource paths, API-version discovery, namespace merging, response checks, and partial-result errors. Backstage owns authentication and transport.
+- `ApplicationTab.tsx` loads the graph through the host's `RadiusApi.getApplicationGraph` override. The default implementation uses the same connection as resource queries. `useApplicationGraph.ts` applies a 10-second limit to the complete load, including discovery and body decoding, and cancels requests on route changes or unmount. For `Radius.Core/applications` API versions dated `2025-08-01` or later (stable or `-preview`), the query client sends `{includeIcons: true}`. All other versions send no body.
+- `components/resources/legacyGraph.ts` converts the legacy graph payload (`Applications.Core`, Dapr, and `Radius.Core`) to the live graph that `normalizeLiveGraph` accepts. It applies the old edge direction rule, including the gateway and route reversal, before `normalizeLiveGraph` runs. It passes the raw `provisioningState`, the icon hashes, and the icons through. `normalizeLiveGraph` checks the icons and warns about invalid ones.
+- The Open control navigates with the host's route reference. An ID that is not a valid resource ID reports an error and does not navigate.
+- The dashboard preloads each normalized SVG, including icons drawn as CSS masks. If decoding fails, it removes that icon, reports a warning, and lets the shared renderer use its generic icon.
 
-Hosts can still override the public `radiusApiRef`. Existing overrides do not
-have to implement the new optional `getApplicationGraph({applicationId, signal})`
-method. A graph-capable override returns the public `RadiusApplicationGraph`
-shape: `{graph, context}`. `graph` is the unmodified query response; `context`
-contains only the actual `connectionId`, `{type, name}` plane, and requested
-`applicationId`, never credentials. The core query method still returns only the
-raw graph response.
+The shared core has no query client. The dashboard keeps query behavior locally and wraps the shared `parseResourceId` function to retain its existing `plane: string`, `group`, `type`, and `name` contract. The pinned main libraries accept `Applications.Core/applications` on the live graph path and pass resource-definition icons. That path shows the raw provisioning text, the details status row, and the warnings. See `vendor/shared-libraries/candidate.json` for the limits.
 
-The graph tab never bypasses an API override with a direct Kubernetes POST. An
-override without the graph method gets an explicit unsupported-operation error.
-The tab checks the returned application and plane, then uses the shared
-contextual legacy normalizer and `RadiusGraph`. Route or API replacement aborts
-old work and hides old data. A 10-second limit reports an error even if an override
-ignores its abort signal; late responses cannot replace that error.
+The public `rad-components` `AppGraph` keeps its React Flow 11 compatibility renderer. It updates when graph props change, does not mutate connections, and reports duplicate IDs and invalid edges. `reactflow` is an optional peer for parser-only consumers. Hosts that import the root entry, `AppGraph`, or `ResourceNode` must install `reactflow` `^11.11.4` and use the same provider instance. Both frontend packages require React and ReactDOM `^18.3.1`.
 
-The shared native card shows resource-type icons and the raw provisioning text.
-For discovered `Radius.Core/applications` API versions dated `2025-08-01` or
-later, the shared client requests `{includeIcons: true}`. Stable and `-preview`
-versions are supported. Older, unknown, and `Applications.Core` versions keep
-body-free graph requests. Backstage forwards the shared request body as JSON.
-The API supplies raw SVG from resource-type definitions in a hash-keyed `icons`
-map. The shared normalizer resolves each resource's `iconHash`; the dashboard
-does not read recipes or keep a resource-type icon map. The shared renderer
-loads SVG as an image, not page markup, and keeps the resource label when an
-icon is missing or cannot load.
-It does not infer deployment success. It shortens the visible type label but
-retains the original full type and ID in the DOM. The plugin enables the legend
-and details popup. Each resource's Open control uses its full ID and the host's
-route reference to open its overview, including nested plugin mounts.
-The separate public `rad-components` compatibility exports
-keep compact cards and forward to the same shared renderer; only the data-only
-`ResourceNode` entry uses the host's Flow11 provider. Its root barrel exports
-`ResourceNode`, so `rad-components` keeps `reactflow` as a required peer, as before.
-Only the shared graph package treats Flow11 as an optional peer.
-The plugin and forwarding package now declare React/ReactDOM `^18.3.1`, matching
-the dashboard and shared renderer. The old React 16/17 peer ranges are not carried
-forward as unsupported claims. This change does not add React 19 host support.
+Its topology uses the shared identity parser for Azure ARM, non-Radius planes,
+and nested UCP resources. The narrower Radius parser remains the navigation
+contract. Null connections produce a warning without hiding usable nodes or
+edges, and layout failures retain nodes in a non-overlapping row. Public graph
+inputs retain optional `icons`, `icon`, and `iconHash` metadata even though this
+compact renderer does not display it.
 
-Inventory methods retain the `{value}` result envelope. Shared-client results
-also include `complete` and `errors`. A partial result keeps available resources
-and identifies failed requests; a total failure rejects. The inventory views show
-a warning for partial data and an error when an incomplete result has no
-resources. Metadata-free host overrides retain their prior contract; the plugin
-does not assume that those results prove completeness.
+The plugin imports `@radapp.io/rad-components/resourceId`, a parser-only public entry. This avoids loading the Flow 11 renderer and its CSS into the shared live graph host. The root entry still exports the parser and the compatibility components.
+
+The wrapper returns the existing navigation shape and accepts only IDs that the mounted Radius routes can represent. Queries and graph topology use the same underlying core parser directly because they need structured plane identities or ARM and nested UCP IDs. Using the navigation wrapper for those paths would discard valid identities; using the raw core result for navigation would change the public route contract.
+
+Inventory methods retain the `{value}` envelope and add optional `complete` and `errors` fields. Existing host overrides remain valid. Partial results show usable rows with a warning; a failed query with no usable rows shows an error.
 
 ## Page appearance
 
@@ -87,53 +53,14 @@ backgrounds in sync without a second theme definition.
 
 ## Development artifacts
 
-Shared library version `0.1.0` is development metadata, not proof of a registry
-release. Repository builds use exact vendored compiled archives and relative file
-resolutions. See the [candidate preflight instructions](../../docs/contributing/contributing-code/contributing-code-building/README.md#shared-library-candidate-preflight)
-for hash, source/build receipt, installed-byte, and qualification requirements.
-`vendor/shared-libraries/candidate.json` identifies the active pair. Git history
-keeps the previous receipt and archives.
-The archives were built by the producer. The receipt records their source
-revision, hashes and signature checks; the dashboard did not rebuild them from source.
-Public registry distribution remains unqualified until an approved release.
+Shared library version `0.1.0` is development metadata, not proof of a registry release. Repository builds use two vendored archives, built from ai-extensions `main`, and relative file resolutions. `vendor/shared-libraries/candidate.json` records the source revision, hashes, build commands, and licenses. See the [candidate preflight instructions](../../docs/contributing/contributing-code/contributing-code-building/README.md#shared-library-candidate-preflight) for the checks. Public registry distribution remains unqualified until an approved release.
 
-## Phase 4 test ownership
+## Test ownership
 
-The source identity in `vendor/shared-libraries/candidate.json` fixes the upstream
-test versions below. Canonical code and its tests live in those shared packages,
-not in a second dashboard parser, query client, renderer, or layout.
-
-| Tier | Shared canonical tests | Surviving dashboard checks |
-| ---- | ---------------------- | -------------------------- |
-| A: domain/query | `packages/core/src/domain/query.test.ts`, `recipes.test.ts`, `legacy-resource-id.test.ts` | `api/api.test.ts` checks actual compiled-client transport, default/explicit context, errors and cancellation. Recipe adapter, public parser and host link tests retain old input/output contracts, including legal names (#352). |
-| A: graph topology | `packages/core/src/graph/live.test.ts`, `legacy-live.test.ts` | `rad-components/src/__test__/graphInvariants.test.ts` calls the public normalizer with independent fixture-owned edges. GU-04/05/06 and #353/#357 positively check diagnostics, owner retention, self-edge removal and duplicate coalescing. |
-| B: package/API boundaries | `scripts/test-libraries.mjs`, `scripts/fixtures/libraries/consumer.ts`, `packages/adapter-canvas/test/ci/library-artifacts.test.mjs` | `importBoundaries.test.ts`, `packaging.test.ts`, `packagingArtifact.test.ts`, and `shared-library-candidate.test.ts` check public entries, exact archives/CSS/core/React closure, packed declarations and forwarding exports. |
-| C: actual rendering | `packages/graph-react/src/graph.browser.test.ts`, `compat/compat.browser.test.ts`, `styling.browser.test.ts` | `scripts/observe-shared-graph.ts` observes actual public cards/edges/layout in Chromium: GU-07/08/09/10/11/14/19/20, input reversal, remount, controls, real Flow11 handles, and removed CSS/stub negatives. `graphRecords.test.ts` retains GU-21 through GU-25, including committed-to-base diff and exact change approval. Packed root/native hosts retain eight pages, nested routes, real graph, refresh/history and all-card fit/zoom visibility. |
-
-Old Dagre-coordinate and private builder tests were replaced with the public
-topology and Chromium checks above. No private presentation/build export is used.
-The graph record comparator is test-only. Compact compatibility intentionally
-still has no icons, status badges, or details; its pins do not close #35, #89, or
-#41. The four approved record removals in `graph-expected-changes.md` each retain a
-specific #353/#357 regression. An unrelated change cannot clear those checks.
-Frontend registration, catalog/backend composition, and namespace fixtures are
-not part of this extraction.
-
-### Removed implementation tests and retained requirements
-
-| Removed Tier E check | Surviving dashboard requirement and evidence |
-| -------------------- | ------------------------------------------- |
-| `AppGraph.test.tsx`: `initialNodes` leading-row coordinates and case-insensitive built-in classification | A: public normalization topology in `graphInvariants.test.ts`. C: all 14 fixtures, both namespaces, finite/non-overlapping positions and independent input ordering in `observe-shared-graph.ts` (GU-01/02/07/08/09/12/13). Exact local row coordinates are not a public contract. |
-| `AppGraph.test.tsx`: React Flow attribution-only render assertion | B: exact public forwarding-function identity. C: actual named cards, directed edges, controls and absent-renderer negative (GU-10/14/20), including packed root/native and forwarding consumers. |
-| `AppGraph.test.tsx`: mocked local Dagre failure propagation (GU-17, #368 defect pin) | B: exact forwarding-function identity prevents a second host layout or error policy. Canonical degradation is covered by upstream `packages/graph-react/src/layout.test.ts`; C checks usable finite layout through the public entry. The dashboard does not claim independent private Dagre fault injection or closure of #368. |
-| `graphInvariants.test.ts`: private `buildGraphModel` node/edge and layout assertions | A: the same fixture-owned topology, owner retention, raw states and unknown-type requirements now call the public normalizer. C: observed card/edge records, fresh roots, reversed inputs and remounts retain GU-01 through GU-13. Only the four reviewed #353/#357 record removals change the old baseline. |
-| `api.test.ts`: local `makePathFor*`/version-policy helper tests | A: compiled-client proxy tests retain connection/plane, version order, provider fallback, inventory, partial errors and pre-I/O rejection. B: packed declarations and public entry/byte closure. Canonical helper tests now belong to upstream `core/domain/query.test.ts`. |
-| `ApplicationTab.test.tsx`: direct Kubernetes POST and local timeout tests | A: the mounted real-client GET/POST parity test and `useApplicationGraph.test.tsx` retain overrides, context rejection, route/API cancellation, late response rejection and the timeout. C: packed hosts render the returned real-context graph. |
-
-`ResourceNode.test.tsx` remains as a public compatibility check. Parser and recipe
-tests also remain at their public input/output seams; only their implementations
-move upstream. No coverage threshold was reduced. Browser qualification does not
-run Docker by default or prove production authorization.
+- `legacyGraph.test.ts` covers the adapter: edge direction, dropped connections, duplicates, raw status, and icons.
+- `ApplicationTab.test.tsx` covers the request body rules, the 10-second limit, navigation, and the live graph and context passed to `RadiusGraph`.
+- `graphInvariants.test.ts` and `graphRecords.test.ts` keep the dashboard's repaired topology records. The four entries in `graph-expected-changes.md` retain the approved removal of duplicate nodes and invalid edges.
+- `importBoundaries.test.ts`, `packaging.test.ts`, and `packagingArtifact.test.ts` check public entries and the packed plugin.
 
 ## Phase 5 installed-host evidence
 
@@ -147,6 +74,17 @@ uses the same production browser journeys for the packed root and `/alpha`
 entries. Native Radius uses explicit feature registration, not a Radius plugin
 converter. The fixture host owns navigation, external route bindings, and its
 test identity. No automatic guest sign-in is enabled.
+
+The fresh consumer starts from the repository lockfile to retain the tested
+Backstage dependency tuple. Its first install updates that seed for the packed
+dependencies, including in CI, then a second immutable install checks the
+result. No checkout dependency links or installed modules are copied. Resolving
+all transitive ranges from scratch can load two Backstage app-context copies
+and does not test the repository's recorded tuple.
+
+The consumer resolutions also route the plugin's forwarding dependency to the
+packed `rad-components` archive. Qualification checks that the plugin and host
+resolve the same forwarding entry, not a separate registry copy.
 
 The runner retains `commands.json`, command logs, `tuple.json`, archives, an
 installed lockfile, production `browser/metafile.json`, HTTP evidence, and graph
@@ -218,31 +156,31 @@ and enable dependency build scripts in the clean consumer.
 The table maps executable checks, not a claim that every gate has passed.
 Full closure below requires full-matrix mode with a container.
 
-| Requirement | Executable evidence | Remaining scope |
-| --- | --- | --- |
-| HU-01 | `qualify-plugin-host.ts --installed`: actual legacy/native `createApp`; same journey drives clean standalone/container production output; browser errors fail | One pinned tuple, not a support range |
-| HU-02 | Shared journey visits all eight headings for every active host and base path | None in the controlled matrix |
-| HU-03 | External fixture follows a real bound applications ref; standalone/container baseline follows catalog graph's bound entity ref | Catalog baseline uses controlled entity responses |
-| HU-04 | Named host/sidebar links must exist with exact accessible names | Full accessibility audit belongs to Phase 7 |
-| HU-05 | Fixture and real standalone sidebar links call `useRouteRef`; browser checks destinations | Host-owned Home/Settings paths are unchanged |
-| HU-06 | All active hosts mount Radius at `/plugins/radius` | None in the controlled matrix |
-| HU-07 | Each active host runs with root and `/nested` app base paths; real ingress strips the base path for static assets | None in the controlled matrix |
-| HU-08 | Same candidate archive supplies packed root and `/alpha`; clean standalone/container use `/alpha` | No temporary hybrid support promise |
-| HU-09 | Host-owned fixture identity supplies HTTP credentials; real backend rejects missing identity | Controlled fixture/static auth is not a production provider |
-| HU-10 | Real proxy GET/graph POST return upstream 403; list and graph errors remain visible; shared 24-case connection contract | Controlled auth/upstream only |
-| HU-11 | All active hosts reuse one Phase 3/4 journey with host-specific transport and sign-in setup | Existing host-feature baseline is additional evidence |
-| HU-12 | Actual six-plugin backend, missing-service rejection, failed initialization exit, discovery/catalog, and two-connection GET/POST isolation; scaffold 404 | Real production providers belong to Phase 8 |
-| IA-01 | Clean consumer installs four tarballs; only app/backend host code is copied; plugin build inputs must stay inside consumer | Private backend is not published as a plugin |
-| IA-02 | Installed declarations/fixtures and clean host compile; production frontend/backend build; clean production Dockerfile build | `skipLibCheck` is retained, not full dependency declaration checking |
-| IA-03 | Exact direct/plugin/forwarding/graph-transitive candidate resolution in the complete clean host tree | Recorded installed lock is part of the tuple |
-| IA-04 | Compiled shared inputs are required; workspace source and Flow11 browser inputs fail | Continue public forwarding-contract and import-boundary tests |
-| IA-05 | Complete clean host tree must contain one React and one ReactDOM copy; image uses its built frontend | No React 19 host claim |
-| IA-06 | Exact archive CSS bytes, build input/output CSS, loaded browser rules and computed graph controls in all active hosts; altered CSS fails | None in the controlled matrix |
-| IA-07 | Actual registration/routes, clean six-plugin backend, real Kubernetes proxy and shared connection contract against fake upstream | Real Radius belongs to Phase 8 |
-| IA-08 | Static production bundles and actual built container; no dev server or mocked shared renderer | None in the controlled matrix |
-| RX-01 | Whole clean dashboard tree has one React 18 pair; duplicate/non-18 host peers fail | Exact recorded tuple only |
-| RX-02 | Every active host uses shared cards, edges, fit/zoom; forwarding observer also runs | No isolated-library result substitutes for a host |
-| RX-03 | A React 19 negative test fails the host tree check | No React 19 Backstage support claim |
+| Requirement | Executable evidence                                                                                                                                           | Remaining scope                                                      |
+|-------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------|
+| HU-01       | `qualify-plugin-host.ts --installed`: actual legacy/native `createApp`; same journey drives clean standalone/container production output; browser errors fail | One pinned tuple, not a support range                                |
+| HU-02       | Shared journey visits all eight headings for every active host and base path                                                                                  | None in the controlled matrix                                        |
+| HU-03       | External fixture follows a real bound applications ref; standalone/container baseline follows catalog graph's bound entity ref                                | Catalog baseline uses controlled entity responses                    |
+| HU-04       | Named host/sidebar links must exist with exact accessible names                                                                                               | Full accessibility audit belongs to Phase 7                          |
+| HU-05       | Fixture and real standalone sidebar links call `useRouteRef`; browser checks destinations                                                                     | Host-owned Home/Settings paths are unchanged                         |
+| HU-06       | All active hosts mount Radius at `/plugins/radius`                                                                                                            | None in the controlled matrix                                        |
+| HU-07       | Each active host runs with root and `/nested` app base paths; real ingress strips the base path for static assets                                             | None in the controlled matrix                                        |
+| HU-08       | Same candidate archive supplies packed root and `/alpha`; clean standalone/container use `/alpha`                                                             | No temporary hybrid support promise                                  |
+| HU-09       | Host-owned fixture identity supplies HTTP credentials; real backend rejects missing identity                                                                  | Controlled fixture/static auth is not a production provider          |
+| HU-10       | Real proxy GET/graph POST return upstream 403; list and graph errors remain visible; shared 24-case connection contract                                       | Controlled auth/upstream only                                        |
+| HU-11       | All active hosts reuse one Phase 3/4 journey with host-specific transport and sign-in setup                                                                   | Existing host-feature baseline is additional evidence                |
+| HU-12       | Actual six-plugin backend, missing-service rejection, failed initialization exit, discovery/catalog, and two-connection GET/POST isolation; scaffold 404      | Real production providers belong to Phase 8                          |
+| IA-01       | Clean consumer installs four tarballs; only app/backend host code is copied; plugin build inputs must stay inside consumer                                    | Private backend is not published as a plugin                         |
+| IA-02       | Installed declarations/fixtures and clean host compile; production frontend/backend build; clean production Dockerfile build                                  | `skipLibCheck` is retained, not full dependency declaration checking |
+| IA-03       | Exact direct/plugin/forwarding/graph-transitive candidate resolution in the complete clean host tree                                                          | Recorded installed lock is part of the tuple                         |
+| IA-04       | Compiled shared inputs are required; workspace source and Flow11 browser inputs fail                                                                          | Continue public forwarding-contract and import-boundary tests        |
+| IA-05       | Complete clean host tree must contain one React and one ReactDOM copy; image uses its built frontend                                                          | No React 19 host claim                                               |
+| IA-06       | Exact archive CSS bytes, build input/output CSS, loaded browser rules and computed graph controls in all active hosts; altered CSS fails                      | None in the controlled matrix                                        |
+| IA-07       | Actual registration/routes, clean six-plugin backend, real Kubernetes proxy and shared connection contract against fake upstream                              | Real Radius belongs to Phase 8                                       |
+| IA-08       | Static production bundles and actual built container; no dev server or mocked shared renderer                                                                 | None in the controlled matrix                                        |
+| RX-01       | Whole clean dashboard tree has one React 18 pair; duplicate/non-18 host peers fail                                                                            | Exact recorded tuple only                                            |
+| RX-02       | Every active host uses shared cards, edges, fit/zoom; forwarding observer also runs                                                                           | No isolated-library result substitutes for a host                    |
+| RX-03       | A React 19 negative test fails the host tree check                                                                                                            | No React 19 Backstage support claim                                  |
 
 `scripts/installed-host.test.ts` checks duplicate resolution, duplicate React,
 React 19, missing shared/CSS build inputs, old renderer inputs, and inputs outside
