@@ -1,59 +1,62 @@
 {
-  "status": "Development-only vendored artifacts. Not a published release.",
-  "sourceRevision": "f89020ac197fd4fd266b3a61bbc99f9b933134bb",
+  "status": "Development-only archives rebuilt from ai-extensions main 04d780b7, which includes merged pull request 1283. The compiled pair is byte-identical to the previous main pair. The dashboard supplies the resource-ID compatibility wrapper, query client, legacy gateway direction rule, and browser image-error fallback. Not a published release.",
+  "sourceRevision": "04d780b72f7ed93f3330b5946444e11193e99316",
   "core": {
-    "path": "radius-project-core-0.1.0-icons-f89020ac197f.tgz",
-    "sha256": "d5dc19c6d2a32493fa4034177841b8c3b323bc394e7ead2b5a35d4e458293ce5",
-    "bytes": 28721
+    "path": "radius-project-core-0.1.0-main-04d780b72f7e.tgz",
+    "sha256": "64e31db76931ffc91093088b79e1409bc00c9cade2ef0979cf2c22775a126394",
+    "bytes": 20328
   },
   "graphReact": {
-    "path": "radius-project-graph-react-0.1.0-icons-f89020ac197f.tgz",
-    "sha256": "4daa0067a566b1570039ffdde208f5bddf4dd39a1fc6575e6eff80c65b5f8308",
-    "bytes": 91706,
+    "path": "radius-project-graph-react-0.1.0-main-04d780b72f7e.tgz",
+    "sha256": "3e6dc9928a905540341992c670aced2af392a3cfa1f3cf238e05178f7d17b4ca",
+    "bytes": 88387,
     "stylesSha256": "b0f6a0ccaab445ded3cefdaf35f2921b9b5f212cbab9c30e3ee8f380ae8e83ff",
     "baseSha256": "f325487e77a8c9c22f1e9197302161b03c4a04fb149cdd2ff899fa7283c64380"
   },
   "source": {
     "repository": "https://github.com/radius-project/ai-extensions",
-    "tree": "a60af1c716c16228102ea01e46ce05d403c3fa27",
+    "ref": "refs/heads/main",
+    "tree": "2f22e1b699a9c432d71641ea06d18c77b8956b59",
     "lockFile": "pnpm-lock.yaml",
-    "lockSha256": "95c0f827534811d84b1a667c65201df085ff2b320f214681b02931a9d36de352",
-    "lockGitBlob": "4bcd9a6780b92345a155c16b7427a15b14a1b026",
-    "openPgpFingerprint": "062546FF1256CE6A7E60647035907BBA96F09526",
-    "signatureVerifiedByConsumer": true,
-    "baselineRevision": "f6c06db599a297854d23f4992811f206597cab3a",
-    "baselineIsAncestorVerifiedByConsumer": true,
-    "prerequisiteMerge": "f0a7ce1c401304b2fda7606126fd163e9c8f79e2"
+    "lockSha256": "147ae0e05f043015a2df74b93deecaf70ab352b4153f1d02289de6e57bfcbd76",
+    "lockGitBlob": "05ce7bdefc2411ee227e308dbf50806cdeb17b3b",
+    "signatureVerifiedByConsumer": false,
+    "pullRequest": "https://github.com/radius-project/ai-extensions/pull/1283",
+    "mergedPullRequestCommit": "49f43405281af69ef5cd42a4acce6363ce70aa80",
+    "previousMainRevision": "d1fdac091afac1c1a4d69cea2415f5e3f08b8d28"
   },
   "build": {
-    "evidence": "Producer-reported clean source build and exact-byte offline React 18/19 package qualification. Source signature, baseline ancestry, source tree and lock hashes independently checked by the consumer. Not an independent consumer source rebuild.",
-    "producerReceipt": "receipt.package-qualified.json, generated 2026-11-11T18:17:34.503Z for this source and exact pair",
+    "evidence": "Rebuilt from a clean git archive of main 04d780b7 on native WSL storage with the frozen lockfile. Existing upstream scripts built declarations, JavaScript and CSS, packed both libraries, and checked the packed output with offline React 18 and 19 consumers in real Chromium. Both archive SHA-256 values match the previous main pair exactly. Pull request 1283 changes the Canvas SDK adapter and adapter-shared exports; its stack adds core source-only orchestration, not the public graph/domain package entries. No producer files were changed.",
     "sourceStatusBeforeBuild": "",
     "node": "24.22.0",
     "pnpm": "12.15.0",
-    "platform": "linux-x64, WSL Ubuntu",
+    "platform": "linux-arm64, WSL Ubuntu",
     "commands": [
       {
         "command": "pnpm install --frozen-lockfile",
-        "result": "passed under Node 24.22.0 and pnpm 12.15.0"
-      },
-      {
-        "command": "pnpm exec vitest run packages/core/src/domain/query.test.ts packages/core/src/graph/live.test.ts packages/core/src/graph/legacy-live.test.ts packages/graph-react/src/build.test.ts packages/graph-react/src/model.test.ts",
-        "result": "312 tests passed"
-      },
-      {
-        "command": "pnpm exec vitest run --project graph-react-component packages/graph-react/src/graph.browser.test.ts packages/graph-react/src/compat/compat.browser.test.ts",
-        "result": "85 real Chromium tests passed; existing ResizeObserver loop warnings remain"
-      },
-      {
-        "command": "pnpm run typecheck",
-        "result": "passed"
+        "result": "passed; frozen lockfile"
       },
       {
         "command": "pnpm run test:integration:libraries",
-        "result": "passed: these exact archives installed offline with React 18.3.1 and 19.3.1; public runtime, declarations, core/React identity, CSS/legal/build boundaries, native/legacy/Flow11 and hostile SVG Chromium cases"
+        "result": "passed: React 18 and 19 runtime, declarations, browser bundle, real Chromium, CSS isolation, peer identity and installed archive integrity (offline)"
+      },
+      {
+        "command": "sha256sum .artifacts/libraries/packages/*.tgz",
+        "result": "passed; the integration script packed the two archives recorded above; both hashes match the previous main pair"
       }
     ]
+  },
+  "publicEntries": {
+    "core": {
+      "dist/graph/index.d.ts": "1779979130626c1cd7b4b43a6a21315a0a2400f485596041736ab075b2d74be9",
+      "dist/domain/index.d.ts": "0a4480a891aebc4bebbf3e532be23558e51bef356c91e4b865154eb28a123341",
+      "dist/graph/index.js": "9e1fd6e1eb12f89cc664218269d774b2a76d07b93f0ba4387b9aff014c96a92c",
+      "dist/domain/index.js": "39efac2a5a3ec254d30840ea8cc52261c03b3bf6e6dfb9b1a88563263b8e671b"
+    },
+    "graphReact": {
+      "dist/index.d.ts": "2ea55b43853f037c0618a8fe9e5f6aec2c0fc75bae377dfbbb922f578ffe723d",
+      "dist/index.js": "61c54f4b83029df80198d9788236c519c07700e9be852590cd7b6cc7ab6837d3"
+    }
   },
   "licenses": [
     {
@@ -76,13 +79,14 @@
     }
   ],
   "limits": [
-    "Version 0.1.0 is package metadata, not a claim of registry publication.",
-    "Repository-relative resolutions select both exact archives, including graph-react's core dependency.",
-    "Package licenses are retained as received. This does not change the dashboard or forwarding package license.",
-    "Archive verification alone does not qualify a real host or approve graph record changes.",
-    "Public naming, release, support and distribution policy remain unqualified.",
-    "Producer package checks do not qualify the dashboard, Headlamp, Windows or wider repository hosts.",
-    "Repository browser tests use a declared resource-type API fixture. Live-cluster icon checks were run separately and are reported on the pull request; this receipt does not record them.",
-    "The archives were built by the producer. The consumer checked their hashes, source signature and lock evidence, but did not rebuild them from source."
+    "Version 0.1.0 is package metadata, not a registry publication.",
+    "Replace this pair with an archive built from a newer main when the shared libraries change or when a registry release exists.",
+    "Only this matched pair is selected by repository-relative resolutions, including the graph-to-core dependency.",
+    "Library smoke checks do not qualify dashboard consumers, installed hosts, containers, or cloud deployments.",
+    "The dashboard wraps the shared resource-ID parser to retain its plane:string/group/type/name contract, and keeps its query client and resource and recipe types locally.",
+    "The dashboard keeps the legacy gateway and route edge-direction rule and applies it before normalizeLiveGraph.",
+    "The reactflow 11 AppGraph in rad-components stays in the dashboard because graph-react has no compat entry.",
+    "ApplicationTab feeds the live path of RadiusGraph, which shows raw provisioning text, the details status row and live warnings.",
+    "No publication, merge, or live deployment was performed."
   ]
 }

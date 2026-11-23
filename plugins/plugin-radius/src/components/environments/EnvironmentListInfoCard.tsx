@@ -13,7 +13,7 @@ import { radiusApiRef } from '../../api/ref';
 import { EnvironmentProperties, Resource } from '../../resources';
 import { ResourceLink } from '../resourcelink';
 import { environmentPageRouteRef } from '../../routes';
-import { parseLegacyResourceId as parseResourceId } from '@radius-project/core/domain';
+import { parseResourceId } from '@radapp.io/rad-components/resourceId';
 import { ResourceQueryResult } from '../queryresult/ResourceQueryResult';
 
 const EnvironmentListInfoContent = () => {

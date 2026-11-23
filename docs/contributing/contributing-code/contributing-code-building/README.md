@@ -185,7 +185,12 @@ builds, and results there, but not `node_modules`.
 
 The runner builds and packs the plugin and forwarding package. It installs those
 tarballs and the pinned shared pair with Yarn, without repository dependency
-links. It compiles the installed public declarations and both host fixtures.
+links. The fresh consumer uses the repository lockfile as a dependency seed.
+The first install updates that seed for the packed dependencies with
+`yarn install --no-immutable`; `yarn install --immutable` then checks the result.
+This keeps the tested Backstage versions together without copying installed
+modules or importing a second app context from newer transitive releases.
+It compiles the installed public declarations and both host fixtures.
 It then extends the Phase 3/4 production browser runner with an isolated-input
 check, nested plugin mounts, a separate app base path, route-ref navigation,
 external bindings, host-owned fixture identity, and visible HTTP denial.

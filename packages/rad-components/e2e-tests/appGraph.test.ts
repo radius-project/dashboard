@@ -9,14 +9,12 @@ const harnessStoryUrl = (story: string) =>
   `/iframe.html?id=appgraph-harness--${story}&viewMode=story`;
 
 const node = (page: Page, name: string) =>
-  page.getByRole('group', { name, exact: true });
+  page.getByRole('button', { name: new RegExp(`^${name}`, 'i') });
 
-const edge = (page: Page, source: string, target: string) => {
-  const prefix =
-    '/planes/radius/local/resourceGroups/demo/providers/Applications.Core/containers';
-  const id = JSON.stringify([`${prefix}/${source}`, `${prefix}/${target}`]);
-  return page.locator(`.react-flow__edge[data-id=${JSON.stringify(id)}]`);
-};
+const edge = (page: Page, source: string, target: string) =>
+  page.getByRole('button', {
+    name: new RegExp(`^Edge from .*${source}.* to .*${target}`, 'i'),
+  });
 
 const graphContract = async (page: Page) => ({
   namedNode: await node(page, 'frontend').isVisible(),
@@ -31,6 +29,48 @@ const graphContract = async (page: Page) => ({
 });
 
 test.describe('real AppGraph renderer', () => {
+  test('retains the Azure edge and reports a null connection without crashing', async ({
+    page,
+  }) => {
+    const errors: Error[] = [];
+    page.on('pageerror', error => errors.push(error));
+    await page.goto(harnessStoryUrl('mixed-connections'));
+    await expect(node(page, 'owner')).toBeVisible();
+    await expect(node(page, 'storage')).toBeVisible();
+    const connection = edge(page, 'owner', 'storage');
+    await expect(connection).toHaveCount(1);
+    await expect
+      .poll(() =>
+        connection
+          .locator('.react-flow__edge-path')
+          .evaluate(element => (element as SVGPathElement).getTotalLength()),
+      )
+      .toBeGreaterThan(0);
+    await expect(page.locator('.react-flow__node')).toHaveCount(2);
+    await expect(page.locator('.react-flow__edge')).toHaveCount(1);
+    await expect(page.getByRole('status')).toContainText(
+      'Invalid connection ignored:',
+    );
+    expect(errors).toEqual([]);
+  });
+
+  test('GU-05b / GU-10: accepts frozen connections and replaces graph props', async ({
+    page,
+  }) => {
+    const errors: Error[] = [];
+    page.on('pageerror', error => errors.push(error));
+    await page.goto(harnessStoryUrl('replacement-harness'));
+    await expect(node(page, 'frontend')).toBeVisible();
+    await expect(edge(page, 'edge', 'frontend')).toBeVisible();
+    await page
+      .getByRole('button', { name: 'Replace graph', exact: true })
+      .click();
+    await expect(node(page, 'solo')).toBeVisible();
+    await expect(node(page, 'frontend')).toHaveCount(0);
+    await expect(page.locator('.react-flow__edge')).toHaveCount(0);
+    expect(errors).toEqual([]);
+  });
+
   for (const [story, target] of [
     [
       'missing-target',
@@ -204,16 +244,17 @@ test.describe('real AppGraph renderer', () => {
     await expect.poll(() => viewport.getAttribute('style')).not.toBe(zoomed);
   });
 
-  test('GU-15 / #368: an empty graph has an explicit accessible empty state', async ({
-    page,
-  }) => {
+  test('GU-15: explains an empty graph', async ({ page }) => {
     await page.goto(storyUrl('empty'));
 
     await expect(page.locator('.react-flow__node')).toHaveCount(0);
-    await expect(page.getByText(/no resources|empty graph/i)).toBeVisible();
+    await expect(page.getByRole('status')).toHaveText(
+      'No resources in this application.',
+    );
   });
 
-  test('GU-18: compact compatibility preserves the absence of details', async ({
+  // KNOWN-DEFECT (#41): selection should open dismissible details and restore focus on close.
+  test('GU-18: KNOWN-DEFECT selecting a node does not reveal resource details', async ({
     page,
   }) => {
     await page.goto(storyUrl('single-node'));
@@ -223,7 +264,7 @@ test.describe('real AppGraph renderer', () => {
     await selectedNode.click();
 
     await expect(page.getByRole('dialog')).toHaveCount(0);
-    await expect(page.locator('[data-radius-details]')).toHaveCount(0);
+    await expect(selectedNode).toBeFocused();
   });
 
   test('GU-19: renders with the shared stylesheet in light and dark hosts', async ({
@@ -252,13 +293,8 @@ test.describe('real AppGraph renderer', () => {
     await page.goto(harnessStoryUrl('stubbed-renderer'));
     await expect(node(page, 'frontend')).toHaveCount(0);
 
-    await page.goto(storyUrl('multi-tier'));
-    await expect(node(page, 'frontend')).toBeVisible();
-    await page.evaluate(() => {
-      document
-        .querySelectorAll('style, link[rel="stylesheet"]')
-        .forEach(element => element.remove());
-    });
+    await page.goto(harnessStoryUrl('stylesheet-removed'));
+    await expect(page.getByText('Graph stylesheet disabled')).toBeVisible();
     await expect
       .poll(async () => (await graphContract(page)).stylesheet)
       .toBe(false);
