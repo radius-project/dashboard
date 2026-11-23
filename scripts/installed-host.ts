@@ -134,6 +134,18 @@ export function assertCandidateResolution(root: string) {
   const forwarding = createRequire(
     require.resolve('@radapp.io/rad-components'),
   );
+  const directForwarding = fs.realpathSync(
+    require.resolve('@radapp.io/rad-components'),
+  );
+  assertInside(root, directForwarding);
+  if (
+    fs.realpathSync(plugin.resolve('@radapp.io/rad-components')) !==
+    directForwarding
+  ) {
+    throw new Error(
+      'Direct and plugin forwarding resolution differ: @radapp.io/rad-components',
+    );
+  }
   for (const name of [
     '@radius-project/core/graph',
     '@radius-project/core/domain',

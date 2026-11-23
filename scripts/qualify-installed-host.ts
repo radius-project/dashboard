@@ -244,6 +244,7 @@ try {
     ...repositoryManifest.resolutions,
     ...settings.root.resolutions,
     '@backstage/core-app-api': dependencies['@backstage/core-app-api'],
+    '@radapp.io/rad-components': dependencies['@radapp.io/rad-components'],
     '@types/react': dependencies['@types/react'],
     '@types/react-dom': dependencies['@types/react-dom'],
   };
@@ -311,6 +312,10 @@ try {
       path.join(consumer, 'packages', 'backend', 'Dockerfile'),
     );
   }
+  fs.copyFileSync(
+    path.join(root, 'yarn.lock'),
+    path.join(consumer, 'yarn.lock'),
+  );
   runYarn(['install', '--no-immutable'], consumer);
   runYarn(['install', '--immutable'], consumer);
   const shared = verifySharedLibraryCandidate(

@@ -15,7 +15,7 @@ import {
   ResourceListOptions,
   ResourceType,
   ResourceTypeProperties,
-} from '@radius-project/core/domain';
+} from './query';
 
 // Existing host overrides can still return the original { value } envelope.
 export interface RadiusListResult<

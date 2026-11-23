@@ -1,15 +1,5 @@
-interface GraphObservation {
-  nodes: {
-    id: string;
-    label: string;
-    type: string;
-    status: string;
-    icon: string | null;
-    statusBadge: { kind: string; accessibleName: string } | null;
-    position: { x: number; y: number };
-  }[];
-  edges: { id: string; source: string; target: string }[];
-}
+import { AppGraph } from './graph';
+import { buildLayoutedGraphModel, GraphModel } from './graphModel';
 
 /**
  * The renderer does not populate icons or status badges yet. That is recorded
@@ -75,6 +65,13 @@ export interface KnownGraphDefect {
 
 const nodeIds = (record: GraphRecord) => new Set(record.nodes.map(n => n.id));
 
+const hasDanglingEdge = (record: GraphRecord) => {
+  const ids = nodeIds(record);
+  return record.edges.some(
+    edge => !ids.has(edge.source) || !ids.has(edge.target),
+  );
+};
+
 const hasSelfEdge = (record: GraphRecord) =>
   record.edges.some(edge => edge.source === edge.target);
 
@@ -90,6 +87,18 @@ const hasNoStatusBadges = (record: GraphRecord) =>
   record.nodes.every(node => node.statusBadge === NOT_YET_POPULATED);
 
 export const knownGraphDefects: KnownGraphDefect[] = [
+  {
+    fixture: 'missing-target',
+    issue: '#353',
+    invariant: 'every edge endpoint resolves to a node',
+    isPresent: hasDanglingEdge,
+  },
+  {
+    fixture: 'unparseable-connection',
+    issue: '#353',
+    invariant: 'every edge endpoint resolves to a node',
+    isPresent: hasDanglingEdge,
+  },
   {
     fixture: 'self-reference',
     issue: '#357',
@@ -124,7 +133,7 @@ export const knownGraphDefects: KnownGraphDefect[] = [
  * covered by renderer-independent assertions instead: GU-09 requires finite
  * positions and GU-09a requires non-overlapping nodes.
  */
-export function normalizeGraphModel(model: GraphObservation): GraphRecord {
+export function normalizeGraphModel(model: GraphModel): GraphRecord {
   return {
     nodes: model.nodes
       .map((node): GraphRecordNode => ({
@@ -147,6 +156,10 @@ export function normalizeGraphModel(model: GraphObservation): GraphRecord {
         ),
       ),
   };
+}
+
+export function createGraphRecord(graph: AppGraph): GraphRecord {
+  return normalizeGraphModel(buildLayoutedGraphModel(graph));
 }
 
 export function findUnapprovedGraphRecordChanges(

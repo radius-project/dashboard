@@ -22,7 +22,7 @@ import { useApi } from '@backstage/core-plugin-api';
 import useAsync from 'react-use/lib/useAsync';
 import { radiusApiRef } from '../../api/ref';
 import { Resource } from '../../resources';
-import { parseLegacyResourceId as parseResourceId } from '@radius-project/core/domain';
+import { parseResourceId } from '@radapp.io/rad-components/resourceId';
 import { withRadiusTheme } from '../../appearance';
 
 const EnvironmentListPageContent = ({
