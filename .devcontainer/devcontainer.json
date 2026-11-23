@@ -8,7 +8,7 @@
       "configureZshAsDefaultShell": false
     },
     "ghcr.io/devcontainers/features/node:2.1.2": {
-      "installYarnUsingApt": false,
+      "installYarnUsingApt": true,
       "pnpmVersion": "none"
     },
     "ghcr.io/devcontainers-extra/features/corepack:1": {},
