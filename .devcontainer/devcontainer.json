@@ -7,11 +7,12 @@
     "ghcr.io/devcontainers/features/common-utils:2.7.1": {
       "configureZshAsDefaultShell": false
     },
-    "ghcr.io/devcontainers/features/node:2.1.1": {
-      "installYarnUsingApt": false
+    "ghcr.io/devcontainers/features/node:2.1.2": {
+      "installYarnUsingApt": true,
+      "pnpmVersion": "none"
     },
     "ghcr.io/devcontainers-extra/features/corepack:1": {},
-    "ghcr.io/devcontainers/features/kubectl-helm-minikube:1.3.1": {
+    "ghcr.io/devcontainers/features/kubectl-helm-minikube:1.3.2": {
       "version": "latest",
       "helm": "latest",
       "minikube": "none"
