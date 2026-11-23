@@ -4656,10 +4656,26 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@dagrejs/dagre@npm:^3.1.1":
+  version: 3.1.3
+  resolution: "@dagrejs/dagre@npm:3.1.3"
+  dependencies:
+    "@dagrejs/graphlib": "npm:4.0.6"
+  checksum: 10c0/d3f458df6492d810e6b40124a2d04da0dd5f4c7e4ebc24a6f8c695c23b8a0a610c242a118033622f82305eb6684cba0e66e74a268b9d5203168bb9ed0c42f3c2
+  languageName: node
+  linkType: hard
+
 "@dagrejs/graphlib@npm:2.2.4":
   version: 2.2.4
   resolution: "@dagrejs/graphlib@npm:2.2.4"
   checksum: 10c0/14597ea9294c46b2571aee78bcaad3a24e3e5e0ebcdf198b6eae5b3805f99af727ac54a477dd9152e8b0a576efea0528fb7d4919c74801e9f669c90e5e6f5bd9
+  languageName: node
+  linkType: hard
+
+"@dagrejs/graphlib@npm:4.0.6":
+  version: 4.0.6
+  resolution: "@dagrejs/graphlib@npm:4.0.6"
+  checksum: 10c0/b08acb367f3f855635006e6f67a7b63eff6d796efbdd7d132ac61c144717b856ffe8bd7098790763e059c66d8af9d5621e783d8f90054c2f2083d4ca50e4f12f
   languageName: node
   linkType: hard
 
@@ -8428,9 +8444,9 @@ __metadata:
     "@babel/preset-typescript": "npm:^8.0.7"
     "@backstage/cli": "npm:^0.36.6"
     "@backstage/cli-defaults": "npm:^0.1.6"
+    "@dagrejs/dagre": "npm:^3.1.1"
     "@juggle/resize-observer": "npm:^3.4.0"
     "@radius-project/core": "npm:0.1.0"
-    "@radius-project/graph-react": "npm:0.1.0"
     "@storybook/addon-a11y": "npm:^10.6.2"
     "@storybook/addon-docs": "npm:^10.6.2"
     "@storybook/addon-links": "npm:^10.6.2"
@@ -8459,30 +8475,29 @@ __metadata:
     react: ^18.3.1
     react-dom: ^18.3.1
     reactflow: ^11.11.4
+  peerDependenciesMeta:
+    reactflow:
+      optional: true
   languageName: unknown
   linkType: soft
 
-"@radius-project/core@file:./vendor/shared-libraries/radius-project-core-0.1.0-icons-f89020ac197f.tgz::locator=root%40workspace%3A.":
+"@radius-project/core@file:./vendor/shared-libraries/radius-project-core-0.1.0-main-04d780b72f7e.tgz::locator=root%40workspace%3A.":
   version: 0.1.0
-  resolution: "@radius-project/core@file:./vendor/shared-libraries/radius-project-core-0.1.0-icons-f89020ac197f.tgz#./vendor/shared-libraries/radius-project-core-0.1.0-icons-f89020ac197f.tgz::hash=1051f1&locator=root%40workspace%3A."
-  checksum: 10c0/652677d56f9fcde0b0509c358bcc57b9055d0443e54a9e9729ab1a6d2c9a9f1e2786a1f65bf33661d8426008903f1a21928e48430fdf699a68c6dd41f50acdc5
+  resolution: "@radius-project/core@file:./vendor/shared-libraries/radius-project-core-0.1.0-main-04d780b72f7e.tgz#./vendor/shared-libraries/radius-project-core-0.1.0-main-04d780b72f7e.tgz::hash=011d6d&locator=root%40workspace%3A."
+  checksum: 10c0/687ae08c734ded438a90a5ea896fc2c39ff96e8bdd9711cd8efd3065ec4b4ab7c33f07d8489d4c18d52f647e31d19dc79ee5ce38c4fba6af036a6c6b96dc8a7d
   languageName: node
   linkType: hard
 
-"@radius-project/graph-react@file:./vendor/shared-libraries/radius-project-graph-react-0.1.0-icons-f89020ac197f.tgz::locator=root%40workspace%3A.":
+"@radius-project/graph-react@file:./vendor/shared-libraries/radius-project-graph-react-0.1.0-main-04d780b72f7e.tgz::locator=root%40workspace%3A.":
   version: 0.1.0
-  resolution: "@radius-project/graph-react@file:./vendor/shared-libraries/radius-project-graph-react-0.1.0-icons-f89020ac197f.tgz#./vendor/shared-libraries/radius-project-graph-react-0.1.0-icons-f89020ac197f.tgz::hash=b696fa&locator=root%40workspace%3A."
+  resolution: "@radius-project/graph-react@file:./vendor/shared-libraries/radius-project-graph-react-0.1.0-main-04d780b72f7e.tgz#./vendor/shared-libraries/radius-project-graph-react-0.1.0-main-04d780b72f7e.tgz::hash=f7dc51&locator=root%40workspace%3A."
   dependencies:
     "@radius-project/core": "npm:0.1.0"
     "@xyflow/react": "npm:12.12.0"
   peerDependencies:
     react: ^18.3.1 || ^19.2.8
     react-dom: ^18.3.1 || ^19.2.8
-    reactflow: ^11.11.4
-  peerDependenciesMeta:
-    reactflow:
-      optional: true
-  checksum: 10c0/eca871d5cc643ea3ab7b097ac4a4753d5496173bf79208f2d304d61f87bb31e11b04394045ed7c7e8e0d2026873c31cee0de7f02838bf16dcc3e3096e7c9d7fe
+  checksum: 10c0/acc9108768b501c748a6c31150c3d22e2cc869f8b501b1dd0db8c971e9d1a8d747a5c185daf966e38d039017301875e672bdb5597c7ee8b9e1843f1989e85477
   languageName: node
   linkType: hard
 
