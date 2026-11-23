@@ -15,15 +15,42 @@ import {
   type PluginInstallBundle,
 } from './verify-plugin-bundle.ts';
 
+function fixtureGit(
+  directory: string,
+  args: string[],
+  inherited = process.env,
+) {
+  const env: NodeJS.ProcessEnv = {
+    ...inherited,
+    GIT_CONFIG_NOSYSTEM: '1',
+    GIT_CONFIG_GLOBAL: path.join(directory, 'gitconfig'),
+    GIT_CONFIG_COUNT: '0',
+  };
+  for (const name of [
+    'GIT_DIR',
+    'GIT_COMMON_DIR',
+    'GIT_WORK_TREE',
+    'GIT_INDEX_FILE',
+    'GIT_CONFIG_PARAMETERS',
+  ]) {
+    delete env[name];
+  }
+  return execFileSync('git', ['-C', directory, ...args], {
+    env,
+    stdio: 'pipe',
+  });
+}
+
 function packFixture(
   root: string,
   file: string,
   name: string,
   version: string,
-  dependencies = name === '@internal/plugin-radius'
+  dependencies: Record<string, string> = name === '@internal/plugin-radius'
     ? {
         '@radius-project/core': '0.1.0',
         '@radius-project/graph-react': '0.1.0',
+        '@radapp.io/rad-components': '^0.1.0',
       }
     : {},
 ) {
@@ -154,6 +181,77 @@ test('changed or missing packages fail instead of verifying an incomplete bundle
   });
 });
 
+test('CLI verification runs through a symlinked parent and preserves caller-side link checks', () => {
+  fixture(root => {
+    const parentLink = `${root}-parent`;
+    const bundleLink = `${root}-link`;
+    fs.symlinkSync(path.dirname(root), parentLink, 'junction');
+    fs.symlinkSync(root, bundleLink, 'junction');
+    try {
+      const invoke = (file: string) =>
+        spawnSync(process.execPath, [file], { encoding: 'utf8' });
+      const linkedVerifier = path.join(
+        parentLink,
+        path.basename(root),
+        'verify.mts',
+      );
+      const clean = invoke(linkedVerifier);
+      assert.ifError(clean.error);
+      assert.equal(clean.status, 0, clean.stderr);
+      assert.match(clean.stdout, /Verified plugin bundle/);
+      fs.appendFileSync(path.join(root, 'archives', 'plugin.tgz'), 'damaged');
+      const damaged = invoke(linkedVerifier);
+      assert.ifError(damaged.error);
+      assert.notEqual(damaged.status, 0, damaged.stdout + damaged.stderr);
+      assert.match(damaged.stderr, /SHA-256 mismatch/);
+      const linkedRoot = invoke(path.join(bundleLink, 'verify.mts'));
+      assert.ifError(linkedRoot.error);
+      assert.notEqual(linkedRoot.status, 0);
+      assert.match(
+        linkedRoot.stderr,
+        /Expected a real plugin bundle directory/,
+      );
+    } finally {
+      fs.unlinkSync(parentLink);
+      fs.unlinkSync(bundleLink);
+    }
+  });
+});
+
+test('fixture Git commands cannot change an inherited repository config or index', () => {
+  fixture(root => {
+    const unrelated = path.join(root, 'unrelated');
+    const portal = path.join(root, 'portal');
+    fs.mkdirSync(unrelated);
+    fs.mkdirSync(portal);
+    fixtureGit(unrelated, ['init', '--quiet']);
+    fs.writeFileSync(
+      path.join(unrelated, 'keep.txt'),
+      'original staged bytes\n',
+    );
+    fixtureGit(unrelated, ['add', '.']);
+    const config = path.join(unrelated, '.git', 'config');
+    const index = path.join(unrelated, '.git', 'index');
+    const beforeConfig = fs.readFileSync(config);
+    const beforeIndex = fs.readFileSync(index);
+    const inherited = {
+      ...process.env,
+      GIT_DIR: path.dirname(config),
+      GIT_INDEX_FILE: index,
+    };
+    fixtureGit(portal, ['init', '--quiet'], inherited);
+    fixtureGit(portal, ['config', 'core.autocrlf', 'true'], inherited);
+    fs.writeFileSync(
+      path.join(portal, 'fixture.txt'),
+      'isolated staged bytes\n',
+    );
+    fixtureGit(portal, ['add', '.'], inherited);
+    assert.deepEqual(fs.readFileSync(config), beforeConfig);
+    assert.deepEqual(fs.readFileSync(index), beforeIndex);
+    assert(fs.existsSync(path.join(portal, '.git', 'index')));
+  });
+});
+
 test('portal attributes preserve bundle hashes through a Git checkout with autocrlf enabled', () => {
   fixture(root => {
     for (const preserve of [false, true]) {
@@ -162,8 +260,7 @@ test('portal attributes preserve bundle hashes through a Git checkout with autoc
         fs.cpSync(root, path.join(portal, 'radius-plugin-bundle'), {
           recursive: true,
         });
-        const git = (args: string[]) =>
-          execFileSync('git', ['-C', portal, ...args], { stdio: 'pipe' });
+        const git = (args: string[]) => fixtureGit(portal, args);
         git(['init', '--quiet']);
         git(['config', 'core.autocrlf', 'true']);
         git(['config', 'core.safecrlf', 'false']);
@@ -339,6 +436,51 @@ test('workspace packing restores the original manifest if prepack fails', () => 
   });
 });
 
+test('failed manifest restoration retains the owner lock and blocks the next pack', () => {
+  fixture(root => {
+    const workspace = path.join(root, 'plugin');
+    fs.mkdirSync(workspace);
+    const manifest = path.join(workspace, 'package.json');
+    fs.writeFileSync(
+      manifest,
+      '{"name":"@internal/plugin-radius","private":true}\n',
+    );
+    const lock = path.join(root, '.radius-plugin-pack.lock');
+    assert.throws(
+      () =>
+        packWorkspace(root, 'plugin', path.join(root, 'plugin.tgz'), args => {
+          if (!args.includes('pack')) return;
+          fs.writeFileSync(manifest, '{"name":"rewritten-by-prepack"}');
+          fs.renameSync(manifest, path.join(workspace, 'rewritten.json'));
+          fs.mkdirSync(manifest);
+          throw new Error('prepack failed');
+        }),
+      error => {
+        assert(error instanceof Error);
+        assert.match(error.message, /Could not restore/);
+        assert(error.message.includes(lock));
+        return true;
+      },
+    );
+    assert.deepEqual(JSON.parse(fs.readFileSync(lock, 'utf8')), {
+      pid: process.pid,
+      hostname: os.hostname(),
+      workspace: 'plugin',
+    });
+    assert.throws(
+      () =>
+        packWorkspace(root, 'plugin', path.join(root, 'retry.tgz'), () =>
+          assert.fail('Packing must not start'),
+        ),
+      /EEXIST/,
+    );
+    assert.equal(
+      fs.readFileSync(path.join(workspace, 'rewritten.json'), 'utf8'),
+      '{"name":"rewritten-by-prepack"}',
+    );
+  });
+});
+
 test('a concurrent pack cannot read or restore another packs rewritten manifest', () => {
   fixture(root => {
     const workspace = path.join(root, 'plugin');
@@ -419,6 +561,35 @@ test('supplied plugin pins must match bundled versions even when archive hashes 
   });
 });
 
+test('packed plugin must declare forwarding, without requiring an exact version pin', () => {
+  fixture((root, bundle, save) => {
+    const plugin = bundle.packages['@internal/plugin-radius'];
+    for (const range of [undefined, '', '^0.1.0', '~0.1.0']) {
+      packFixture(
+        root,
+        plugin.path,
+        '@internal/plugin-radius',
+        plugin.version,
+        {
+          '@radius-project/core': '0.1.0',
+          '@radius-project/graph-react': '0.1.0',
+          ...(range === undefined
+            ? {}
+            : { '@radapp.io/rad-components': range }),
+        },
+      );
+      plugin.sha256 = bundleFileSha256(path.join(root, plugin.path));
+      bundle.files[plugin.path] = plugin.sha256;
+      save();
+      if (range) verifyPluginInstallBundle(root);
+      else
+        assert.throws(
+          () => verifyPluginInstallBundle(root),
+          /must declare its forwarding dependency/,
+        );
+    }
+  });
+});
 test('bundle builder rejects in-repository output and existing destinations before building', () => {
   fixture(root => {
     let called = false;
@@ -453,7 +624,7 @@ test('destinations that appear during a build keep their bytes and only this run
   ]) {
     fixture(root => {
       const checkout = path.join(root, 'checkout');
-      execFileSync('git', [
+      fixtureGit(root, [
         'clone',
         '--quiet',
         '--shared',

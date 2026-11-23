@@ -200,6 +200,8 @@ Confirm that the owner and all build/pack child processes have stopped. Compare
 the recorded workspace's `package.json` with Git and restore any prepack rewrite
 without discarding intended local edits. Only then remove that lock file and retry.
 Do not remove a lock based only on its age or while any pack is still running.
+If manifest restoration fails, packing closes the descriptor but retains the owner
+record and reports the lock path. Use the same recovery steps before retrying.
 
 When a `v*` release is published in the Dashboard repository, its release event
 supplies the version tag. Dashboard CI builds and tests the plugin, then attaches:

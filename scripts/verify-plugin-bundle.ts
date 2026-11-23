@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 
 export interface PluginInstallBundle {
   formatVersion: 1;
@@ -147,6 +147,11 @@ export function verifyPluginInstallBundle(directory: string) {
       bundle.packages[dependency].version,
       `${dependency}: plugin dependency mismatch`,
     );
+  const forwarding = pluginDependencies?.['@radapp.io/rad-components'];
+  assert(
+    typeof forwarding === 'string' && forwarding.trim().length > 0,
+    'Plugin must declare its forwarding dependency: @radapp.io/rad-components',
+  );
   const candidate = JSON.parse(
     fs.readFileSync(path.join(directory, 'archives', 'candidate.json'), 'utf8'),
   );
@@ -169,7 +174,8 @@ export function verifyPluginInstallBundle(directory: string) {
 
 if (
   process.argv[1] &&
-  import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href
+  fs.realpathSync(fileURLToPath(import.meta.url)) ===
+    fs.realpathSync(process.argv[1])
 ) {
   const directory =
     process.argv[2] ?? path.dirname(path.resolve(process.argv[1]));

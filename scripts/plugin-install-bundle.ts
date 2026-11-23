@@ -36,6 +36,7 @@ export function packWorkspace(
 ) {
   const lock = path.join(root, '.radius-plugin-pack.lock');
   const lockFile = fs.openSync(lock, 'wx');
+  let manifestRestored = true;
   try {
     fs.writeFileSync(
       lockFile,
@@ -44,17 +45,27 @@ export function packWorkspace(
     const manifestFile = path.join(root, workspace, 'package.json');
     const before = fs.readFileSync(manifestFile, 'utf8');
     const manifest = JSON.parse(before);
+    manifestRestored = false;
     try {
       runYarn(['workspace', manifest.name, 'build']);
       runYarn(['workspace', manifest.name, 'pack', '--out', file]);
     } finally {
-      if (fs.readFileSync(manifestFile, 'utf8') !== before)
-        fs.writeFileSync(manifestFile, before);
+      try {
+        if (fs.readFileSync(manifestFile, 'utf8') !== before)
+          fs.writeFileSync(manifestFile, before);
+        assert.equal(fs.readFileSync(manifestFile, 'utf8'), before);
+        manifestRestored = true;
+      } catch (error) {
+        throw new Error(
+          `Could not restore ${manifestFile}. Pack lock retained at ${lock}; inspect the manifest before removing the lock.`,
+          { cause: error },
+        );
+      }
     }
     return manifest;
   } finally {
     fs.closeSync(lockFile);
-    fs.unlinkSync(lock);
+    if (manifestRestored) fs.unlinkSync(lock);
   }
 }
 
