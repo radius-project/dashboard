@@ -181,7 +181,7 @@ Use Node.js 24, the repository's Yarn version, Git and `tar`. The output path mu
 be outside the checkout and must not exist. The command verifies the pinned shared
 archives, compiles declarations, builds and packs the frontend plugin, and creates:
 
-- `radius-plugin-bundle/`: the plugin archive, the two shared archives, their
+- `radius-plugin-bundle/`: the plugin and forwarding archives, the two shared archives, their
   unchanged producer receipt, `bundle.json`, `verify.mts`, install settings and
   a short setup guide.
 - `radius-plugin-bundle.tar.gz` and its `.sha256` sidecar: the same bundle for transfer.
@@ -191,6 +191,15 @@ tool versions and each file's SHA-256. It does not contain credentials, the
 Dashboard backend, a lockfile, or a copy of the portal. The packages stay private.
 No npm publication, release upload or registry access change is part of this command.
 Checksums detect changed bytes; they do not prove who built the bundle.
+
+Packing holds `.radius-plugin-pack.lock` in the checkout from before reading a
+workspace manifest until its original bytes are restored. The lock records the
+owning process ID, host name and workspace. If a pack exits before cleanup and
+the next run reports `EEXIST` for this path, inspect the lock on the named host.
+Confirm that the owner and all build/pack child processes have stopped. Compare
+the recorded workspace's `package.json` with Git and restore any prepack rewrite
+without discarding intended local edits. Only then remove that lock file and retry.
+Do not remove a lock based only on its age or while any pack is still running.
 
 When a `v*` release is published in the Dashboard repository, its release event
 supplies the version tag. Dashboard CI builds and tests the plugin, then attaches:
@@ -211,7 +220,10 @@ package. No npm package is published. Failed tests, missing evidence, modified
 source or a source-commit mismatch prevent upload.
 
 The published-release trigger ensures the Dashboard release exists before upload.
-If the plugin build or upload fails, rerun the failed Dashboard workflow jobs.
+If only the upload fails, rerun the failed Dashboard publisher while the successful
+build artifact is still available. Artifacts expire after seven days. After that,
+rerun the build and qualification too, so the publisher receives a new artifact ID.
+If the build fails, rerun the build and its dependent publisher.
 Existing assets are not overwritten; remove partial plugin uploads before retrying.
 Older releases do not gain assets automatically.
 
@@ -259,6 +271,14 @@ To consume the bundle in a standard Backstage portal:
    and `root.resolutions` into the portal root `package.json`. The generated paths
    assume this standard workspace layout. Review conflicts rather than replacing
    existing entries. If your layout differs, adjust the relative paths together.
+1. Before adding the bundle to Git, add this rule to the portal-root `.gitattributes`:
+
+   ```gitattributes
+   radius-plugin-bundle/** -text
+   ```
+
+   This keeps the hashed bytes unchanged when `core.autocrlf=true`. Keep the rule
+   outside the bundle: the verifier rejects extra files inside it.
 1. Run the portal's normal Yarn install and build. Keep the bundle with the portal
    source so future installs can resolve its files.
 1. Register `@internal/plugin-radius/alpha` with the Kubernetes frontend feature
@@ -291,8 +311,8 @@ outside the checkout. The runner creates a fresh consumer there. It retains
 logs in the evidence directory and copies archives, fixture sources, lockfiles,
 builds, and results there, but not `node_modules`.
 
-The runner uses the [plugin install bundle](#plugin-install-bundle) and separately
-builds and packs the forwarding compatibility package for its existing checks.
+The runner uses the [plugin install bundle](#plugin-install-bundle), including its
+forwarding compatibility package. It does not build a substitute forwarding archive.
 It installs those tarballs and the pinned shared pair with Yarn, without repository
 dependency links. The fresh consumer uses the repository lockfile as a dependency seed.
 The first install updates that seed for the packed dependencies with

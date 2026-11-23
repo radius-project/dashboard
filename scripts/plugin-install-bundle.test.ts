@@ -60,6 +60,7 @@ function fixture(
     ['@internal/plugin-radius', 'plugin.tgz'],
     ['@radius-project/core', 'core.tgz'],
     ['@radius-project/graph-react', 'graph.tgz'],
+    ['@radapp.io/rad-components', 'forwarding.tgz'],
   ]) {
     const relative = `archives/${file}`;
     packFixture(root, relative, name, '0.1.0');
@@ -127,6 +128,7 @@ test('portable bundle verifies inside a CommonJS portal after a tar round trip w
     assert.match(output, /Verified plugin bundle/);
     const settings = pluginInstallSettings(bundle);
     assert.deepEqual(Object.keys(settings.root.resolutions).sort(), [
+      '@radapp.io/rad-components',
       '@radius-project/core',
       '@radius-project/graph-react',
     ]);
@@ -149,6 +151,42 @@ test('changed or missing packages fail instead of verifying an incomplete bundle
     assert.throws(() => verifyPluginInstallBundle(root), /SHA-256 mismatch/);
     fs.unlinkSync(file);
     assert.throws(() => verifyPluginInstallBundle(root), /ENOENT/);
+  });
+});
+
+test('portal attributes preserve bundle hashes through a Git checkout with autocrlf enabled', () => {
+  fixture(root => {
+    for (const preserve of [false, true]) {
+      const portal = fs.mkdtempSync(path.join(os.tmpdir(), 'bundle-portal-'));
+      try {
+        fs.cpSync(root, path.join(portal, 'radius-plugin-bundle'), {
+          recursive: true,
+        });
+        const git = (args: string[]) =>
+          execFileSync('git', ['-C', portal, ...args], { stdio: 'pipe' });
+        git(['init', '--quiet']);
+        git(['config', 'core.autocrlf', 'true']);
+        git(['config', 'core.safecrlf', 'false']);
+        if (preserve)
+          fs.writeFileSync(
+            path.join(portal, '.gitattributes'),
+            'radius-plugin-bundle/** -text\n',
+          );
+        git(['add', '.']);
+        const restored = path.join(portal, 'restored');
+        fs.mkdirSync(restored);
+        git(['checkout-index', '--all', `--prefix=${restored}${path.sep}`]);
+        const bundle = path.join(restored, 'radius-plugin-bundle');
+        if (preserve) verifyPluginInstallBundle(bundle);
+        else
+          assert.throws(
+            () => verifyPluginInstallBundle(bundle),
+            /SHA-256 mismatch/,
+          );
+      } finally {
+        fs.rmSync(portal, { recursive: true, force: true });
+      }
+    }
   });
 });
 
@@ -312,6 +350,15 @@ test('a concurrent pack cannot read or restore another packs rewritten manifest'
       () =>
         packWorkspace(root, 'plugin', path.join(root, 'a.tgz'), args => {
           if (!args.includes('pack')) return;
+          assert.deepEqual(
+            JSON.parse(
+              fs.readFileSync(
+                path.join(root, '.radius-plugin-pack.lock'),
+                'utf8',
+              ),
+            ),
+            { pid: process.pid, hostname: os.hostname(), workspace: 'plugin' },
+          );
           fs.writeFileSync(manifest, '{"name":"rewritten-by-prepack"}');
           const child = spawnSync(
             process.execPath,
@@ -405,12 +452,30 @@ test('destinations that appear during a build keep their bytes and only this run
     'checksum',
   ]) {
     fixture(root => {
-      packFixture(
-        root,
-        'archives/plugin.tgz',
-        plugin.name,
-        plugin.version,
-        plugin.dependencies,
+      const checkout = path.join(root, 'checkout');
+      execFileSync('git', [
+        'clone',
+        '--quiet',
+        '--shared',
+        '--no-checkout',
+        repository,
+        checkout,
+      ]);
+      for (const file of [
+        'package.json',
+        'plugins/plugin-radius/package.json',
+        'packages/rad-components/package.json',
+        'scripts/verify-plugin-bundle.ts',
+      ]) {
+        fs.mkdirSync(path.dirname(path.join(checkout, file)), {
+          recursive: true,
+        });
+        fs.copyFileSync(path.join(repository, file), path.join(checkout, file));
+      }
+      fs.cpSync(
+        path.join(repository, 'vendor', 'shared-libraries'),
+        path.join(checkout, 'vendor', 'shared-libraries'),
+        { recursive: true },
       );
       const output = path.join(root, 'output');
       const archive = `${output}.tar.gz`;
@@ -422,20 +487,54 @@ test('destinations that appear during a build keep their bytes and only this run
             : path.join(output, 'keep.txt');
       assert.throws(
         () =>
-          buildPluginInstallBundle(repository, output, args => {
+          buildPluginInstallBundle(checkout, output, args => {
             if (args[0] === 'tsc') {
               if (collision === 'directory' || collision === 'empty-directory')
                 fs.mkdirSync(output);
               if (collision !== 'empty-directory')
                 fs.writeFileSync(marker, 'other build output');
             }
-            if (args.includes('pack'))
-              fs.copyFileSync(
-                path.join(root, 'archives', 'plugin.tgz'),
-                args[args.length - 1],
+            if (args.includes('pack')) {
+              const workspace =
+                args[1] === plugin.name
+                  ? 'plugins/plugin-radius'
+                  : 'packages/rad-components';
+              const manifest = JSON.parse(
+                fs.readFileSync(
+                  path.join(checkout, workspace, 'package.json'),
+                  'utf8',
+                ),
               );
+              packFixture(
+                root,
+                path.relative(root, args[args.length - 1]),
+                manifest.name,
+                manifest.version,
+                manifest.dependencies,
+              );
+            }
           }),
-        /EEXIST|ENOTEMPTY|EPERM|EACCES/,
+        error => {
+          assert(error instanceof Error);
+          assert.doesNotMatch(error.message, /\.radius-plugin-pack\.lock/);
+          assert('code' in error);
+          assert.match(String(error.code), /^(EEXIST|ENOTEMPTY|EPERM|EACCES)$/);
+          const destination =
+            'dest' in error
+              ? error.dest
+              : 'path' in error
+                ? error.path
+                : undefined;
+          assert.equal(
+            destination,
+            collision === 'archive'
+              ? archive
+              : collision === 'checksum'
+                ? `${archive}.sha256`
+                : output,
+          );
+          return true;
+        },
       );
       if (collision === 'empty-directory')
         assert.deepEqual(fs.readdirSync(output), []);

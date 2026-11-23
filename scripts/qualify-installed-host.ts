@@ -16,7 +16,6 @@ import {
 } from './shared-library-candidate.ts';
 import {
   buildPluginInstallBundle,
-  packWorkspace,
   yarnInvocation,
 } from './plugin-install-bundle.ts';
 import {
@@ -54,8 +53,6 @@ if (workDirectory) fs.mkdirSync(workDirectory, { recursive: true });
 const consumer = workDirectory
   ? fs.mkdtempSync(path.join(workDirectory, 'installed-host-'))
   : recordDirectory;
-const archives = path.join(consumer, 'archives');
-fs.mkdirSync(archives);
 const commands: {
   command: string[];
   cwd: string;
@@ -174,18 +171,6 @@ try {
       file: path.join(bundleDirectory, artifact.path),
       sha256: artifact.sha256,
     };
-  const forwardingFile = path.join(archives, 'forwarding.tgz');
-  if (suppliedBundle) runYarn(['tsc']);
-  const forwarding = packWorkspace(
-    root,
-    'packages/rad-components',
-    forwardingFile,
-    args => runYarn(args),
-  );
-  artifacts[forwarding.name] = {
-    file: forwardingFile,
-    sha256: sha256(forwardingFile),
-  };
   const dependencies: Record<string, string> = {};
   const packageNames = new Set([
     '@backstage/app-defaults',
@@ -244,7 +229,6 @@ try {
     ...repositoryManifest.resolutions,
     ...settings.root.resolutions,
     '@backstage/core-app-api': dependencies['@backstage/core-app-api'],
-    '@radapp.io/rad-components': dependencies['@radapp.io/rad-components'],
     '@types/react': dependencies['@types/react'],
     '@types/react-dom': dependencies['@types/react-dom'],
   };
@@ -561,7 +545,6 @@ try {
 } finally {
   if (consumer !== recordDirectory) {
     for (const name of [
-      'archives',
       'radius-plugin-bundle',
       'bundle-build.tar.gz',
       'bundle-build.tar.gz.sha256',

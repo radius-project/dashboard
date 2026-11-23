@@ -133,7 +133,7 @@ jobs:
               (.bundle.manifestSha256 | digest) and (.installedLockSha256 | digest) and
               (.node | identity) and (.packageManager | identity) and (.compiler | identity) and
               (.entries == ["@internal/plugin-radius", "@internal/plugin-radius/alpha"]) and
-              (all(.bundle.packages["@internal/plugin-radius", "@radius-project/core", "@radius-project/graph-react"];
+              (all(.bundle.packages["@internal/plugin-radius", "@radius-project/core", "@radius-project/graph-react", "@radapp.io/rad-components"];
                 (.version | identity) and (.path | identity) and (.sha256 | digest)))) |
             {stage, bundle, entries, node, packageManager, compiler, installedLockSha256}
           ' "${record}/qualification.json" > "${BUNDLE_ASSETS}/radius-backstage-plugin-${GITHUB_REF_NAME}.qualification.json"

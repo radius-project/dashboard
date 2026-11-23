@@ -807,6 +807,7 @@ test('release asset preparation rejects a changed transfer archive with the orig
             '@internal/plugin-radius',
             '@radius-project/core',
             '@radius-project/graph-react',
+            '@radapp.io/rad-components',
           ].map((name, i) => [
             name,
             {

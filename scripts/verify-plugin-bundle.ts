@@ -17,6 +17,7 @@ export const bundlePackageNames = [
   '@internal/plugin-radius',
   '@radius-project/core',
   '@radius-project/graph-react',
+  '@radapp.io/rad-components',
 ] as const;
 
 export const bundleFileSha256 = (file: string) =>
@@ -63,7 +64,7 @@ export function verifyPluginInstallBundle(directory: string) {
   assert.deepEqual(
     Object.keys(bundle.packages).sort(),
     [...bundlePackageNames].sort(),
-    'Expected the plugin and its two shared packages',
+    'Expected the plugin, forwarding package and two shared packages',
   );
   const expectedFiles = [
     'README.md',
@@ -72,7 +73,7 @@ export function verifyPluginInstallBundle(directory: string) {
     'archives/candidate.json',
     ...bundlePackageNames.map(name => bundle.packages[name].path),
   ];
-  assert.equal(new Set(expectedFiles).size, 7, 'Duplicate bundle paths');
+  assert.equal(new Set(expectedFiles).size, 8, 'Duplicate bundle paths');
   assert.deepEqual(Object.keys(bundle.files).sort(), expectedFiles.sort());
   assert(
     fs.lstatSync(path.join(directory, 'archives')).isDirectory(),
@@ -137,7 +138,10 @@ export function verifyPluginInstallBundle(directory: string) {
     if (name === '@internal/plugin-radius')
       pluginDependencies = packed.dependencies;
   }
-  for (const dependency of bundlePackageNames.slice(1))
+  for (const dependency of [
+    '@radius-project/core',
+    '@radius-project/graph-react',
+  ])
     assert.equal(
       pluginDependencies?.[dependency],
       bundle.packages[dependency].version,

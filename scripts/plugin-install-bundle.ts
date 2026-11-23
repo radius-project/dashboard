@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { isInsidePath } from './installed-host.ts';
@@ -36,6 +37,10 @@ export function packWorkspace(
   const lock = path.join(root, '.radius-plugin-pack.lock');
   const lockFile = fs.openSync(lock, 'wx');
   try {
+    fs.writeFileSync(
+      lockFile,
+      `${JSON.stringify({ pid: process.pid, hostname: os.hostname(), workspace })}\n`,
+    );
     const manifestFile = path.join(root, workspace, 'package.json');
     const before = fs.readFileSync(manifestFile, 'utf8');
     const manifest = JSON.parse(before);
@@ -98,6 +103,18 @@ export function buildPluginInstallBundle(
         version: plugin.version,
         sha256: bundleFileSha256(path.join(contents, pluginPath)),
       },
+    };
+    const forwardingPath = 'archives/forwarding.tgz';
+    const forwarding = packWorkspace(
+      root,
+      'packages/rad-components',
+      path.join(contents, forwardingPath),
+      runYarn,
+    );
+    packages[forwarding.name] = {
+      path: forwardingPath,
+      version: forwarding.version,
+      sha256: bundleFileSha256(path.join(contents, forwardingPath)),
     };
     for (const [name, identity, version] of [
       ['@radius-project/core', candidate.core, shared.core.version],
@@ -166,10 +183,14 @@ Checksums detect changed bytes; they do not prove publisher identity.
    and root.resolutions into the portal root package.json. Preserve existing
    settings. If a Radius dependency or resolution already exists, review it first.
    The paths assume the standard packages/app workspace; adjust them together if
-   your layout differs. Keep the bundle with the portal source for later installs.
+   your layout differs. Before adding the bundle to Git, add this rule to the
+   portal-root .gitattributes, outside the bundle:
+   radius-plugin-bundle/** -text
+   This preserves the hashed bytes when core.autocrlf is enabled. Keep the bundle
+   with the portal source for later installs. Do not add files inside the bundle.
 4. Run the portal's Yarn install and normal build. Do not copy Dashboard's full
-   package manifest or lockfile. This bundle supplies only the two Radius
-   dependency overrides; keep the portal's other dependency policies.
+   package manifest or lockfile. This bundle supplies overrides for the forwarding
+   package and two Radius libraries; keep the portal's other dependency policies.
 5. Register the native frontend feature from @internal/plugin-radius/alpha and
    @backstage/plugin-kubernetes/alpha, or use the legacy root page exports.
    Use the portal's navigation and route refs. Configure its Kubernetes backend

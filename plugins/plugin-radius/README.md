@@ -75,8 +75,8 @@ Shared library version `0.1.0` is development metadata, not proof of a registry 
 check. Do not use it to qualify a clean external host.
 
 Run `yarn test:e2e:installed` with `QUALIFICATION_EVIDENCE_DIRECTORY` set to a
-persistent absolute path outside the checkout. Each run builds new plugin and
-forwarding tarballs, installs all frontend dependencies in a new consumer, and
+persistent absolute path outside the checkout. Each run uses the plugin and
+forwarding tarballs from the install bundle, installs all frontend dependencies in a new consumer, and
 uses the same production browser journeys for the packed root and `/alpha`
 entries. Native Radius uses explicit feature registration, not a Radius plugin
 converter. The fixture host owns navigation, external route bindings, and its
