@@ -33,17 +33,24 @@ export function packWorkspace(
   file: string,
   runYarn: RunYarn,
 ) {
-  const manifestFile = path.join(root, workspace, 'package.json');
-  const before = fs.readFileSync(manifestFile, 'utf8');
-  const manifest = JSON.parse(before);
+  const lock = path.join(root, '.radius-plugin-pack.lock');
+  const lockFile = fs.openSync(lock, 'wx');
   try {
-    runYarn(['workspace', manifest.name, 'build']);
-    runYarn(['workspace', manifest.name, 'pack', '--out', file]);
+    const manifestFile = path.join(root, workspace, 'package.json');
+    const before = fs.readFileSync(manifestFile, 'utf8');
+    const manifest = JSON.parse(before);
+    try {
+      runYarn(['workspace', manifest.name, 'build']);
+      runYarn(['workspace', manifest.name, 'pack', '--out', file]);
+    } finally {
+      if (fs.readFileSync(manifestFile, 'utf8') !== before)
+        fs.writeFileSync(manifestFile, before);
+    }
+    return manifest;
   } finally {
-    if (fs.readFileSync(manifestFile, 'utf8') !== before)
-      fs.writeFileSync(manifestFile, before);
+    fs.closeSync(lockFile);
+    fs.unlinkSync(lock);
   }
-  return manifest;
 }
 
 export function buildPluginInstallBundle(

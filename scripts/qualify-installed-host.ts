@@ -218,7 +218,6 @@ try {
     dependencies[name] =
       `file:./${path.relative(consumer, artifact.file).replaceAll('\\', '/')}`;
   }
-  fs.copyFileSync(receiptPath, path.join(archives, 'candidate.json'));
   fs.writeFileSync(
     path.join(consumer, 'tuple.json'),
     `${JSON.stringify(

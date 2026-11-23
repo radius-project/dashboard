@@ -281,6 +281,9 @@ directory. The runner retains candidate archives, the clean consumer manifest
 and lockfile, the exact tested tuple, build metadata, browser records, and each
 command's log and result. A failed command retains its evidence and exits with
 an error. Each run creates a new consumer; it does not reuse an old install.
+The shared-library receipt stays beside its verified archives in
+`radius-plugin-bundle/archives/candidate.json`. Verify the retained receipt with
+`yarn verify:shared-candidate /absolute/path/to/installed-host-record/radius-plugin-bundle/archives/candidate.json`.
 
 For WSL or another system with a slow mounted drive, set
 `QUALIFICATION_WORK_DIRECTORY` to an absolute, native-filesystem directory

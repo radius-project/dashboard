@@ -797,13 +797,33 @@ test('release asset preparation rejects a changed transfer archive with the orig
     const revision = 'a'.repeat(40);
     const original = Buffer.from('tested transfer archive');
     const digest = createHash('sha256').update(original).digest('hex');
-    writeFileSync(
-      join(record, 'qualification.json'),
-      JSON.stringify({
-        stage: 'installed-external-frontend',
-        bundle: { source: { revision, dirty: false } },
-      }),
-    );
+    const receipt = {
+      stage: 'installed-external-frontend',
+      bundle: {
+        source: { revision, dirty: false },
+        manifestSha256: digest,
+        packages: Object.fromEntries(
+          [
+            '@internal/plugin-radius',
+            '@radius-project/core',
+            '@radius-project/graph-react',
+          ].map((name, i) => [
+            name,
+            {
+              path: `archives/package-${i}.tgz`,
+              version: '0.1.0',
+              sha256: digest,
+            },
+          ]),
+        ),
+      },
+      entries: ['@internal/plugin-radius', '@internal/plugin-radius/alpha'],
+      node: 'v24.22.0',
+      packageManager: 'yarn@4.18.1',
+      compiler: '6.0.3',
+      installedLockSha256: digest,
+    };
+    writeFileSync(join(record, 'qualification.json'), JSON.stringify(receipt));
     writeFileSync(join(record, 'bundle-build.tar.gz'), original);
     writeFileSync(
       join(record, 'bundle-build.tar.gz.sha256'),
@@ -829,6 +849,36 @@ test('release asset preparation rejects a changed transfer archive with the orig
       readFileSync(join(assets, `${archive}.sha256`), 'utf8'),
       `${digest}  ${archive}\n`,
     );
+    for (const invalid of [
+      {
+        ...receipt,
+        installedLockSha256: undefined,
+      },
+      { ...receipt, installedLockSha256: null },
+      {
+        ...receipt,
+        bundle: { ...receipt.bundle, manifestSha256: undefined },
+      },
+      ...Object.keys(receipt.bundle.packages).map(name => ({
+        ...receipt,
+        bundle: {
+          ...receipt.bundle,
+          packages: { ...receipt.bundle.packages, [name]: undefined },
+        },
+      })),
+      { ...receipt, compiler: null },
+      { ...receipt, entries: [] },
+    ]) {
+      writeFileSync(
+        join(record, 'qualification.json'),
+        JSON.stringify(invalid),
+      );
+      const rejected = run();
+      assert.ifError(rejected.error);
+      assert.notEqual(rejected.status, 0, JSON.stringify(invalid));
+      assert.deepEqual(readFileSync(join(assets, archive)), original);
+    }
+    writeFileSync(join(record, 'qualification.json'), JSON.stringify(receipt));
     writeFileSync(
       join(record, 'bundle-build.tar.gz'),
       'changed after extraction',

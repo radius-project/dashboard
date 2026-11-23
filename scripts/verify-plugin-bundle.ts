@@ -110,6 +110,7 @@ export function verifyPluginInstallBundle(directory: string) {
       .sort(),
     'Unexpected bundle archive entries',
   );
+  let pluginDependencies: Record<string, string> | undefined;
   for (const [name, artifact] of Object.entries(bundle.packages)) {
     assert.match(artifact.path, /^archives\/[a-zA-Z0-9._-]+\.tgz$/);
     assert.equal(typeof artifact.version, 'string');
@@ -133,7 +134,15 @@ export function verifyPluginInstallBundle(directory: string) {
       artifact.version,
       `${name}: archive version mismatch`,
     );
+    if (name === '@internal/plugin-radius')
+      pluginDependencies = packed.dependencies;
   }
+  for (const dependency of bundlePackageNames.slice(1))
+    assert.equal(
+      pluginDependencies?.[dependency],
+      bundle.packages[dependency].version,
+      `${dependency}: plugin dependency mismatch`,
+    );
   const candidate = JSON.parse(
     fs.readFileSync(path.join(directory, 'archives', 'candidate.json'), 'utf8'),
   );

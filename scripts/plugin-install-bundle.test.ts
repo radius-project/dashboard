@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -20,12 +20,18 @@ function packFixture(
   file: string,
   name: string,
   version: string,
+  dependencies = name === '@internal/plugin-radius'
+    ? {
+        '@radius-project/core': '0.1.0',
+        '@radius-project/graph-react': '0.1.0',
+      }
+    : {},
 ) {
   const contents = path.join(root, 'package');
   fs.mkdirSync(contents);
   fs.writeFileSync(
     path.join(contents, 'package.json'),
-    JSON.stringify({ name, version }),
+    JSON.stringify({ name, version, dependencies }),
   );
   try {
     execFileSync('tar', ['-czf', path.join(root, file), '-C', root, 'package']);
@@ -295,6 +301,77 @@ test('workspace packing restores the original manifest if prepack fails', () => 
   });
 });
 
+test('a concurrent pack cannot read or restore another packs rewritten manifest', () => {
+  fixture(root => {
+    const workspace = path.join(root, 'plugin');
+    fs.mkdirSync(workspace);
+    const manifest = path.join(workspace, 'package.json');
+    const original = '{"name":"@internal/plugin-radius","private":true}\n';
+    fs.writeFileSync(manifest, original);
+    assert.throws(
+      () =>
+        packWorkspace(root, 'plugin', path.join(root, 'a.tgz'), args => {
+          if (!args.includes('pack')) return;
+          fs.writeFileSync(manifest, '{"name":"rewritten-by-prepack"}');
+          const child = spawnSync(
+            process.execPath,
+            [
+              '--input-type=module',
+              '-e',
+              `
+        import { packWorkspace } from ${JSON.stringify(new URL('./plugin-install-bundle.ts', import.meta.url).href)};
+        packWorkspace(${JSON.stringify(root)}, 'plugin', ${JSON.stringify(path.join(root, 'b.tgz'))}, () => {});
+      `,
+            ],
+            { encoding: 'utf8' },
+          );
+          assert.notEqual(child.status, 0);
+          assert.match(child.stderr, /EEXIST/);
+          assert.equal(
+            fs.readFileSync(manifest, 'utf8'),
+            '{"name":"rewritten-by-prepack"}',
+          );
+          throw new Error('prepack failed');
+        }),
+      /prepack failed/,
+    );
+    assert.equal(fs.readFileSync(manifest, 'utf8'), original);
+    assert.equal(
+      fs.existsSync(path.join(root, '.radius-plugin-pack.lock')),
+      false,
+    );
+  });
+});
+
+test('supplied plugin pins must match bundled versions even when archive hashes match', () => {
+  fixture((root, bundle, save) => {
+    const plugin = bundle.packages['@internal/plugin-radius'];
+    for (const name of [
+      '@radius-project/core',
+      '@radius-project/graph-react',
+    ]) {
+      packFixture(
+        root,
+        plugin.path,
+        '@internal/plugin-radius',
+        plugin.version,
+        {
+          '@radius-project/core': '0.1.0',
+          '@radius-project/graph-react': '0.1.0',
+          [name]: '9.9.9',
+        },
+      );
+      plugin.sha256 = bundleFileSha256(path.join(root, plugin.path));
+      bundle.files[plugin.path] = plugin.sha256;
+      save();
+      assert.throws(
+        () => verifyPluginInstallBundle(root),
+        /plugin dependency mismatch/,
+      );
+    }
+  });
+});
+
 test('bundle builder rejects in-repository output and existing destinations before building', () => {
   fixture(root => {
     let called = false;
@@ -328,7 +405,13 @@ test('destinations that appear during a build keep their bytes and only this run
     'checksum',
   ]) {
     fixture(root => {
-      packFixture(root, 'archives/plugin.tgz', plugin.name, plugin.version);
+      packFixture(
+        root,
+        'archives/plugin.tgz',
+        plugin.name,
+        plugin.version,
+        plugin.dependencies,
+      );
       const output = path.join(root, 'output');
       const archive = `${output}.tar.gz`;
       const marker =
