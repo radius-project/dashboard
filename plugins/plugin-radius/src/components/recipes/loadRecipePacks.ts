@@ -1,5 +1,5 @@
-import { QueryFailure } from '@radius-project/core/domain';
 import { RadiusApi } from '../../api';
+import type { QueryFailure } from '../../api/queryContracts';
 import { RecipePackProperties, Resource } from '../../resources';
 
 export async function loadRecipePacks(
