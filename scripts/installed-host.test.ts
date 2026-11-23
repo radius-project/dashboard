@@ -19,6 +19,11 @@ test('clean installed host seeds the tested dependency tuple and can update its 
   const evidence = fs.mkdtempSync(
     path.join(os.tmpdir(), 'installed-host-seed-'),
   );
+  const inheritedBundle = process.env.QUALIFICATION_PLUGIN_BUNDLE;
+  process.env.QUALIFICATION_PLUGIN_BUNDLE = path.join(
+    evidence,
+    'missing-bundle',
+  );
   try {
     const childProcessSource = `
       import assert from 'node:assert/strict';
@@ -93,6 +98,7 @@ test('clean installed host seeds the tested dependency tuple and can update its 
           QUALIFICATION_WORK_DIRECTORY: '',
           QUALIFICATION_FULL_HOST_MATRIX: '',
           QUALIFICATION_CONTAINER_IMAGE: '',
+          QUALIFICATION_PLUGIN_BUNDLE: '',
         },
       },
     );
@@ -105,6 +111,9 @@ test('clean installed host seeds the tested dependency tuple and can update its 
     );
     assert.match(result.stderr, /Injected stop before package installation/);
   } finally {
+    if (inheritedBundle === undefined)
+      delete process.env.QUALIFICATION_PLUGIN_BUNDLE;
+    else process.env.QUALIFICATION_PLUGIN_BUNDLE = inheritedBundle;
     fs.rmSync(evidence, { recursive: true, force: true });
   }
 });

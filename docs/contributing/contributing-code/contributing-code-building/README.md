@@ -186,6 +186,11 @@ archives, compiles declarations, builds and packs the frontend plugin, and creat
   a short setup guide.
 - `radius-plugin-bundle.tar.gz` and its `.sha256` sidecar: the same bundle for transfer.
 
+Build on a filesystem that supports hard links, such as NTFS or ext4. Archive
+publication uses a hard link to avoid replacing another build's output. exFAT
+destinations cannot do this; build on a supported filesystem, then copy the
+finished archive and checksum to the transfer drive.
+
 The bundle records the Dashboard commit, whether the source has changes, build
 tool versions and each file's SHA-256. It does not contain credentials, the
 Dashboard backend, a lockfile, or a copy of the portal. The packages stay private.
@@ -202,6 +207,7 @@ without discarding intended local edits. Only then remove that lock file and ret
 Do not remove a lock based only on its age or while any pack is still running.
 If manifest restoration fails, packing closes the descriptor but retains the owner
 record and reports the lock path. Use the same recovery steps before retrying.
+The bundle builder and `yarn test:package` use this same lock.
 
 When a `v*` release is published in the Dashboard repository, its release event
 supplies the version tag. Dashboard CI builds and tests the plugin, then attaches:

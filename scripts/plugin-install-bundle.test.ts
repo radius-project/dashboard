@@ -31,6 +31,7 @@ function fixtureGit(
     'GIT_COMMON_DIR',
     'GIT_WORK_TREE',
     'GIT_INDEX_FILE',
+    'GIT_CONFIG',
     'GIT_CONFIG_PARAMETERS',
   ]) {
     delete env[name];
@@ -65,6 +66,52 @@ function packFixture(
   } finally {
     fs.rmSync(contents, { recursive: true, force: true });
   }
+}
+
+function builderCheckout(root: string) {
+  const repository = path.resolve(import.meta.dirname, '..');
+  const checkout = path.join(root, 'checkout');
+  fixtureGit(root, [
+    'clone',
+    '--quiet',
+    '--shared',
+    '--no-checkout',
+    repository,
+    checkout,
+  ]);
+  for (const file of [
+    'package.json',
+    'plugins/plugin-radius/package.json',
+    'packages/rad-components/package.json',
+    'scripts/verify-plugin-bundle.ts',
+  ]) {
+    fs.mkdirSync(path.dirname(path.join(checkout, file)), { recursive: true });
+    fs.copyFileSync(path.join(repository, file), path.join(checkout, file));
+  }
+  fs.cpSync(
+    path.join(repository, 'vendor', 'shared-libraries'),
+    path.join(checkout, 'vendor', 'shared-libraries'),
+    { recursive: true },
+  );
+  return checkout;
+}
+
+function fixturePacker(root: string, checkout: string, args: string[]) {
+  if (!args.includes('pack')) return;
+  const workspace =
+    args[1] === '@internal/plugin-radius'
+      ? 'plugins/plugin-radius'
+      : 'packages/rad-components';
+  const manifest = JSON.parse(
+    fs.readFileSync(path.join(checkout, workspace, 'package.json'), 'utf8'),
+  );
+  packFixture(
+    root,
+    path.relative(root, args[args.length - 1]),
+    manifest.name,
+    manifest.version,
+    manifest.dependencies,
+  );
 }
 
 function fixture(
@@ -218,6 +265,42 @@ test('CLI verification runs through a symlinked parent and preserves caller-side
   });
 });
 
+test('verifier can be imported from Node stdin without running its CLI', () => {
+  fixture(root => {
+    const result = spawnSync(process.execPath, ['--input-type=module', '-'], {
+      input: `
+        import { verifyPluginInstallBundle } from ${JSON.stringify(new URL('./verify-plugin-bundle.ts', import.meta.url).href)};
+        verifyPluginInstallBundle(${JSON.stringify(root)});
+        console.log('Imported verifier from stdin');
+      `,
+      encoding: 'utf8',
+    });
+    assert.ifError(result.error);
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+    assert.equal(result.stdout.trim(), 'Imported verifier from stdin');
+  });
+});
+
+test('builder CLI reports usage through a symlinked parent', () => {
+  const repository = path.resolve(import.meta.dirname, '..');
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'bundle-cli-'));
+  const linked = path.join(root, 'checkout');
+  fs.symlinkSync(repository, linked, 'junction');
+  try {
+    const result = spawnSync(
+      process.execPath,
+      [path.join(linked, 'scripts', 'plugin-install-bundle.ts')],
+      { encoding: 'utf8' },
+    );
+    assert.ifError(result.error);
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /Usage: yarn bundle:plugin/);
+  } finally {
+    fs.unlinkSync(linked);
+    fs.rmdirSync(root);
+  }
+});
+
 test('fixture Git commands cannot change an inherited repository config or index', () => {
   fixture(root => {
     const unrelated = path.join(root, 'unrelated');
@@ -238,6 +321,7 @@ test('fixture Git commands cannot change an inherited repository config or index
       ...process.env,
       GIT_DIR: path.dirname(config),
       GIT_INDEX_FILE: index,
+      GIT_CONFIG: config,
     };
     fixtureGit(portal, ['init', '--quiet'], inherited);
     fixtureGit(portal, ['config', 'core.autocrlf', 'true'], inherited);
@@ -249,6 +333,10 @@ test('fixture Git commands cannot change an inherited repository config or index
     assert.deepEqual(fs.readFileSync(config), beforeConfig);
     assert.deepEqual(fs.readFileSync(index), beforeIndex);
     assert(fs.existsSync(path.join(portal, '.git', 'index')));
+    assert.match(
+      fs.readFileSync(path.join(portal, '.git', 'config'), 'utf8'),
+      /autocrlf = true/,
+    );
   });
 });
 
@@ -516,6 +604,21 @@ test('a concurrent pack cannot read or restore another packs rewritten manifest'
           );
           assert.notEqual(child.status, 0);
           assert.match(child.stderr, /EEXIST/);
+          const otherWriter = spawnSync(
+            process.execPath,
+            [
+              '--input-type=module',
+              '-e',
+              `
+        import { withWorkspaceManifest } from ${JSON.stringify(new URL('../plugins/plugin-radius/workspace-manifest.ts', import.meta.url).href)};
+        withWorkspaceManifest(${JSON.stringify(root)}, 'missing-workspace', () => { throw new Error('Other writer started'); });
+      `,
+            ],
+            { encoding: 'utf8' },
+          );
+          assert.ifError(otherWriter.error);
+          assert.notEqual(otherWriter.status, 0);
+          assert.match(otherWriter.stderr, /EEXIST/);
           assert.equal(
             fs.readFileSync(manifest, 'utf8'),
             '{"name":"rewritten-by-prepack"}',
@@ -529,6 +632,62 @@ test('a concurrent pack cannot read or restore another packs rewritten manifest'
       fs.existsSync(path.join(root, '.radius-plugin-pack.lock')),
       false,
     );
+  });
+});
+
+test('bundle provenance uses its checkout despite inherited Git repository overrides', () => {
+  fixture(root => {
+    const checkout = builderCheckout(root);
+    const other = path.join(root, 'other');
+    fs.mkdirSync(other);
+    fixtureGit(other, ['init', '--quiet']);
+    fixtureGit(other, [
+      '-c',
+      'user.name=Bundle fixture',
+      '-c',
+      'user.email=bundle@example.invalid',
+      '-c',
+      'commit.gpgsign=false',
+      'commit',
+      '--quiet',
+      '--allow-empty',
+      '-m',
+      'Unrelated checkout',
+    ]);
+    const revision = fixtureGit(checkout, ['rev-parse', 'HEAD'])
+      .toString()
+      .trim();
+    assert.notEqual(
+      revision,
+      fixtureGit(other, ['rev-parse', 'HEAD']).toString().trim(),
+    );
+    assert.equal(fixtureGit(other, ['status', '--porcelain']).length, 0);
+    assert(fixtureGit(checkout, ['status', '--porcelain']).length > 0);
+    const overrides = {
+      GIT_DIR: path.join(other, '.git'),
+      GIT_COMMON_DIR: path.join(other, '.git'),
+      GIT_WORK_TREE: other,
+      GIT_INDEX_FILE: path.join(other, '.git', 'index'),
+    };
+    const previous = Object.fromEntries(
+      Object.keys(overrides).map(name => [name, process.env[name]]),
+    );
+    try {
+      Object.assign(process.env, overrides);
+      const output = path.join(root, 'output');
+      buildPluginInstallBundle(checkout, output, args =>
+        fixturePacker(root, checkout, args),
+      );
+      assert.deepEqual(verifyPluginInstallBundle(output).source, {
+        revision,
+        dirty: true,
+      });
+    } finally {
+      for (const [name, value] of Object.entries(previous)) {
+        if (value === undefined) delete process.env[name];
+        else process.env[name] = value;
+      }
+    }
   });
 });
 
@@ -609,13 +768,6 @@ test('bundle builder rejects in-repository output and existing destinations befo
 });
 
 test('destinations that appear during a build keep their bytes and only this run is rolled back', () => {
-  const repository = path.resolve(import.meta.dirname, '..');
-  const plugin = JSON.parse(
-    fs.readFileSync(
-      path.join(repository, 'plugins', 'plugin-radius', 'package.json'),
-      'utf8',
-    ),
-  );
   for (const collision of [
     'archive',
     'directory',
@@ -623,31 +775,7 @@ test('destinations that appear during a build keep their bytes and only this run
     'checksum',
   ]) {
     fixture(root => {
-      const checkout = path.join(root, 'checkout');
-      fixtureGit(root, [
-        'clone',
-        '--quiet',
-        '--shared',
-        '--no-checkout',
-        repository,
-        checkout,
-      ]);
-      for (const file of [
-        'package.json',
-        'plugins/plugin-radius/package.json',
-        'packages/rad-components/package.json',
-        'scripts/verify-plugin-bundle.ts',
-      ]) {
-        fs.mkdirSync(path.dirname(path.join(checkout, file)), {
-          recursive: true,
-        });
-        fs.copyFileSync(path.join(repository, file), path.join(checkout, file));
-      }
-      fs.cpSync(
-        path.join(repository, 'vendor', 'shared-libraries'),
-        path.join(checkout, 'vendor', 'shared-libraries'),
-        { recursive: true },
-      );
+      const checkout = builderCheckout(root);
       const output = path.join(root, 'output');
       const archive = `${output}.tar.gz`;
       const marker =
@@ -665,25 +793,7 @@ test('destinations that appear during a build keep their bytes and only this run
               if (collision !== 'empty-directory')
                 fs.writeFileSync(marker, 'other build output');
             }
-            if (args.includes('pack')) {
-              const workspace =
-                args[1] === plugin.name
-                  ? 'plugins/plugin-radius'
-                  : 'packages/rad-components';
-              const manifest = JSON.parse(
-                fs.readFileSync(
-                  path.join(checkout, workspace, 'package.json'),
-                  'utf8',
-                ),
-              );
-              packFixture(
-                root,
-                path.relative(root, args[args.length - 1]),
-                manifest.name,
-                manifest.version,
-                manifest.dependencies,
-              );
-            }
+            fixturePacker(root, checkout, args);
           }),
         error => {
           assert(error instanceof Error);

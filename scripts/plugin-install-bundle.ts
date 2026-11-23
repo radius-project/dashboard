@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
+import { withWorkspaceManifest } from '../plugins/plugin-radius/workspace-manifest.ts';
 import { isInsidePath } from './installed-host.ts';
 import {
   verifySharedLibraryCandidate,
@@ -34,39 +34,12 @@ export function packWorkspace(
   file: string,
   runYarn: RunYarn,
 ) {
-  const lock = path.join(root, '.radius-plugin-pack.lock');
-  const lockFile = fs.openSync(lock, 'wx');
-  let manifestRestored = true;
-  try {
-    fs.writeFileSync(
-      lockFile,
-      `${JSON.stringify({ pid: process.pid, hostname: os.hostname(), workspace })}\n`,
-    );
-    const manifestFile = path.join(root, workspace, 'package.json');
-    const before = fs.readFileSync(manifestFile, 'utf8');
+  return withWorkspaceManifest(root, workspace, before => {
     const manifest = JSON.parse(before);
-    manifestRestored = false;
-    try {
-      runYarn(['workspace', manifest.name, 'build']);
-      runYarn(['workspace', manifest.name, 'pack', '--out', file]);
-    } finally {
-      try {
-        if (fs.readFileSync(manifestFile, 'utf8') !== before)
-          fs.writeFileSync(manifestFile, before);
-        assert.equal(fs.readFileSync(manifestFile, 'utf8'), before);
-        manifestRestored = true;
-      } catch (error) {
-        throw new Error(
-          `Could not restore ${manifestFile}. Pack lock retained at ${lock}; inspect the manifest before removing the lock.`,
-          { cause: error },
-        );
-      }
-    }
+    runYarn(['workspace', manifest.name, 'build']);
+    runYarn(['workspace', manifest.name, 'pack', '--out', file]);
     return manifest;
-  } finally {
-    fs.closeSync(lockFile);
-    if (manifestRestored) fs.unlinkSync(lock);
-  }
+  });
 }
 
 export function buildPluginInstallBundle(
@@ -158,8 +131,22 @@ export function buildPluginInstallBundle(
     const repository = JSON.parse(
       fs.readFileSync(path.join(root, 'package.json'), 'utf8'),
     );
+    const gitEnv: NodeJS.ProcessEnv = { ...process.env, GIT_CONFIG_COUNT: '0' };
+    for (const name of [
+      'GIT_DIR',
+      'GIT_COMMON_DIR',
+      'GIT_WORK_TREE',
+      'GIT_INDEX_FILE',
+      'GIT_CONFIG',
+      'GIT_CONFIG_PARAMETERS',
+    ])
+      delete gitEnv[name];
     const git = (args: string[]) =>
-      execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
+      execFileSync('git', args, {
+        cwd: root,
+        env: gitEnv,
+        encoding: 'utf8',
+      }).trim();
     const bundle: PluginInstallBundle = {
       formatVersion: 1,
       source: {
@@ -264,7 +251,9 @@ a broad Backstage support promise.
 
 if (
   process.argv[1] &&
-  import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href
+  fs.existsSync(process.argv[1]) &&
+  fs.realpathSync(fileURLToPath(import.meta.url)) ===
+    fs.realpathSync(process.argv[1])
 ) {
   const output = process.argv[2];
   assert(
