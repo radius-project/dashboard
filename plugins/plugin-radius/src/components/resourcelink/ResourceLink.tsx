@@ -1,6 +1,6 @@
 import React, { PropsWithChildren } from 'react';
 import { Link } from '@backstage/core-components';
-import { parseLegacyResourceId as parseResourceId } from '@radius-project/core/domain';
+import { parseResourceId } from '@radapp.io/rad-components/resourceId';
 import { useResourceRoute } from './useResourceRoute';
 
 export const ResourceLink = (props: PropsWithChildren<{ id: string }>) => {

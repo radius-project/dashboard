@@ -6,6 +6,11 @@
   "main": "dist/index.esm.js",
   "module": "dist/index.esm.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./resourceId": "./src/resourceId.ts",
+    "./package.json": "./package.json"
+  },
   "backstage": {
     "role": "web-library"
   },
@@ -20,6 +25,8 @@
     "lint": "backstage-cli package lint",
     "test": "backstage-cli package test",
     "clean": "backstage-cli package clean",
+    "prepack": "backstage-cli package prepack",
+    "postpack": "backstage-cli package postpack",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build"
   },
@@ -64,9 +71,14 @@
     "react-dom": "^18.3.1",
     "reactflow": "^11.11.4"
   },
+  "peerDependenciesMeta": {
+    "reactflow": {
+      "optional": true
+    }
+  },
   "dependencies": {
-    "@radius-project/core": "0.1.0",
-    "@radius-project/graph-react": "0.1.0"
+    "@dagrejs/dagre": "^3.1.1",
+    "@radius-project/core": "0.1.0"
   },
   "publishConfig": {
     "registry": "https://registry.npmjs.org",
