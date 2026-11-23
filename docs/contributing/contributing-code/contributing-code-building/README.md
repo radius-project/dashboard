@@ -320,7 +320,9 @@ invalid counters and unavailable reports also produce advisory failures.
 Empty counter sets count as 100%, so the first uncovered branch is reported.
 The policy comparison, measured comparison and Codecov upload all use
 `continue-on-error: true`; none can fail the required job. Policy helper regression
-tests remain required. Team approval of T1 targets remains open.
+tests remain required. Codecov downloads its CLI into a temporary directory and
+cleans it up, so uploader files do not contaminate the source checkout before
+installed qualification. Team approval of T1 targets remains open.
 
 Failure uploads contain only validated revision/run identifiers and fixed stage
 outcomes, at most 1 KiB, retained for one day. They contain no raw logs,

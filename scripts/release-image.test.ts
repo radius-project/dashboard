@@ -843,6 +843,7 @@ test('the actual build chain, offline CI tests, validation gates, and edge publi
     /if: \$\{\{ github\.repository == 'radius-project\/dashboard' \}\}/,
   );
   assert.match(coverageUpload, /uses: codecov\/codecov-action@[a-f0-9]{40}/);
+  assert.match(coverageUpload, /cleanup: true/);
   assert.match(coverageUpload, /files: \.\/coverage\/lcov\.info/);
   assert.match(coverageUpload, /disable_search: true/);
   assert.match(coverageUpload, /fail_ci_if_error: true/);
