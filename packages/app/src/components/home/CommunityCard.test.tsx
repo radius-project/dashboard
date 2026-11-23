@@ -3,10 +3,6 @@ import { renderInTestApp } from '@backstage/test-utils';
 import { screen } from '@testing-library/react';
 import { CommunityCard } from './CommunityCard';
 
-/**
- * The community card is the only home card whose actions are not all external
- * documentation links, and it is the one carrying a defect: see CC-05.
- */
 describe('CommunityCard', () => {
   it('CC-01: renders the card heading and subheading', async () => {
     await renderInTestApp(<CommunityCard />);
@@ -44,34 +40,19 @@ describe('CommunityCard', () => {
     );
   });
 
-  /**
-   * KNOWN-DEFECT, tracked by radius-project/dashboard#364.
-   *
-   * `Join us on Discord` is declared with `to=""`. Backstage's `Link` resolves
-   * that to the app root, so the button renders `href="/"`: it is enabled,
-   * focusable, and indistinguishable from the two working actions beside it,
-   * but clicking it navigates the user to the dashboard home page instead of
-   * to Discord. Because the target is internal rather than external it is also
-   * the only action on the card without the "Opens in a new window" hint, so
-   * even a screen-reader user gets no warning that it behaves differently.
-   *
-   * The correct behavior is to point at the Radius Discord invite, as
-   * `SupportCard`'s `Ask a Question` already does.
-   *
-   * This records what ships today. It is expected to fail when the href is
-   * supplied, and that failure is the signal the fix landed.
-   */
-  it('CC-05: KNOWN-DEFECT Join us on Discord navigates to the app root, not to Discord', async () => {
+  it('CC-05: opens the Radius Discord invite in a new window', async () => {
     await renderInTestApp(<CommunityCard />);
 
-    const discord = screen.getByRole('button', { name: 'Join us on Discord' });
+    const discord = screen.getByRole('button', {
+      name: /^Join us on Discord/,
+    });
 
-    expect(discord).toHaveAttribute('href', '/');
+    expect(discord).toHaveAttribute('href', 'https://aka.ms/radius/discord');
     expect(discord).not.toBeDisabled();
-    expect(discord).not.toHaveAttribute('target', '_blank');
+    expect(discord).toHaveAttribute('target', '_blank');
   });
 
-  it('CC-06: offers exactly the three documented actions', async () => {
+  it('CC-06: offers exactly the four documented actions', async () => {
     await renderInTestApp(<CommunityCard />);
 
     expect(
@@ -79,8 +60,8 @@ describe('CommunityCard', () => {
     ).toEqual([
       'Visit on Github, Opens in a new window',
       'Good first issues, Opens in a new window',
-      // No hint, because CC-05 leaves this one pointing inside the app.
-      'Join us on Discord',
+      'Dashboard good first issues, Opens in a new window',
+      'Join us on Discord, Opens in a new window',
     ]);
   });
 
@@ -90,5 +71,19 @@ describe('CommunityCard', () => {
     );
 
     expect(container.querySelector('.host-supplied')).not.toBeNull();
+  });
+
+  it('CC-08: opens the dashboard good first issues search in a new window', async () => {
+    await renderInTestApp(<CommunityCard />);
+
+    const dashboardIssues = screen.getByRole('button', {
+      name: /^Dashboard good first issues/,
+    });
+
+    expect(dashboardIssues).toHaveAttribute(
+      'href',
+      'https://github.com/radius-project/dashboard/issues?q=is%3Aissue+state%3Aopen+label%3A%22good+first+issue%22',
+    );
+    expect(dashboardIssues).toHaveAttribute('target', '_blank');
   });
 });
