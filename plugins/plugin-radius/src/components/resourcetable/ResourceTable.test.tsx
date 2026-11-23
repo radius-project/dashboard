@@ -8,6 +8,37 @@ import { ResourceTable } from './ResourceTable';
 import { resourcePageRouteRef, environmentPageRouteRef } from '../../routes';
 
 describe('ResourceTable', () => {
+  it('reloads after its resource type or host API changes', async () => {
+    const first = jest.fn().mockResolvedValue({ value: [] });
+    const second = jest.fn().mockResolvedValue({ value: [] });
+    const content = (
+      listResources: RadiusApi['listResources'],
+      resourceType: string,
+    ) => (
+      <TestApiProvider apis={[[radiusApiRef, { listResources }]]}>
+        <ResourceTable title="Resources" resourceType={resourceType} />
+      </TestApiProvider>
+    );
+    const view = await renderInTestApp(
+      content(first, 'Applications.Core/containers'),
+    );
+    expect(first).toHaveBeenLastCalledWith({
+      resourceType: 'Applications.Core/containers',
+    });
+    view.rerender(content(first, 'Radius.Data/redisCaches'));
+    await waitFor(() =>
+      expect(first).toHaveBeenLastCalledWith({
+        resourceType: 'Radius.Data/redisCaches',
+      }),
+    );
+    view.rerender(content(second, 'Radius.Data/redisCaches'));
+    await waitFor(() =>
+      expect(second).toHaveBeenCalledWith({
+        resourceType: 'Radius.Data/redisCaches',
+      }),
+    );
+  });
+
   it('should display loading indicator while loading', async () => {
     // This is the boilerplate for an unresolved promise.
     const deferred: ((resolve: { value: never[] }) => void)[] = [];

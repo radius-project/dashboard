@@ -9,24 +9,31 @@ import { radiusFixtureResponse as fixtureResponse } from './qualification-fixtur
 
 async function main() {
   const standaloneOrigin = process.env.QUALIFICATION_STANDALONE_ORIGIN;
+  const installed = process.argv.includes('--installed');
   const consumerRoot = process.argv[2];
   if (!consumerRoot)
     throw new Error('Expected the isolated packed consumer path');
-  const fixtureRoot = path.join(consumerRoot, 'fixture');
   const evidence = process.env.QUALIFICATION_EVIDENCE_DIRECTORY;
-  if (standaloneOrigin && (!evidence || !path.isAbsolute(evidence))) {
-    throw new Error('Standalone journeys require persistent absolute evidence');
+  const backendUrl = process.env.QUALIFICATION_BACKEND_URL;
+  const upstreamUrl = process.env.QUALIFICATION_UPSTREAM_URL;
+  if (
+    standaloneOrigin &&
+    (!installed || !evidence || !path.isAbsolute(evidence))
+  ) {
+    throw new Error(
+      'Standalone journeys require installed mode and persistent absolute evidence',
+    );
   }
-  // Container-backed runs share the consumer, so they write under their own
-  // evidence directory instead of overwriting the earlier external-host files.
-  const outputRoot =
-    standaloneOrigin || (process.env.QUALIFICATION_BACKEND_URL && evidence)
-      ? evidence
-      : consumerRoot;
-  if (!outputRoot)
-    throw new Error('Missing host evidence or consumer directory');
-  const output = path.join(outputRoot, 'browser');
-  const installed = process.argv.includes('--installed');
+  if (backendUrl && (!installed || !upstreamUrl)) {
+    throw new Error(
+      'Real backend journeys require installed mode and a controlled fake upstream',
+    );
+  }
+  const fixtureRoot = path.join(consumerRoot, 'fixture');
+  const output = path.join(
+    ((standaloneOrigin || backendUrl) && evidence) || consumerRoot,
+    'browser',
+  );
   if (standaloneOrigin) fs.mkdirSync(output, { recursive: true });
   if (!standaloneOrigin) {
     const buildRoot = installed ? consumerRoot : process.cwd();
@@ -57,7 +64,6 @@ async function main() {
       logLevel: 'warning',
     });
     const inputs = Object.entries(bundle.metafile.inputs)
-      // esbuild represents browser:false entries as empty virtual inputs.
       .filter(
         ([input, metadata]) =>
           !input.startsWith('(disabled):') || metadata.bytes !== 0,
@@ -71,6 +77,17 @@ async function main() {
         `${JSON.stringify(bundle.metafile, null, 2)}\n`,
       );
       assertProductionInputs(consumerRoot, inputs);
+      for (const entry of ['legacy', 'native']) {
+        if (
+          !fs
+            .readFileSync(path.join(output, `${entry}.css`), 'utf8')
+            .includes('.react-flow')
+        ) {
+          throw new Error(
+            `Missing shipped graph CSS in production ${entry} build`,
+          );
+        }
+      }
       if (process.env.QUALIFICATION_FULL_HOST_MATRIX === 'true') {
         const backend = await build({
           absWorkingDir: consumerRoot,
@@ -83,8 +100,10 @@ async function main() {
           metafile: true,
           logLevel: 'warning',
         });
-        const expected = 'packages/backend/src/createRadiusBackend.ts';
-        if (Object.keys(backend.metafile.inputs).join() !== expected) {
+        if (
+          Object.keys(backend.metafile.inputs).join() !==
+          'packages/backend/src/createRadiusBackend.ts'
+        ) {
           throw new Error(
             'Backend composition must build only the clean host entry',
           );
@@ -94,26 +113,17 @@ async function main() {
           `${JSON.stringify(backend.metafile, null, 2)}\n`,
         );
       }
-      for (const entry of ['legacy', 'native']) {
-        if (
-          !fs
-            .readFileSync(path.join(output, `${entry}.css`), 'utf8')
-            .includes('.react-flow')
-        ) {
-          throw new Error(
-            `Missing shipped graph CSS in production ${entry} build`,
-          );
-        }
-      }
     }
     if (
       !inputs.some(input =>
-        input.includes('plugin-radius/dist/alpha.esm.js'),
+        input.replaceAll('\\', '/').includes('plugin-radius/dist/alpha.esm.js'),
       ) ||
       !inputs.some(input =>
-        input.includes('plugin-radius/dist/index.esm.js'),
+        input.replaceAll('\\', '/').includes('plugin-radius/dist/index.esm.js'),
       ) ||
-      inputs.some(input => input.includes('plugin-radius/src/'))
+      inputs.some(input =>
+        input.replaceAll('\\', '/').includes('plugin-radius/src/'),
+      )
     ) {
       throw new Error(
         'Browser fixtures must use both packed entries, not workspace source',
@@ -179,20 +189,13 @@ async function main() {
     cluster?: string;
     status: number;
   }[] = [];
-  const backendUrl = process.env.QUALIFICATION_BACKEND_URL;
-  const upstreamUrl = process.env.QUALIFICATION_UPSTREAM_URL;
-  if (backendUrl && (!installed || !upstreamUrl)) {
-    throw new Error(
-      'Real backend journeys require installed mode and a controlled fake upstream',
-    );
-  }
   const setForbidden = async (value: boolean | 'graph') => {
     if (backendUrl) {
-      const response = await fetch(`${upstreamUrl}/__qualification/forbidden`, {
+      const result = await fetch(`${upstreamUrl}/__qualification/forbidden`, {
         method: 'POST',
         body: JSON.stringify(value),
       });
-      if (!response.ok)
+      if (!result.ok)
         throw new Error('Could not set fake-upstream authorization policy');
     }
     forbidden = value;
@@ -240,11 +243,11 @@ async function main() {
       const authenticated =
         request.headers.authorization ===
         'Bearer radius-installed-host-fixture';
-      const cluster = request.headers['backstage-kubernetes-cluster'];
       const denied =
         forbidden === true ||
         (forbidden === 'graph' && request.url.includes('/getGraph'));
       const status = !authenticated ? 401 : denied ? 403 : 200;
+      const cluster = request.headers['backstage-kubernetes-cluster'];
       requests.push({
         system,
         method: request.method ?? '',
@@ -313,6 +316,7 @@ async function main() {
       await page.setViewportSize({ width: 1500, height: 1200 });
       const errors: string[] = [];
       const consoleErrors: string[] = [];
+      const assets: { path: string; status: number }[] = [];
       page.on('console', message => {
         if (message.type() === 'error') consoleErrors.push(message.text());
       });
@@ -324,16 +328,7 @@ async function main() {
             'local',
           ]),
         })}`;
-      const navigate = async (url: string) => {
-        await page.goto(url);
-        if (installed && !standaloneOrigin) {
-          await page
-            .getByRole('button', {
-              name: 'Sign in to qualification host',
-              exact: true,
-            })
-            .click({ timeout: 15_000 });
-        }
+      const selectConnection = async (url: string) => {
         if (
           (forbidden !== true || Boolean(backendUrl)) &&
           !(installed && system === 'native') &&
@@ -356,8 +351,6 @@ async function main() {
           await expect(page).toHaveURL(selectedPath(url));
         }
       };
-      page.on('pageerror', error => errors.push(error.message));
-      const assets: { path: string; status: number }[] = [];
       page.on('response', response => {
         const pathname = new URL(response.url()).pathname;
         if (/\.(js|css)$/.test(pathname))
@@ -366,13 +359,12 @@ async function main() {
       const responses: Promise<void>[] = [];
       if (standaloneOrigin) {
         page.on('response', response => {
-          if (!new URL(response.url()).pathname.startsWith('/api/kubernetes/'))
-            return;
+          const url = new URL(response.url());
+          if (!url.pathname.startsWith('/api/kubernetes/')) return;
           responses.push(
             (async () => {
               const request = response.request();
               const headers = await request.allHeaders();
-              const url = new URL(response.url());
               requests.push({
                 system,
                 method: request.method(),
@@ -384,6 +376,22 @@ async function main() {
           );
         });
       }
+      const signIn = async () => {
+        if (installed && !standaloneOrigin) {
+          await page
+            .getByRole('button', {
+              name: 'Sign in to qualification host',
+              exact: true,
+            })
+            .click({ timeout: 15_000 });
+        }
+      };
+      const navigate = async (url: string) => {
+        await page.goto(url);
+        await signIn();
+        await selectConnection(url);
+      };
+      page.on('pageerror', error => errors.push(error.message));
       page.on('dialog', async dialog => {
         errors.push(`Unexpected dialog: ${dialog.message()}`);
         await dialog.dismiss();
@@ -451,30 +459,28 @@ async function main() {
           await expect(
             page.getByRole('group', { name: 'frontend', exact: true }),
           ).toBeVisible({ timeout: 15_000 });
-          if (installed) {
-            await expect(page.locator('.react-flow__node')).toHaveCount(4);
-            await expect(
-              page.locator('[data-radius-part="node-title"]'),
-            ).toHaveCount(4);
-            await expect(page.locator('.react-flow__edge')).not.toHaveCount(0);
-            await expect(page.locator('.react-flow__controls')).toHaveCSS(
-              'position',
-              'absolute',
-            );
-            await expect
-              .poll(() =>
-                page.evaluate(() =>
-                  Array.from(document.styleSheets).some(
-                    sheet =>
-                      (!sheet.href || sheet.href.startsWith(location.origin)) &&
-                      Array.from(sheet.cssRules).some(rule =>
-                        rule.cssText.includes('.react-flow'),
-                      ),
-                  ),
+          await expect(page.locator('.react-flow__node')).toHaveCount(4);
+          await expect(
+            page.locator('[data-radius-part="node-title"]'),
+          ).toHaveCount(4);
+          await expect(page.locator('.react-flow__edge')).not.toHaveCount(0);
+          await expect(page.locator('.react-flow__controls')).toHaveCSS(
+            'position',
+            'absolute',
+          );
+          await expect
+            .poll(() =>
+              page.evaluate(() =>
+                Array.from(document.styleSheets).some(
+                  sheet =>
+                    (!sheet.href || sheet.href.startsWith(location.origin)) &&
+                    Array.from(sheet.cssRules).some(rule =>
+                      rule.cssText.includes('.react-flow'),
+                    ),
                 ),
-              )
-              .toBe(true);
-          }
+              ),
+            )
+            .toBe(true);
           await page
             .getByRole('button', { name: 'Fit View', exact: true })
             .click();
@@ -503,17 +509,16 @@ async function main() {
               page.getByRole('group', { name, exact: true }),
             ).toBeInViewport({ ratio: 0.99999 });
           }
-          const viewport = page.locator('.react-flow__viewport');
-          const fitted = await viewport.getAttribute('style');
           const zoomLevel = () =>
-            viewport.evaluate(
-              element => new DOMMatrix(getComputedStyle(element).transform).a,
-            );
+            page
+              .locator('.react-flow__viewport')
+              .evaluate(
+                element => new DOMMatrix(getComputedStyle(element).transform).a,
+              );
           const fittedZoom = await zoomLevel();
           await page
             .getByRole('button', { name: 'Zoom In', exact: true })
             .click();
-          await expect(viewport).not.toHaveAttribute('style', fitted ?? '');
           await expect.poll(zoomLevel).toBeGreaterThan(fittedZoom + 0.01);
           const zoomedIn = await zoomLevel();
           await page
@@ -541,18 +546,16 @@ async function main() {
               ),
             )
             .toBe(true);
-          const evidenceDirectory =
-            process.env.QUALIFICATION_EVIDENCE_DIRECTORY;
-          if (evidenceDirectory && (standaloneOrigin || basePath === '')) {
-            fs.mkdirSync(evidenceDirectory, { recursive: true });
+          if (evidence && (standaloneOrigin || basePath === '')) {
+            fs.mkdirSync(evidence, { recursive: true });
             await page.screenshot({
-              path: path.join(evidenceDirectory, `${system}-multi-tier.png`),
+              path: path.join(evidence, `${system}-multi-tier.png`),
               fullPage: true,
               animations: 'disabled',
             });
             await page.locator('.react-flow').screenshot({
               path: path.join(
-                evidenceDirectory,
+                evidence,
                 `${system}-multi-tier-complete-graph.png`,
               ),
               animations: 'disabled',
@@ -573,14 +576,14 @@ async function main() {
                         ?.textContent ?? ''
                     ).trim(),
                     rawType: card.getAttribute('data-radius-resource-type'),
-                    icon: card.getAttribute('data-radius-icon'),
+                    icon: card
+                      .querySelector('[data-radius-part="icon"]')
+                      ?.getAttribute('aria-label'),
                     badge: card.getAttribute('data-radius-badge'),
                     provisioning: card.getAttribute('data-radius-provisioning'),
                   };
                 })
-                .sort((left, right) =>
-                  (left.id ?? '').localeCompare(right.id ?? ''),
-                ),
+                .sort((a, b) => (a.id ?? '').localeCompare(b.id ?? '')),
               edges: Array.from(document.querySelectorAll('.react-flow__edge'))
                 .map(element => {
                   const id = element.getAttribute('data-id');
@@ -588,20 +591,21 @@ async function main() {
                     const [source, target] = JSON.parse(id) as [string, string];
                     return { source, target };
                   }
-                  const label = element.getAttribute('aria-label') ?? '';
-                  const match = /^Edge from (.*?) to (.*)$/.exec(label);
+                  const match = /^Edge from (.*?) to (.*)$/.exec(
+                    element.getAttribute('aria-label') ?? '',
+                  );
                   if (!match)
                     throw new Error(
                       'Rendered edge has no observable directed identity',
                     );
                   return { source: match[1], target: match[2] };
                 })
-                .sort((left, right) =>
-                  JSON.stringify(left).localeCompare(JSON.stringify(right)),
+                .sort((a, b) =>
+                  JSON.stringify(a).localeCompare(JSON.stringify(b)),
                 ),
             }));
             fs.writeFileSync(
-              path.join(evidenceDirectory, `${system}-multi-tier.json`),
+              path.join(evidence, `${system}-multi-tier.json`),
               `${JSON.stringify(record, null, 2)}\n`,
             );
             const visibility = await page.evaluate(() => {
@@ -625,10 +629,7 @@ async function main() {
               };
             });
             fs.writeFileSync(
-              path.join(
-                evidenceDirectory,
-                `${system}-multi-tier-interactions.json`,
-              ),
+              path.join(evidence, `${system}-multi-tier-interactions.json`),
               `${JSON.stringify(
                 { fittedZoom, zoomedIn, zoomedOut, ...visibility },
                 null,
@@ -637,13 +638,7 @@ async function main() {
             );
           }
           await page.reload();
-          if (installed && !standaloneOrigin)
-            await page
-              .getByRole('button', {
-                name: 'Sign in to qualification host',
-                exact: true,
-              })
-              .click();
+          await signIn();
           await expect(
             page.getByRole('group', { name: 'frontend', exact: true }),
           ).toBeVisible({ timeout: 15_000 });
@@ -697,21 +692,6 @@ async function main() {
                     ...(method === 'POST' ? { body: '{}' } : {}),
                   });
                   expect(denied.status).toBe(403);
-                }
-                await Promise.all(responses);
-                if (standaloneOrigin) {
-                  const css = await page.evaluate(() =>
-                    Array.from(document.styleSheets)
-                      .filter(
-                        sheet =>
-                          !sheet.href || sheet.href.startsWith(location.origin),
-                      )
-                      .flatMap(sheet =>
-                        Array.from(sheet.cssRules, rule => rule.cssText),
-                      )
-                      .join('\n'),
-                  );
-                  fs.writeFileSync(path.join(output, 'loaded-styles.css'), css);
                 }
               }
               await setForbidden('graph');
@@ -842,6 +822,19 @@ async function main() {
         }
         await Promise.all(responses);
         expect(errors).toEqual([]);
+        if (standaloneOrigin) {
+          const css = await page.evaluate(() =>
+            Array.from(document.styleSheets)
+              .filter(
+                sheet => !sheet.href || sheet.href.startsWith(location.origin),
+              )
+              .flatMap(sheet =>
+                Array.from(sheet.cssRules, rule => rule.cssText),
+              )
+              .join('\n'),
+          );
+          fs.writeFileSync(path.join(output, 'loaded-styles.css'), css);
+        }
       } catch (error) {
         const failure = {
           system,
@@ -854,15 +847,14 @@ async function main() {
           consoleErrors,
         };
         console.error(JSON.stringify(failure, null, 2));
-        const directory = process.env.QUALIFICATION_EVIDENCE_DIRECTORY;
-        if (directory) {
-          fs.mkdirSync(directory, { recursive: true });
+        if (evidence) {
+          fs.mkdirSync(evidence, { recursive: true });
           fs.writeFileSync(
-            path.join(directory, `${system}-failure.json`),
+            path.join(evidence, `${system}-failure.json`),
             `${JSON.stringify(failure, null, 2)}\n`,
           );
           await page.screenshot({
-            path: path.join(directory, `${system}-failure.png`),
+            path: path.join(evidence, `${system}-failure.png`),
             fullPage: true,
           });
         }

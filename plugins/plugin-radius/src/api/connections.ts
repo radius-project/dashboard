@@ -1,5 +1,5 @@
 import type { ConfigApi } from '@backstage/core-plugin-api';
-import type { RadiusQueryContext } from '@radius-project/core/domain';
+import type { RadiusQueryContext } from './query';
 
 export type RadiusConnection = RadiusQueryContext;
 

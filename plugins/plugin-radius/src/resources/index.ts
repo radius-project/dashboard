@@ -6,6 +6,8 @@ export type {
   Recipe,
   RecipeDefinition,
   RecipePackProperties,
+  ResourceType,
+  ResourceTypeProperties,
 } from './resource';
 
 export {

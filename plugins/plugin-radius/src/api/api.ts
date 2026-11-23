@@ -15,7 +15,7 @@ import {
   ResourceListOptions,
   ResourceType,
   ResourceTypeProperties,
-} from '@radius-project/core/domain';
+} from './query';
 import {
   connectionKey,
   RadiusConnection,

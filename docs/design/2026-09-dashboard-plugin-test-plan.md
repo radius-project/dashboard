@@ -1063,7 +1063,7 @@ its issue is fixed, and that failure is the signal the fix landed, not a regress
 | #361  | A resource type with no description shows placeholder container documentation | RT-07                |
 | #362  | `ResourceLayout` renders literal `undefined/undefined: undefined` off-route  | LY-04                |
 | #363  | Output-properties nested filtering — **fixed; object, array, and map children now select read-only fields** | RT-27, RT-35–RT-40 (regression) |
-| #364  | "Join us on Discord" navigates to the dashboard home page instead of Discord | CC-05, CC-06        |
+| #364  | "Join us on Discord" navigates to the dashboard home page instead of Discord — **fixed; opens the public Radius Discord invite in a new window** | CC-05, CC-06 (regression) |
 | #365  | `Resource.systemData` is required and typed `Record<string, never>`, so every fixture must be cast | RS-14 |
 | #366  | The Sucrase Jest transform's cache key ignores `instrument`, so an override that selects it reports 0% while its tests pass | PU-35 guardrail; fix is upstream |
 | #367  | Connection context is implicit, unscoped, and not consistently cancellable   | CN-02, CN-05–CN-08, ER-01, ER-02 |
@@ -1117,8 +1117,10 @@ mode is misattribution: it surfaces as a coverage-threshold failure naming an un
 `#364` and `#365` are the two defects Phase 1's closing increment found, and they illustrate why
 characterization is done before rearchitecture rather than after. `#364` is a one-character defect
 — `to=""` on a `LinkButton` — that renders a plausible-looking enabled button pointing at `/`, so
-it survives visual review; CC-05 pins the wrong href and CC-06 pins the missing "opens in a new
-window" hint that the two working cards have. `#365` is a type defect: `systemData` is declared
+it survives visual review. This is now fixed: CC-05 checks the public invite URL
+`https://aka.ms/radius/discord` and the new-window target; CC-06 checks the "Opens in a new
+window" hint on all four actions, including the added dashboard good first issues link
+covered by CC-08. `#365` is a type defect: `systemData` is declared
 required and `Record<string, never>`, meaning "an object with no properties", so no honest value
 satisfies it and every fixture in the repository casts around it. RS-14 now asserts the exact
 property type and requiredness, so it fails for the intended model change rather than for any

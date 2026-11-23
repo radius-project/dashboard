@@ -50,6 +50,7 @@ interface PackedPackageJson {
   };
   dependencies?: Record<string, string>;
   peerDependencies?: Record<string, string>;
+  peerDependenciesMeta?: Record<string, { optional?: boolean }>;
 }
 
 interface ManifestLifecycle {
@@ -183,9 +184,10 @@ beforeAll(() => {
       'shared-libraries',
       'candidate.json',
     );
-    const sharedReceipt = JSON.parse(
-      fs.readFileSync(sharedReceiptPath, 'utf8'),
-    ) as { core: { path: string }; graphReact: { path: string } };
+    const sharedReceipt = readJson<{
+      core: { path: string };
+      graphReact: { path: string };
+    }>(sharedReceiptPath);
     for (const [name, archive] of [
       ['core', sharedReceipt.core.path],
       ['graph-react', sharedReceipt.graphReact.path],
@@ -196,8 +198,7 @@ beforeAll(() => {
       );
     }
 
-    // Only third-party dependencies are linked. Both Radius packages above
-    // come from the candidate archives, never workspace source or aliases.
+    // Radius packages come from archives; only third-party dependencies are linked.
     const dependencies = [
       '@backstage',
       '@material-ui',
@@ -208,8 +209,9 @@ beforeAll(() => {
       'react-router-dom',
       'react-use',
       'react-error-boundary',
-      'reactflow',
       '@xyflow',
+      '@dagrejs',
+      'reactflow',
     ];
     for (const name of dependencies) {
       const destination = path.join(consumerRoot, 'node_modules', name);
@@ -254,6 +256,8 @@ beforeAll(() => {
         '--packages=external',
         `--outfile=${path.join(consumerRoot, `${name}.cjs`)}`,
         `--alias:${entry}=${require.resolve(entry, { paths: [consumerRoot] })}`,
+        `--alias:@radapp.io/rad-components/resourceId=${path.join(graphInstall, 'dist', 'resourceId.esm.js')}`,
+        `--alias:@radapp.io/rad-components=${path.join(graphInstall, 'dist', 'index.esm.js')}`,
       ]);
     }
     // Jest must load these generated CJS fixtures in its own module realm.
@@ -268,6 +272,9 @@ beforeAll(() => {
         "import { ApplicationListPage, radiusApiRef, radiusPlugin, radiusThemes } from '@internal/plugin-radius';",
         "import type { RadiusApi } from '@internal/plugin-radius';",
         "import nativeRadius from '@internal/plugin-radius/alpha';",
+        "import { parseResourceId } from '@radapp.io/rad-components/resourceId';",
+        'const plane: string | undefined = parseResourceId("/planes/radius/local/resourceGroups/demo/providers/Radius.Data/neo4jDatabases/neo4j")?.plane;',
+        'void plane;',
         'declare const api: RadiusApi;',
         'void api.listApplications();',
         'void ApplicationListPage;',
@@ -522,7 +529,11 @@ afterAll(() => {
     }
   }, 180_000);
 
-  it('PU-27a: resolves both candidate tarballs instead of workspace source', () => {
+  it('PU-27a: resolves both packed tarballs instead of workspace source', () => {
+    expect(
+      readJson<PackedPackageJson>(path.join(graphInstall, 'package.json'))
+        .peerDependenciesMeta?.reactflow?.optional,
+    ).toBe(true);
     expect(
       require.resolve('@internal/plugin-radius/package.json', {
         paths: [consumerRoot],
@@ -549,7 +560,7 @@ afterAll(() => {
           ),
         );
       }
-      for (const name of ['react', 'react-dom']) {
+      for (const name of ['react', 'react-dom', 'reactflow']) {
         expect(
           fs.realpathSync(require.resolve(name, { paths: [origin] })),
         ).toBe(
@@ -559,7 +570,7 @@ afterAll(() => {
     }
   });
 
-  it('PU-29 / GU-09: exercises packed forwarding AppGraph and ResourceNode in real Flow12/Flow11 providers', () => {
+  it('PU-29 / GU-09: observes packed local Flow11 components and the shared live renderer', () => {
     try {
       const observed = JSON.parse(
         run(process.execPath, [
@@ -569,13 +580,14 @@ afterAll(() => {
       );
       expect(Object.keys(observed)).toHaveLength(14);
       expect(observed['multi-tier'].nodes).toHaveLength(4);
+      expect(observed['multi-tier'].edges).toHaveLength(3);
     } catch (error) {
       if (error instanceof Error && 'stderr' in error) {
         throw new Error(String(error.stderr), { cause: error });
       }
       throw error;
     }
-  }, 120000);
+  }, 120_000);
 
   it('PU-27b: restores both source manifests after build and pack', () => {
     expect(pluginManifestLifecycle.after).toBe(pluginManifestLifecycle.before);
