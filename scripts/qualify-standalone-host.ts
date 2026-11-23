@@ -539,6 +539,7 @@ async function main() {
             require.resolve('@playwright/test/cli'),
             'test',
             '--workers=1',
+            '--retries=0',
             '--reporter=line',
             ...process.argv.slice(2),
           ],

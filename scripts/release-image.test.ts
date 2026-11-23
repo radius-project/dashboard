@@ -798,8 +798,42 @@ test('the actual build chain, offline CI tests, validation gates, and edge publi
   assert.ok(browserInstall < workflow.indexOf('- name: Run Tests'));
   assert.match(
     workflow,
-    /run: yarn run test:all --coverageDirectory=coverage --coverageReporters=lcov --coverageReporters=text\r?\n/,
+    /run: yarn run test:all --coverageThreshold='\{\}' --coverageDirectory=coverage --coverageReporters=lcov --coverageReporters=text --coverageReporters=json-summary\r?\n/,
   );
+  for (const name of [
+    'Compare base coverage policy (advisory)',
+    'Compare measured coverage against the clean base (advisory)',
+    'Upload coverage to Codecov',
+  ]) {
+    const step = workflow
+      .split(`- name: ${name}`)[1]
+      ?.split('\n      - name:')[0];
+    assert.ok(step, `Missing advisory coverage step: ${name}`);
+    assert.match(step, /continue-on-error: true/);
+    if (
+      name === 'Compare measured coverage against the clean base (advisory)'
+    ) {
+      const timeout = step.match(/^\s+timeout-minutes: (\d+)\r?$/m);
+      const jobTimeout = workflow.match(/^    timeout-minutes: (\d+)\r?$/m);
+      assert.ok(timeout, 'The advisory base run needs a separate timeout');
+      assert.ok(jobTimeout);
+      assert.ok(Number(timeout[1]) > 0 && Number(timeout[1]) <= 10);
+      assert.ok(Number(timeout[1]) < Number(jobTimeout[1]));
+      assert.match(step, /corepack yarn exec playwright install chromium/);
+      assert.match(
+        step,
+        /trap 'git worktree remove --force "\$\{base_directory\}"' EXIT/,
+      );
+      assert.ok(step.indexOf('trap ') < step.indexOf('git worktree add'));
+    }
+  }
+  for (const name of ['Test CI policy helpers', 'Run Tests']) {
+    const step = workflow
+      .split(`- name: ${name}`)[1]
+      ?.split('\n      - name:')[0];
+    assert.ok(step, `Missing required test step: ${name}`);
+    assert.doesNotMatch(step, /continue-on-error/);
+  }
   const coverageUpload = workflow
     .split('- name: Upload coverage to Codecov')[1]
     ?.split('\n      - name:')[0];
@@ -809,6 +843,7 @@ test('the actual build chain, offline CI tests, validation gates, and edge publi
     /if: \$\{\{ github\.repository == 'radius-project\/dashboard' \}\}/,
   );
   assert.match(coverageUpload, /uses: codecov\/codecov-action@[a-f0-9]{40}/);
+  assert.match(coverageUpload, /cleanup: true/);
   assert.match(coverageUpload, /files: \.\/coverage\/lcov\.info/);
   assert.match(coverageUpload, /disable_search: true/);
   assert.match(coverageUpload, /fail_ci_if_error: true/);

@@ -105,6 +105,8 @@ for (const scenario of [
     const bundleInputs = [
       'node_modules/@internal/plugin-radius/dist/index.esm.js',
       'node_modules/@internal/plugin-radius/dist/alpha.esm.js',
+      'node_modules/@internal/plugin-radius/dist/api/query.esm.js',
+      'node_modules/@internal/plugin-radius/dist/components/resources/legacyGraph.esm.js',
       'node_modules/@radius-project/core/dist/graph/index.js',
       'node_modules/@radius-project/graph-react/dist/index.js',
       ...(scenario === 'missing-css'
