@@ -186,7 +186,7 @@ outside the checkout. The runner creates a fresh consumer there. It retains
 logs in the evidence directory and copies archives, fixture sources, lockfiles,
 builds, and results there, but not `node_modules`.
 
-The runner builds and packs the plugin and forwarding package. It installs those
+The runner builds and packs the plugin and rad-components compatibility package. It installs those
 tarballs and the pinned shared pair with Yarn, without repository dependency
 links. The fresh consumer uses the repository lockfile as a dependency seed.
 The first install updates that seed for the packed dependencies with
@@ -200,6 +200,11 @@ external bindings, host-owned fixture identity, and visible HTTP denial.
 The same graph observer checks real cards and rejects missing CSS and a stub
 renderer. The repository and installed lockfile hashes identify the tested
 tuple; this command does not establish a Backstage or compiler support range.
+Qualification requires a clean tracked checkout. The runner reads its commit
+and tree from Git, checks any supplied `QUALIFICATION_SOURCE_REVISION` against
+that commit, and records both with the archive identities. Commit source changes
+before running the installed gate. An old receipt is a historical result, not
+qualification of the current dashboard.
 
 By default, this is **external frontend evidence, not full Phase 5
 qualification**. Its HTTP fixture implements the Kubernetes API boundary.
@@ -266,6 +271,15 @@ the result has `phase5Complete: false` and lists the open gates.
 See the [requirement map](../../../../plugins/plugin-radius/README.md#phase-5-installed-host-evidence)
 for the executable checks and evidence limits. The shared candidate preflight
 still reports `hostQualified: false`.
+
+The current ownership split is recorded in the
+[Phase 5/6 ownership review](../../../../plugins/plugin-radius/README.md#ownership-after-the-main-restoration).
+The live host uses the current public core/graph renderer APIs. Dashboard-owned
+queries, recipe handling and legacy adaptation remain in the packed plugin.
+The installed live bundle must contain its compiled query client and adapter;
+it must not contain Flow11. The separate public rad-components observer does
+exercise Flow11 because that dashboard compatibility contract remains supported.
+Neither path depends on a new producer API.
 
 #### Phase 6 CI gates and remaining policy decisions
 

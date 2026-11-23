@@ -64,12 +64,44 @@ Shared library version `0.1.0` is development metadata, not proof of a registry 
 
 ## Phase 5 installed-host evidence
 
+### Ownership after the main restoration
+
+The Phase 5/6 review uses dashboard main `4da333b1` (#451), not the earlier
+extraction plan. The committed development pair comes from ai-extensions
+`04d780b7`; `candidate.json` records its exact archive and CSS hashes. Producer
+main `ef304d3a` has the same public library sources and archive bytes. A producer
+library or Headlamp check is not dashboard host qualification.
+
+The boundary is the **packed public API**, not every symbol in the producer's
+source tree. Core exports `/domain` and `/graph`; graph-react exports the live
+renderer and its CSS. Core has no public query or recipe client. Graph-react has
+no Flow11 compatibility entry. No new library export is required by these gates.
+
+| Behavior and current consumers | Keep or move | Reason to move | Reason not to move; current recommendation |
+| --- | --- | --- | --- |
+| Connection selection, Kubernetes proxy and authentication; all Radius pages and host API overrides | Keep in dashboard/Backstage | A shared transport port could serve another host | Host credentials, route bindings and connection policy are not domain data. Keep the existing `RadiusApi` seam; do not put Backstage dependencies into core. |
+| UCP discovery, scoped inventory, namespace merging and partial results; Radius lists and detail pages | Keep in dashboard | A pure typed query client could remove duplication for a second consumer with the same semantics | There is no packed query API or verified second consumer with this contract. A future proposal would need a host-supplied request port, explicit context and cancellation, and typed partial results; no implementation is approved here. |
+| Complete graph-load deadline, cancellation and stale-response suppression; ApplicationTab | Keep in dashboard | A shared lifecycle utility could be reused by another query UI | The ten-second budget and route/unmount behavior belong to this UI, not the pure normalizer. Preserve the current hook and host override. |
+| Recipe inventory/aggregation and display rows; environment and recipe pages | Keep in dashboard | Pure recipe data types may help a second inventory consumer | Planned Bicep recipe enrichment is not live environment inventory. Keep inline/pack selection and display policy local; do not depend on source-only orchestration. |
+| Legacy gateway direction, duplicate policy and navigation-ID shape; live adapter and public compatibility callers | Keep in dashboard | A versioned legacy adapter might serve another legacy payload consumer | Generic core direction and structured identities intentionally differ. Keep the wrapper/adapter; changing the normalizer would alter other hosts. |
+| Public AppGraph/ResourceNode, React Flow 11 provider and topology records; rad-components callers | Keep in dashboard | Another verified Flow11 consumer could justify a separate compatibility package | Current graph-react uses Flow12 and exports no compat API. Preserve the public dashboard contract and its separate browser tests; keep Flow11 out of live plugin bundles. |
+| SVG decode fallback; dashboard live graph, potentially other RadiusGraph hosts | Keep local now; consider graph-react later | Both mask and image decoding are renderer concerns shared by hosts such as Canvas | A move needs a stable error/warning callback and lifecycle tests for both render paths. The current preload fallback works. Smallest future contract: renderer-owned decode fallback plus an optional typed diagnostic; no DOM code in core. |
+
+Use the existing core identity parser, graph context key and live normalizer,
+and the existing `RadiusGraph` props/callbacks. Keep dashboard data acquisition
+and adaptation before that boundary. The installed browser gate requires the
+compiled dashboard query client and legacy adapter as well as compiled shared
+inputs. Its Flow11 observer separately checks the dashboard compatibility
+renderer; banning Flow11 from **all** consumers would break that public contract.
+
+### Qualification and evidence limits
+
 `yarn test:package` remains a linked-dependency smoke
 check. Do not use it to qualify a clean external host.
 
 Run `yarn test:e2e:installed` with `QUALIFICATION_EVIDENCE_DIRECTORY` set to a
 persistent absolute path outside the checkout. Each run builds new plugin and
-forwarding tarballs, installs all frontend dependencies in a new consumer, and
+rad-components compatibility tarballs, installs all frontend dependencies in a new consumer, and
 uses the same production browser journeys for the packed root and `/alpha`
 entries. Native Radius uses explicit feature registration, not a Radius plugin
 converter. The fixture host owns navigation, external route bindings, and its
@@ -88,11 +120,15 @@ resolve the same forwarding entry, not a separate registry copy.
 
 The runner retains `commands.json`, command logs, `tuple.json`, archives, an
 installed lockfile, production `browser/metafile.json`, HTTP evidence, and graph
-records. Only a successful run writes `qualification.json`. By default,
+records. Before building, it reads the dashboard commit and tree from Git and
+rejects tracked source changes or a mismatched `QUALIFICATION_SOURCE_REVISION`.
+The receipt and built image use that checked identity, not a caller's claim.
+Only a successful run writes `qualification.json`. By default,
 its scope is `installed-external-frontend`; `phase5Complete` stays `false`. Its exact package
 versions and lockfile hashes are evidence of one tuple, not a support range or a
-decision on D2 or D5. The vendored shared candidates and graph records do not
-change. Publication remains out of scope.
+decision on D2 or D5. The receipt binds the current shared archive hashes and generated plugin and
+compatibility archive hashes. An older receipt does not qualify a changed
+dashboard, lockfile or candidate pair. Publication remains out of scope.
 
 Set `QUALIFICATION_CONTAINER_IMAGE` to an already built local dashboard image
 to repeat the **same installed legacy/native journeys** through its real

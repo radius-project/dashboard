@@ -1,10 +1,29 @@
 import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 
 export const sha256 = (file: string) =>
   createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+
+export function qualificationSource(root: string, expectedRevision?: string) {
+  const git = (...args: string[]) =>
+    execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
+  const revision = git('rev-parse', '--verify', 'HEAD^{commit}');
+  const tree = git('rev-parse', '--verify', 'HEAD^{tree}');
+  if (
+    !/^[a-f0-9]{40}$/.test(revision) ||
+    !/^[a-f0-9]{40}$/.test(tree) ||
+    (expectedRevision && expectedRevision !== revision)
+  ) {
+    throw new Error('Qualification source must match the checked-out commit');
+  }
+  if (git('status', '--porcelain', '--untracked-files=no')) {
+    throw new Error('Qualification requires a clean tracked source tree');
+  }
+  return { revision, tree };
+}
 
 export function installedPackage(root: string, name: string) {
   const require = createRequire(path.join(root, 'package.json'));
@@ -182,6 +201,8 @@ export function assertProductionInputs(root: string, inputs: string[]) {
   for (const required of [
     '/plugin-radius/dist/index.esm.js',
     '/plugin-radius/dist/alpha.esm.js',
+    '/plugin-radius/dist/api/query.esm.js',
+    '/plugin-radius/dist/components/resources/legacyGraph.esm.js',
     '/@radius-project/core/dist/',
     '/@radius-project/graph-react/dist/',
     '/@radius-project/graph-react/dist/styles.css',
