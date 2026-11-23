@@ -19,7 +19,7 @@ import { ResourceDataTable } from '../resourcetable';
 import { useApi } from '@backstage/core-plugin-api';
 import { radiusApiRef } from '../../api/ref';
 import { Resource } from '../../resources';
-import { parseLegacyResourceId as parseResourceId } from '@radius-project/core/domain';
+import { parseResourceId } from '@radapp.io/rad-components/resourceId';
 import { withRadiusTheme } from '../../appearance';
 import { ResourceQueryResult } from '../queryresult/ResourceQueryResult';
 import { useInventoryQuery } from '../queryresult/useInventoryQuery';

@@ -7,7 +7,7 @@ import {
 } from '../resourcelink/ResourceLink';
 import { useApi } from '@backstage/core-plugin-api';
 import { radiusApiRef } from '../../api/ref';
-import { parseLegacyResourceId as parseResourceId } from '@radius-project/core/domain';
+import { parseResourceId } from '@radapp.io/rad-components/resourceId';
 import { isEnvironmentType, isApplicationType } from '../../resources';
 import { ResourceQueryResult } from '../queryresult/ResourceQueryResult';
 import { useInventoryQuery } from '../queryresult/useInventoryQuery';
