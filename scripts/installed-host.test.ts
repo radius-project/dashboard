@@ -123,7 +123,8 @@ test('qualification receipts bind clean checkout identity, not caller-supplied s
       execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
     git('init', '--quiet');
     write('source.ts', 'export const value = 1;\n');
-    git('add', 'source.ts');
+    write('.gitignore', 'dist/\nnode_modules/\n');
+    git('add', 'source.ts', 'package.json', '.gitignore');
     git(
       '-c',
       'user.name=Test',
@@ -144,8 +145,25 @@ test('qualification receipts bind clean checkout identity, not caller-supplied s
       () => qualificationSource(root, '0'.repeat(40)),
       /checked-out/,
     );
+    write('dist/generated.js', 'compiled output');
+    assert.deepEqual(qualificationSource(root, revision), { revision, tree });
+    for (const file of [
+      'packages/app/public/untracked.html',
+      'plugins/plugin-radius/fixtures/untracked.json',
+    ]) {
+      const untracked = write(file, 'not in the source commit');
+      assert.throws(
+        () => qualificationSource(root, revision),
+        /non-ignored untracked files/,
+      );
+      fs.unlinkSync(untracked);
+      assert.deepEqual(qualificationSource(root, revision), { revision, tree });
+    }
     write('source.ts', 'export const value = 2;\n');
-    assert.throws(() => qualificationSource(root, revision), /clean tracked/);
+    assert.throws(
+      () => qualificationSource(root, revision),
+      /clean source tree/,
+    );
   });
 });
 

@@ -200,7 +200,8 @@ external bindings, host-owned fixture identity, and visible HTTP denial.
 The same graph observer checks real cards and rejects missing CSS and a stub
 renderer. The repository and installed lockfile hashes identify the tested
 tuple; this command does not establish a Backstage or compiler support range.
-Qualification requires a clean tracked checkout. The runner reads its commit
+Qualification requires a clean checkout, with no tracked changes or non-ignored
+untracked files. Ignored build output is allowed. The runner reads its commit
 and tree from Git, checks any supplied `QUALIFICATION_SOURCE_REVISION` against
 that commit, and records both with the archive identities. Commit source changes
 before running the installed gate. An old receipt is a historical result, not
@@ -308,6 +309,8 @@ Both policies must have nonempty full-source workspace groups. New groups and
 metrics are also checked; narrowed paths and invalid percentages are rejected.
 The same job installs and builds the immutable base in a separate clean checkout,
 then runs the same coverage command with threshold enforcement disabled.
+This advisory step has its own ten-minute limit within the job's 60-minute
+limit, so a stalled base run does not consume all time for required gates.
 An exit trap removes that checkout, its build files and its Git worktree
 registration on success or failure, before downstream qualification starts.
 It compares all four measured counters in each existing full-source group with

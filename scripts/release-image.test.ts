@@ -813,6 +813,12 @@ test('the actual build chain, offline CI tests, validation gates, and edge publi
     if (
       name === 'Compare measured coverage against the clean base (advisory)'
     ) {
+      const timeout = step.match(/^\s+timeout-minutes: (\d+)\r?$/m);
+      const jobTimeout = workflow.match(/^    timeout-minutes: (\d+)\r?$/m);
+      assert.ok(timeout, 'The advisory base run needs a separate timeout');
+      assert.ok(jobTimeout);
+      assert.ok(Number(timeout[1]) > 0 && Number(timeout[1]) <= 10);
+      assert.ok(Number(timeout[1]) < Number(jobTimeout[1]));
       assert.match(step, /corepack yarn exec playwright install chromium/);
       assert.match(
         step,

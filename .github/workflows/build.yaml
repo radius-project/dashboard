@@ -98,6 +98,7 @@ jobs:
       - name: Compare measured coverage against the clean base (advisory)
         id: coverage
         continue-on-error: true
+        timeout-minutes: 10
         env:
           COVERAGE_BASE: ${{ steps.policy.outputs.base }}
         run: |

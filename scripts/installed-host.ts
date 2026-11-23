@@ -19,8 +19,10 @@ export function qualificationSource(root: string, expectedRevision?: string) {
   ) {
     throw new Error('Qualification source must match the checked-out commit');
   }
-  if (git('status', '--porcelain', '--untracked-files=no')) {
-    throw new Error('Qualification requires a clean tracked source tree');
+  if (git('status', '--porcelain', '--untracked-files=all')) {
+    throw new Error(
+      'Qualification requires a clean source tree with no tracked changes or non-ignored untracked files',
+    );
   }
   return { revision, tree };
 }

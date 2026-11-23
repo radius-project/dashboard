@@ -121,7 +121,8 @@ resolve the same forwarding entry, not a separate registry copy.
 The runner retains `commands.json`, command logs, `tuple.json`, archives, an
 installed lockfile, production `browser/metafile.json`, HTTP evidence, and graph
 records. Before building, it reads the dashboard commit and tree from Git and
-rejects tracked source changes or a mismatched `QUALIFICATION_SOURCE_REVISION`.
+rejects tracked changes, non-ignored untracked files, or a mismatched
+`QUALIFICATION_SOURCE_REVISION`. Ignored build output is allowed.
 The receipt and built image use that checked identity, not a caller's claim.
 Only a successful run writes `qualification.json`. By default,
 its scope is `installed-external-frontend`; `phase5Complete` stays `false`. Its exact package
