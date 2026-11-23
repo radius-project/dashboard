@@ -35,6 +35,13 @@ You will need these commands to successfully develop the Dashboard and contribut
 yarn install
 ```
 
+The root `package.json` keeps `@mui/material` on v5 through a Yarn resolution.
+Backstage's theme package still uses v5; a newer major version is not compatible
+with the current theme code. Dependabot can propose newer versions, but the
+resolution keeps the installed version on v5. Review and update or remove this
+resolution when Backstage supports a newer MUI major version. It does not lift
+automatically.
+
 ---
 
 **Running the Dashboard locally:**
