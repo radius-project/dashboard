@@ -127,7 +127,7 @@ describe('package contract', () => {
    * records the current source dependency, not a publication defect. Only an
    * installed-artifact test can establish whether consumers can resolve it.
    */
-  it('PU-17: records the graph workspace dependency before extraction', () => {
+  it('PU-17: records the parser workspace and shared graph dependencies', () => {
     expect(pkg.dependencies?.['@radapp.io/rad-components']).toBe('workspace:^');
     expect(pkg.dependencies?.['@radius-project/core']).toBe('0.1.0');
     expect(pkg.dependencies?.['@radius-project/graph-react']).toBe('0.1.0');
@@ -137,6 +137,21 @@ describe('package contract', () => {
       .map(([name]) => name);
 
     expect(workspaceRanges).toEqual(['@radapp.io/rad-components']);
+  });
+
+  it('PU-18: parser-only consumers do not require the Flow11 peer', () => {
+    const components = JSON.parse(
+      fs.readFileSync(
+        path.resolve(
+          __dirname,
+          '../../../packages/rad-components/package.json',
+        ),
+        'utf8',
+      ),
+    );
+    expect(components.peerDependencies.reactflow).toBe('^11.11.4');
+    expect(components.peerDependenciesMeta.reactflow.optional).toBe(true);
+    expect(components.dependencies).not.toHaveProperty('reactflow');
   });
 
   it('PU-19: pins the current internal name pending scope confirmation', () => {

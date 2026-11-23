@@ -23,23 +23,13 @@ import largeFanOut from '../__fixtures__/graph/large-fan-out.json';
 /**
  * Tier A graph invariants.
  *
- * The correctness cases assert properties that must hold no matter how nodes and edges are
- * represented, so they are the only graph tests allowed to survive the move to
- * the shared graph package unchanged. They deliberately say nothing about
- * object shape, class names, coordinates, or colours: all of that is being
- * replaced, and asserting it would produce failures that mean nothing.
- *
- * They go through `buildGraphModel` rather than the renderer's internals for
- * the same reason. Cases labelled KNOWN-DEFECT are characterization pins, not
- * migration invariants: replace them with the desired assertion when the linked
- * defect is deliberately fixed.
+ * These cases check topology and layout through `buildGraphModel`, rather than
+ * the public Flow11 renderer's internal representation.
  */
 
 /**
- * Fixtures are JSON modules, so every test would otherwise share one object
- * graph. `initialNodes` mutates the connections it is given (see GU-05b), which
- * would leak across tests and make results depend on execution order. Cloning
- * per use is what keeps these tests independent.
+ * Clone the JSON fixtures to keep test inputs independent. GU-05b separately
+ * checks that graph construction does not mutate its input.
  */
 const load = (fixture: unknown): AppGraph =>
   JSON.parse(JSON.stringify(fixture)) as AppGraph;

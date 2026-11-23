@@ -26,14 +26,8 @@ export interface GraphModel {
 }
 
 /**
- * The stable seam the Tier A graph invariants are written against.
- *
- * Those invariants must survive the move to the shared graph package, so they
- * must not name the dashboard's current internals. This adapter is the only
- * place that does: today it calls `initialNodes`, and after extraction it calls
- * the shared package instead. If the invariant tests had imported
- * `initialNodes` directly, every one of them would have had to be rewritten
- * during the extraction they exist to police.
+ * Tests the public Flow11 compatibility renderer through a stable model seam.
+ * The shared live graph has a separate adapter and renderer.
  */
 export function buildGraphModel(graph: AppGraph): GraphModel {
   const { nodes, edges } = initialNodes(graph);

@@ -2,7 +2,7 @@
 
 <!-- markdownlint-disable MD033 -->
 
-Every graph record difference during extraction must be declared in this table before the record is updated. Retain the reviewed entries until this extraction is merged so GU-25 can compare the committed records with the base commit. Clear them when a later phase starts from that merged baseline, not while the comparison still needs them.
+Declare each graph record difference in this table before updating the record. These entries cover the local Flow11 repairs in this PR. Retain them while GU-25 compares those records with the base branch. Remove an entry only after the base branch contains its repaired record.
 
 | Fixture                | Field   | Old value                                                                                                                                                                                                                                   | New value | Reason                                                                                                                     |
 |------------------------|---------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------|----------------------------------------------------------------------------------------------------------------------------|

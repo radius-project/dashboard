@@ -107,6 +107,7 @@ export function createDiscovery(session: QuerySession) {
     signal?: AbortSignal,
   ): Promise<string> {
     const [namespace, typeName, ...nested] = type.split('/');
+    // These calls validate the segments; request builders encode them later.
     segment(namespace);
     segment(typeName);
     if (nested.length)

@@ -6,6 +6,21 @@ import { resourcePageRouteRef, environmentPageRouteRef } from '../../routes';
 import { ErrorBoundary, FallbackProps } from 'react-error-boundary';
 
 describe('ResourceLink', () => {
+  it('RU-02 / #352: retains dots and underscores in mounted environment routes', async () => {
+    const id =
+      '/planes/radius/team.2/resourceGroups/group_1/providers/Applications.Core/environments/my.env_2';
+    await renderInTestApp(<ResourceLink id={id} />, {
+      mountedRoutes: {
+        '/resource/:group/:namespace/:type/:name': resourcePageRouteRef,
+        '/environment/:group/:namespace/:type/:name': environmentPageRouteRef,
+      },
+    });
+    expect(screen.getByRole('link', { name: 'my.env_2' })).toHaveAttribute(
+      'href',
+      '/environment/group_1/Applications.Core/environments/my.env_2',
+    );
+  });
+
   it('should render', async () => {
     const id =
       '/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/test-environment';

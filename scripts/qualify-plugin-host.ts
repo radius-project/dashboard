@@ -423,7 +423,7 @@ async function main() {
           await page.getByRole('tab', { name: 'App Graph' }).click();
           const graphUrl = page.url();
           await expect(
-            page.getByRole('group', { name: 'frontend' }),
+            page.getByRole('group', { name: 'frontend', exact: true }),
           ).toBeVisible({ timeout: 15_000 });
           await expect(page.locator('.react-flow__node')).toHaveCount(4);
           await expect(
@@ -606,7 +606,7 @@ async function main() {
           await page.reload();
           await signIn();
           await expect(
-            page.getByRole('group', { name: 'frontend' }),
+            page.getByRole('group', { name: 'frontend', exact: true }),
           ).toBeVisible({ timeout: 15_000 });
           await page.goBack();
           await expect(

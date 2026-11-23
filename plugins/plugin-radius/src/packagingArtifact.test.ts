@@ -50,6 +50,7 @@ interface PackedPackageJson {
   };
   dependencies?: Record<string, string>;
   peerDependencies?: Record<string, string>;
+  peerDependenciesMeta?: Record<string, { optional?: boolean }>;
 }
 
 interface ManifestLifecycle {
@@ -210,7 +211,6 @@ beforeAll(() => {
       'react-error-boundary',
       '@xyflow',
       '@dagrejs',
-      'dagre',
       'reactflow',
     ];
     for (const name of dependencies) {
@@ -530,6 +530,10 @@ afterAll(() => {
   }, 180_000);
 
   it('PU-27a: resolves both packed tarballs instead of workspace source', () => {
+    expect(
+      readJson<PackedPackageJson>(path.join(graphInstall, 'package.json'))
+        .peerDependenciesMeta?.reactflow?.optional,
+    ).toBe(true);
     expect(
       require.resolve('@internal/plugin-radius/package.json', {
         paths: [consumerRoot],

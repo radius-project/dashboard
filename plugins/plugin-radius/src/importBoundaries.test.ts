@@ -1,6 +1,7 @@
 /* eslint-disable no-restricted-imports */
 import fs from 'fs';
 import path from 'path';
+import { createHash } from 'crypto';
 
 const repoRoot = path.resolve(__dirname, '../../..');
 
@@ -51,6 +52,38 @@ const isPrivateReachIn = (specifier: string) => {
 };
 
 describe('current package import boundaries', () => {
+  it('PB-03: retains license identities and portable candidate paths', () => {
+    const directory = path.join(repoRoot, 'vendor/shared-libraries');
+    const receipt = JSON.parse(
+      fs.readFileSync(path.join(directory, 'candidate.json'), 'utf8'),
+    ) as {
+      licenses: { file: string; sha256: string }[];
+    };
+    const strings = (value: unknown): string[] => {
+      if (typeof value === 'string') return [value];
+      if (value && typeof value === 'object')
+        return Object.values(value).flatMap(strings);
+      return [];
+    };
+    expect(
+      strings(receipt).filter(value =>
+        /(?:\b[A-Z]:[\\/]|\/mnt\/[a-z]\/|\/(?:home|Users)\/|\\\\[^\\]+\\)/i.test(
+          value,
+        ),
+      ),
+    ).toEqual([]);
+    expect(receipt.licenses).toHaveLength(3);
+    for (const license of receipt.licenses) {
+      expect(license.file.startsWith('licenses/')).toBe(true);
+      expect(license.file.split(/[\\/]/)).not.toContain('..');
+      expect(
+        createHash('sha256')
+          .update(fs.readFileSync(path.join(directory, license.file)))
+          .digest('hex'),
+      ).toBe(license.sha256);
+    }
+  });
+
   it('PB-04: the app consumes only the reviewed public root and native plugin entries', () => {
     const appRoot = path.join(repoRoot, 'packages/app/src');
     const pluginRoot = path.join(repoRoot, 'plugins/plugin-radius');
@@ -85,6 +118,25 @@ describe('current package import boundaries', () => {
     expect(
       graphImports.filter(
         ({ specifier }) => specifier !== '@radapp.io/rad-components/resourceId',
+      ),
+    ).toEqual([]);
+  });
+
+  it('PB-01: shared libraries use only reviewed browser-safe public entries', () => {
+    const imports = importSpecifiers(
+      path.join(repoRoot, 'plugins/plugin-radius/src'),
+    ).filter(({ specifier }) => specifier.startsWith('@radius-project/'));
+
+    expect(imports.length).toBeGreaterThan(0);
+    expect(
+      imports.filter(
+        ({ specifier }) =>
+          ![
+            '@radius-project/core/domain',
+            '@radius-project/core/graph',
+            '@radius-project/graph-react',
+            '@radius-project/graph-react/styles.css',
+          ].includes(specifier),
       ),
     ).toEqual([]);
   });

@@ -16,13 +16,6 @@ import { useResourceRoute } from '../resourcelink/useResourceRoute';
 import { legacyGraphToLive } from './legacyGraph';
 import { useApplicationGraph } from './useApplicationGraph';
 
-export type {
-  AppGraphData,
-  Connection,
-  Direction,
-  ResourceData,
-} from './legacyGraph';
-
 const graphOptions = { showLegend: true, enablePopup: true };
 
 const useStyles = makeStyles({

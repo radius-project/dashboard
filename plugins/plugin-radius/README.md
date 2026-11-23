@@ -24,7 +24,7 @@ The Application graph tab renders with `RadiusGraph` from `@radius-project/graph
 
 The shared core has no query client. The dashboard keeps query behavior locally and wraps the shared `parseResourceId` function to retain its existing `plane: string`, `group`, `type`, and `name` contract. The pinned main libraries accept `Applications.Core/applications` on the live graph path and pass resource-definition icons. That path shows the raw provisioning text, the details status row, and the warnings. See `vendor/shared-libraries/candidate.json` for the limits.
 
-The public `rad-components` `AppGraph` keeps its React Flow 11 compatibility renderer. It updates when graph props change, does not mutate connections, and reports duplicate IDs and invalid edges. `reactflow` remains a required peer so public `ResourceNode` consumers share their host's provider. Both frontend packages require React and ReactDOM `^18.3.1`.
+The public `rad-components` `AppGraph` keeps its React Flow 11 compatibility renderer. It updates when graph props change, does not mutate connections, and reports duplicate IDs and invalid edges. `reactflow` is an optional peer for parser-only consumers. Hosts that import the root entry, `AppGraph`, or `ResourceNode` must install `reactflow` `^11.11.4` and use the same provider instance. Both frontend packages require React and ReactDOM `^18.3.1`.
 
 Its topology uses the shared identity parser for Azure ARM, non-Radius planes,
 and nested UCP resources. The narrower Radius parser remains the navigation
@@ -34,6 +34,8 @@ inputs retain optional `icons`, `icon`, and `iconHash` metadata even though this
 compact renderer does not display it.
 
 The plugin imports `@radapp.io/rad-components/resourceId`, a parser-only public entry. This avoids loading the Flow 11 renderer and its CSS into the shared live graph host. The root entry still exports the parser and the compatibility components.
+
+The wrapper returns the existing navigation shape and accepts only IDs that the mounted Radius routes can represent. Queries and graph topology use the same underlying core parser directly because they need structured plane identities or ARM and nested UCP IDs. Using the navigation wrapper for those paths would discard valid identities; using the raw core result for navigation would change the public route contract.
 
 Inventory methods retain the `{value}` envelope and add optional `complete` and `errors` fields. Existing host overrides remain valid. Partial results show usable rows with a warning; a failed query with no usable rows shows an error.
 

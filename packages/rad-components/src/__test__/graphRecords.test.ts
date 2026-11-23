@@ -446,7 +446,7 @@ describe('graph records', () => {
     });
   });
 
-  it('GU-23: retains the repaired topology invariants', async () => {
+  it('GU-23: records the remaining icon and status-badge defects', async () => {
     expect(
       findCarriedForwardGraphDefects(
         await generatedRecords(),
@@ -602,6 +602,27 @@ describe('graph records', () => {
   it('GU-24: retains the four reviewed baseline repairs', () => {
     const manifest = parseManifest(fs.readFileSync(manifestPath, 'utf8'));
 
+    expect(
+      manifest.every(
+        change =>
+          change.reason.includes('Coordinator reviewed the exact DOM diff') &&
+          /#(?:353|357)\b/.test(change.reason) &&
+          Object.hasOwn(fixtures, change.fixture) &&
+          change.oldValue !== change.newValue,
+      ),
+    ).toBe(true);
+    expect(
+      new Set(
+        manifest.map(change =>
+          JSON.stringify([
+            change.fixture,
+            change.field,
+            change.oldValue,
+            change.newValue,
+          ]),
+        ),
+      ).size,
+    ).toBe(manifest.length);
     expect(manifest.map(change => `${change.fixture} ${change.field}`)).toEqual(
       [
         'duplicate-ids nodes.1',

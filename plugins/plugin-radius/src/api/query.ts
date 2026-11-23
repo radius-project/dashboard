@@ -65,6 +65,7 @@ export function createRadiusQueryClient(
     const version = await discovery.bestVersion(identity.type, signal);
     const resource = await session.request<Resource<T>>(id, version, signal);
     validateResource(resource);
+    // Reject a response from a different plane before returning it.
     session.resource(resource.id);
     if (resource.id.toLowerCase() !== id.toLowerCase()) {
       throw new TypeError(
@@ -155,6 +156,7 @@ export function createRadiusQueryClient(
         input.signal,
       ),
     );
+    // Every returned ID must belong to the selected plane.
     for (const resource of resources) session.resource(resource.id);
     return resources;
   }
@@ -162,6 +164,7 @@ export function createRadiusQueryClient(
   async function listResources<T = Record<string, unknown>>(
     input: ResourceListOptions = {},
   ): Promise<QueryResult<T>> {
+    // Validate optional path segments even when discovery returns no types.
     if (input.resourceGroup !== undefined) segment(input.resourceGroup);
     if (input.resourceType !== undefined) {
       const types = getEquivalentTypes(input.resourceType) ?? [
@@ -253,6 +256,7 @@ export function createRadiusQueryClient(
   async function getApplicationGraph(
     input: { applicationId: string } & QueryOptions,
   ): Promise<ApplicationGraphResponse> {
+    // Validate the application identity before discovery or transport.
     graphContextKey({ ...session.context, applicationId: input.applicationId });
     const type = session.resource(input.applicationId).type;
     const version = await discovery.bestVersion(type, input.signal);
