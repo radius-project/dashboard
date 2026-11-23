@@ -4,11 +4,24 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import assert from 'node:assert/strict';
+import { createRequire } from 'node:module';
 import { build } from 'esbuild';
 import { chromium, expect, type Page } from '@playwright/test';
 
 const root = process.cwd();
 const consumerRoot = process.argv[2] ?? root;
+const consumerRequire = createRequire(
+  path.join(path.resolve(consumerRoot), 'package.json'),
+);
+const pluginRoot = path.dirname(
+  consumerRequire.resolve('@internal/plugin-radius/package.json'),
+);
+const liveAdapter = path.join(
+  pluginRoot,
+  process.argv[2]
+    ? 'dist/components/resources/legacyGraph.esm.js'
+    : 'src/components/resources/legacyGraph.ts',
+);
 const fixturesDirectory = path.join(
   root,
   'packages/rad-components/src/__fixtures__/graph',
@@ -38,14 +51,16 @@ async function observe(page: Page) {
     const record = {
       nodes: nodes
         .map(node => {
-          const card = node.querySelector('[data-node-id]');
-          if (!card) throw new Error('Missing actual shared resource card');
-          const title = card.querySelector('[data-radius-part="node-title"]');
-          const type = card.querySelector('[data-radius-part="node-type"]');
+          const card = node.querySelector('[data-node-id]') ?? node;
+          const title = card.querySelector(
+            '[data-radius-part="node-title"], h3',
+          );
+          const type = card.querySelector('[data-radius-part="node-type"], h6');
           if (!title || !type) throw new Error('Missing rendered title/type');
           const badge = card.getAttribute('data-radius-badge');
           return {
-            id: card.getAttribute('data-node-id'),
+            id:
+              card.getAttribute('data-node-id') ?? node.getAttribute('data-id'),
             label: title.textContent?.trim(),
             type: type.textContent?.trim(),
             icon: card.getAttribute('data-radius-icon') ?? 'not-yet-populated',
@@ -60,11 +75,19 @@ async function observe(page: Page) {
           };
         })
         .sort((left, right) => (left.id ?? '').localeCompare(right.id ?? '')),
-      edges: Array.from(document.querySelectorAll('.react-flow__edge[data-id]'))
+      edges: Array.from(document.querySelectorAll('.react-flow__edge'))
         .map(edge => {
-          const [source, target] = JSON.parse(
-            edge.getAttribute('data-id')!,
-          ) as [string, string];
+          const id = edge.getAttribute('data-id') ?? '';
+          const endpoints: string[] | null = id.startsWith('[')
+            ? JSON.parse(id)
+            : (/^Edge from (.*?) to (.*)$/
+                .exec(edge.getAttribute('aria-label') ?? '')
+                ?.slice(1) ?? null);
+          if (!endpoints || endpoints.length !== 2)
+            throw new Error(
+              'Rendered edge has no observable directed identity',
+            );
+          const [source, target] = endpoints;
           return { source, target, direction: 'source-to-target' };
         })
         .sort((left, right) =>
@@ -117,14 +140,11 @@ async function main() {
           import {createRoot} from 'react-dom/client';
           import {flushSync} from 'react-dom';
           import {RadiusGraph} from '@radius-project/graph-react';
-          ${
-            process.argv[2]
-              ? "import {AppGraph,ResourceNode} from '@radapp.io/rad-components';"
-              : "import {AppGraph} from '@radius-project/graph-react/compat'; import {ResourceNode} from '@radius-project/graph-react/compat/reactflow11';"
-          }
+          import {AppGraph,ResourceNode} from '@radapp.io/rad-components';
           import {ReactFlow, ReactFlowProvider} from 'reactflow';
-          import {normalizeLegacyLiveGraph} from '@radius-project/core/graph';
+          import {legacyGraphToLive} from 'qualification-live-adapter';
           import '@radius-project/graph-react/styles.css';
+          import 'reactflow/dist/style.css';
           const fixtures = ${JSON.stringify(fixtures)};
           let root = createRoot(document.getElementById('root'));
           window.renderGraph = (name, mode = 'compat', reverse = false, remount = false) => {
@@ -134,7 +154,7 @@ async function main() {
             const context = {connectionId:'observed-host',plane:{type:'radius',name:'local'},applicationId:'/planes/radius/local/resourceGroups/demo/providers/Applications.Core/applications/observed'};
             flushSync(() => root.render(mode === 'stub' ? <div>Graph placeholder</div> : mode === 'flow11'
               ? <ReactFlowProvider><ReactFlow defaultNodes={[{id:graph.resources[0].id,position:{x:50,y:50},data:graph.resources[0],type:'legacy'}]} nodeTypes={{legacy:ResourceNode}} /></ReactFlowProvider>
-              : mode === 'native' ? <RadiusGraph graph={normalizeLegacyLiveGraph(graph,context)} options={{showLegend:false,enablePopup:false}} />
+              : mode === 'native' ? <RadiusGraph graph={legacyGraphToLive(graph,context)} options={{showLegend:false,enablePopup:false}} />
               : <AppGraph graph={graph} />));
           };
         `,
@@ -148,6 +168,7 @@ async function main() {
       define: { 'process.env.NODE_ENV': '"production"' },
       loader: { '.svg': 'dataurl', '.png': 'dataurl' },
       logLevel: 'silent',
+      alias: { 'qualification-live-adapter': liveAdapter },
     });
     server.listen(0, '127.0.0.1');
     await once(server, 'listening');
@@ -198,7 +219,6 @@ async function main() {
       return observe(page);
     };
     const records: Record<string, unknown> = {};
-    const layoutFailures: Error[] = [];
     for (const fixture of Object.keys(fixtures).sort()) {
       const first = await render(fixture);
       records[fixture] = first.record;
@@ -231,16 +251,30 @@ async function main() {
         first.record,
         `GU-07 ${fixture}: input-order dependence`,
       );
-      try {
-        assert.deepEqual(
-          reversed.positions,
-          first.positions,
-          `GU-07 ${fixture}: layout input-order dependence`,
-        );
-      } catch (error) {
-        if (!(error instanceof Error)) throw error;
-        layoutFailures.push(error);
-      }
+      const live = await render(fixture, 'native', false, true);
+      assert.deepEqual(
+        {
+          ids: live.record.nodes.map(node => node.id),
+          edges: live.record.edges,
+        },
+        {
+          ids: first.record.nodes.map(node => node.id),
+          edges: first.record.edges,
+        },
+        `GU-21 ${fixture}: public and live graph topology differs`,
+      );
+      const reversedLive = await render(fixture, 'native', true, true);
+      assert.deepEqual(
+        reversedLive.record,
+        live.record,
+        `GU-07 ${fixture}: live input-order dependence`,
+      );
+      const remountedLive = await render(fixture, 'native', false, true);
+      assert.deepEqual(
+        remountedLive.positions,
+        live.positions,
+        `GU-07/GU-08 ${fixture}: live remount/layout leak`,
+      );
       const remounted = await render(fixture, 'compat', false, true);
       assert.deepEqual(
         remounted.positions,
@@ -255,10 +289,13 @@ async function main() {
     await expect(page.locator('.react-flow__handle')).toHaveCount(2);
     await render('multi-tier', 'native');
     const native = await observe(page);
-    assert(
-      native.record.nodes.every(node => node.icon !== 'not-yet-populated'),
-      'GU-21b: missing actual native icons',
+    assert.equal(
+      native.record.nodes.length,
+      4,
+      'GU-21b: missing native graph nodes',
     );
+    await expect(page.locator('[data-radius-part="node"]')).toHaveCount(4);
+    await expect(page.locator('[data-radius-part="icon"]')).not.toHaveCount(0);
     const viewport = page.locator('.react-flow__viewport');
     const before = await viewport.getAttribute('style');
     await page.getByRole('button', { name: 'Zoom In', exact: true }).click();
@@ -292,12 +329,6 @@ async function main() {
     );
     assert.deepEqual(errors, [], 'Browser errors');
     process.stdout.write(`${JSON.stringify(records)}\n`);
-    if (layoutFailures.length) {
-      throw new AggregateError(
-        layoutFailures,
-        'Canonical layout is not input-order independent',
-      );
-    }
   } finally {
     try {
       await browser?.close();

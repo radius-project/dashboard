@@ -203,6 +203,7 @@ try {
   );
   const resolutions = {
     ...repositoryManifest.resolutions,
+    '@radapp.io/rad-components': dependencies['@radapp.io/rad-components'],
     '@radius-project/core': dependencies['@radius-project/core'],
     '@radius-project/graph-react': dependencies['@radius-project/graph-react'],
     '@types/react': dependencies['@types/react'],
@@ -260,7 +261,11 @@ try {
       path.join(consumer, 'packages', 'backend', 'Dockerfile'),
     );
   }
-  runYarn(['install'], consumer);
+  fs.copyFileSync(
+    path.join(root, 'yarn.lock'),
+    path.join(consumer, 'yarn.lock'),
+  );
+  runYarn(['install', '--no-immutable'], consumer);
   runYarn(['install', '--immutable'], consumer);
   const shared = verifySharedLibraryCandidate(
     candidate,
