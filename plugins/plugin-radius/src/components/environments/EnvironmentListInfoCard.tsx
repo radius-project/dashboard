@@ -1,34 +1,28 @@
 import {
   InfoCard,
   LinkButton,
-  Progress,
-  ResponseErrorPanel,
   Table,
   TableColumn,
 } from '@backstage/core-components';
 import { useApi, useRouteRef } from '@backstage/core-plugin-api';
-import React from 'react';
-import useAsync from 'react-use/lib/useAsync';
+import React, { useCallback } from 'react';
 import { radiusApiRef } from '../../api/ref';
 import { EnvironmentProperties, Resource } from '../../resources';
 import { ResourceLink } from '../resourcelink';
 import { environmentPageRouteRef } from '../../routes';
 import { parseResourceId } from '@radapp.io/rad-components/resourceId';
 import { ResourceQueryResult } from '../queryresult/ResourceQueryResult';
+import { useInventoryQuery } from '../queryresult/useInventoryQuery';
 
 const EnvironmentListInfoContent = () => {
   const route = useRouteRef(environmentPageRouteRef);
 
   const radiusApi = useApi(radiusApiRef);
-  const { value, loading, error } = useAsync(async () => {
-    return radiusApi.listEnvironments<EnvironmentProperties>();
-  }, [radiusApi]);
-
-  if (loading) {
-    return <Progress data-testid="progress" />;
-  } else if (error) {
-    return <ResponseErrorPanel error={error} />;
-  }
+  const { value, loading, error, retry } = useInventoryQuery(
+    useCallback(async () => {
+      return radiusApi.listEnvironments<EnvironmentProperties>();
+    }, [radiusApi]),
+  );
 
   const columns: TableColumn<Resource<EnvironmentProperties>>[] = [
     {
@@ -64,7 +58,12 @@ const EnvironmentListInfoContent = () => {
   ];
 
   return (
-    <ResourceQueryResult result={value}>
+    <ResourceQueryResult
+      result={value}
+      loading={loading}
+      error={error}
+      retry={retry}
+    >
       <Table
         columns={columns}
         components={{ Toolbar: _row => null }}

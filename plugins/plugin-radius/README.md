@@ -39,6 +39,19 @@ The wrapper returns the existing navigation shape and accepts only IDs that the 
 
 Inventory methods retain the `{value}` envelope and add optional `complete` and `errors` fields. Existing host overrides remain valid. Partial results show usable rows with a warning; a failed query with no usable rows shows an error.
 
+Inventory lists, cards, and tables expose **Retry inventory** after partial or
+failed requests. Retry uses the same host API and does not switch connections
+after an authorization error. Available data stays visible during refresh.
+If the refresh fails, the view marks retained data as out of date and shows the
+error. A successful empty result clears old data; an incomplete empty result
+shows an error, not an empty inventory. The environments page uses one request
+for both its resource-group filter and table so they cannot disagree.
+The environment overview also reports failed recipe-pack discovery instead of
+silently dropping packs, and keeps available recipes visible with a retry action.
+If every recipe-pack request fails on retry, the overview and recipe list keep
+previously loaded recipes and mark them as out of date. Inline recipes stay
+visible when the initial recipe-pack load fails.
+
 ## Page appearance
 
 All eight Radius pages use the native dashboard's light or dark theme inside

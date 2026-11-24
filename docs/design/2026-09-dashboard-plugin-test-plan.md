@@ -736,7 +736,7 @@ otherwise unreachable layout exception would change the product being characteri
 CN-01–CN-08 and ER-01–ER-10 now pin the current connection and failure behavior. In particular,
 CN-03/CN-04 preserve #356's first-cluster/last-cluster disagreement, CN-05 pins the absence of any
 selected-connection input through which cancellation could occur, CN-06 records the global filter
-key, and ER-08 records the silent partial-inventory result. A separate application-navigation case
+key, and ER-08 now checks explicit partial inventory, manual retry, and retained stale data after a failed retry. A separate application-navigation case
 proves late results are ignored but the superseded network request is not cancelled. Each incorrect
 behavior is linked below rather than being normalized into the baseline.
 
@@ -1066,7 +1066,7 @@ its issue is fixed, and that failure is the signal the fix landed, not a regress
 | #366  | The Sucrase Jest transform's cache key ignores `instrument`, so an override that selects it reports 0% while its tests pass | PU-35 guardrail; fix is upstream |
 | #367  | Connection context is implicit, unscoped, and not consistently cancellable   | CN-02, CN-05–CN-08, ER-01, ER-02 |
 | #368  | The graph has no explicit empty state or degraded layout-failure state        | GU-15, GU-17         |
-| #369  | Partial namespace failures are silently presented as complete inventory      | ER-08                |
+| #369  | Fixed: partial inventory shows failed requests and manual retry; failed refresh retains marked stale data | ER-08; `ResourceQueryResult.test.tsx` |
 | #370  | The graph request error state has no retry action                             | GU-16                |
 
 Six notes on reading this table.
@@ -1321,7 +1321,12 @@ partial inventory, timeout, and unavailable upstream.
 
 ER-08 is the one that matters most: a partial inventory must be shown as partial with a retry, and
 failed discovery must never be reported as "no resources". Authorization failures are not retried
-and never trigger an automatic cluster switch.
+automatically and never trigger an automatic cluster switch. Operators can use
+**Retry inventory** after they restore access. Regression cases cover resource
+tables, application and environment cards, the environments page, recipe
+inventory, and resource-type discovery. They check keyboard retry, partial and
+empty results, disabled retry during refresh, stale data after failure, recovery,
+and isolation when the host API changes.
 
 #### Package boundaries: PB-01–PB-05
 

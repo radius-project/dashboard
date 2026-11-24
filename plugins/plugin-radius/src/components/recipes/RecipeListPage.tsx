@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   FormControl,
   Grid,
@@ -7,13 +7,7 @@ import {
   Select,
   Typography,
 } from '@material-ui/core';
-import {
-  Header,
-  Page,
-  Content,
-  Progress,
-  ResponseErrorPanel,
-} from '@backstage/core-components';
+import { Header, Page, Content } from '@backstage/core-components';
 import { radiusApiRef } from '../../api/ref';
 import {
   EnvironmentProperties,
@@ -21,12 +15,18 @@ import {
   Resource,
 } from '../../resources';
 import { useApi } from '@backstage/core-plugin-api';
-import useAsync from 'react-use/lib/useAsync';
 import { RecipeTable } from './RecipeTable';
 import { aggregateRecipesFromEnvironment } from './recipeAggregation';
 import { RadiusListResult } from '../../api';
 import { ResourceQueryResult } from '../queryresult/ResourceQueryResult';
 import { withRadiusTheme } from '../../appearance';
+import { useInventoryQuery } from '../queryresult/useInventoryQuery';
+import { loadRecipePacks } from './loadRecipePacks';
+
+type RecipeInventory = {
+  environments: RadiusListResult<EnvironmentProperties>;
+  packsById: Record<string, Resource<RecipePackProperties>>;
+};
 
 export const RecipeListPageContent2 = ({
   environments,
@@ -39,7 +39,7 @@ export const RecipeListPageContent2 = ({
 
   const [selected, setSelected] = useState(first);
 
-  const env = environments.find(e => e.id === selected);
+  const env = environments.find(e => e.id === selected) ?? environments[0];
 
   const recipes = useMemo(
     () => (env ? aggregateRecipesFromEnvironment(env, packsById) : []),
@@ -54,7 +54,7 @@ export const RecipeListPageContent2 = ({
 
           <Select
             labelId="recipes-select-environment"
-            defaultValue={first}
+            value={env?.id ?? ''}
             onChange={evt => setSelected(evt.target.value as string)}
           >
             {environments.map((resource: Resource<EnvironmentProperties>) => {
@@ -82,84 +82,68 @@ export const RecipeListPageContent2 = ({
 
 export const RecipeListPageContent = () => {
   const radiusApi = useApi(radiusApiRef);
-  const { value, loading, error } = useAsync(async (): Promise<{
-    environments: RadiusListResult<EnvironmentProperties>;
-    packsById: Record<string, Resource<RecipePackProperties>>;
-  }> => {
-    const environments = await radiusApi.listEnvironments();
+  const { value, loading, error, retry } = useInventoryQuery(
+    useCallback(
+      async (previous?: RecipeInventory): Promise<RecipeInventory> => {
+        const environments = await radiusApi.listEnvironments();
 
-    // Collect every recipe pack id referenced by any environment, then fetch
-    // each pack individually via getResourceById. Recipe packs are not part of
-    // the environment resource itself — the environment only carries the ids.
-    const packIds = new Set<string>();
-    for (const env of environments.value) {
-      for (const id of env.properties?.recipePacks ?? []) {
-        packIds.add(id);
-      }
-    }
+        // Collect every recipe pack id referenced by any environment, then fetch
+        // each pack individually via getResourceById. Recipe packs are not part of
+        // the environment resource itself — the environment only carries the ids.
+        const packIds = new Set<string>();
+        for (const env of environments.value) {
+          for (const id of env.properties?.recipePacks ?? []) {
+            packIds.add(id);
+          }
+        }
 
-    const requestedPacks = Array.from(packIds);
-    const packResults = await Promise.allSettled(
-      requestedPacks.map(id =>
-        radiusApi.getResourceById<RecipePackProperties>({ id }),
-      ),
-    );
+        const { packsById, errors: packErrors } = await loadRecipePacks(
+          radiusApi,
+          packIds,
+          previous?.packsById,
+        );
+        const errors = [...(environments.errors ?? []), ...packErrors];
 
-    const packsById: Record<string, Resource<RecipePackProperties>> = {};
-    const errors = [...(environments.errors ?? [])];
-    for (const [index, result] of packResults.entries()) {
-      if (result.status === 'fulfilled') {
-        packsById[result.value.id] = result.value;
-      } else {
-        errors.push({
-          resourceId: requestedPacks[index],
-          error: result.reason,
-        });
-      }
-    }
-
-    return {
-      environments: errors.length
-        ? { ...environments, complete: false, errors }
-        : environments,
-      packsById,
-    };
-  }, [radiusApi]);
-
-  if (loading) {
-    return <Progress data-testid="progress" />;
-  } else if (error) {
-    return <ResponseErrorPanel error={error} />;
-  }
-
-  if (!value) {
-    throw new Error('This should not happen.');
-  }
+        return {
+          environments: errors.length
+            ? { ...environments, complete: false, errors }
+            : environments,
+          packsById,
+        };
+      },
+      [radiusApi],
+    ),
+  );
 
   const loadedPackIds = new Set(
-    Object.keys(value.packsById).map(id => id.toLowerCase()),
+    Object.keys(value?.packsById ?? {}).map(id => id.toLowerCase()),
   );
 
   return (
     <ResourceQueryResult
-      result={{
-        ...value.environments,
-        // Environments without recipes are still data. Only missing packs
-        // (no recipes can be shown) make the result unusable.
-        value: value.environments.value.filter(
-          environment =>
-            !environment.properties?.recipePacks?.length ||
-            environment.properties.recipePacks.some(id =>
-              loadedPackIds.has(id.toLowerCase()),
-            ) ||
-            aggregateRecipesFromEnvironment(environment, value.packsById)
-              .length > 0,
-        ),
-      }}
+      loading={loading}
+      error={error}
+      retry={retry}
+      result={
+        value && {
+          ...value.environments,
+          // Environments without recipes are still data. Only missing packs
+          // (no recipes can be shown) make the result unusable.
+          value: value.environments.value.filter(
+            environment =>
+              !environment.properties?.recipePacks?.length ||
+              environment.properties.recipePacks.some(id =>
+                loadedPackIds.has(id.toLowerCase()),
+              ) ||
+              aggregateRecipesFromEnvironment(environment, value.packsById)
+                .length > 0,
+          ),
+        }
+      }
     >
       <RecipeListPageContent2
-        environments={value.environments.value}
-        packsById={value.packsById}
+        environments={value?.environments.value ?? []}
+        packsById={value?.packsById ?? {}}
       />
     </ResourceQueryResult>
   );
