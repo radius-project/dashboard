@@ -1,5 +1,11 @@
 import React from 'react';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { RadiusApi, RadiusApplicationGraph } from '../../api';
 import { useApplicationGraph } from './useApplicationGraph';
 
@@ -36,12 +42,17 @@ function apiWith(
 }
 
 function Probe({ api, id = application }: { api: RadiusApi; id?: string }) {
-  const { loading, value, error } = useApplicationGraph(api, id);
+  const { loading, value, error, retry } = useApplicationGraph(api, id);
   if (loading) {
     return <span>Loading graph</span>;
   }
   if (error) {
-    return <span role="alert">{error.message}</span>;
+    return (
+      <>
+        <span role="alert">{error.message}</span>
+        <button onClick={retry}>Retry graph</button>
+      </>
+    );
   }
   return (
     <span>
@@ -213,4 +224,55 @@ describe('application graph request lifecycle', () => {
     view.unmount();
     expect(signal.aborted).toBe(true);
   });
+
+  it.each(['success', 'failure'])(
+    '#370 / ER-09: retries a timeout and ignores the old request late %s',
+    async outcome => {
+      jest.useFakeTimers();
+      let resolveOld!: (result: RadiusApplicationGraph) => void;
+      let rejectOld!: (error: Error) => void;
+      let resolveRetry!: (result: RadiusApplicationGraph) => void;
+      const getGraph = jest
+        .fn()
+        .mockImplementationOnce(
+          () =>
+            new Promise<RadiusApplicationGraph>((resolve, reject) => {
+              resolveOld = resolve;
+              rejectOld = reject;
+            }),
+        )
+        .mockImplementationOnce(
+          () =>
+            new Promise<RadiusApplicationGraph>(resolve => {
+              resolveRetry = resolve;
+            }),
+        );
+      render(<Probe api={apiWith(getGraph)} />);
+      act(() => jest.advanceTimersByTime(10000));
+      expect(screen.getByRole('alert')).toHaveTextContent('timed out');
+      const oldSignal: AbortSignal = getGraph.mock.calls[0][0].signal;
+      expect(oldSignal.aborted).toBe(true);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Retry graph' }));
+      expect(screen.getByText('Loading graph')).toBeVisible();
+      expect(screen.queryByRole('alert')).toBeNull();
+      expect(getGraph).toHaveBeenCalledTimes(2);
+      expect(getGraph.mock.calls[1][0].signal).not.toBe(oldSignal);
+      expect(getGraph.mock.calls[1][0].signal.aborted).toBe(false);
+      await act(async () => {
+        if (outcome === 'success') {
+          resolveOld(response(application, 'old-response'));
+        } else {
+          rejectOld(new Error('Late failure'));
+        }
+      });
+      expect(screen.getByText('Loading graph')).toBeVisible();
+      await act(async () =>
+        resolveRetry(response(application, 'retry-response')),
+      );
+      expect(screen.getByText(`retry-response:${application}`)).toBeVisible();
+      act(() => jest.advanceTimersByTime(10000));
+      expect(screen.queryByRole('alert')).toBeNull();
+    },
+  );
 });

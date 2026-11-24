@@ -24,6 +24,15 @@ The Application graph tab renders with `RadiusGraph` from `@radius-project/graph
 
 The shared core has no query client. The dashboard keeps query behavior locally and wraps the shared `parseResourceId` function to retain its existing `plane: string`, `group`, `type`, and `name` contract. The pinned main libraries accept `Applications.Core/applications` on the live graph path and pass resource-definition icons. That path shows the raw provisioning text, the details status row, and the warnings. See `vendor/shared-libraries/candidate.json` for the limits.
 
+The graph tab never bypasses an API override with a direct Kubernetes POST. An
+override without the graph method gets an explicit unsupported-operation error.
+The tab checks the returned application and plane before rendering. Route or API replacement aborts
+old work and hides old data. A 10-second limit reports an error even if an override
+ignores its abort signal; late responses cannot replace that error.
+Request, timeout, and graph normalization errors include a **Retry graph** button.
+It sends a new graph request without reloading the resource page or changing the
+selected tab. The error and retry button are replaced by progress while it loads.
+
 The public `rad-components` `AppGraph` keeps its React Flow 11 compatibility renderer. It updates when graph props change, does not mutate connections, and reports duplicate IDs and invalid edges. `reactflow` is an optional peer for parser-only consumers. Hosts that import the root entry, `AppGraph`, or `ResourceNode` must install `reactflow` `^11.11.4` and use the same provider instance. Both frontend packages require React and ReactDOM `^18.3.1`.
 
 Its topology uses the shared identity parser for Azure ARM, non-Radius planes,

@@ -355,13 +355,32 @@ test.describe('Radius application graph journey', () => {
     ).toHaveCount(0);
   });
 
-  // KNOWN-DEFECT (#370): the visible error needs an accessible retry action.
-  test('GU-16 / ER-10: KNOWN-DEFECT an unavailable graph request renders an error without retry', async ({
+  test('GU-16 / ER-10 / #370: retries an unavailable graph without reloading the resource page', async ({
     page,
   }) => {
-    await page.route(/\/api\/kubernetes\/proxy\/.*\/getGraph\?/, route =>
-      route.fulfill({ status: 503, body: 'Service Unavailable' }),
-    );
+    let graphRequests = 0;
+    let documentRequests = 0;
+    let resourceRequests = 0;
+    page.on('request', request => {
+      if (
+        request.isNavigationRequest() &&
+        request.frame() === page.mainFrame()
+      ) {
+        documentRequests++;
+      }
+      if (
+        request.method() === 'GET' &&
+        decodeURIComponent(request.url()).includes(`${applications[0].id}?`)
+      ) {
+        resourceRequests++;
+      }
+    });
+    await page.route(/\/api\/kubernetes\/proxy\/.*\/getGraph\?/, route => {
+      graphRequests++;
+      return graphRequests === 1
+        ? route.fulfill({ status: 503, body: 'Service Unavailable' })
+        : fulfillRadiusRequest(route);
+    });
     await enterDashboard(page);
     await page.goto(
       '/resources/demo/Applications.Core/applications/legacy-app/application',
@@ -369,12 +388,35 @@ test.describe('Radius application graph journey', () => {
 
     await expect(page.getByRole('alert')).toContainText('Request failed: 503');
     await expect(page.locator('.react-flow')).toHaveCount(0);
+    const url = page.url();
+    const documentsBeforeRetry = documentRequests;
+    const resourcesBeforeRetry = resourceRequests;
+    expect(resourcesBeforeRetry).toBeGreaterThan(0);
+    const retry = page.getByRole('button', { name: 'Retry graph' });
+    await retry.focus();
+    await page.keyboard.press('Enter');
+    await expect(
+      page.getByRole('group', { name: 'frontend', exact: true }),
+    ).toBeVisible();
+    await expect(page.getByRole('alert')).toHaveCount(0);
+    await expect(page.getByRole('tab', { name: 'App Graph' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    expect(page.url()).toBe(url);
+    expect(graphRequests).toBe(2);
+    expect(documentRequests).toBe(documentsBeforeRetry);
+    expect(resourceRequests).toBe(resourcesBeforeRetry);
   });
 
-  test('ER-09: a graph request timeout renders its distinct timeout error', async ({
+  test('ER-09 / #370: a graph request timeout can be retried', async ({
     page,
   }) => {
-    await page.route(/\/api\/kubernetes\/proxy\/.*\/getGraph\?/, () => {});
+    let graphRequests = 0;
+    await page.route(/\/api\/kubernetes\/proxy\/.*\/getGraph\?/, route => {
+      graphRequests++;
+      return graphRequests === 1 ? undefined : fulfillRadiusRequest(route);
+    });
     await enterDashboard(page);
     await page.goto(
       '/resources/demo/Applications.Core/applications/legacy-app/application',
@@ -384,5 +426,11 @@ test.describe('Radius application graph journey', () => {
       timeout: 15_000,
     });
     await expect(page.locator('.react-flow')).toHaveCount(0);
+    await page.getByRole('button', { name: 'Retry graph' }).click();
+    await expect(
+      page.getByRole('group', { name: 'frontend', exact: true }),
+    ).toBeVisible();
+    await expect(page.getByRole('alert')).toHaveCount(0);
+    expect(graphRequests).toBe(2);
   });
 });
