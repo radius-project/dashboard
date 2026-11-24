@@ -196,11 +196,14 @@ tool versions and each file's SHA-256. It does not contain credentials, the
 Dashboard backend, a lockfile, or a copy of the portal. The packages stay private.
 The builder queries the selected Yarn executable once and stops if its version
 does not match the repository's `packageManager` before building or packing.
+The version comes from stdout only; stderr warnings remain in qualification logs.
 
 The builder records Git state before reading build inputs and checks it again
 before publishing output. A build that starts with local edits stays marked as
 modified, even if those edits are restored during compilation. A changed revision
 or a newly modified checkout stops publication.
+The builder copies the exact shared-library receipt bytes it checked before the
+build, not a later version of that file.
 
 Git metadata checks ignore command-scope config and repository, index and object-store redirects.
 For a trusted, host-owned checkout mounted in a container, configure that exact
@@ -280,6 +283,8 @@ This installs the supplied archives rather than repacking the plugin. Only a
 successful run writes `qualification.json`, with the bundle manifest hash and
 package hashes. Keep that receipt with the bundle. This is controlled frontend
 evidence, not a production authorization test or approval of a broad host version range.
+Keep evidence and work directories outside the supplied bundle. The runner rejects
+paths at or inside that bundle before creating output directories.
 Without `QUALIFICATION_PLUGIN_BUNDLE`, the runner builds a bundle, extracts its
 transfer archive, and tests that output. CI runs this path on pull requests and
 release tags. Run the focused bundle regression tests with `yarn test:plugin-bundle`.

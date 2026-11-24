@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
+import { verifySharedLibraryCandidate } from './shared-library-candidate.ts';
 import {
   buildPluginInstallBundle,
   packWorkspace,
@@ -464,6 +465,47 @@ test('reject a linked bundle root before the runner copies it', () => {
   });
 });
 
+test('qualification rejects evidence and work destinations inside the supplied bundle without changing it', () => {
+  for (const kind of ['evidence', 'work']) {
+    for (const nested of [false, true]) {
+      fixture((root, bundle) => {
+        const destination = nested ? path.join(root, kind) : root;
+        const externalEvidence = `${root}-evidence`;
+        const manifestDigest = bundleFileSha256(path.join(root, 'bundle.json'));
+        try {
+          const result = spawnSync(
+            process.execPath,
+            [path.join(import.meta.dirname, 'qualify-installed-host.ts')],
+            {
+              encoding: 'utf8',
+              timeout: 15_000,
+              env: {
+                ...process.env,
+                QUALIFICATION_PLUGIN_BUNDLE: root,
+                QUALIFICATION_EVIDENCE_DIRECTORY:
+                  kind === 'evidence' ? destination : externalEvidence,
+                QUALIFICATION_WORK_DIRECTORY:
+                  kind === 'work' ? destination : '',
+              },
+            },
+          );
+          assert.ifError(result.error);
+          assert.notEqual(result.status, 0);
+          assert.match(result.stderr, /outside the supplied bundle/);
+          assert.equal(fs.existsSync(externalEvidence), false);
+          assert.deepEqual(verifyPluginInstallBundle(root), bundle);
+          assert.equal(
+            bundleFileSha256(path.join(root, 'bundle.json')),
+            manifestDigest,
+          );
+        } finally {
+          fs.rmSync(externalEvidence, { recursive: true, force: true });
+        }
+      });
+    }
+  }
+});
+
 test('reject a bundle manifest symlink', t => {
   fixture(root => {
     const manifest = path.join(root, 'bundle.json');
@@ -873,6 +915,39 @@ test('a different Yarn version cannot publish a bundle claiming the required too
     assert.deepEqual(calls, [['--version']]);
     assert.equal(fs.existsSync(output), false);
     assert.equal(fs.existsSync(`${output}.tar.gz`), false);
+  });
+});
+
+test('the bundle retains the checked shared-library receipt if its source changes during compilation', () => {
+  fixture(root => {
+    const checkout = builderCheckout(root);
+    fs.appendFileSync(path.join(checkout, 'package.json'), '\n');
+    const candidateFile = path.join(
+      checkout,
+      'vendor',
+      'shared-libraries',
+      'candidate.json',
+    );
+    const original = fs.readFileSync(candidateFile);
+    const output = path.join(root, 'output');
+    buildPluginInstallBundle(checkout, output, args => {
+      if (args[0] === 'tsc') {
+        const edited = JSON.parse(original.toString('utf8'));
+        edited.graphReact.stylesSha256 = '0'.repeat(64);
+        fs.writeFileSync(candidateFile, JSON.stringify(edited));
+      }
+      return fixturePacker(root, checkout, args);
+    });
+    assert.notDeepEqual(fs.readFileSync(candidateFile), original);
+    const bundledReceipt = fs.readFileSync(
+      path.join(output, 'archives', 'candidate.json'),
+    );
+    assert.deepEqual(bundledReceipt, original);
+    verifySharedLibraryCandidate(
+      JSON.parse(bundledReceipt.toString('utf8')),
+      path.join(output, 'archives'),
+    );
+    assert.equal(verifyPluginInstallBundle(output).source.dirty, true);
   });
 });
 

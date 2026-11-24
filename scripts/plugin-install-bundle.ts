@@ -97,8 +97,9 @@ export function buildPluginInstallBundle(
   );
   const candidateDirectory = path.join(root, 'vendor', 'shared-libraries');
   const candidateFile = path.join(candidateDirectory, 'candidate.json');
+  const candidateBytes = fs.readFileSync(candidateFile);
   const candidate: SharedLibraryCandidate = JSON.parse(
-    fs.readFileSync(candidateFile, 'utf8'),
+    candidateBytes.toString('utf8'),
   );
   for (const identity of [candidate.core, candidate.graphReact])
     assert.match(identity.path, /^[a-zA-Z0-9._-]+\.tgz$/);
@@ -159,9 +160,9 @@ export function buildPluginInstallBundle(
       );
       packages[name] = { path: file, version, sha256: identity.sha256 };
     }
-    fs.copyFileSync(
-      candidateFile,
+    fs.writeFileSync(
       path.join(contents, 'archives', 'candidate.json'),
+      candidateBytes,
     );
     fs.copyFileSync(
       path.join(root, 'scripts', 'verify-plugin-bundle.ts'),

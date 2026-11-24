@@ -33,6 +33,20 @@ if (!evidence || !path.isAbsolute(evidence)) {
   );
 }
 const workDirectory = process.env.QUALIFICATION_WORK_DIRECTORY;
+const suppliedBundle = process.env.QUALIFICATION_PLUGIN_BUNDLE;
+if (suppliedBundle) {
+  assert(
+    path.isAbsolute(suppliedBundle),
+    'QUALIFICATION_PLUGIN_BUNDLE must be absolute',
+  );
+  for (const destination of [evidence, workDirectory]) {
+    if (destination)
+      assert(
+        !isInsidePath(suppliedBundle, destination),
+        'Installed-host evidence and work directories must be outside the supplied bundle',
+      );
+  }
+}
 if (workDirectory && !path.isAbsolute(workDirectory)) {
   throw new Error('QUALIFICATION_WORK_DIRECTORY must be absolute');
 }
@@ -68,6 +82,7 @@ function run(
   args: string[],
   cwd = root,
   env: NodeJS.ProcessEnv = {},
+  captureStdout = false,
 ) {
   const log = path.join(recordDirectory, `command-${commands.length + 1}.log`);
   const fd = fs.openSync(log, 'w+');
@@ -79,7 +94,7 @@ function run(
   };
   commands.push(record);
   try {
-    execFileSync(command, args, {
+    const stdout = execFileSync(command, args, {
       cwd,
       env: {
         ...process.env,
@@ -87,9 +102,12 @@ function run(
         QUALIFICATION_EVIDENCE_DIRECTORY: recordDirectory,
         ...env,
       },
-      stdio: ['ignore', fd, fd],
+      stdio: ['ignore', captureStdout ? 'pipe' : fd, fd],
+      encoding: 'utf8',
     });
+    if (captureStdout) fs.writeFileSync(fd, stdout);
     record.result = 'passed';
+    return captureStdout ? stdout : undefined;
   } catch (error) {
     try {
       const size = fs.fstatSync(fd).size;
@@ -113,13 +131,17 @@ function run(
       `${JSON.stringify(commands, null, 2)}\n`,
     );
   }
-  return log;
 }
 
 const runYarn = (args: string[], cwd = root) => {
   const invocation = yarnInvocation(args);
-  const log = run(invocation.command, invocation.args, cwd);
-  if (args[0] === '--version') return fs.readFileSync(log, 'utf8');
+  return run(
+    invocation.command,
+    invocation.args,
+    cwd,
+    {},
+    args[0] === '--version',
+  );
 };
 const repositoryManifest = JSON.parse(
   fs.readFileSync(path.join(root, 'package.json'), 'utf8'),
@@ -139,12 +161,7 @@ const hostManifests = fullMatrix
 
 try {
   const bundleDirectory = path.join(consumer, 'radius-plugin-bundle');
-  const suppliedBundle = process.env.QUALIFICATION_PLUGIN_BUNDLE;
   if (suppliedBundle) {
-    assert(
-      path.isAbsolute(suppliedBundle),
-      'QUALIFICATION_PLUGIN_BUNDLE must be absolute',
-    );
     verifyPluginInstallBundle(suppliedBundle);
     fs.cpSync(suppliedBundle, bundleDirectory, { recursive: true });
   } else {

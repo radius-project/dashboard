@@ -33,8 +33,10 @@ test('clean installed host seeds the tested dependency tuple and can update its 
         if (command !== 'qualification-yarn')
           return globalThis.qualificationExecFileSync(command, args, options);
         if (args[0] === '--version') {
-          fs.writeFileSync(options.stdio[1], ${JSON.stringify(JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')).packageManager.slice('yarn@'.length))} + '\\n');
-          return;
+          assert.equal(options.stdio[1], 'pipe');
+          assert.equal(options.encoding, 'utf8');
+          fs.writeFileSync(options.stdio[2], 'Certificate configuration warning\\n');
+          return ${JSON.stringify(JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')).packageManager.slice('yarn@'.length))} + '\\n';
         }
         const output = args.indexOf('--out');
         if (output !== -1) {
@@ -124,6 +126,22 @@ test('clean installed host seeds the tested dependency tuple and can update its 
       result.stdout + result.stderr,
     );
     assert.match(result.stderr, /Injected stop before package installation/);
+    const record = fs
+      .readdirSync(evidence)
+      .find(name => name.startsWith('installed-host-'));
+    assert(record);
+    const commandLog = fs.readFileSync(
+      path.join(evidence, record, 'command-1.log'),
+      'utf8',
+    );
+    assert.match(commandLog, /Certificate configuration warning/);
+    assert(
+      commandLog.includes(
+        JSON.parse(
+          fs.readFileSync(path.join(root, 'package.json'), 'utf8'),
+        ).packageManager.slice('yarn@'.length),
+      ),
+    );
   } finally {
     if (inheritedBundle === undefined)
       delete process.env.QUALIFICATION_PLUGIN_BUNDLE;
