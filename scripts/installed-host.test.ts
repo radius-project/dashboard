@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -12,6 +12,7 @@ import {
   assertProductionInputs,
   installedPackage,
   isInsidePath,
+  qualificationSource,
 } from './installed-host.ts';
 
 test('clean installed host seeds the tested dependency tuple and can update its lockfile in CI', () => {
@@ -25,6 +26,10 @@ test('clean installed host seeds the tested dependency tuple and can update its 
       import fs from 'node:fs';
       import path from 'node:path';
       export function execFileSync(command, args, options) {
+        if (command === 'git') {
+          if (args[0] === 'status') return '';
+          return args.at(-1) === 'HEAD^{tree}' ? 'b'.repeat(40) : 'a'.repeat(40);
+        }
         const output = args.indexOf('--out');
         if (output !== -1) fs.writeFileSync(args[output + 1], 'test archive');
         if (args[0] !== 'install') return;
@@ -73,6 +78,7 @@ test('clean installed host seeds the tested dependency tuple and can update its 
           QUALIFICATION_WORK_DIRECTORY: '',
           QUALIFICATION_FULL_HOST_MATRIX: '',
           QUALIFICATION_CONTAINER_IMAGE: '',
+          QUALIFICATION_SOURCE_REVISION: '',
         },
       },
     );
@@ -110,6 +116,56 @@ function fixture(
     fs.rmSync(root, { recursive: true, force: true });
   }
 }
+
+test('qualification receipts bind clean checkout identity, not caller-supplied source claims', () => {
+  fixture((root, write) => {
+    const git = (...args: string[]) =>
+      execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
+    git('init', '--quiet');
+    write('source.ts', 'export const value = 1;\n');
+    write('.gitignore', 'dist/\nnode_modules/\n');
+    git('add', 'source.ts', 'package.json', '.gitignore');
+    git(
+      '-c',
+      'user.name=Test',
+      '-c',
+      'user.email=test@example.invalid',
+      '-c',
+      'commit.gpgsign=false',
+      'commit',
+      '--quiet',
+      '-m',
+      'source',
+    );
+    const revision = git('rev-parse', 'HEAD');
+    const tree = git('rev-parse', 'HEAD^{tree}');
+    assert.deepEqual(qualificationSource(root), { revision, tree });
+    assert.deepEqual(qualificationSource(root, revision), { revision, tree });
+    assert.throws(
+      () => qualificationSource(root, '0'.repeat(40)),
+      /checked-out/,
+    );
+    write('dist/generated.js', 'compiled output');
+    assert.deepEqual(qualificationSource(root, revision), { revision, tree });
+    for (const file of [
+      'packages/app/public/untracked.html',
+      'plugins/plugin-radius/fixtures/untracked.json',
+    ]) {
+      const untracked = write(file, 'not in the source commit');
+      assert.throws(
+        () => qualificationSource(root, revision),
+        /non-ignored untracked files/,
+      );
+      fs.unlinkSync(untracked);
+      assert.deepEqual(qualificationSource(root, revision), { revision, tree });
+    }
+    write('source.ts', 'export const value = 2;\n');
+    assert.throws(
+      () => qualificationSource(root, revision),
+      /clean source tree/,
+    );
+  });
+});
 
 test('tuple lookup supports packages that do not export package.json', () => {
   fixture((root, write) => {
@@ -168,6 +224,8 @@ test('IA-04/06/08: require compiled candidates and CSS, reject source and old re
     const inputs = [
       'node_modules/@internal/plugin-radius/dist/index.esm.js',
       'node_modules/@internal/plugin-radius/dist/alpha.esm.js',
+      'node_modules/@internal/plugin-radius/dist/api/query.esm.js',
+      'node_modules/@internal/plugin-radius/dist/components/resources/legacyGraph.esm.js',
       'node_modules/@radius-project/core/dist/graph.js',
       'node_modules/@radius-project/graph-react/dist/index.js',
       'node_modules/@radius-project/graph-react/dist/styles.css',
@@ -184,6 +242,16 @@ test('IA-04/06/08: require compiled candidates and CSS, reject source and old re
       () => assertProductionInputs(root, inputs.slice(0, 2)),
       /missing candidate input/,
     );
+    for (const owned of ['api/query.esm.js', 'resources/legacyGraph.esm.js']) {
+      assert.throws(
+        () =>
+          assertProductionInputs(
+            root,
+            inputs.filter(file => !file.replaceAll('\\', '/').endsWith(owned)),
+          ),
+        /missing candidate input/,
+      );
+    }
     for (const forbidden of [
       'node_modules/@internal/plugin-radius/src/index.ts',
       'node_modules/@radapp.io/rad-components/src/graphModel.ts',

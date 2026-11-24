@@ -8,6 +8,7 @@ import {
   assertInstalledReact18,
   installedPackage,
   isInsidePath,
+  qualificationSource,
   sha256,
 } from './installed-host.ts';
 import {
@@ -16,6 +17,10 @@ import {
 } from './shared-library-candidate.ts';
 
 const root = process.cwd();
+const source = qualificationSource(
+  root,
+  process.env.QUALIFICATION_SOURCE_REVISION,
+);
 const fullMatrix = process.env.QUALIFICATION_FULL_HOST_MATRIX === 'true';
 const evidence = process.env.QUALIFICATION_EVIDENCE_DIRECTORY;
 if (!evidence || !path.isAbsolute(evidence)) {
@@ -162,6 +167,7 @@ try {
     '@backstage/plugin-kubernetes',
     '@backstage/theme',
     '@material-ui/core',
+    '@types/jest',
     '@types/react',
     '@types/react-dom',
     'react',
@@ -400,12 +406,8 @@ try {
           `io.radius.qualification.plugin-sha256=${artifacts['@internal/plugin-radius'].sha256}`,
           '--label',
           `io.radius.qualification.backend-sha256=${sha256(path.join(consumer, 'packages', 'backend', 'src', 'createRadiusBackend.ts'))}`,
-          ...(process.env.QUALIFICATION_SOURCE_REVISION
-            ? [
-                '--label',
-                `org.opencontainers.image.revision=${process.env.QUALIFICATION_SOURCE_REVISION}`,
-              ]
-            : []),
+          '--label',
+          `org.opencontainers.image.revision=${source.revision}`,
           '.',
         ],
         consumer,
@@ -460,6 +462,11 @@ try {
       },
     );
   }
+  assert.deepEqual(
+    qualificationSource(root, source.revision),
+    source,
+    'Qualification source changed during the run',
+  );
   fs.writeFileSync(
     path.join(consumer, 'qualification.json'),
     `${JSON.stringify(
@@ -489,7 +496,8 @@ try {
         compiler: dependencies.typescript,
         entries: ['@internal/plugin-radius', '@internal/plugin-radius/alpha'],
         backendImage: backendImage ?? null,
-        sourceRevision: process.env.QUALIFICATION_SOURCE_REVISION ?? null,
+        sourceRevision: source.revision,
+        sourceTree: source.tree,
         dependencies,
         artifacts,
         shared,
