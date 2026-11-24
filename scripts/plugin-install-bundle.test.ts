@@ -31,6 +31,7 @@ function fixtureGit(
     'GIT_COMMON_DIR',
     'GIT_WORK_TREE',
     'GIT_INDEX_FILE',
+    'GIT_OBJECT_DIRECTORY',
     'GIT_CONFIG',
     'GIT_CONFIG_PARAMETERS',
   ]) {
@@ -66,6 +67,22 @@ function packFixture(
   } finally {
     fs.rmSync(contents, { recursive: true, force: true });
   }
+}
+
+function commitFixture(checkout: string) {
+  fixtureGit(checkout, [
+    '-c',
+    'user.name=Bundle fixture',
+    '-c',
+    'user.email=bundle@example.invalid',
+    '-c',
+    'commit.gpgsign=false',
+    'commit',
+    '--quiet',
+    '--allow-empty',
+    '-m',
+    'Fixture revision',
+  ]);
 }
 
 function builderCheckout(root: string) {
@@ -301,7 +318,7 @@ test('builder CLI reports usage through a symlinked parent', () => {
   }
 });
 
-test('fixture Git commands cannot change an inherited repository config or index', () => {
+test('fixture Git commands cannot change an inherited repository config, index or object store', () => {
   fixture(root => {
     const unrelated = path.join(root, 'unrelated');
     const portal = path.join(root, 'portal');
@@ -315,13 +332,27 @@ test('fixture Git commands cannot change an inherited repository config or index
     fixtureGit(unrelated, ['add', '.']);
     const config = path.join(unrelated, '.git', 'config');
     const index = path.join(unrelated, '.git', 'index');
+    const objects = path.join(unrelated, '.git', 'objects');
+    const objectSnapshot = () =>
+      fs
+        .readdirSync(objects, { recursive: true, encoding: 'utf8' })
+        .sort()
+        .map(file => {
+          const absolute = path.join(objects, file);
+          return [
+            file,
+            fs.statSync(absolute).isFile() ? bundleFileSha256(absolute) : null,
+          ];
+        });
     const beforeConfig = fs.readFileSync(config);
     const beforeIndex = fs.readFileSync(index);
+    const beforeObjects = objectSnapshot();
     const inherited = {
       ...process.env,
       GIT_DIR: path.dirname(config),
       GIT_INDEX_FILE: index,
       GIT_CONFIG: config,
+      GIT_OBJECT_DIRECTORY: objects,
     };
     fixtureGit(portal, ['init', '--quiet'], inherited);
     fixtureGit(portal, ['config', 'core.autocrlf', 'true'], inherited);
@@ -332,6 +363,11 @@ test('fixture Git commands cannot change an inherited repository config or index
     fixtureGit(portal, ['add', '.'], inherited);
     assert.deepEqual(fs.readFileSync(config), beforeConfig);
     assert.deepEqual(fs.readFileSync(index), beforeIndex);
+    assert.deepEqual(objectSnapshot(), beforeObjects);
+    assert.equal(
+      fixtureGit(portal, ['show', ':fixture.txt']).toString(),
+      'isolated staged bytes\n',
+    );
     assert(fs.existsSync(path.join(portal, '.git', 'index')));
     assert.match(
       fs.readFileSync(path.join(portal, '.git', 'config'), 'utf8'),
@@ -641,19 +677,7 @@ test('bundle provenance uses its checkout despite inherited Git repository overr
     const other = path.join(root, 'other');
     fs.mkdirSync(other);
     fixtureGit(other, ['init', '--quiet']);
-    fixtureGit(other, [
-      '-c',
-      'user.name=Bundle fixture',
-      '-c',
-      'user.email=bundle@example.invalid',
-      '-c',
-      'commit.gpgsign=false',
-      'commit',
-      '--quiet',
-      '--allow-empty',
-      '-m',
-      'Unrelated checkout',
-    ]);
+    commitFixture(other);
     const revision = fixtureGit(checkout, ['rev-parse', 'HEAD'])
       .toString()
       .trim();
@@ -689,6 +713,65 @@ test('bundle provenance uses its checkout despite inherited Git repository overr
       }
     }
   });
+});
+
+test('restoring edited build inputs cannot turn a dirty-source bundle into clean evidence', () => {
+  for (const dirty of [false, true]) {
+    fixture(root => {
+      const checkout = builderCheckout(root);
+      fixtureGit(checkout, ['add', '--all']);
+      commitFixture(checkout);
+      const input = path.join(
+        checkout,
+        'plugins',
+        'plugin-radius',
+        'package.json',
+      );
+      const before = fs.readFileSync(input, 'utf8');
+      const edited = dirty ? `${before}\n` : before;
+      fs.writeFileSync(input, edited);
+      const output = path.join(root, 'output');
+      buildPluginInstallBundle(checkout, output, args => {
+        if (args[0] === 'tsc') {
+          assert.equal(fs.readFileSync(input, 'utf8'), edited);
+          fs.writeFileSync(input, before);
+        }
+        fixturePacker(root, checkout, args);
+      });
+      assert.equal(fixtureGit(checkout, ['status', '--porcelain']).length, 0);
+      assert.equal(verifyPluginInstallBundle(output).source.dirty, dirty);
+    });
+  }
+});
+
+test('source revision changes and newly modified inputs prevent output publication', () => {
+  for (const change of ['revision', 'input']) {
+    fixture(root => {
+      const checkout = builderCheckout(root);
+      fixtureGit(checkout, ['add', '--all']);
+      commitFixture(checkout);
+      const output = path.join(root, 'output');
+      assert.throws(
+        () =>
+          buildPluginInstallBundle(checkout, output, args => {
+            if (args[0] === 'tsc') {
+              if (change === 'revision') commitFixture(checkout);
+              else fs.appendFileSync(path.join(checkout, 'package.json'), '\n');
+            }
+            fixturePacker(root, checkout, args);
+          }),
+        change === 'revision'
+          ? /Source revision changed/
+          : /Source became modified/,
+      );
+      for (const file of [
+        output,
+        `${output}.tar.gz`,
+        `${output}.tar.gz.sha256`,
+      ])
+        assert.equal(fs.existsSync(file), false);
+    });
+  }
 });
 
 test('supplied plugin pins must match bundled versions even when archive hashes match', () => {

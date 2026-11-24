@@ -194,6 +194,23 @@ finished archive and checksum to the transfer drive.
 The bundle records the Dashboard commit, whether the source has changes, build
 tool versions and each file's SHA-256. It does not contain credentials, the
 Dashboard backend, a lockfile, or a copy of the portal. The packages stay private.
+
+The builder records Git state before reading build inputs and checks it again
+before publishing output. A build that starts with local edits stays marked as
+modified, even if those edits are restored during compilation. A changed revision
+or a newly modified checkout stops publication.
+
+Git metadata checks ignore command-scope config and repository/index redirects.
+For a trusted, host-owned checkout mounted in a container, configure that exact
+path in persistent global Git config before building:
+
+```bash
+git config --global --add safe.directory /absolute/path/to/dashboard
+```
+
+Trust passed only through `GIT_CONFIG_COUNT` is not inherited by the builder.
+Do not use wildcard trust or trust a checkout you have not verified.
+
 No npm publication, release upload or registry access change is part of this command.
 Checksums detect changed bytes; they do not prove who built the bundle.
 
@@ -221,8 +238,10 @@ the tested bundle, packages, compiler and installed lockfile, without raw logs
 or machine paths. It is frontend fixture evidence, not production auth approval.
 
 CI transfers the exact tested archive through a seven-day workflow artifact.
-A separate Dashboard job checks the checksum and uses `gh release upload` to add
-the files to that Dashboard release. Radius only supplies the release/version
+A separate Dashboard job checks the checksum and uses the release event's fixed
+release ID to upload files through the GitHub API. It checks that the original
+release still has the expected tag and that the full tag ref still resolves to
+the qualified commit. Radius only supplies the release/version
 notification; it does not download the plugin or include it in the Radius release
 package. No npm package is published. Failed tests, missing evidence, modified
 source or a source-commit mismatch prevent upload.
@@ -233,6 +252,9 @@ build artifact is still available. Artifacts expire after seven days. After that
 rerun the build and qualification too, so the publisher receives a new artifact ID.
 If the build fails, rerun the build and its dependent publisher.
 Existing assets are not overwritten; remove partial plugin uploads before retrying.
+If the release was replaced or its tag moved, the old run stops without uploads.
+A retry cannot retarget its artifacts; use the workflow run from the intended
+release publication.
 Older releases do not gain assets automatically.
 
 Before handing a bundle to another user, test its exact contents:

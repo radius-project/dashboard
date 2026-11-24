@@ -306,11 +306,25 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
+          RELEASE_ID: ${{ github.event.release.id }}
           BUNDLE_ASSETS: ${{ runner.temp }}/radius-plugin-release-assets
         run: |
+          set -euo pipefail
           cd "${BUNDLE_ASSETS}" || exit 1
           sha256sum -c "radius-backstage-plugin-${GITHUB_REF_NAME}.tar.gz.sha256"
-          gh release upload "${GITHUB_REF_NAME}" \
+          qualified_revision="$(jq -er '.bundle.source.revision' "radius-backstage-plugin-${GITHUB_REF_NAME}.qualification.json")"
+          test "${qualified_revision}" = "${GITHUB_SHA}"
+          gh api "repos/${GH_REPO}/releases/${RELEASE_ID}" |
+            jq -e --argjson id "${RELEASE_ID}" --arg tag "${GITHUB_REF_NAME}" \
+              '.id == $id and .tag_name == $tag and .draft == false'
+          current_revision="$(gh api "repos/${GH_REPO}/commits/refs/tags/${GITHUB_REF_NAME}" --jq .sha)"
+          test "${current_revision}" = "${qualified_revision}"
+          for file in \
             "radius-backstage-plugin-${GITHUB_REF_NAME}.tar.gz" \
             "radius-backstage-plugin-${GITHUB_REF_NAME}.tar.gz.sha256" \
             "radius-backstage-plugin-${GITHUB_REF_NAME}.qualification.json"
+          do
+            gh api --method POST -H 'Content-Type: application/octet-stream' \
+              --input "${file}" --silent \
+              "https://uploads.github.com/repos/${GH_REPO}/releases/${RELEASE_ID}/assets?name=${file}"
+          done

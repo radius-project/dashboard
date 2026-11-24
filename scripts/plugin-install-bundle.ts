@@ -56,6 +56,28 @@ export function buildPluginInstallBundle(
   for (const file of [output, archive, `${archive}.sha256`]) {
     assert(!fs.existsSync(file), `Refusing to overwrite ${file}`);
   }
+  const gitEnv: NodeJS.ProcessEnv = { ...process.env, GIT_CONFIG_COUNT: '0' };
+  for (const name of [
+    'GIT_DIR',
+    'GIT_COMMON_DIR',
+    'GIT_WORK_TREE',
+    'GIT_INDEX_FILE',
+    'GIT_CONFIG',
+    'GIT_CONFIG_PARAMETERS',
+  ])
+    delete gitEnv[name];
+  const git = (args: string[]) =>
+    execFileSync('git', args, {
+      cwd: root,
+      env: gitEnv,
+      encoding: 'utf8',
+    }).trim();
+  const sourceState = () => ({
+    revision: git(['rev-parse', 'HEAD']),
+    dirty:
+      git(['status', '--porcelain', '--untracked-files=normal']).length > 0,
+  });
+  const source = sourceState();
   const candidateDirectory = path.join(root, 'vendor', 'shared-libraries');
   const candidateFile = path.join(candidateDirectory, 'candidate.json');
   const candidate: SharedLibraryCandidate = JSON.parse(
@@ -131,29 +153,9 @@ export function buildPluginInstallBundle(
     const repository = JSON.parse(
       fs.readFileSync(path.join(root, 'package.json'), 'utf8'),
     );
-    const gitEnv: NodeJS.ProcessEnv = { ...process.env, GIT_CONFIG_COUNT: '0' };
-    for (const name of [
-      'GIT_DIR',
-      'GIT_COMMON_DIR',
-      'GIT_WORK_TREE',
-      'GIT_INDEX_FILE',
-      'GIT_CONFIG',
-      'GIT_CONFIG_PARAMETERS',
-    ])
-      delete gitEnv[name];
-    const git = (args: string[]) =>
-      execFileSync('git', args, {
-        cwd: root,
-        env: gitEnv,
-        encoding: 'utf8',
-      }).trim();
     const bundle: PluginInstallBundle = {
       formatVersion: 1,
-      source: {
-        revision: git(['rev-parse', 'HEAD']),
-        dirty:
-          git(['status', '--porcelain', '--untracked-files=normal']).length > 0,
-      },
+      source,
       toolchain: {
         node: process.version,
         packageManager: repository.packageManager,
@@ -226,6 +228,16 @@ a broad Backstage support promise.
     verifyPluginInstallBundle(contents);
     execFileSync('tar', ['-czf', stagedArchive, '-C', contents, '.']);
     const digest = bundleFileSha256(stagedArchive);
+    const finalSource = sourceState();
+    assert.equal(
+      finalSource.revision,
+      source.revision,
+      'Source revision changed while building the plugin bundle',
+    );
+    assert(
+      source.dirty || !finalSource.dirty,
+      'Source became modified while building the plugin bundle',
+    );
     fs.linkSync(stagedArchive, archive);
     published.push(archive);
     fs.mkdirSync(output);

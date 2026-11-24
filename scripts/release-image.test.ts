@@ -893,6 +893,127 @@ test('release asset preparation rejects a changed transfer archive with the orig
   }
 });
 
+test('release uploads stay bound to the event release and qualified commit on retry', t => {
+  const tools = spawnSync(
+    'bash',
+    ['-c', 'command -v jq && command -v sha256sum'],
+    { encoding: 'utf8' },
+  );
+  if (tools.error || tools.status !== 0) {
+    t.skip('Release shell test requires bash, jq and sha256sum');
+    return;
+  }
+  const workflow = readFileSync(
+    join(root, '.github', 'workflows', 'build.yaml'),
+    'utf8',
+  );
+  const block = workflow.split('- name: Attach Bundle to Dashboard Release')[1];
+  assert.ok(block);
+  const script = block
+    .split('run: |')[1]
+    .trimEnd()
+    .replace(/^ {10}/gm, '');
+  const directory = mkdtempSync(join(tmpdir(), 'plugin-release-upload-'));
+  try {
+    const tag = 'v0.63.0-rc.1';
+    const archive = `radius-backstage-plugin-${tag}.tar.gz`;
+    const bytes = Buffer.from('qualified archive');
+    writeFileSync(join(directory, archive), bytes);
+    writeFileSync(
+      join(directory, `${archive}.sha256`),
+      `${createHash('sha256').update(bytes).digest('hex')}  ${archive}\n`,
+    );
+    writeFileSync(
+      join(directory, `radius-backstage-plugin-${tag}.qualification.json`),
+      JSON.stringify({
+        bundle: { source: { revision: 'a'.repeat(40), dirty: false } },
+      }),
+    );
+    const trace = join(directory, 'requests.log');
+    const fakeGh = `
+      gh() {
+        printf '%s\\n' "$*" >> "$GH_TRACE"
+        test "$1" = api || return 1
+        if [ "$2" = "repos/$GH_REPO/releases/$RELEASE_ID" ]; then
+          test "$SCENARIO" != deleted || return 1
+          id="$RELEASE_ID"
+          if [ "$SCENARIO" = replacement ]; then id=456; fi
+          printf '{"id":%s,"tag_name":"%s","draft":false}\\n' "$id" "$GITHUB_REF_NAME"
+        elif [ "$2" = "repos/$GH_REPO/commits/refs/tags/$GITHUB_REF_NAME" ]; then
+          test "$SCENARIO" != tag-error || return 1
+          if [ "$SCENARIO" = moved ]; then
+            printf '%040d\\n' 0
+          else
+            printf '%s\\n' "$GITHUB_SHA"
+          fi
+        elif [ "$2" = --method ] && [ "$3" = POST ]; then
+          case "\${!#}" in
+            "https://uploads.github.com/repos/$GH_REPO/releases/$RELEASE_ID/assets?name="*) ;;
+            *) return 1 ;;
+          esac
+        else
+          return 1
+        fi
+      }
+    `;
+    for (const scenario of [
+      'same',
+      'deleted',
+      'replacement',
+      'moved',
+      'tag-error',
+    ]) {
+      writeFileSync(trace, '');
+      const result = spawnSync(
+        'bash',
+        ['-euo', 'pipefail', '-c', `${fakeGh}\n${script}`],
+        {
+          encoding: 'utf8',
+          env: {
+            ...process.env,
+            BUNDLE_ASSETS: directory,
+            GITHUB_REF_NAME: tag,
+            GITHUB_SHA: 'a'.repeat(40),
+            GH_REPO: 'radius-project/dashboard',
+            RELEASE_ID: '123',
+            GH_TRACE: trace,
+            SCENARIO: scenario,
+          },
+        },
+      );
+      assert.ifError(result.error);
+      const requests = readFileSync(trace, 'utf8').trim().split('\n');
+      const uploads = requests.filter(request =>
+        request.startsWith('api --method POST'),
+      );
+      if (scenario === 'same') {
+        assert.equal(result.status, 0, result.stdout + result.stderr);
+        assert.equal(uploads.length, 3);
+        for (const file of [
+          archive,
+          `${archive}.sha256`,
+          `radius-backstage-plugin-${tag}.qualification.json`,
+        ]) {
+          assert(
+            uploads.some(request =>
+              request.endsWith(`/releases/123/assets?name=${file}`),
+            ),
+          );
+        }
+      } else {
+        assert.notEqual(result.status, 0, scenario);
+        assert.deepEqual(
+          uploads,
+          [],
+          `${scenario}: retries must upload nothing`,
+        );
+      }
+    }
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 test('the actual build chain, offline CI tests, validation gates, and edge publishing remain wired', () => {
   const rootPackage = JSON.parse(
     readFileSync(join(root, 'package.json'), 'utf8'),
@@ -995,11 +1116,16 @@ test('the actual build chain, offline CI tests, validation gates, and edge publi
     bundlePublication,
     /sha256sum -c "radius-backstage-plugin-\$\{GITHUB_REF_NAME\}\.tar\.gz\.sha256"/,
   );
-  assert.match(bundlePublication, /gh release upload "\$\{GITHUB_REF_NAME\}"/);
+  assert.match(
+    bundlePublication,
+    /RELEASE_ID: \$\{\{ github\.event\.release\.id \}\}/,
+  );
+  assert.match(bundlePublication, /releases\/\$\{RELEASE_ID\}\/assets\?name=/);
+  assert.match(bundlePublication, /commits\/refs\/tags\/\$\{GITHUB_REF_NAME\}/);
   assert.match(bundlePublication, /GH_REPO: \$\{\{ github\.repository \}\}/);
   assert.doesNotMatch(
     bundlePublication,
-    /actions\/checkout|yarn install|bundle:plugin|--clobber|gh release create/,
+    /actions\/checkout|yarn install|bundle:plugin|--clobber|gh release (create|upload)/,
   );
   assert.match(
     workflow,
