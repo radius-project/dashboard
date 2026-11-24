@@ -43,7 +43,10 @@ export function pluginInstallSettings(bundle: PluginInstallBundle) {
   };
 }
 
-export function verifyPluginInstallBundle(directory: string) {
+export function verifyPluginInstallBundle(
+  directory: string,
+  expectedRevision?: string,
+) {
   assert(
     fs.lstatSync(directory).isDirectory(),
     'Expected a real plugin bundle directory',
@@ -59,6 +62,18 @@ export function verifyPluginInstallBundle(directory: string) {
   assert.equal(bundle.formatVersion, 1, 'Unsupported plugin bundle format');
   assert.match(bundle.source.revision, /^[a-f0-9]{40}$/);
   assert.equal(typeof bundle.source.dirty, 'boolean');
+  if (expectedRevision) {
+    assert.equal(
+      bundle.source.revision,
+      expectedRevision,
+      'Qualification bundle must match the checked-out commit',
+    );
+    assert.equal(
+      bundle.source.dirty,
+      false,
+      'Qualification bundle must have clean source',
+    );
+  }
   assert.equal(typeof bundle.toolchain.node, 'string');
   assert.equal(typeof bundle.toolchain.packageManager, 'string');
   assert.deepEqual(

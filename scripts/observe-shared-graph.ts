@@ -7,11 +7,14 @@ import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { build } from 'esbuild';
 import { chromium, expect, type Page } from '@playwright/test';
+import { assertInside } from './installed-host.ts';
 
 const root = process.cwd();
 const consumerRoot = process.argv[2] ?? root;
+const frontendRoot = process.argv[3] ?? consumerRoot;
+assertInside(consumerRoot, frontendRoot);
 const consumerRequire = createRequire(
-  path.join(path.resolve(consumerRoot), 'package.json'),
+  path.join(path.resolve(frontendRoot), 'package.json'),
 );
 const pluginRoot = path.dirname(
   consumerRequire.resolve('@internal/plugin-radius/package.json'),
@@ -158,7 +161,7 @@ async function main() {
               : <AppGraph graph={graph} />));
           };
         `,
-        resolveDir: consumerRoot,
+        resolveDir: frontendRoot,
         loader: 'tsx',
       },
       outfile: path.join(output, 'graph.js'),

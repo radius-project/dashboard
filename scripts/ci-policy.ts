@@ -153,6 +153,7 @@ const stages = [
   'standalone',
   'graph',
   'artifact',
+  'bundle',
   'installed',
 ] as const;
 const outcomes = ['success', 'failure', 'cancelled', 'skipped'];

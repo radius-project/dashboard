@@ -151,6 +151,7 @@ jobs:
         run: yarn run test:package
 
       - name: Qualify Plugin Install Bundle
+        id: bundle
         if: ${{ env.CI_TEST == 'true' || env.CI_PUBLISH_PLUGIN == 'true' }}
         env:
           QUALIFICATION_EVIDENCE_DIRECTORY: ${{ runner.temp }}/radius-plugin-bundle-evidence
@@ -218,6 +219,7 @@ jobs:
           PHASE6_STANDALONE: ${{ steps.standalone.outcome }}
           PHASE6_GRAPH: ${{ steps.graph.outcome }}
           PHASE6_ARTIFACT: ${{ steps.artifact.outcome }}
+          PHASE6_BUNDLE: ${{ steps.bundle.outcome }}
           PHASE6_INSTALLED: ${{ steps.installed.outcome }}
         run: node scripts/ci-policy.ts evidence "${RUNNER_TEMP}/phase6-failure.json"
 

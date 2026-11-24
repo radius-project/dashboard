@@ -20,12 +20,38 @@ test('clean installed host seeds the tested dependency tuple and can update its 
   const evidence = fs.mkdtempSync(
     path.join(os.tmpdir(), 'installed-host-seed-'),
   );
+  const checkout = path.join(evidence, 'checkout');
   const inheritedBundle = process.env.QUALIFICATION_PLUGIN_BUNDLE;
-  process.env.QUALIFICATION_PLUGIN_BUNDLE = path.join(
-    evidence,
-    'missing-bundle',
-  );
   try {
+    for (const file of [
+      'package.json',
+      'yarn.lock',
+      'plugins/plugin-radius/package.json',
+      'packages/rad-components/package.json',
+      'scripts/verify-plugin-bundle.ts',
+    ]) {
+      const target = path.join(checkout, file);
+      fs.mkdirSync(path.dirname(target), { recursive: true });
+      fs.copyFileSync(path.join(root, file), target);
+    }
+    fs.cpSync(
+      path.join(root, 'vendor', 'shared-libraries'),
+      path.join(checkout, 'vendor', 'shared-libraries'),
+      { recursive: true },
+    );
+    fs.symlinkSync(
+      path.join(root, 'node_modules'),
+      path.join(checkout, 'node_modules'),
+      'junction',
+    );
+    const checkoutLock = path.join(root, '.radius-plugin-pack.lock');
+    const originalLock = fs.existsSync(checkoutLock)
+      ? fs.readFileSync(checkoutLock)
+      : undefined;
+    process.env.QUALIFICATION_PLUGIN_BUNDLE = path.join(
+      evidence,
+      'missing-bundle',
+    );
     const childProcessSource = `
       import assert from 'node:assert/strict';
       import fs from 'node:fs';
@@ -45,6 +71,8 @@ test('clean installed host seeds the tested dependency tuple and can update its 
         }
         const output = args.indexOf('--out');
         if (output !== -1) {
+          assert.equal(options.cwd, ${JSON.stringify(checkout)});
+          assert.equal(fs.existsSync(path.join(options.cwd, '.radius-plugin-pack.lock')), true);
           const packed = fs.mkdtempSync(path.join(${JSON.stringify(evidence)}, 'packed-'));
           try {
             fs.mkdirSync(path.join(packed, 'package'));
@@ -107,7 +135,7 @@ test('clean installed host seeds the tested dependency tuple and can update its 
         `,
       ],
       {
-        cwd: root,
+        cwd: checkout,
         encoding: 'utf8',
         timeout: 15_000,
         env: {
@@ -132,6 +160,14 @@ test('clean installed host seeds the tested dependency tuple and can update its 
       result.stdout + result.stderr,
     );
     assert.match(result.stderr, /Injected stop before package installation/);
+    assert.equal(
+      fs.existsSync(path.join(checkout, '.radius-plugin-pack.lock')),
+      false,
+    );
+    assert.deepEqual(
+      fs.existsSync(checkoutLock) ? fs.readFileSync(checkoutLock) : undefined,
+      originalLock,
+    );
     const record = fs
       .readdirSync(evidence)
       .find(name => name.startsWith('installed-host-'));
@@ -278,6 +314,15 @@ test('RX-01/03: accept one host React 18 pair, reject React 19 and duplicate Rea
       () => assertInstalledReact18(root),
       /one installed react copy/,
     );
+    fs.rmSync(path.join(root, 'node_modules', 'host'), { recursive: true });
+    write(
+      'packages/app/node_modules/react/package.json',
+      '{"name":"react","version":"18.3.1"}',
+    );
+    assert.throws(
+      () => assertInstalledReact18(root, path.join(root, 'packages', 'app')),
+      /one installed react copy/,
+    );
   });
 });
 
@@ -342,58 +387,68 @@ test('IA-04/06/08: require compiled candidates and CSS, reject source and old re
 });
 
 test('IA-03: plugin must resolve the forwarding archive and shared candidates directly', () => {
-  for (const duplicate of [
-    undefined,
-    '@radius-project/graph-react',
-    '@radapp.io/rad-components',
-  ]) {
-    fixture((root, write) => {
-      for (const name of [
-        '@internal/plugin-radius',
-        '@radapp.io/rad-components',
-      ]) {
+  for (const appOnly of [false, true]) {
+    for (const duplicate of [
+      undefined,
+      '@radius-project/graph-react',
+      '@radapp.io/rad-components',
+    ]) {
+      fixture((root, write) => {
+        const app = appOnly ? path.join(root, 'packages', 'app') : root;
+        for (const name of [
+          '@internal/plugin-radius',
+          '@radapp.io/rad-components',
+        ]) {
+          write(
+            `${name === '@internal/plugin-radius' && appOnly ? 'packages/app/' : ''}node_modules/${name}/package.json`,
+            JSON.stringify({ name, main: 'dist/index.js' }),
+          );
+          write(
+            `${name === '@internal/plugin-radius' && appOnly ? 'packages/app/' : ''}node_modules/${name}/dist/index.js`,
+          );
+        }
         write(
-          `node_modules/${name}/package.json`,
-          JSON.stringify({ name, main: 'dist/index.js' }),
+          'node_modules/@radius-project/core/package.json',
+          JSON.stringify({
+            name: '@radius-project/core',
+            exports: {
+              './graph': './dist/graph.js',
+              './domain': './dist/domain.js',
+            },
+          }),
         );
-        write(`node_modules/${name}/dist/index.js`);
-      }
-      write(
-        'node_modules/@radius-project/core/package.json',
-        JSON.stringify({
-          name: '@radius-project/core',
-          exports: {
-            './graph': './dist/graph.js',
-            './domain': './dist/domain.js',
-          },
-        }),
-      );
-      write('node_modules/@radius-project/core/dist/graph.js');
-      write('node_modules/@radius-project/core/dist/domain.js');
-      write(
-        'node_modules/@radius-project/graph-react/package.json',
-        JSON.stringify({
-          name: '@radius-project/graph-react',
-          main: 'dist/index.js',
-        }),
-      );
-      write('node_modules/@radius-project/graph-react/dist/index.js');
-      if (duplicate) {
+        write('node_modules/@radius-project/core/dist/graph.js');
+        write('node_modules/@radius-project/core/dist/domain.js');
         write(
-          `node_modules/@internal/plugin-radius/node_modules/${duplicate}/package.json`,
-          '{"main":"index.js"}',
+          'node_modules/@radius-project/graph-react/package.json',
+          JSON.stringify({
+            name: '@radius-project/graph-react',
+            main: 'dist/index.js',
+          }),
         );
-        write(
-          `node_modules/@internal/plugin-radius/node_modules/${duplicate}/index.js`,
-        );
-        assert.throws(
-          () => assertCandidateResolution(root),
-          /resolution differ/,
-        );
-      } else {
-        assert.doesNotThrow(() => assertCandidateResolution(root));
-      }
-    });
+        write('node_modules/@radius-project/graph-react/dist/index.js');
+        if (duplicate) {
+          write(
+            `${appOnly ? 'packages/app/' : ''}node_modules/@internal/plugin-radius/node_modules/${duplicate}/package.json`,
+            '{"main":"index.js"}',
+          );
+          write(
+            `${appOnly ? 'packages/app/' : ''}node_modules/@internal/plugin-radius/node_modules/${duplicate}/index.js`,
+          );
+          assert.throws(
+            () => assertCandidateResolution(root, app),
+            /resolution differ/,
+          );
+        } else {
+          if (appOnly)
+            assert.throws(
+              () => assertCandidateResolution(root),
+              /Cannot find module/,
+            );
+          assert.doesNotThrow(() => assertCandidateResolution(root, app));
+        }
+      });
+    }
   }
 });
 

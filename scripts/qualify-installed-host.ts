@@ -178,7 +178,10 @@ try {
     fs.mkdirSync(bundleDirectory);
     run('tar', ['-xzf', built.archive, '-C', bundleDirectory]);
   }
-  const bundle = verifyPluginInstallBundle(bundleDirectory);
+  const bundle = verifyPluginInstallBundle(
+    bundleDirectory,
+    fullMatrix ? source.revision : undefined,
+  );
   const bundleIdentity = {
     ...bundle,
     manifestSha256: bundleFileSha256(path.join(bundleDirectory, 'bundle.json')),
@@ -332,11 +335,12 @@ try {
     candidateDirectory,
     consumer,
   );
-  assertCandidateResolution(consumer);
-  const react = assertInstalledReact18(consumer);
+  const app = path.join(consumer, 'packages', 'app');
+  assertCandidateResolution(consumer, app);
+  const react = assertInstalledReact18(consumer, app);
   fs.cpSync(
     path.join(root, 'plugins', 'plugin-radius', 'fixtures'),
-    path.join(consumer, 'fixture'),
+    path.join(app, 'fixture'),
     { recursive: true },
   );
   run(
@@ -356,9 +360,9 @@ try {
       '--jsx',
       'react',
       '--allowSyntheticDefaultImports',
-      'fixture/declarations.ts',
-      'fixture/legacy.tsx',
-      'fixture/native.tsx',
+      'packages/app/fixture/declarations.ts',
+      'packages/app/fixture/legacy.tsx',
+      'packages/app/fixture/native.tsx',
     ],
     consumer,
   );
@@ -404,6 +408,7 @@ try {
   run(process.execPath, [
     path.join(root, 'scripts', 'observe-shared-graph.ts'),
     consumer,
+    app,
   ]);
   let backendImage = process.env.QUALIFICATION_CONTAINER_IMAGE;
   if (fullMatrix) {

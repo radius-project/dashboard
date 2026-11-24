@@ -285,6 +285,9 @@ package hashes. Keep that receipt with the bundle. This is controlled frontend
 evidence, not a production authorization test or approval of a broad host version range.
 Keep evidence and work directories outside the supplied bundle. The runner rejects
 paths at or inside that bundle before creating output directories.
+Full host-matrix qualification also requires the bundle to have clean source at
+the current checkout revision. A different or modified source can be checked for
+frontend compatibility, but cannot produce a complete current-checkout matrix receipt.
 Without `QUALIFICATION_PLUGIN_BUNDLE`, the runner builds a bundle, extracts its
 transfer archive, and tests that output. CI runs this path on pull requests and
 release tags. Run the focused bundle regression tests with `yarn test:plugin-bundle`.
@@ -369,6 +372,9 @@ The first install updates that seed for the packed dependencies with
 This keeps the tested Backstage versions together without copying installed
 modules or importing a second app context from newer transitive releases.
 It compiles the installed public declarations and both host fixtures.
+Frontend fixtures and plugin resolution start in `packages/app`, where the plugin
+dependency is declared. This also supports app-local installs without a root
+plugin copy. Shared dependency and React-copy checks still cover the consumer.
 It then extends the Phase 3/4 production browser runner with an isolated-input
 check, nested plugin mounts, a separate app base path, route-ref navigation,
 external bindings, host-owned fixture identity, and visible HTTP denial.

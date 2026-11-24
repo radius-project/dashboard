@@ -1188,11 +1188,29 @@ test('the actual build chain, offline CI tests, validation gates, and edge publi
     bundleQualification,
     /cp "\$\{record\}\/bundle-build\.tar\.gz" "\$\{BUNDLE_ASSETS\}\/\$\{archive\}"/,
   );
-  assert.match(
-    bundleQualification,
-    /uses: actions\/upload-artifact@[a-f0-9]{40}/,
+  const bundleUploader = workflow
+    .split('- name: Retain Qualified Plugin Release Assets')[1]
+    ?.split('\n      - name:')[0];
+  assert.ok(
+    bundleUploader,
+    'The qualified release assets need their own uploader',
   );
-  assert.match(bundleQualification, /if-no-files-found: error/);
+  assert.match(bundleUploader, /uses: actions\/upload-artifact@[a-f0-9]{40}/);
+  assert.match(bundleUploader, /if-no-files-found: error/);
+  const uploaderId = /id: ([a-z0-9-]+)/.exec(bundleUploader)?.[1];
+  assert.equal(uploaderId, 'plugin-bundle-upload');
+  assert(
+    workflow.includes(
+      `plugin-bundle-artifact-id: \${{ steps.${uploaderId}.outputs.artifact-id }}`,
+    ),
+  );
+  assert.match(bundleUploader, /name: radius-plugin-release-assets/);
+  assert.match(
+    bundleUploader,
+    /path: \$\{\{ runner\.temp \}\}\/radius-plugin-release-assets\//,
+  );
+  assert.match(bundleQualification, /id: bundle/);
+  assert.match(workflow, /PHASE6_BUNDLE: \$\{\{ steps\.bundle\.outcome \}\}/);
   assert.match(
     bundleQualification,
     /if: \$\{\{ env\.CI_PUBLISH_PLUGIN == 'true' \}\}/,

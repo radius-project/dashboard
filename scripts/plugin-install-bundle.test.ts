@@ -261,6 +261,92 @@ test('portable bundle verifies inside a CommonJS portal after a tar round trip w
   });
 });
 
+test('checkout qualification accepts only a matching clean bundle while compatibility verification remains available', () => {
+  fixture((root, bundle, save) => {
+    assert.deepEqual(
+      verifyPluginInstallBundle(root, bundle.source.revision),
+      bundle,
+    );
+    for (const source of [
+      { revision: 'b'.repeat(40), dirty: false },
+      { revision: 'a'.repeat(40), dirty: true },
+    ]) {
+      bundle.source = source;
+      save();
+      assert.deepEqual(verifyPluginInstallBundle(root), bundle);
+      assert.throws(
+        () => verifyPluginInstallBundle(root, 'a'.repeat(40)),
+        /Qualification bundle must/,
+      );
+    }
+  });
+});
+
+test('full-matrix supplied bundles must match the checkout before shared archive verification or image construction', () => {
+  for (const source of [
+    { revision: 'a'.repeat(40), dirty: false },
+    { revision: 'b'.repeat(40), dirty: false },
+    { revision: 'a'.repeat(40), dirty: true },
+  ]) {
+    fixture((root, bundle, save) => {
+      bundle.source = source;
+      save();
+      const evidence = `${root}-evidence`;
+      const replacement = `
+        export * from ${JSON.stringify(new URL('./installed-host.ts', import.meta.url).href)};
+        export function qualificationSource() { return { revision: ${JSON.stringify('a'.repeat(40))}, tree: ${JSON.stringify('c'.repeat(40))} }; }
+      `;
+      try {
+        const result = spawnSync(
+          process.execPath,
+          [
+            '--input-type=module',
+            '-e',
+            `
+          import { registerHooks } from 'node:module';
+          registerHooks({ resolve(specifier, context, next) {
+            return specifier === './installed-host.ts'
+              ? { url: 'data:text/javascript,' + encodeURIComponent(${JSON.stringify(replacement)}), shortCircuit: true }
+              : next(specifier, context);
+          } });
+          await import(${JSON.stringify(new URL('./qualify-installed-host.ts', import.meta.url).href)});
+        `,
+          ],
+          {
+            encoding: 'utf8',
+            timeout: 15_000,
+            env: {
+              ...process.env,
+              npm_execpath: 'unused-yarn',
+              QUALIFICATION_PLUGIN_BUNDLE: root,
+              QUALIFICATION_FULL_HOST_MATRIX: 'true',
+              QUALIFICATION_CONTAINER_IMAGE: 'build-clean-installed-backend',
+              QUALIFICATION_EVIDENCE_DIRECTORY: evidence,
+              QUALIFICATION_WORK_DIRECTORY: '',
+            },
+          },
+        );
+        assert.ifError(result.error);
+        assert.notEqual(result.status, 0);
+        if (source.revision === 'a'.repeat(40) && !source.dirty)
+          assert.match(
+            result.stderr,
+            /Expected an immutable source commit in the candidate receipt/,
+          );
+        else {
+          assert.match(result.stderr, /Qualification bundle must/);
+          assert.doesNotMatch(
+            result.stderr,
+            /Expected an immutable source commit in the candidate receipt/,
+          );
+        }
+      } finally {
+        fs.rmSync(evidence, { recursive: true, force: true });
+      }
+    });
+  }
+});
+
 test('changed or missing packages fail instead of verifying an incomplete bundle', () => {
   fixture(root => {
     const file = path.join(root, 'archives', 'plugin.tgz');
