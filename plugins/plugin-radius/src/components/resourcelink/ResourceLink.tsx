@@ -7,7 +7,14 @@ export const ResourceLink = (props: PropsWithChildren<{ id: string }>) => {
   const route = useResourceRoute();
   const parsed = parseResourceId(props.id);
   if (!parsed) {
-    throw new Error(`Invalid resource id ${props.id}`);
+    return (
+      <span
+        role="note"
+        aria-label={`Invalid resource ID; link unavailable: ${props.id || '(empty)'}`}
+      >
+        {props.children ?? (props.id || 'Invalid resource ID')}
+      </span>
+    );
   }
 
   return <Link to={route(props.id)}>{props.children ?? parsed.name}</Link>;
