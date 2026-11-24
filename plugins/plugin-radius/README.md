@@ -14,7 +14,73 @@ It is only meant for local development, and the setup for it can be found inside
 
 ## Graph tab and shared libraries
 
-The Application graph tab renders with `RadiusGraph` from `@radius-project/graph-react`, built from ai-extensions `main`. The dashboard owns everything that the shared libraries do not export:
+The Application graph tab renders with `RadiusGraph` from `@radius-project/graph-react`, built from ai-extensions `main`. The dashboard owns the connection and query behavior described below.
+
+## Connection selection
+
+The default API exposes one shared selected connection for pages, cards,
+resource GETs, and graph POSTs. A connection is a Kubernetes cluster name plus
+a Radius plane type and name. One available connection is selected automatically.
+With two or more, the user must select one before any resource request.
+
+Hosts can restrict the available cluster/plane pairs through frontend config:
+
+```yaml
+radius:
+  connections:
+    - clusterName: production
+      plane:
+        type: radius
+        name: local
+    - clusterName: production
+      plane:
+        type: radius
+        name: team
+```
+
+In configured or discovered mode, only cluster names returned by the host Kubernetes API are offered. This list
+does not grant access or contain credentials. Without `radius.connections`,
+each host cluster is offered with its `radius/local` plane. An empty list offers
+no connections. Both frontend registration systems read the same config schema.
+The constructor still accepts one Kubernetes API argument. Its optional second
+argument pins a host-supplied context; its optional third argument supplies the
+approved pairs. Discovery methods retain their explicit cluster and plane
+options without changing the selected context.
+Malformed resource IDs and IDs outside the selected plane fail before proxy
+access.
+
+The selector is shared through the API instance, not a page-local first-cluster
+choice. Connection identity travels in the `radiusConnection` query parameter;
+route refs still supply the host path and nested mount. Direct links and browser
+history restore that exact cluster and plane. Unknown or removed selections
+block resource reads and show recovery guidance; the plugin never silently
+switches to a remaining connection. Use **Refresh connections** after a host
+configuration change. The plugin also checks on window focus and before reads.
+
+Changing or removing the selected connection aborts old transport work and
+rejects its result even if the proxy ignores cancellation. Each selection gets
+a new context-bound dashboard query client and request queue. Old view data is not reused.
+Page and card state remounts when cluster or plane changes. Environment filter
+keys include both identities; the default API does not reuse the old global key.
+
+Hosts can still override the public `radiusApiRef`. Existing overrides do not
+have to implement the optional `connections` store. Such overrides keep control
+of selection, link context, and cancellation, and retain the prior filter key.
+Connection-aware overrides can supply `RadiusConnections`: an immutable
+`getSnapshot()` value, `subscribe(listener)`, `refresh()`, and `select(key)`.
+The key is the JSON array `[connectionId, plane.type, plane.name]`. The snapshot
+contains available `connections`, optional `selected` and `selectionKey`, `loaded`,
+and an optional recovery `error`. Notify subscribers when the snapshot changes.
+The plugin does not replace a host API or bypass it with a Kubernetes request.
+Existing overrides also do not
+have to implement the new optional `getApplicationGraph({applicationId, signal})`
+method. A graph-capable override returns the public `RadiusApplicationGraph`
+shape: `{graph, context}`. `graph` is the unmodified query response; `context`
+contains only the actual `connectionId`, `{type, name}` plane, and requested
+`applicationId`, never credentials. The dashboard query method still returns only the
+raw graph response.
+
+## Graph ownership
 
 - `api/api.ts` selects one connection and plane for all queries and adapts the Backstage Kubernetes proxy. The dashboard's `api/query*.ts` modules own resource paths, API-version discovery, namespace merging, response checks, and partial-result errors. Backstage owns authentication and transport.
 - `ApplicationTab.tsx` loads the graph through the host's `RadiusApi.getApplicationGraph` override. The default implementation uses the same connection as resource queries. `useApplicationGraph.ts` applies a 10-second limit to the complete load, including discovery and body decoding, and cancels requests on route changes or unmount. For `Radius.Core/applications` API versions dated `2025-08-01` or later (stable or `-preview`), the query client sends `{includeIcons: true}`. All other versions send no body.

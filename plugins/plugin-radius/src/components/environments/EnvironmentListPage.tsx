@@ -23,7 +23,8 @@ import useAsync from 'react-use/lib/useAsync';
 import { radiusApiRef } from '../../api/ref';
 import { Resource } from '../../resources';
 import { parseResourceId } from '@radapp.io/rad-components/resourceId';
-import { withRadiusTheme } from '../../appearance';
+import { withRadiusPage, useRadiusConnection } from '../../connection';
+import { connectionKey } from '../../api/connections';
 
 const EnvironmentListPageContent = ({
   environments,
@@ -40,18 +41,19 @@ const EnvironmentListPageContent = ({
   ).sort((a, b) => a.localeCompare(b));
 
   const allGroupsOption = 'all';
-  const storageKey = 'radius-environment-filter-resource-group';
+  const connection = useRadiusConnection();
+  const storageKey = `radius-environment-filter-resource-group${connection ? `:${connectionKey(connection)}` : ''}`;
 
   // Initialize state from localStorage or default to 'all'
   const [selectedGroup, setSelectedGroup] = useState<string>(() => {
     const saved = localStorage.getItem(storageKey);
-    return saved || allGroupsOption;
+    return saved && resourceGroups.includes(saved) ? saved : allGroupsOption;
   });
 
   // Save to localStorage whenever the selection changes
   useEffect(() => {
     localStorage.setItem(storageKey, selectedGroup);
-  }, [selectedGroup]);
+  }, [selectedGroup, storageKey]);
 
   const handleGroupChange = (value: string) => {
     setSelectedGroup(value);
@@ -111,7 +113,7 @@ const EnvironmentListPageContent = ({
   );
 };
 
-export const EnvironmentListPage = withRadiusTheme(() => {
+export const EnvironmentListPage = withRadiusPage(() => {
   const radiusApi = useApi(radiusApiRef);
   const { value, loading, error } = useAsync(
     async () =>

@@ -16,6 +16,7 @@ interface PackageJson {
   types?: string;
   sideEffects?: boolean;
   files?: string[];
+  configSchema?: string;
   backstage?: {
     role?: string;
     pluginId?: string;
@@ -90,8 +91,9 @@ describe('package contract', () => {
     });
   });
 
-  it('PU-12: ships only build output, and publishes built entry points', () => {
-    expect(pkg.files).toEqual(['dist']);
+  it('PU-12: ships build output and the host config schema, and publishes built entry points', () => {
+    expect(pkg.files).toEqual(['dist', 'config.d.ts']);
+    expect(pkg.configSchema).toBe('config.d.ts');
     expect(pkg.publishConfig).toMatchObject({
       access: 'public',
       main: 'dist/index.esm.js',

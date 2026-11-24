@@ -120,7 +120,7 @@ export const ApplicationTab = ({ application }: { application: string }) => {
           callbacks={{
             onNavigate: node => {
               if (parseResourceId(node.id)) {
-                navigate(`${resourceRoute(node.id)}/overview`);
+                navigate(resourceRoute(node.id, 'overview'));
               } else {
                 errorApi.post(
                   new Error(

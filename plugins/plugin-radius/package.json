@@ -26,6 +26,7 @@
     }
   },
   "sideEffects": false,
+  "configSchema": "config.d.ts",
   "scripts": {
     "start": "backstage-cli package start",
     "build": "backstage-cli package build",
@@ -85,6 +86,7 @@
     "react-router-dom": "^6.30.2"
   },
   "files": [
-    "dist"
+    "dist",
+    "config.d.ts"
   ]
 }

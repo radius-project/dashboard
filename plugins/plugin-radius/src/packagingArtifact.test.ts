@@ -610,7 +610,8 @@ afterAll(() => {
       name: '@internal/plugin-radius',
       main: 'dist/index.esm.js',
       types: 'dist/index.d.ts',
-      files: ['dist'],
+      files: ['dist', 'config.schema.json'],
+      configSchema: 'config.schema.json',
       sideEffects: false,
       backstage: {
         role: 'frontend-plugin',
@@ -630,5 +631,8 @@ afterAll(() => {
       true,
     );
     expect(fs.existsSync(path.join(pluginInstall, 'src'))).toBe(false);
+    expect(fs.existsSync(path.join(pluginInstall, 'config.schema.json'))).toBe(
+      true,
+    );
   });
 });

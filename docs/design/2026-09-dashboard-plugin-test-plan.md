@@ -733,12 +733,14 @@ through deterministic intercepted Kubernetes proxy responses. GU-17 injects a Da
 the real component boundary under Jest; using a browser-only product hook solely to force an
 otherwise unreachable layout exception would change the product being characterized.
 
-CN-01–CN-08 and ER-01–ER-10 now pin the current connection and failure behavior. In particular,
-CN-03/CN-04 preserve #356's first-cluster/last-cluster disagreement, CN-05 pins the absence of any
-selected-connection input through which cancellation could occur, CN-06 records the global filter
-key, and ER-08 records the silent partial-inventory result. A separate application-navigation case
-proves late results are ignored but the superseded network request is not cancelled. Each incorrect
-behavior is linked below rather than being normalized into the baseline.
+The Phase 2 CN-01–CN-08 and ER-01–ER-10 tests originally pinned connection and
+failure defects rather than treating them as desired behavior. The shared API
+now removes #356's first/last mismatch. Regression coverage for #367 requires an
+explicit choice with multiple connections, scopes links and filters by cluster
+and plane, and cancels superseded work, including pending cluster discovery and
+late responses from a proxy that ignores abort. It checks unknown and removed
+selections, recovery, nested graph links, direct-link refresh identity, and
+browser history. Existing host API overrides remain supported.
 
 Writing the invariants immediately found four defects that no existing test could have caught,
 which is the argument for doing this before the extraction rather than after:
@@ -1304,13 +1306,13 @@ divergence and Phase 2 adds CN-01–CN-08 as the regression cases that make the 
 | ID    | Requirement                                                                                   |
 | ----- | --------------------------------------------------------------------------------------------- |
 | CN-01 | A single configured connection is selected automatically — **done**                            |
-| CN-02 | Multiple configured connections require an explicit selection; none is auto-picked — **done, KNOWN-DEFECT** |
-| CN-03 | Two clusters whose first and last ordering disagree resolve to the same connection everywhere — **done, KNOWN-DEFECT** |
-| CN-04 | Resource reads and the graph request use the same selected connection — **done, KNOWN-DEFECT** |
-| CN-05 | Changing connection cancels in-flight work and rejects late responses from the superseded one — **done, KNOWN-DEFECT** |
-| CN-06 | Cache keys, filter persistence, and links are connection-scoped; same-named apps do not collide — **done, KNOWN-DEFECT** |
-| CN-07 | Plane selection is explicit rather than assuming `radius/local` — **done, KNOWN-DEFECT**        |
-| CN-08 | An invalid or removed connection selection produces an actionable error, not a blank page — **done, KNOWN-DEFECT** |
+| CN-02 | Multiple configured connections require an explicit selection; none is auto-picked — **done, regression coverage for #367** |
+| CN-03 | Two clusters whose first and last ordering disagree resolve to the same connection everywhere — **done, regression coverage for #367** |
+| CN-04 | Resource reads and the graph request use the same selected connection — **done, regression coverage for #367** |
+| CN-05 | Changing connection cancels in-flight work and rejects late responses from the superseded one — **done, regression coverage for #367** |
+| CN-06 | Cache keys, filter persistence, and links are connection-scoped; same-named apps do not collide — **done, regression coverage for #367** |
+| CN-07 | Plane selection is explicit rather than assuming `radius/local` — **done, regression coverage for #367** |
+| CN-08 | An invalid or removed connection selection produces an actionable error, not a blank page — **done, regression coverage for #367** |
 
 #### Error states: ER-01–ER-10
 

@@ -1,5 +1,6 @@
 import { KubernetesApi } from '@backstage/plugin-kubernetes';
 import { RadiusApiImpl } from './api';
+import { connectionKey } from './connections';
 
 const prefix = '/apis/api.ucp.dev/v1alpha3';
 const plane = '/planes/radius/local';
@@ -30,10 +31,9 @@ function host(
     request: Parameters<KubernetesApi['proxy']>[0],
   ) => Response | Promise<Response> = () => json(application),
 ) {
-  const getClusters = jest.fn().mockResolvedValue([
-    { name: 'first-cluster', authProvider: 'test' },
-    { name: 'last-cluster', authProvider: 'test' },
-  ]);
+  const getClusters = jest
+    .fn()
+    .mockResolvedValue([{ name: 'first-cluster', authProvider: 'test' }]);
   const proxy = jest
     .fn<
       ReturnType<KubernetesApi['proxy']>,
@@ -148,14 +148,28 @@ describe('shared query client through the Backstage transport', () => {
     ).toHaveLength(1);
   });
 
-  it('CN-01 / CN-02 / CN-03 / CN-04: binds GET and graph POST to the first cluster and the same plane', async () => {
+  it('CN-02 / CN-03 / CN-04: requires a choice and binds GET and graph POST to it regardless of cluster order', async () => {
     const kube = host(request =>
       request.init?.method === 'POST'
         ? json({ name: 'app-1', resources: [] })
         : json(application),
     );
+    kube.getClusters.mockResolvedValue([
+      { name: 'first-cluster', authProvider: 'test' },
+      { name: 'last-cluster', authProvider: 'test' },
+    ]);
     const api = new RadiusApiImpl(kube);
 
+    await expect(api.getResourceById({ id: applicationId })).rejects.toThrow(
+      'Select a Radius connection',
+    );
+    expect(kube.proxy).not.toHaveBeenCalled();
+    api.connections.select(
+      connectionKey({
+        connectionId: 'first-cluster',
+        plane: { type: 'radius', name: 'local' },
+      }),
+    );
     await expect(api.getResourceById({ id: applicationId })).resolves.toEqual(
       application,
     );
@@ -172,7 +186,7 @@ describe('shared query client through the Backstage transport', () => {
       },
     });
 
-    expect(kube.getClusters).toHaveBeenCalledTimes(1);
+    expect(kube.getClusters).toHaveBeenCalledTimes(3);
     expect(
       kube.proxy.mock.calls.every(
         ([request]) => request.clusterName === 'first-cluster',
@@ -222,6 +236,39 @@ describe('shared query client through the Backstage transport', () => {
     ).toBe(true);
   });
 
+  it('CN-01 / CN-07: selects only a configured cluster/plane pair and excludes unavailable host clusters', async () => {
+    const id = applicationId.replace('/radius/local/', '/radius/team/');
+    const kube = host(() => json({ ...application, id }));
+    const api = new RadiusApiImpl(kube, undefined, [
+      {
+        connectionId: 'missing-cluster',
+        plane: { type: 'radius', name: 'local' },
+      },
+      {
+        connectionId: 'first-cluster',
+        plane: { type: 'radius', name: 'team' },
+      },
+    ]);
+    await expect(api.getResourceById({ id })).resolves.toMatchObject({ id });
+    expect(api.connections.getSnapshot().connections).toEqual([
+      {
+        connectionId: 'first-cluster',
+        plane: { type: 'radius', name: 'team' },
+      },
+    ]);
+    expect(
+      kube.proxy.mock.calls.every(
+        ([request]) =>
+          request.clusterName === 'first-cluster' &&
+          request.path.includes('/planes/radius/team/'),
+      ),
+    ).toBe(true);
+    const none = new RadiusApiImpl(kube, undefined, []);
+    await expect(none.listApplications()).rejects.toThrow(
+      'No Radius connections are available',
+    );
+  });
+
   it('does not reuse graph responses between injected contexts', async () => {
     const kube = host(request =>
       json({ name: request.clusterName, resources: [] }),
@@ -255,7 +302,7 @@ describe('shared query client through the Backstage transport', () => {
     const api = new RadiusApiImpl(kube);
 
     await expect(api.listApplications()).rejects.toThrow(
-      'No kubernetes clusters found',
+      'No Radius connections are available',
     );
     expect(kube.proxy).not.toHaveBeenCalled();
     await expect(api.getResourceById({ id: applicationId })).resolves.toEqual(
@@ -304,7 +351,7 @@ describe('shared query client through the Backstage transport', () => {
         mode: 'cors',
         cache: 'no-cache',
         method: 'GET',
-        signal: controller.signal,
+        signal: expect.any(AbortSignal),
       },
     });
   });
@@ -533,5 +580,232 @@ describe('shared query client through the Backstage transport', () => {
         signal: controller.signal,
       }),
     ).rejects.toMatchObject({ name: 'AbortError' });
+  });
+
+  it('does not bind the shared client to a completed caller signal', async () => {
+    const kube = host();
+    const api = new RadiusApiImpl(kube);
+    const controller = new AbortController();
+    await api.getResourceById({ id: applicationId, signal: controller.signal });
+    controller.abort();
+    await expect(api.getResourceById({ id: applicationId })).resolves.toEqual(
+      application,
+    );
+  });
+
+  it('CN-05 / CN-06 / CN-07: aborts superseded graph work, rejects an ignored abort and rediscovers the selected plane', async () => {
+    let release!: (response: Response) => void;
+    let started!: () => void;
+    const graphStarted = new Promise<void>(resolve => {
+      started = resolve;
+    });
+    const oldResponse = new Promise<Response>(resolve => {
+      release = resolve;
+    });
+    const kube = host(({ init }) => {
+      if (init?.method === 'POST') {
+        started();
+        return oldResponse;
+      }
+      return json(application);
+    });
+    const contexts = [
+      {
+        connectionId: 'first-cluster',
+        plane: { type: 'radius', name: 'local' },
+      },
+      {
+        connectionId: 'first-cluster',
+        plane: { type: 'radius', name: 'team.2' },
+      },
+    ];
+    const api = new RadiusApiImpl(kube, undefined, contexts);
+    await api.connections.refresh();
+    api.connections.select(connectionKey(contexts[0]));
+    const oldGraph = api.getApplicationGraph({ applicationId });
+    await graphStarted;
+    const oldSignal = kube.proxy.mock.calls.find(
+      ([r]) => r.init?.method === 'POST',
+    )![0].init!.signal!;
+
+    api.connections.select(connectionKey(contexts[1]));
+    expect(oldSignal.aborted).toBe(true);
+    await expect(oldGraph).rejects.toThrow('Radius connection changed');
+    kube.proxy.mockImplementation(async ({ path, init }) => {
+      if (path.includes('/resourceTypes/')) {
+        return json({
+          ...typeInfo,
+          APIVersions: { '2026-01-01': {} },
+          APIVersionList: ['2026-01-01'],
+        });
+      }
+      if (init?.method === 'POST') {
+        return json({ resources: [], name: 'new plane' });
+      }
+      return json({
+        ...application,
+        id: applicationId.replace('/radius/local/', '/radius/team.2/'),
+      });
+    });
+    const nextId = applicationId.replace('/radius/local/', '/radius/team.2/');
+    await api.getResourceById({ id: nextId });
+    await expect(
+      api.getApplicationGraph({ applicationId: nextId }),
+    ).resolves.toMatchObject({
+      graph: { name: 'new plane' },
+      context: { ...contexts[1], applicationId: nextId },
+    });
+    expect(kube.proxy).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        path: `${prefix}${nextId}/getGraph?api-version=2026-01-01`,
+      }),
+    );
+    release(json({ resources: [], name: 'late old plane' }));
+    await expect(oldGraph).rejects.toThrow('Radius connection changed');
+  });
+
+  it('CN-08: removal cancels old work without silently selecting the remaining cluster', async () => {
+    let started!: () => void;
+    const requestStarted = new Promise<void>(resolve => {
+      started = resolve;
+    });
+    const kube = host(() => {
+      started();
+      return new Promise<Response>(() => {});
+    });
+    const api = new RadiusApiImpl(kube);
+    const oldRequest = api.getResourceById({ id: applicationId });
+    await requestStarted;
+    const signal = kube.proxy.mock.calls.at(-1)![0].init!.signal!;
+    kube.getClusters.mockResolvedValue([
+      { name: 'remaining', authProvider: 'test' },
+    ]);
+    await api.connections.refresh();
+    expect(signal.aborted).toBe(true);
+    await expect(oldRequest).rejects.toThrow('Radius connection changed');
+    expect(api.connections.getSnapshot().selected).toBeUndefined();
+    await expect(api.getResourceById({ id: applicationId })).rejects.toThrow(
+      'connection was removed',
+    );
+    api.connections.select(
+      connectionKey({
+        connectionId: 'remaining',
+        plane: { type: 'radius', name: 'local' },
+      }),
+    );
+    kube.proxy.mockImplementation(async ({ path }) =>
+      json(path.includes('/resourceTypes/') ? typeInfo : application),
+    );
+    await expect(api.getResourceById({ id: applicationId })).resolves.toEqual(
+      application,
+    );
+    expect(kube.proxy).toHaveBeenLastCalledWith(
+      expect.objectContaining({ clusterName: 'remaining' }),
+    );
+  });
+
+  it('reports discovery failure, permits recovery and rejects an unknown selection', async () => {
+    const kube = host();
+    const api = new RadiusApiImpl(kube);
+    kube.getClusters.mockRejectedValueOnce(new Error('Forbidden'));
+    await expect(api.listApplications()).rejects.toThrow(
+      'check your host access. Forbidden',
+    );
+    expect(kube.proxy).not.toHaveBeenCalled();
+    await expect(api.getResourceById({ id: applicationId })).resolves.toEqual(
+      application,
+    );
+    api.connections.select('unknown');
+    await expect(api.getResourceById({ id: applicationId })).rejects.toThrow(
+      'connection was removed',
+    );
+    expect(kube.proxy).toHaveBeenCalledTimes(2);
+  });
+
+  it.each(['removal', 'discovery failure'])(
+    'CN-08: the first read recovers the retained connection after %s',
+    async failure => {
+      const kube = host();
+      const api = new RadiusApiImpl(kube);
+      await api.getResourceById({ id: applicationId });
+      const selectionKey = api.connections.getSnapshot().selectionKey;
+      if (failure === 'removal') {
+        kube.getClusters.mockResolvedValueOnce([]);
+      } else {
+        kube.getClusters.mockRejectedValueOnce(new Error('Forbidden'));
+      }
+      await expect(api.getResourceById({ id: applicationId })).rejects.toThrow(
+        failure === 'removal'
+          ? 'No Radius connections are available'
+          : 'check your host access. Forbidden',
+      );
+      expect(api.connections.getSnapshot().selected).toBeUndefined();
+      await expect(api.getResourceById({ id: applicationId })).resolves.toEqual(
+        application,
+      );
+      expect(api.connections.getSnapshot().selectionKey).toBe(selectionKey);
+      expect(
+        kube.proxy.mock.calls.filter(([request]) =>
+          request.path.includes('/resourceTypes/'),
+        ),
+      ).toHaveLength(2);
+    },
+  );
+
+  it.each(['unselected', 'unavailable', 'undiscovered'])(
+    'CN-05: cancels a preflight read after explicit selection from %s state',
+    async state => {
+      const kube = host();
+      const clusters = [
+        { name: 'first-cluster', authProvider: 'test' },
+        { name: 'second-cluster', authProvider: 'test' },
+      ];
+      kube.getClusters.mockResolvedValue(clusters);
+      const api = new RadiusApiImpl(kube);
+      if (state !== 'undiscovered') await api.connections.refresh();
+      if (state === 'unavailable') api.connections.select('removed');
+      let release!: (value: typeof clusters) => void;
+      kube.getClusters.mockReturnValueOnce(
+        new Promise(resolve => {
+          release = resolve;
+        }),
+      );
+      const oldRequest = api.getResourceById({ id: applicationId });
+      api.connections.select(
+        connectionKey({
+          connectionId: 'second-cluster',
+          plane: { type: 'radius', name: 'local' },
+        }),
+      );
+      await expect(oldRequest).rejects.toThrow('Radius connection changed');
+      release(clusters);
+      await api.connections.refresh();
+      expect(kube.proxy).not.toHaveBeenCalled();
+    },
+  );
+
+  it('CN-05: does not move an old operation to the new cluster while host discovery is pending', async () => {
+    const kube = host();
+    const clusters = [
+      { name: 'first-cluster', authProvider: 'test' },
+      { name: 'second-cluster', authProvider: 'test' },
+    ];
+    kube.getClusters.mockResolvedValue(clusters);
+    const api = new RadiusApiImpl(kube);
+    await api.connections.refresh();
+    const [first, second] = api.connections.getSnapshot().connections;
+    api.connections.select(connectionKey(first));
+    let release!: (value: typeof clusters) => void;
+    kube.getClusters.mockReturnValueOnce(
+      new Promise(resolve => {
+        release = resolve;
+      }),
+    );
+    const oldRequest = api.getResourceById({ id: applicationId });
+    api.connections.select(connectionKey(second));
+    await expect(oldRequest).rejects.toThrow('Radius connection changed');
+    release(clusters);
+    await api.connections.refresh();
+    expect(kube.proxy).not.toHaveBeenCalled();
   });
 });

@@ -14,6 +14,8 @@ import { RadiusApiImpl } from '../../api/api';
 import { radiusApiRef } from '../../api/ref';
 import { ApplicationTab } from './ApplicationTab';
 import { environmentPageRouteRef, resourcePageRouteRef } from '../../routes';
+import { withRadiusConnection } from '../../connection';
+import { connectionKey } from '../../api/connections';
 
 // Renderer behavior is covered in Chromium; this suite checks the host adapter.
 jest.mock('@radius-project/graph-react', () => ({
@@ -64,23 +66,32 @@ const graphResponse = {
   ],
 };
 
-const LocationProbe = () => <output>{useLocation().pathname}</output>;
+const LocationProbe = () => {
+  const { pathname, search } = useLocation();
+  return (
+    <output>
+      {pathname}
+      {search}
+    </output>
+  );
+};
 
 const errorApi = { post: jest.fn(), error$: jest.fn() };
 
 const renderTab = (
-  api: Pick<RadiusApi, 'getApplicationGraph'>,
+  api: Pick<RadiusApi, 'getApplicationGraph' | 'connections'>,
   id = application,
   prefix = '',
-) =>
-  renderInTestApp(
+) => {
+  const Tab = withRadiusConnection(() => <ApplicationTab application={id} />);
+  return renderInTestApp(
     <TestApiProvider
       apis={[
         [radiusApiRef, api],
         [errorApiRef, errorApi],
       ]}
     >
-      <ApplicationTab application={id} />
+      <Tab />
       <LocationProbe />
     </TestApiProvider>,
     {
@@ -92,6 +103,7 @@ const renderTab = (
       },
     },
   );
+};
 
 beforeEach(() => jest.clearAllMocks());
 afterEach(() => jest.restoreAllMocks());
@@ -347,6 +359,7 @@ describe('ApplicationTab host adapter', () => {
         },
       }),
     });
+
     await screen.findByText('frontend');
     const callbacks = jest.mocked(RadiusGraph).mock.calls.at(-1)![0].callbacks;
     const bare = { id: 'resource-0' } as GraphNodeData;
@@ -385,14 +398,21 @@ describe('ApplicationTab host adapter', () => {
       }),
     };
     const api = new RadiusApiImpl(kube);
+    await api.connections.refresh();
+    api.connections.select(
+      connectionKey({
+        connectionId: 'last-cluster',
+        plane: { type: 'radius', name: 'local' },
+      }),
+    );
     await api.getResourceById({ id: application });
     await renderTab(api);
     await screen.findByText('frontend');
 
-    expect(kube.getClusters).toHaveBeenCalledTimes(1);
+    expect(kube.getClusters.mock.calls.length).toBeGreaterThan(1);
     expect(
       kube.proxy.mock.calls.every(
-        ([request]) => request.clusterName === 'first-cluster',
+        ([request]) => request.clusterName === 'last-cluster',
       ),
     ).toBe(true);
     expect(kube.proxy).toHaveBeenCalledWith(
@@ -401,6 +421,33 @@ describe('ApplicationTab host adapter', () => {
         init: expect.objectContaining({ method: 'POST' }),
       }),
     );
+  });
+
+  it('CN-06: keeps the overview tab before the connection query when opening a graph node', async () => {
+    const context = {
+      connectionId: 'selected-cluster',
+      plane: { type: 'radius', name: 'local' },
+    };
+    const api = new RadiusApiImpl(
+      { getClusters: jest.fn(), proxy: jest.fn() },
+      context,
+    );
+    jest.spyOn(api, 'getApplicationGraph').mockResolvedValue({
+      graph: graphResponse,
+      context: { ...context, applicationId: application },
+    });
+    await renderTab(api, application, '/nested/plugins/radius');
+    await screen.findByText('frontend');
+    const callbacks = jest.mocked(RadiusGraph).mock.calls.at(-1)![0].callbacks;
+    act(() => callbacks?.onNavigate?.({ id: container } as GraphNodeData));
+    const query = new URLSearchParams({
+      radiusConnection: connectionKey(context),
+    });
+    expect(
+      await screen.findByText(
+        `/nested/plugins/radius/resources/test-group/Applications.Core/containers/frontend/overview?${query}`,
+      ),
+    ).toBeInTheDocument();
   });
 
   it('CN-07: displays an unsupported-operation error for an old API override without a Kubernetes fallback', async () => {

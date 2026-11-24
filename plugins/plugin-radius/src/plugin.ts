@@ -2,11 +2,14 @@ import {
   createApiFactory,
   createPlugin,
   createRoutableExtension,
+  configApiRef,
+  ConfigApi,
 } from '@backstage/core-plugin-api';
 import { KubernetesApi, kubernetesApiRef } from '@backstage/plugin-kubernetes';
 
 import { radiusApiRef } from './api/ref';
 import { RadiusApiImpl } from './api/api';
+import { configuredConnections } from './api/connections';
 import { featureRadiusCatalog as featureRadiusCatalog } from './features';
 import {
   applicationListPageRouteRef,
@@ -31,9 +34,14 @@ export const radiusPlugin = createPlugin({
       api: radiusApiRef,
       deps: {
         kubernetesApi: kubernetesApiRef,
+        config: configApiRef,
       },
-      factory: (deps: { kubernetesApi: KubernetesApi }) => {
-        return new RadiusApiImpl(deps.kubernetesApi);
+      factory: (deps: { kubernetesApi: KubernetesApi; config: ConfigApi }) => {
+        return new RadiusApiImpl(
+          deps.kubernetesApi,
+          undefined,
+          configuredConnections(deps.config),
+        );
       },
     }),
   ],

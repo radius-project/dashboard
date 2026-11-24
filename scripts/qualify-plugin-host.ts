@@ -320,6 +320,37 @@ async function main() {
       page.on('console', message => {
         if (message.type() === 'error') consoleErrors.push(message.text());
       });
+      const selectedPath = (pathname: string) =>
+        `${pathname}?${new URLSearchParams({
+          radiusConnection: JSON.stringify([
+            'packed-cluster',
+            'radius',
+            'local',
+          ]),
+        })}`;
+      const selectConnection = async (url: string) => {
+        if (
+          (forbidden !== true || Boolean(backendUrl)) &&
+          !(installed && system === 'native') &&
+          !new URL(url).searchParams.has('radiusConnection')
+        ) {
+          await expect(page.getByRole('status')).toHaveText(
+            'Select a Radius connection to load resources.',
+          );
+          await expect(
+            page.getByRole('link', { name: 'packed-app', exact: true }),
+          ).toHaveCount(0);
+          await page
+            .getByRole('button', { name: 'Radius connection', exact: true })
+            .click();
+          await page
+            .getByRole('option', {
+              name: /^packed-cluster\s*\/\s*radius\/local$/,
+            })
+            .click();
+          await expect(page).toHaveURL(selectedPath(url));
+        }
+      };
       page.on('response', response => {
         const pathname = new URL(response.url()).pathname;
         if (/\.(js|css)$/.test(pathname))
@@ -358,6 +389,7 @@ async function main() {
       const navigate = async (url: string) => {
         await page.goto(url);
         await signIn();
+        await selectConnection(url);
       };
       page.on('pageerror', error => errors.push(error.message));
       page.on('dialog', async dialog => {
@@ -413,7 +445,9 @@ async function main() {
               const link = nav.getByRole('link', { name, exact: true });
               await expect(link).toHaveAttribute('href', `${prefix}${route}`);
               await link.click();
-              await expect(page).toHaveURL(`${origin}${prefix}${route}`);
+              await expect(page).toHaveURL(
+                selectedPath(`${origin}${prefix}${route}`),
+              );
             }
             await nav
               .getByRole('link', { name: 'Applications', exact: true })
@@ -724,13 +758,17 @@ async function main() {
             page.getByRole('link', { name: 'packed-app', exact: true }),
           ).toHaveAttribute(
             'href',
-            `${prefix}/resources/demo/Applications.Core/applications/packed-app`,
+            selectedPath(
+              `${prefix}/resources/demo/Applications.Core/applications/packed-app`,
+            ),
           );
           await expect(
             page.getByRole('link', { name: 'demo', exact: true }),
           ).toHaveAttribute(
             'href',
-            `${prefix}/environments/demo/Applications.Core/environments/demo`,
+            selectedPath(
+              `${prefix}/environments/demo/Applications.Core/environments/demo`,
+            ),
           );
           const backgrounds: string[] = [];
           for (const variant of ['light', 'dark']) {

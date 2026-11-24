@@ -1,6 +1,11 @@
 export { featureRadiusCatalog } from './features';
 export { radiusThemes } from './appearance';
 export type { RadiusApplicationGraph, RadiusListResult } from './api';
+export type {
+  RadiusConnection,
+  RadiusConnections,
+  RadiusConnectionState,
+} from './api';
 export {
   ApplicationListPage,
   EnvironmentListPage,

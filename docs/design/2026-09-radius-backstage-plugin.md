@@ -226,19 +226,18 @@ The following are proposed contract obligations; exact export identifiers and se
 | Graph component, proposed graph-react in `ai-extensions` | Normalized graph plus explicit presentation/capability inputs; callbacks for selection/details/source actions; scoped CSS export and theme tokens; no data fetch or host navigation.      | Same renderer and declarations qualify with React/DOM and corresponding types on both supported majors; live mode cannot imply deployment success or enable source/diff actions without supplied capabilities. |
 | Backstage plugin, dashboard                              | Public API ref/interface/override, legacy and new frontend entries, route refs, optional cards, operator connection schema and required Kubernetes integration.                           | Packed plugin mounts in standalone and external hosts; selected connection/plane reaches resource reads and graph POST; nested direct links and configuration errors work.                                     |
 
-**Proposed configuration shape**, to be documented and schema-validated during implementation:
+**Connection configuration shape** (implemented by the frontend plugin for #367):
 
 ```yaml
 radius:
   connections:
-    - id: production
-      clusterName: production-cluster
+    - clusterName: production-cluster
       plane:
         type: radius
         name: local
 ```
 
-These fields refer to operator-controlled Kubernetes configuration; they do not contain credentials or authorize access. The final schema must be tested against the selected Backstage configuration mechanism. No new public Radius backend REST API is required by this option.
+These fields refer to operator-controlled Kubernetes configuration; they do not contain credentials or authorize access. The cluster name and plane type/name form the connection identity, with no separate alias. The plugin ships a frontend config schema and uses the same config in both frontend registration systems. No new public Radius backend REST API is required by this option.
 
 ### Implementation details
 

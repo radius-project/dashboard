@@ -8,11 +8,12 @@ import {
   Link,
 } from '@backstage/core-components';
 import { ResourceTable } from '../resourcetable';
-import { withRadiusTheme } from '../../appearance';
+import { withRadiusPage, useConnectionLink } from '../../connection';
 import { useRouteRef } from '@backstage/core-plugin-api';
 import { environmentListPageRouteRef } from '../../routes';
 
-export const ApplicationListPage = withRadiusTheme(() => {
+export const ApplicationListPage = withRadiusPage(() => {
+  const scopeLink = useConnectionLink();
   const environmentsRoute = useRouteRef(environmentListPageRouteRef);
   return (
     <Page themeId="radius-application-list">
@@ -24,7 +25,7 @@ export const ApplicationListPage = withRadiusTheme(() => {
         <Box mb={3}>
           <Breadcrumbs aria-label="breadcrumb">
             <Link to="/">Home</Link>
-            <Link to={environmentsRoute()}>Environments</Link>
+            <Link to={scopeLink(environmentsRoute())}>Environments</Link>
             <Typography>Applications</Typography>
           </Breadcrumbs>
         </Box>

@@ -6,6 +6,8 @@ import { RadiusApi } from '../../api';
 import { radiusApiRef } from '../../plugin';
 import { environmentPageRouteRef } from '../../routes';
 import { Resource, EnvironmentProperties } from '../../resources';
+import { RadiusApiImpl } from '../../api/api';
+import { Route, Routes } from 'react-router-dom';
 
 // Mock the child components
 jest.mock('./EnvironmentLayout', () => ({
@@ -42,6 +44,38 @@ const mockEnvironment: Resource<EnvironmentProperties> = {
 describe('EnvironmentPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  it('CN-07: uses the selected non-default plane for environment reads', async () => {
+    const api = new RadiusApiImpl(
+      { getClusters: jest.fn(), proxy: jest.fn() },
+      { connectionId: 'selected', plane: { type: 'radius', name: 'team' } },
+    );
+    const id = mockEnvironment.id.replace('/radius/local/', '/radius/team/');
+    const getResource = jest
+      .spyOn(api, 'getResourceById')
+      .mockResolvedValue({ ...mockEnvironment, id });
+    await renderInTestApp(
+      <TestApiProvider apis={[[radiusApiRef, api]]}>
+        <Routes>
+          <Route
+            path="/environments/:group/:namespace/:type/:name/*"
+            element={<EnvironmentPage />}
+          />
+        </Routes>
+      </TestApiProvider>,
+      {
+        mountedRoutes: {
+          '/environments/:group/:namespace/:type/:name':
+            environmentPageRouteRef,
+        },
+        routeEntries: [
+          '/environments/test-group/Applications.Core/environments/test-env/overview',
+        ],
+      },
+    );
+    expect(await screen.findByTestId('environment-layout')).toBeInTheDocument();
+    expect(getResource).toHaveBeenCalledWith({ id });
   });
 
   it('should render loading state initially', async () => {

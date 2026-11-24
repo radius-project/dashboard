@@ -13,6 +13,8 @@ import {
 } from './routes';
 import { featureRadiusCatalog } from './features';
 import { kubernetesApiRef } from '@backstage/plugin-kubernetes';
+import { configApiRef } from '@backstage/core-plugin-api';
+import { ConfigReader } from '@backstage/config';
 
 /**
  * Phase 3 contract tests.
@@ -147,9 +149,13 @@ describe('plugin contract', () => {
       ),
     );
 
-    expect(factory.deps).toEqual({ kubernetesApi: kubernetesApiRef });
+    expect(factory.deps).toEqual({
+      kubernetesApi: kubernetesApiRef,
+      config: configApiRef,
+    });
     const api = factory.factory({
       kubernetesApi: { getClusters, proxy },
+      config: new ConfigReader({}),
     }) as RadiusApi;
 
     await expect(
@@ -177,6 +183,52 @@ describe('plugin contract', () => {
     expect([...radiusPlugin.getFeatureFlags()]).toEqual([
       { name: 'radius-catalog' },
     ]);
+  });
+
+  it('CN-07: uses the configured cluster and plane through the registered host factory', async () => {
+    const id =
+      '/planes/radius/team/resourceGroups/demo/providers/Radius.Core/applications/app';
+    const proxy = jest.fn(
+      async ({ path }: { path: string }) =>
+        new Response(
+          JSON.stringify(
+            path.includes('/resourceTypes/')
+              ? {
+                  Name: 'Radius.Core/applications',
+                  APIVersionList: ['2025-01-01'],
+                  APIVersions: {},
+                }
+              : {
+                  id,
+                  name: 'app',
+                  type: 'Radius.Core/applications',
+                  properties: {},
+                },
+          ),
+        ),
+    );
+    const api = [...radiusPlugin.getApis()][0].factory({
+      kubernetesApi: {
+        getClusters: jest
+          .fn()
+          .mockResolvedValue([{ name: 'first' }, { name: 'chosen' }]),
+        proxy,
+      },
+      config: new ConfigReader({
+        radius: {
+          connections: [
+            { clusterName: 'chosen', plane: { type: 'radius', name: 'team' } },
+          ],
+        },
+      }),
+    }) as RadiusApi;
+    await expect(api.getResourceById({ id })).resolves.toMatchObject({ id });
+    expect(proxy).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        clusterName: 'chosen',
+        path: expect.stringContaining('/planes/radius/team/'),
+      }),
+    );
   });
 
   it('PU-09: exposes every routable page as a named extension', () => {

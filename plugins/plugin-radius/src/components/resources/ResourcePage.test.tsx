@@ -5,6 +5,7 @@ import { RadiusApi } from '../../api';
 import { radiusApiRef } from '../../plugin';
 import { Resource } from '../../resources';
 import { ResourcePage } from './ResourcePage';
+import { RadiusApiImpl } from '../../api/api';
 
 jest.mock('react-router-dom', () => {
   return {
@@ -19,6 +20,33 @@ jest.mock('react-router-dom', () => {
 });
 
 describe('ResourcePage', () => {
+  it('CN-07: uses the selected non-default plane for detail reads', async () => {
+    const api = new RadiusApiImpl(
+      { getClusters: jest.fn(), proxy: jest.fn() },
+      { connectionId: 'selected', plane: { type: 'radius', name: 'team' } },
+    );
+    const id =
+      '/planes/radius/team/resourceGroups/test-group/providers/Applications.Core/applications/test-app';
+    const getResource = jest.spyOn(api, 'getResourceById').mockResolvedValue({
+      id,
+      type: 'Applications.Core/applications',
+      name: 'test-app',
+      properties: {},
+      systemData: {},
+    });
+    await renderInTestApp(
+      <TestApiProvider apis={[[radiusApiRef, api]]}>
+        <ResourcePage />
+      </TestApiProvider>,
+    );
+    expect(
+      await screen.findByText(
+        'Displaying details for Applications.Core/applications: test-app',
+      ),
+    ).toBeInTheDocument();
+    expect(getResource).toHaveBeenCalledWith({ id });
+  });
+
   it('should display loading indicator while loading', async () => {
     // This is the boilerplate for an unresolved promise.
     const deferred: ((resolve: Resource<unknown>) => void)[] = [];

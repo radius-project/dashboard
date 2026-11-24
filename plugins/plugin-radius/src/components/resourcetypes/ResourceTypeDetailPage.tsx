@@ -32,7 +32,7 @@ import type { Theme } from '@material-ui/core';
 import useAsync from 'react-use/lib/useAsync';
 import { useApi, useRouteRef } from '@backstage/core-plugin-api';
 import { radiusApiRef } from '../../api/ref';
-import { withRadiusTheme } from '../../appearance';
+import { withRadiusPage, useConnectionLink } from '../../connection';
 import { resourceTypesListPageRouteRef } from '../../routes';
 
 /**
@@ -251,7 +251,8 @@ const isMapRowVisible = (mapSchema: unknown, outputTab: boolean): boolean => {
   return outputTab ? readOnly !== false : readOnly !== true;
 };
 
-export const ResourceTypeDetailPage = withRadiusTheme(() => {
+export const ResourceTypeDetailPage = withRadiusPage(() => {
+  const scopeLink = useConnectionLink();
   const resourceTypesRoute = useRouteRef(resourceTypesListPageRouteRef);
   const classes = useStyles();
   const theme = useTheme();
@@ -413,7 +414,7 @@ This should test whether copy buttons appear properly.`;
         <Box mb={3}>
           <Breadcrumbs aria-label="breadcrumb">
             <Link to="/">Home</Link>
-            <Link to={resourceTypesRoute()}>Resource Types</Link>
+            <Link to={scopeLink(resourceTypesRoute())}>Resource Types</Link>
             <Typography>{typeName}</Typography>
           </Breadcrumbs>
         </Box>
