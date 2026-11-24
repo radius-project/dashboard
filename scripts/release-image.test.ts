@@ -1,6 +1,13 @@
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { execFileSync, spawnSync } from 'node:child_process';
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
+import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { after, before, test } from 'node:test';
@@ -759,6 +766,314 @@ test('the CLI rejects unknown commands without attempting a build', () => {
   );
 });
 
+test('release asset preparation binds the transfer archive to its sidecar and qualification manifest', t => {
+  const tools = spawnSync(
+    'bash',
+    ['-c', 'command -v jq && command -v sha256sum'],
+    { encoding: 'utf8' },
+  );
+  if (tools.error || tools.status !== 0) {
+    t.skip('Release shell test requires bash, jq and sha256sum');
+    return;
+  }
+  const workflow = readFileSync(
+    join(root, '.github', 'workflows', 'build.yaml'),
+    'utf8',
+  );
+  const block = workflow
+    .split('- name: Prepare Plugin Release Assets')[1]
+    ?.split('\n      - name:')[0];
+  assert.ok(block);
+  const script = block
+    .split('run: |')[1]
+    .trimEnd()
+    .replace(/^ {10}/gm, '');
+  const directory = mkdtempSync(join(tmpdir(), 'plugin-release-preparation-'));
+  try {
+    const evidence = join(directory, 'evidence');
+    const record = join(evidence, 'installed-host-fixture');
+    const assets = join(directory, 'assets');
+    mkdirSync(record, { recursive: true });
+    const revision = 'a'.repeat(40);
+    const transfer = (payload: string) => {
+      const manifest = Buffer.from(
+        JSON.stringify({ source: { revision, dirty: false }, payload }),
+      );
+      writeFileSync(join(record, 'bundle.json'), manifest);
+      execFileSync('tar', [
+        '-czf',
+        join(record, 'transfer.tar.gz'),
+        '-C',
+        record,
+        './bundle.json',
+      ]);
+      return {
+        bytes: readFileSync(join(record, 'transfer.tar.gz')),
+        manifestSha256: createHash('sha256').update(manifest).digest('hex'),
+      };
+    };
+    const first = transfer('tested payload');
+    const second = transfer('another payload from the same commit');
+    rmSync(join(record, 'bundle.json'));
+    rmSync(join(record, 'transfer.tar.gz'));
+    const original = first.bytes;
+    const digest = createHash('sha256').update(original).digest('hex');
+    const receipt = {
+      stage: 'installed-external-frontend',
+      bundle: {
+        source: { revision, dirty: false },
+        manifestSha256: first.manifestSha256,
+        packages: Object.fromEntries(
+          [
+            '@internal/plugin-radius',
+            '@radius-project/core',
+            '@radius-project/graph-react',
+            '@radapp.io/rad-components',
+          ].map((name, i) => [
+            name,
+            {
+              path: `archives/package-${i}.tgz`,
+              version: '0.1.0',
+              sha256: digest,
+            },
+          ]),
+        ),
+      },
+      entries: ['@internal/plugin-radius', '@internal/plugin-radius/alpha'],
+      node: 'v24.22.0',
+      packageManager: 'yarn@4.18.1',
+      compiler: '6.0.3',
+      installedLockSha256: digest,
+    };
+    writeFileSync(join(record, 'qualification.json'), JSON.stringify(receipt));
+    writeFileSync(join(record, 'bundle-build.tar.gz'), original);
+    writeFileSync(
+      join(record, 'bundle-build.tar.gz.sha256'),
+      `${digest}  bundle-build.tar.gz\n`,
+    );
+    const run = () =>
+      spawnSync('bash', ['-euo', 'pipefail', '-c', script], {
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          BUNDLE_EVIDENCE: evidence,
+          BUNDLE_ASSETS: assets,
+          GITHUB_SHA: revision,
+          GITHUB_REF_NAME: 'v0.63.0-rc.1',
+        },
+      });
+    const passed = run();
+    assert.ifError(passed.error);
+    assert.equal(passed.status, 0, passed.stderr);
+    const archive = 'radius-backstage-plugin-v0.63.0-rc.1.tar.gz';
+    assert.deepEqual(readFileSync(join(assets, archive)), original);
+    assert.equal(
+      readFileSync(join(assets, `${archive}.sha256`), 'utf8'),
+      `${digest}  ${archive}\n`,
+    );
+    assert.notDeepEqual(second.bytes, first.bytes);
+    writeFileSync(
+      join(record, 'qualification.json'),
+      JSON.stringify({
+        ...receipt,
+        bundle: { ...receipt.bundle, manifestSha256: second.manifestSha256 },
+      }),
+    );
+    const swappedReceipt = run();
+    assert.ifError(swappedReceipt.error);
+    assert.notEqual(
+      swappedReceipt.status,
+      0,
+      'Another qualified payload from the same commit must not match this archive',
+    );
+    assert.deepEqual(
+      readFileSync(join(record, 'bundle-build.tar.gz')),
+      original,
+    );
+    for (const invalid of [
+      {
+        ...receipt,
+        installedLockSha256: undefined,
+      },
+      { ...receipt, installedLockSha256: null },
+      {
+        ...receipt,
+        bundle: { ...receipt.bundle, manifestSha256: undefined },
+      },
+      ...Object.keys(receipt.bundle.packages).map(name => ({
+        ...receipt,
+        bundle: {
+          ...receipt.bundle,
+          packages: { ...receipt.bundle.packages, [name]: undefined },
+        },
+      })),
+      { ...receipt, compiler: null },
+      { ...receipt, entries: [] },
+    ]) {
+      writeFileSync(
+        join(record, 'qualification.json'),
+        JSON.stringify(invalid),
+      );
+      const rejected = run();
+      assert.ifError(rejected.error);
+      assert.notEqual(rejected.status, 0, JSON.stringify(invalid));
+      assert.deepEqual(readFileSync(join(assets, archive)), original);
+    }
+    writeFileSync(join(record, 'qualification.json'), JSON.stringify(receipt));
+    writeFileSync(
+      join(record, 'bundle-build.tar.gz'),
+      'changed after extraction',
+    );
+    const failed = run();
+    assert.ifError(failed.error);
+    assert.notEqual(failed.status, 0);
+    assert.match(failed.stdout + failed.stderr, /FAILED|did NOT match/);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('release uploads stay bound to the event release and qualified commit on retry', t => {
+  const tools = spawnSync(
+    'bash',
+    ['-c', 'command -v jq && command -v sha256sum'],
+    { encoding: 'utf8' },
+  );
+  if (tools.error || tools.status !== 0) {
+    t.skip('Release shell test requires bash, jq and sha256sum');
+    return;
+  }
+  const workflow = readFileSync(
+    join(root, '.github', 'workflows', 'build.yaml'),
+    'utf8',
+  );
+  const block = workflow.split('- name: Attach Bundle to Dashboard Release')[1];
+  assert.ok(block);
+  const script = block
+    .split('run: |')[1]
+    .trimEnd()
+    .replace(/^ {10}/gm, '');
+  const directory = mkdtempSync(join(tmpdir(), 'plugin-release-upload-'));
+  try {
+    const tag = 'v0.63.0-rc.1+build.1#test';
+    const archive = `radius-backstage-plugin-${tag}.tar.gz`;
+    const bytes = Buffer.from('qualified archive');
+    writeFileSync(join(directory, archive), bytes);
+    writeFileSync(
+      join(directory, `${archive}.sha256`),
+      `${createHash('sha256').update(bytes).digest('hex')}  ${archive}\n`,
+    );
+    writeFileSync(
+      join(directory, `radius-backstage-plugin-${tag}.qualification.json`),
+      JSON.stringify({
+        bundle: { source: { revision: 'a'.repeat(40), dirty: false } },
+      }),
+    );
+    const trace = join(directory, 'requests.log');
+    const fakeGh = `
+      gh() {
+        printf '%s\\n' "$*" >> "$GH_TRACE"
+        test "$1" = api || return 1
+        if [ "$2" = "repos/$GH_REPO/releases/$RELEASE_ID" ]; then
+          test "$SCENARIO" != deleted || return 1
+          id="$RELEASE_ID"
+          if [ "$SCENARIO" = replacement ]; then id=456; fi
+          printf '{"id":%s,"tag_name":"%s","draft":false}\\n' "$id" "$GITHUB_REF_NAME"
+        elif [[ "$2" == "repos/$GH_REPO/commits/refs/tags/"* ]]; then
+          test "$SCENARIO" != tag-error || return 1
+          if [ "$SCENARIO" = moved ]; then
+            printf '%040d\\n' 0
+          else
+            printf '%s\\n' "$GITHUB_SHA"
+          fi
+        elif [ "$2" = --method ] && [ "$3" = POST ]; then
+          case "\${!#}" in
+            "https://uploads.github.com/repos/$GH_REPO/releases/$RELEASE_ID/assets?name="*) ;;
+            *) return 1 ;;
+          esac
+        else
+          return 1
+        fi
+      }
+    `;
+    for (const scenario of [
+      'same',
+      'deleted',
+      'replacement',
+      'moved',
+      'tag-error',
+    ]) {
+      writeFileSync(trace, '');
+      const result = spawnSync(
+        'bash',
+        ['-euo', 'pipefail', '-c', `${fakeGh}\n${script}`],
+        {
+          encoding: 'utf8',
+          env: {
+            ...process.env,
+            BUNDLE_ASSETS: directory,
+            GITHUB_REF_NAME: tag,
+            GITHUB_SHA: 'a'.repeat(40),
+            GH_REPO: 'radius-project/dashboard',
+            RELEASE_ID: '123',
+            GH_TRACE: trace,
+            SCENARIO: scenario,
+          },
+        },
+      );
+      assert.ifError(result.error);
+      const requests = readFileSync(trace, 'utf8').trim().split('\n');
+      for (const request of requests.filter(value =>
+        value.startsWith(`api repos/radius-project/dashboard/commits/`),
+      )) {
+        const endpoint = new URL(
+          request.split(' ')[1],
+          'https://api.github.com/',
+        );
+        assert.equal(endpoint.hash, '');
+        assert.equal(
+          decodeURIComponent(endpoint.pathname),
+          `/repos/radius-project/dashboard/commits/refs/tags/${tag}`,
+        );
+      }
+      const uploads = requests.filter(request =>
+        request.startsWith('api --method POST'),
+      );
+      if (scenario === 'same') {
+        assert.equal(result.status, 0, result.stdout + result.stderr);
+        assert.equal(uploads.length, 3);
+        for (const file of [
+          archive,
+          `${archive}.sha256`,
+          `radius-backstage-plugin-${tag}.qualification.json`,
+        ]) {
+          assert(
+            uploads.some(request => {
+              const endpoint = new URL(
+                request.slice(request.lastIndexOf(' ') + 1),
+              );
+              return (
+                endpoint.pathname.endsWith('/releases/123/assets') &&
+                endpoint.searchParams.get('name') === file &&
+                request.includes(`--input ${file} --silent`)
+              );
+            }),
+          );
+        }
+      } else {
+        assert.notEqual(result.status, 0, scenario);
+        assert.deepEqual(
+          uploads,
+          [],
+          `${scenario}: retries must upload nothing`,
+        );
+      }
+    }
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 test('the actual build chain, offline CI tests, validation gates, and edge publishing remain wired', () => {
   const rootPackage = JSON.parse(
     readFileSync(join(root, 'package.json'), 'utf8'),
@@ -780,7 +1095,7 @@ test('the actual build chain, offline CI tests, validation gates, and edge publi
   );
   assert.equal(
     rootPackage.scripts['test:qualification-runners'],
-    'node --test scripts/qualify-plugin-host.test.ts scripts/shared-library-candidate.test.ts scripts/installed-host.test.ts',
+    'node --test scripts/qualify-plugin-host.test.ts scripts/shared-library-candidate.test.ts scripts/installed-host.test.ts scripts/plugin-install-bundle.test.ts',
   );
   assert.match(
     rootPackage.scripts['test:all'],
@@ -847,6 +1162,87 @@ test('the actual build chain, offline CI tests, validation gates, and edge publi
   assert.match(coverageUpload, /files: \.\/coverage\/lcov\.info/);
   assert.match(coverageUpload, /disable_search: true/);
   assert.match(coverageUpload, /fail_ci_if_error: true/);
+  assert.match(workflow, /release:\s+types:\s+- published/);
+  assert.match(
+    workflow,
+    /GRAPH_RECORD_BASE_REF: \$\{\{ github\.event_name == 'release' && github\.sha \|\| github\.event\.pull_request\.base\.sha \}\}/,
+  );
+  assert.match(
+    workflow,
+    /CI_PUBLISH_PLUGIN: \$\{\{ github\.repository == 'radius-project\/dashboard' && startsWith\(github\.ref, 'refs\/tags\/v'\) && github\.event_name == 'release' \}\}/,
+  );
+  const bundleQualification = workflow
+    .split('- name: Qualify Plugin Install Bundle')[1]
+    ?.split('\n  build-and-publish-container:')[0];
+  assert.ok(bundleQualification, 'CI must qualify the plugin install bundle');
+  assert.match(
+    bundleQualification,
+    /if: \$\{\{ env\.CI_TEST == 'true' \|\| env\.CI_PUBLISH_PLUGIN == 'true' \}\}/,
+  );
+  assert.match(
+    bundleQualification,
+    /QUALIFICATION_EVIDENCE_DIRECTORY: \$\{\{ runner\.temp \}\}\/radius-plugin-bundle-evidence/,
+  );
+  assert.match(bundleQualification, /run: yarn run test:e2e:installed/);
+  assert.match(
+    bundleQualification,
+    /cp "\$\{record\}\/bundle-build\.tar\.gz" "\$\{BUNDLE_ASSETS\}\/\$\{archive\}"/,
+  );
+  const bundleUploader = workflow
+    .split('- name: Retain Qualified Plugin Release Assets')[1]
+    ?.split('\n      - name:')[0];
+  assert.ok(
+    bundleUploader,
+    'The qualified release assets need their own uploader',
+  );
+  assert.match(bundleUploader, /uses: actions\/upload-artifact@[a-f0-9]{40}/);
+  assert.match(bundleUploader, /if-no-files-found: error/);
+  const uploaderId = /id: ([a-z0-9-]+)/.exec(bundleUploader)?.[1];
+  assert.equal(uploaderId, 'plugin-bundle-upload');
+  assert(
+    workflow.includes(
+      `plugin-bundle-artifact-id: \${{ steps.${uploaderId}.outputs.artifact-id }}`,
+    ),
+  );
+  assert.match(bundleUploader, /name: radius-plugin-release-assets/);
+  assert.match(
+    bundleUploader,
+    /path: \$\{\{ runner\.temp \}\}\/radius-plugin-release-assets\//,
+  );
+  assert.match(bundleQualification, /id: bundle/);
+  assert.match(workflow, /PHASE6_BUNDLE: \$\{\{ steps\.bundle\.outcome \}\}/);
+  assert.match(
+    bundleQualification,
+    /if: \$\{\{ env\.CI_PUBLISH_PLUGIN == 'true' \}\}/,
+  );
+  const bundlePublication = workflow.split('\n  publish-plugin-bundle:')[1];
+  assert.ok(bundlePublication, 'Dashboard must publish its own plugin bundle');
+  assert.match(bundlePublication, /needs: build\r?\n/);
+  assert.match(bundlePublication, /github\.event_name == 'release'/);
+  assert.match(bundlePublication, /permissions:\s+contents: write/);
+  assert.match(
+    bundlePublication,
+    /artifact-ids: \$\{\{ needs\.build\.outputs\.plugin-bundle-artifact-id \}\}/,
+  );
+  assert.match(
+    bundlePublication,
+    /sha256sum -c "radius-backstage-plugin-\$\{GITHUB_REF_NAME\}\.tar\.gz\.sha256"/,
+  );
+  assert.match(
+    bundlePublication,
+    /RELEASE_ID: \$\{\{ github\.event\.release\.id \}\}/,
+  );
+  assert.match(bundlePublication, /releases\/\$\{RELEASE_ID\}\/assets\?name=/);
+  assert.match(bundlePublication, /commits\/refs\/tags\/\$\{encoded_tag\}/);
+  assert.match(bundlePublication, /GH_REPO: \$\{\{ github\.repository \}\}/);
+  assert.doesNotMatch(
+    bundlePublication,
+    /actions\/checkout|yarn install|bundle:plugin|--clobber|gh release (create|upload)/,
+  );
+  assert.match(
+    workflow,
+    /name: Build and Publish Container\s+if: \$\{\{ github\.event_name != 'release' \}\}/,
+  );
   assert.match(workflow, /- name: Build Image\s+run: yarn run build-image/);
   assert.match(workflow, /run: node scripts\/release-image.ts stage/);
   assert.doesNotMatch(workflow, /REL_CHANNEL/);

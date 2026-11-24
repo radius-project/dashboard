@@ -182,11 +182,23 @@ test('failure evidence is bounded metadata, never arbitrary diagnostic text', ()
     standalone: 'skipped',
     graph: 'skipped',
     artifact: 'skipped',
+    bundle: 'failure',
     installed: 'cancelled',
   };
   const content = failureEvidence('a'.repeat(40), '123', results);
   assert(Buffer.byteLength(content) <= 1024);
   assert.equal(JSON.parse(content).stages.unit, 'failure');
+  const bundleFailure = JSON.parse(
+    failureEvidence('a'.repeat(40), '123', {
+      ...results,
+      unit: 'success',
+      artifact: 'success',
+      bundle: 'failure',
+      installed: 'skipped',
+    }),
+  );
+  assert.equal(bundleFailure.stages.bundle, 'failure');
+  assert.equal(bundleFailure.stages.installed, 'skipped');
   for (const invalid of [
     { ...results, unit: 'Authorization: Bearer secret' },
     { ...results, token: 'secret' },
@@ -212,6 +224,7 @@ test('evidence CLI defaults unset and empty outcomes without accepting invalid t
     'standalone',
     'graph',
     'artifact',
+    'bundle',
     'installed',
   ]) {
     delete env[`PHASE6_${stage.toUpperCase()}`];
@@ -232,6 +245,7 @@ test('evidence CLI defaults unset and empty outcomes without accepting invalid t
       'standalone',
       'graph',
       'artifact',
+      'bundle',
       'installed',
     ]) {
       assert.equal(evidence.stages[stage], 'skipped');

@@ -32,6 +32,18 @@ Key features of the Radius Dashboard currently include:
 
 1. Access the dashboard at [http://localhost:3000](http://localhost:3000)
 
+## Install the plugin in an existing Backstage portal
+
+The Radius frontend plugin can be built as a private development install bundle.
+Run `yarn bundle:plugin <new-output-directory-outside-checkout>` after installing
+the repository dependencies. The bundle contains the compiled plugin, its pinned
+shared packages, checksums and host install settings. It is not a public npm release.
+Releases that include the bundle workflow attach the tested archive, checksum and
+frontend qualification receipt under **Assets** on the
+[GitHub Release](https://github.com/radius-project/dashboard/releases).
+See the [bundle guide](docs/contributing/contributing-code/contributing-code-building/README.md#plugin-install-bundle)
+for build, clean-host testing and installation steps.
+
 ## Getting help
 
 - ❓ **Have a question?** - Visit our [Discord server](https://discord.gg/SRG3ePMKNy) to post your question and we'll get back to you ASAP

@@ -168,6 +168,180 @@ Phase 4 still requires candidate-backed root/native host journeys, browser
 renderer/CSS negative checks, and reviewed graph record differences against the base.
 Run the preflight regression tests with `yarn test:qualification-runners`.
 
+#### Plugin install bundle
+
+Build a portable development bundle for an existing Backstage portal:
+
+```bash
+yarn install --immutable
+yarn bundle:plugin ../radius-plugin-bundle
+```
+
+Use Node.js 24, the repository's Yarn version, Git and `tar`. The output path must
+be outside the checkout and must not exist. The command verifies the pinned shared
+archives, compiles declarations, builds and packs the frontend plugin, and creates:
+
+- `radius-plugin-bundle/`: the plugin and forwarding archives, the two shared archives, their
+  unchanged producer receipt, `bundle.json`, `verify.mts`, install settings and
+  a short setup guide.
+- `radius-plugin-bundle.tar.gz` and its `.sha256` sidecar: the same bundle for transfer.
+
+Build on a filesystem that supports hard links, such as NTFS or ext4. Archive
+publication uses a hard link to avoid replacing another build's output. exFAT
+destinations cannot do this; build on a supported filesystem, then copy the
+finished archive and checksum to the transfer drive.
+
+The bundle records the Dashboard commit, whether the source has changes, build
+tool versions and each file's SHA-256. It does not contain credentials, the
+Dashboard backend, a lockfile, or a copy of the portal. The packages stay private.
+The builder queries the selected Yarn executable once and stops if its version
+does not match the repository's `packageManager` before building or packing.
+The version comes from stdout only; stderr warnings remain in qualification logs.
+
+The builder records Git state before reading build inputs and checks it again
+before publishing output. A build that starts with local edits stays marked as
+modified, even if those edits are restored during compilation. A changed revision
+or a newly modified checkout stops publication.
+The builder copies the exact shared-library receipt bytes it checked before the
+build, not a later version of that file.
+
+Git metadata checks ignore command-scope config and repository, index and object-store redirects.
+For a trusted, host-owned checkout mounted in a container, configure that exact
+path in persistent global Git config before building:
+
+```bash
+git config --global --add safe.directory /absolute/path/to/dashboard
+```
+
+Trust passed only through `GIT_CONFIG_COUNT` is not inherited by the builder.
+Do not use wildcard trust or trust a checkout you have not verified.
+
+No npm publication, release upload or registry access change is part of this command.
+Checksums detect changed bytes; they do not prove who built the bundle.
+
+Packing holds `.radius-plugin-pack.lock` in the checkout from before reading a
+workspace manifest until its original bytes are restored. The lock records the
+owning process ID, host name and workspace. If a pack exits before cleanup and
+the next run reports `EEXIST` for this path, inspect the lock on the named host.
+Confirm that the owner and all build/pack child processes have stopped. Compare
+the recorded workspace's `package.json` with Git and restore any prepack rewrite
+without discarding intended local edits. Only then remove that lock file and retry.
+Do not remove a lock based only on its age or while any pack is still running.
+If manifest restoration fails, packing closes the descriptor but retains the owner
+record and reports the lock path. Use the same recovery steps before retrying.
+The bundle builder and `yarn test:package` use this same lock.
+Restoration starts only when packing starts. If the manifest changes during the
+build step, packing stops, preserves those edits and releases the lock.
+
+When a `v*` release is published in the Dashboard repository, its release event
+supplies the version tag. Dashboard CI builds and tests the plugin, then attaches:
+
+- `radius-backstage-plugin-<tag>.tar.gz`
+- `radius-backstage-plugin-<tag>.tar.gz.sha256`
+- `radius-backstage-plugin-<tag>.qualification.json`
+
+Download them from the release's **Assets** list. The qualification file records
+the tested bundle, packages, compiler and installed lockfile, without raw logs
+or machine paths. It is frontend fixture evidence, not production auth approval.
+
+CI transfers the exact tested archive through a seven-day workflow artifact.
+A build step checks the archive's manifest hash against the qualification receipt,
+as well as the transfer checksum. Bundle verification also checks that the plugin's
+root and native entries and the forwarding package's public entries exist in their
+packed archives.
+A separate Dashboard job checks the checksum and uses the release event's fixed
+release ID to upload files through the GitHub API. It checks that the original
+release still has the expected tag and that the full tag ref still resolves to
+the qualified commit. Radius only supplies the release/version
+notification; it does not download the plugin or include it in the Radius release
+package. No npm package is published. Failed tests, missing evidence, modified
+source or a source-commit mismatch prevent upload. Upload names are URL-encoded
+to preserve version tags that contain build metadata, such as `+build.1`.
+The tag is also URL-encoded for the commit lookup, so reserved characters cannot
+change which ref the API reads.
+
+The published-release trigger ensures the Dashboard release exists before upload.
+If only the upload fails, rerun the failed Dashboard publisher while the successful
+build artifact is still available. Artifacts expire after seven days. After that,
+rerun the build and qualification too, so the publisher receives a new artifact ID.
+If the build fails, rerun the build and its dependent publisher.
+Existing assets are not overwritten; remove partial plugin uploads before retrying.
+If the release was replaced or its tag moved, the old run stops without uploads.
+A retry cannot retarget its artifacts; use the workflow run from the intended
+release publication.
+Older releases do not gain assets automatically.
+
+Before handing a bundle to another user, test its exact contents:
+
+```bash
+QUALIFICATION_PLUGIN_BUNDLE=/absolute/path/to/radius-plugin-bundle \
+QUALIFICATION_EVIDENCE_DIRECTORY=/absolute/path/to/bundle-evidence \
+yarn test:e2e:installed
+```
+
+This installs the supplied archives rather than repacking the plugin. Only a
+successful run writes `qualification.json`, with the bundle manifest hash and
+package hashes. Keep that receipt with the bundle. This is controlled frontend
+evidence, not a production authorization test or approval of a broad host version range.
+Keep evidence and work directories outside the supplied bundle. The runner rejects
+paths at or inside that bundle before creating output directories.
+Full host-matrix qualification also requires the bundle to have clean source at
+the current checkout revision. A different or modified source can be checked for
+frontend compatibility, but cannot produce a complete current-checkout matrix receipt.
+Without `QUALIFICATION_PLUGIN_BUNDLE`, the runner builds a bundle, extracts its
+transfer archive, and tests that output. CI runs this path on pull requests and
+release tags. Run the focused bundle regression tests with `yarn test:plugin-bundle`.
+
+To consume the bundle in a standard Backstage portal:
+
+1. Check the transfer archive's SHA-256 against the trusted sender's value before
+   extraction. On Linux, run `sha256sum -c radius-plugin-bundle.tar.gz.sha256`.
+      For a downloaded release, keep the archive name unchanged and use the matching
+      release filename instead:
+
+      ```bash
+      tag=v0.63.0 # Use the version you downloaded.
+      sha256sum -c "radius-backstage-plugin-${tag}.tar.gz.sha256"
+      ```
+
+      On PowerShell:
+
+      ```powershell
+      $tag = 'v0.63.0' # Use the version you downloaded.
+      Get-Content "radius-backstage-plugin-$tag.tar.gz.sha256"
+      Get-FileHash "radius-backstage-plugin-$tag.tar.gz" -Algorithm SHA256
+      ```
+
+      Compare the hash with the sidecar value. The shorter
+      `radius-plugin-bundle.tar.gz` name above applies only to local builds.
+1. Extract the archive into a directory named `radius-plugin-bundle` at the
+   portal root. Run `node radius-plugin-bundle/verify.mts` with Node.js 24.
+1. Merge `install-settings.json`'s `app.dependencies` into `packages/app/package.json`
+   and `root.resolutions` into the portal root `package.json`. The generated paths
+   assume this standard workspace layout. Review conflicts rather than replacing
+   existing entries. If your layout differs, adjust the relative paths together.
+1. Before adding the bundle to Git, add this rule to the portal-root `.gitattributes`:
+
+   ```gitattributes
+   radius-plugin-bundle/** -text
+   ```
+
+   This keeps the hashed bytes unchanged when `core.autocrlf=true`. Keep the rule
+   outside the bundle: the verifier rejects extra files inside it.
+1. Run the portal's normal Yarn install and build. Keep the bundle with the portal
+   source so future installs can resolve its files.
+1. Register `@internal/plugin-radius/alpha` with the Kubernetes frontend feature
+   for a new frontend host, or register the root page exports for a legacy host.
+   Keep the host's route bindings, navigation, Kubernetes backend and identity
+   provider. No Radius backend plugin is required.
+
+See the [plugin contracts](../../../../plugins/plugin-radius/README.md) for API
+overrides and host limits. The plugin declares React/ReactDOM `^18.3.1` peers;
+this is not a React 19 support claim. The default client uses the first configured
+Kubernetes cluster and `radius/local`; other connections require a host API
+override. The host must authorize resource GET and graph POST requests. Do not
+copy the standalone Dashboard's guest auth into a production portal.
+
 #### Installed external frontend evidence
 
 Run `yarn test:e2e:installed` with `QUALIFICATION_EVIDENCE_DIRECTORY` set to an
@@ -176,6 +350,9 @@ directory. The runner retains candidate archives, the clean consumer manifest
 and lockfile, the exact tested tuple, build metadata, browser records, and each
 command's log and result. A failed command retains its evidence and exits with
 an error. Each run creates a new consumer; it does not reuse an old install.
+The shared-library receipt stays beside its verified archives in
+`radius-plugin-bundle/archives/candidate.json`. Verify the retained receipt with
+`yarn verify:shared-candidate /absolute/path/to/installed-host-record/radius-plugin-bundle/archives/candidate.json`.
 The first install explicitly creates that consumer's lockfile, including in CI.
 A second install uses `--immutable` to verify it. Repository installs remain
 immutable.
@@ -186,14 +363,18 @@ outside the checkout. The runner creates a fresh consumer there. It retains
 logs in the evidence directory and copies archives, fixture sources, lockfiles,
 builds, and results there, but not `node_modules`.
 
-The runner builds and packs the plugin and rad-components compatibility package. It installs those
-tarballs and the pinned shared pair with Yarn, without repository dependency
-links. The fresh consumer uses the repository lockfile as a dependency seed.
+The runner uses the [plugin install bundle](#plugin-install-bundle), including its
+forwarding compatibility package. It does not build a substitute forwarding archive.
+It installs those tarballs and the pinned shared pair with Yarn, without repository
+dependency links. The fresh consumer uses the repository lockfile as a dependency seed.
 The first install updates that seed for the packed dependencies with
 `yarn install --no-immutable`; `yarn install --immutable` then checks the result.
 This keeps the tested Backstage versions together without copying installed
 modules or importing a second app context from newer transitive releases.
 It compiles the installed public declarations and both host fixtures.
+Frontend fixtures and plugin resolution start in `packages/app`, where the plugin
+dependency is declared. This also supports app-local installs without a root
+plugin copy. Shared dependency and React-copy checks still cover the consumer.
 It then extends the Phase 3/4 production browser runner with an isolated-input
 check, nested plugin mounts, a separate app base path, route-ref navigation,
 external bindings, host-owned fixture identity, and visible HTTP denial.

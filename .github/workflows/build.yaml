@@ -11,6 +11,9 @@ on:
   pull_request:
     branches:
       - main
+  release:
+    types:
+      - published
 
 permissions: {}
 
@@ -18,6 +21,7 @@ env:
   CI_LINT: ${{ github.event_name == 'pull_request' }}
   CI_TEST: ${{ github.event_name == 'pull_request' || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) }}
   CI_PUBLISH_RELEASE: ${{ github.repository == 'radius-project/dashboard' && startsWith(github.ref, 'refs/tags/v') && github.event_name == 'push' }}
+  CI_PUBLISH_PLUGIN: ${{ github.repository == 'radius-project/dashboard' && startsWith(github.ref, 'refs/tags/v') && github.event_name == 'release' }}
   CI_PUBLISH_EDGE: ${{ github.repository == 'radius-project/dashboard' && github.ref == 'refs/heads/main' && github.event_name == 'push' }}
 
 jobs:
@@ -27,6 +31,8 @@ jobs:
     timeout-minutes: 60
     permissions:
       contents: read
+    outputs:
+      plugin-bundle-artifact-id: ${{ steps.plugin-bundle-upload.outputs.artifact-id }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -90,8 +96,8 @@ jobs:
       - name: Run Tests
         id: unit
         env:
-          # Empty on push builds, where GU-25 falls back to origin/main.
-          GRAPH_RECORD_BASE_REF: ${{ github.event.pull_request.base.sha }}
+          # Release retries use the frozen source, not a later origin/main.
+          GRAPH_RECORD_BASE_REF: ${{ github.event_name == 'release' && github.sha || github.event.pull_request.base.sha }}
         # main builds provide the baseline for Codecov pull request comparisons.
         run: yarn run test:all --coverageThreshold='{}' --coverageDirectory=coverage --coverageReporters=lcov --coverageReporters=text --coverageReporters=json-summary
 
@@ -144,6 +150,54 @@ jobs:
         if: ${{ env.CI_TEST == 'true' }}
         run: yarn run test:package
 
+      - name: Qualify Plugin Install Bundle
+        id: bundle
+        if: ${{ env.CI_TEST == 'true' || env.CI_PUBLISH_PLUGIN == 'true' }}
+        env:
+          QUALIFICATION_EVIDENCE_DIRECTORY: ${{ runner.temp }}/radius-plugin-bundle-evidence
+        run: yarn run test:e2e:installed
+
+      - name: Prepare Plugin Release Assets
+        if: ${{ env.CI_PUBLISH_PLUGIN == 'true' }}
+        env:
+          BUNDLE_EVIDENCE: ${{ runner.temp }}/radius-plugin-bundle-evidence
+          BUNDLE_ASSETS: ${{ runner.temp }}/radius-plugin-release-assets
+        run: |
+          set -euo pipefail
+          records=("${BUNDLE_EVIDENCE}"/installed-host-*/qualification.json)
+          test "${#records[@]}" -eq 1
+          record="${records[0]%/*}"
+          archive="radius-backstage-plugin-${GITHUB_REF_NAME}.tar.gz"
+          mkdir -p "${BUNDLE_ASSETS}"
+          jq -e --arg revision "${GITHUB_SHA}" '
+            def digest: type == "string" and test("^[a-f0-9]{64}$");
+            def identity: type == "string" and length > 0;
+            select(.stage == "installed-external-frontend" and
+              .bundle.source.revision == $revision and .bundle.source.dirty == false and
+              (.bundle.manifestSha256 | digest) and (.installedLockSha256 | digest) and
+              (.node | identity) and (.packageManager | identity) and (.compiler | identity) and
+              (.entries == ["@internal/plugin-radius", "@internal/plugin-radius/alpha"]) and
+              (all(.bundle.packages["@internal/plugin-radius", "@radius-project/core", "@radius-project/graph-react", "@radapp.io/rad-components"];
+                (.version | identity) and (.path | identity) and (.sha256 | digest)))) |
+            {stage, bundle, entries, node, packageManager, compiler, installedLockSha256}
+          ' "${record}/qualification.json" > "${BUNDLE_ASSETS}/radius-backstage-plugin-${GITHUB_REF_NAME}.qualification.json"
+          cp "${record}/bundle-build.tar.gz" "${BUNDLE_ASSETS}/${archive}"
+          read -r digest _ < "${record}/bundle-build.tar.gz.sha256"
+          cd "${BUNDLE_ASSETS}" || exit 1
+          printf '%s  %s\n' "${digest}" "${archive}" > "${archive}.sha256"
+          sha256sum -c "${archive}.sha256"
+          manifest_digest="$(tar -xOf "${archive}" -- ./bundle.json | sha256sum)"
+          test "${manifest_digest%% *}" = "$(jq -er '.bundle.manifestSha256' "radius-backstage-plugin-${GITHUB_REF_NAME}.qualification.json")"
+
+      - name: Retain Qualified Plugin Release Assets
+        id: plugin-bundle-upload
+        if: ${{ env.CI_PUBLISH_PLUGIN == 'true' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: radius-plugin-release-assets
+          path: ${{ runner.temp }}/radius-plugin-release-assets/
+          if-no-files-found: error
+          retention-days: 7
       - name: Qualify clean installed frontend and backend matrix
         id: installed
         if: ${{ env.CI_TEST == 'true' }}
@@ -165,6 +219,7 @@ jobs:
           PHASE6_STANDALONE: ${{ steps.standalone.outcome }}
           PHASE6_GRAPH: ${{ steps.graph.outcome }}
           PHASE6_ARTIFACT: ${{ steps.artifact.outcome }}
+          PHASE6_BUNDLE: ${{ steps.bundle.outcome }}
           PHASE6_INSTALLED: ${{ steps.installed.outcome }}
         run: node scripts/ci-policy.ts evidence "${RUNNER_TEMP}/phase6-failure.json"
 
@@ -179,6 +234,7 @@ jobs:
 
   build-and-publish-container:
     name: Build and Publish Container
+    if: ${{ github.event_name != 'release' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     concurrency:
@@ -305,3 +361,51 @@ jobs:
         with:
           subject-name: ghcr.io/radius-project/dashboard
           subject-digest: ${{ needs.build-and-publish-container.outputs.release-digest }}
+
+  publish-plugin-bundle:
+    name: Publish Plugin Install Bundle
+    needs: build
+    if: ${{ github.repository == 'radius-project/dashboard' && startsWith(github.ref, 'refs/tags/v') && github.event_name == 'release' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    concurrency:
+      group: dashboard-plugin-release-${{ github.ref }}
+      cancel-in-progress: false
+    permissions:
+      contents: write
+    steps:
+      - name: Download Qualified Plugin Release Assets
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          artifact-ids: ${{ needs.build.outputs.plugin-bundle-artifact-id }}
+          merge-multiple: true
+          path: ${{ runner.temp }}/radius-plugin-release-assets
+
+      - name: Attach Bundle to Dashboard Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_ID: ${{ github.event.release.id }}
+          BUNDLE_ASSETS: ${{ runner.temp }}/radius-plugin-release-assets
+        run: |
+          set -euo pipefail
+          cd "${BUNDLE_ASSETS}" || exit 1
+          sha256sum -c "radius-backstage-plugin-${GITHUB_REF_NAME}.tar.gz.sha256"
+          qualified_revision="$(jq -er '.bundle.source.revision' "radius-backstage-plugin-${GITHUB_REF_NAME}.qualification.json")"
+          test "${qualified_revision}" = "${GITHUB_SHA}"
+          gh api "repos/${GH_REPO}/releases/${RELEASE_ID}" |
+            jq -e --argjson id "${RELEASE_ID}" --arg tag "${GITHUB_REF_NAME}" \
+              '.id == $id and .tag_name == $tag and .draft == false'
+          encoded_tag="$(jq -rn --arg tag "${GITHUB_REF_NAME}" '$tag | @uri')"
+          current_revision="$(gh api "repos/${GH_REPO}/commits/refs/tags/${encoded_tag}" --jq .sha)"
+          test "${current_revision}" = "${qualified_revision}"
+          for file in \
+            "radius-backstage-plugin-${GITHUB_REF_NAME}.tar.gz" \
+            "radius-backstage-plugin-${GITHUB_REF_NAME}.tar.gz.sha256" \
+            "radius-backstage-plugin-${GITHUB_REF_NAME}.qualification.json"
+          do
+            encoded_file="$(jq -rn --arg file "${file}" '$file | @uri')"
+            gh api --method POST -H 'Content-Type: application/octet-stream' \
+              --input "${file}" --silent \
+              "https://uploads.github.com/repos/${GH_REPO}/releases/${RELEASE_ID}/assets?name=${encoded_file}"
+          done

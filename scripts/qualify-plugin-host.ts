@@ -29,7 +29,11 @@ async function main() {
       'Real backend journeys require installed mode and a controlled fake upstream',
     );
   }
-  const fixtureRoot = path.join(consumerRoot, 'fixture');
+  const fixtureRoot = path.join(
+    consumerRoot,
+    ...(installed ? ['packages', 'app'] : []),
+    'fixture',
+  );
   const output = path.join(
     ((standaloneOrigin || backendUrl) && evidence) || consumerRoot,
     'browser',

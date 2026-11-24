@@ -102,7 +102,7 @@ export function assertInside(root: string, file: string) {
   }
 }
 
-export function assertInstalledReact18(root: string) {
+export function assertInstalledReact18(root: string, app = root) {
   const copies: Record<string, string[]> = { react: [], 'react-dom': [] };
   const visit = (modules: string, scope = '') => {
     for (const name of fs.readdirSync(modules)) {
@@ -131,6 +131,10 @@ export function assertInstalledReact18(root: string) {
     }
   };
   visit(path.join(root, 'node_modules'));
+  if (app !== root && fs.existsSync(path.join(app, 'node_modules'))) {
+    assertInside(root, app);
+    visit(path.join(app, 'node_modules'));
+  }
   for (const [name, locations] of Object.entries(copies)) {
     if (new Set(locations).size !== 1) {
       throw new Error(
@@ -149,9 +153,12 @@ export function assertInstalledReact18(root: string) {
   );
 }
 
-export function assertCandidateResolution(root: string) {
+export function assertCandidateResolution(root: string, app = root) {
   const require = createRequire(path.join(root, 'package.json'));
-  const plugin = createRequire(require.resolve('@internal/plugin-radius'));
+  const appRequire = createRequire(path.join(app, 'package.json'));
+  const pluginEntry = appRequire.resolve('@internal/plugin-radius');
+  assertInside(root, pluginEntry);
+  const plugin = createRequire(pluginEntry);
   const forwarding = createRequire(
     require.resolve('@radapp.io/rad-components'),
   );

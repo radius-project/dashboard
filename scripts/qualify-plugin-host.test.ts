@@ -138,6 +138,10 @@ for (const scenario of [
                     return { metafile: { inputs: { 'packages/backend/src/createRadiusBackend.ts': {} } } };
                   }
                   assert.deepEqual(options.nodePaths, [], 'Installed builds must not fall back to checkout dependencies');
+                  assert.deepEqual(options.entryPoints, {
+                    native: path.join(${JSON.stringify(consumer)}, 'packages', 'app', 'fixture', 'native.tsx'),
+                    legacy: path.join(${JSON.stringify(consumer)}, 'packages', 'app', 'fixture', 'legacy.tsx'),
+                  });
                   fs.mkdirSync(options.outdir, { recursive: true });
                   for (const name of ['native', 'legacy']) fs.writeFileSync(path.join(options.outdir, name + '.css'), ${JSON.stringify(scenario === 'empty-css' ? '' : '.react-flow {}')});
                   return { metafile: {

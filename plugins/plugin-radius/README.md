@@ -53,6 +53,13 @@ backgrounds in sync without a second theme definition.
 
 ## Development artifacts
 
+Use `yarn bundle:plugin <new-output-directory-outside-checkout>` to build a
+portable private install bundle with this plugin, its exact shared dependencies,
+checksums and generated host install settings. The
+[bundle guide](../../docs/contributing/contributing-code/contributing-code-building/README.md#plugin-install-bundle)
+covers verification, clean-host testing and setup. This avoids manual archive
+selection and does not publish an npm package.
+
 Shared library version `0.1.0` is development metadata, not proof of a registry release. Repository builds use two vendored archives, built from ai-extensions `main`, and relative file resolutions. `vendor/shared-libraries/candidate.json` records the source revision, hashes, build commands, and licenses. See the [candidate preflight instructions](../../docs/contributing/contributing-code/contributing-code-building/README.md#shared-library-candidate-preflight) for the checks. Public registry distribution remains unqualified until an approved release.
 
 ## Test ownership
@@ -100,8 +107,8 @@ renderer; banning Flow11 from **all** consumers would break that public contract
 check. Do not use it to qualify a clean external host.
 
 Run `yarn test:e2e:installed` with `QUALIFICATION_EVIDENCE_DIRECTORY` set to a
-persistent absolute path outside the checkout. Each run builds new plugin and
-rad-components compatibility tarballs, installs all frontend dependencies in a new consumer, and
+persistent absolute path outside the checkout. Each run uses the plugin and
+forwarding tarballs from the install bundle, installs all frontend dependencies in a new consumer, and
 uses the same production browser journeys for the packed root and `/alpha`
 entries. Native Radius uses explicit feature registration, not a Radius plugin
 converter. The fixture host owns navigation, external route bindings, and its

@@ -26,6 +26,7 @@ import { kubernetesApiRef } from '@backstage/plugin-kubernetes';
 import { Route } from 'react-router-dom';
 import type { FrontendPlugin } from '@backstage/frontend-plugin-api';
 import * as publicApi from './index';
+import { withWorkspaceManifest } from '../workspace-manifest';
 
 /**
  * Set by `yarn test:package`. Without it the suite does not run, because the
@@ -125,20 +126,19 @@ const packWorkspace = (
   output: string,
   manifestPath: string,
 ): ManifestLifecycle => {
-  const before = fs.readFileSync(manifestPath, 'utf8');
-
-  try {
-    runYarn(['workspace', workspace, 'build']);
-    runYarn(['workspace', workspace, 'pack', '--out', output]);
-    return {
-      before,
-      after: fs.readFileSync(manifestPath, 'utf8'),
-    };
-  } finally {
-    if (fs.readFileSync(manifestPath, 'utf8') !== before) {
-      fs.writeFileSync(manifestPath, before);
-    }
-  }
+  return withWorkspaceManifest(
+    repoRoot,
+    path.relative(repoRoot, path.dirname(manifestPath)),
+    (before, startPack) => {
+      runYarn(['workspace', workspace, 'build']);
+      startPack();
+      runYarn(['workspace', workspace, 'pack', '--out', output]);
+      return {
+        before,
+        after: fs.readFileSync(manifestPath, 'utf8'),
+      };
+    },
+  );
 };
 
 const extractArchive = (archive: string, destination: string) => {
@@ -597,6 +597,24 @@ afterAll(() => {
     expect(readJson<PackedPackageJson>(pluginManifestPath)).toMatchObject({
       main: 'src/index.ts',
       types: 'src/index.ts',
+    });
+  });
+
+  it('refuses smoke packing before reading a manifest while the shared pack lock is held', () => {
+    withWorkspaceManifest(repoRoot, 'plugins/plugin-radius', () => {
+      const readManifest = jest.spyOn(fs, 'readFileSync');
+      try {
+        expect(() =>
+          packWorkspace(
+            '@internal/plugin-radius',
+            pluginArchive,
+            pluginManifestPath,
+          ),
+        ).toThrow(/EEXIST/);
+        expect(readManifest).not.toHaveBeenCalled();
+      } finally {
+        readManifest.mockRestore();
+      }
     });
   });
 
