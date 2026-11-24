@@ -1059,7 +1059,7 @@ its issue is fixed, and that failure is the signal the fix landed, not a regress
 | #359  | `rad-components` declares ISC while the repository is Apache-2.0             | Release checklist below |
 | #360  | Five page suites can time out under loaded parallel execution and misreport as coverage failures | Phase 1 default-worker recheck; open guardrail |
 | #361  | A resource type with no description shows placeholder container documentation | RT-07                |
-| #362  | `ResourceLayout` renders literal `undefined/undefined: undefined` off-route  | LY-04                |
+| #362  | Resource header outside its route — **fixed; the subtitle uses the supplied resource type and name, independent of the host URL** | LY-01, LY-04 (regression) |
 | #363  | Output-properties nested filtering — **fixed; object, array, and map children now select read-only fields** | RT-27, RT-35–RT-40 (regression) |
 | #364  | "Join us on Discord" navigates to the dashboard home page instead of Discord — **fixed; opens the public Radius Discord invite in a new window** | CC-05, CC-06 (regression) |
 | #365  | `Resource.systemData` is required and typed `Record<string, never>`, so every fixture must be cast | RS-14 |
