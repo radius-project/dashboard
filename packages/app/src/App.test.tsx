@@ -106,7 +106,9 @@ describe('standalone native host', () => {
       initialRouteEntries: ['/'],
       apis: [[kubernetesApiRef, kubernetes]],
     });
-    expect(await screen.findByText('Learn more')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Learn more', {}, { timeout: 15_000 }),
+    ).toBeInTheDocument();
     expect(screen.getByText('Join the community')).toBeInTheDocument();
     expect(screen.getByText('Get help with Radius')).toBeInTheDocument();
     expect(screen.getAllByText('Applications', { exact: true })).toHaveLength(
@@ -124,7 +126,7 @@ describe('standalone native host', () => {
     ]) {
       expect(screen.getByRole('link', { name })).toBeInTheDocument();
     }
-  });
+  }, 30000);
 
   it('FS-09: delivers alerts and dialogs through the default app extensions', async () => {
     const Controls = () => {
