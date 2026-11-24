@@ -62,6 +62,7 @@
     "typescript": "~6.0.3"
   },
   "resolutions": {
+    "@mui/material": "^5.12.2",
     "@radius-project/core": "file:./vendor/shared-libraries/radius-project-core-0.1.0-main-04d780b72f7e.tgz",
     "@radius-project/graph-react": "file:./vendor/shared-libraries/radius-project-graph-react-0.1.0-main-04d780b72f7e.tgz",
     "@types/react": "^18",
