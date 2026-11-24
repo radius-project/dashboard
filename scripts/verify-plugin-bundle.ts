@@ -135,6 +135,40 @@ export function verifyPluginInstallBundle(directory: string) {
       artifact.version,
       `${name}: archive version mismatch`,
     );
+    const entries =
+      name === '@internal/plugin-radius'
+        ? ['.', './alpha']
+        : name === '@radapp.io/rad-components'
+          ? ['.', './resourceId']
+          : [];
+    if (entries.length) {
+      const files = new Set(
+        execFileSync('tar', ['-tzf', path.resolve(directory, artifact.path)], {
+          encoding: 'utf8',
+        })
+          .trim()
+          .split(/\r?\n/),
+      );
+      for (const entry of entries) {
+        const exported = packed.exports?.[entry];
+        for (const condition of ['import', 'types', 'default']) {
+          const target = exported?.[condition];
+          assert(
+            typeof target === 'string',
+            `${name}${entry}: missing ${condition} export`,
+          );
+          assert.match(
+            target,
+            /^\.\/dist\/[a-zA-Z0-9._-]+\.(?:js|ts)$/,
+            `${name}${entry}: expected a compiled public entry`,
+          );
+          assert(
+            files.has(`package/${target.slice(2)}`),
+            `${name}${entry}: missing packed public entry target ${target}`,
+          );
+        }
+      }
+    }
     if (name === '@internal/plugin-radius')
       pluginDependencies = packed.dependencies;
   }

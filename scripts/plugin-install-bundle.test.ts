@@ -55,12 +55,37 @@ function packFixture(
         '@radapp.io/rad-components': '^0.1.0',
       }
     : {},
+  missingTarget?: string,
 ) {
   const contents = path.join(root, 'package');
   fs.mkdirSync(contents);
+  const entries =
+    name === '@internal/plugin-radius'
+      ? { '.': 'index', './alpha': 'alpha' }
+      : name === '@radapp.io/rad-components'
+        ? { '.': 'index', './resourceId': 'resourceId' }
+        : {};
+  const exports = Object.fromEntries(
+    Object.entries(entries).map(([entry, basename]) => [
+      entry,
+      {
+        import: `./dist/${basename}.esm.js`,
+        types: `./dist/${basename}.d.ts`,
+        default: `./dist/${basename}.esm.js`,
+      },
+    ]),
+  );
+  fs.mkdirSync(path.join(contents, 'dist'));
+  for (const basename of Object.values(entries)) {
+    for (const extension of ['esm.js', 'd.ts']) {
+      const target = `dist/${basename}.${extension}`;
+      if (target !== missingTarget)
+        fs.writeFileSync(path.join(contents, target), 'export {};');
+    }
+  }
   fs.writeFileSync(
     path.join(contents, 'package.json'),
-    JSON.stringify({ name, version, dependencies }),
+    JSON.stringify({ name, version, dependencies, exports }),
   );
   try {
     execFileSync('tar', ['-czf', path.join(root, file), '-C', root, 'package']);
@@ -88,14 +113,8 @@ function commitFixture(checkout: string) {
 function builderCheckout(root: string) {
   const repository = path.resolve(import.meta.dirname, '..');
   const checkout = path.join(root, 'checkout');
-  fixtureGit(root, [
-    'clone',
-    '--quiet',
-    '--shared',
-    '--no-checkout',
-    repository,
-    checkout,
-  ]);
+  fs.mkdirSync(checkout);
+  fixtureGit(checkout, ['init', '--quiet']);
   for (const file of [
     'package.json',
     'plugins/plugin-radius/package.json',
@@ -110,6 +129,8 @@ function builderCheckout(root: string) {
     path.join(checkout, 'vendor', 'shared-libraries'),
     { recursive: true },
   );
+  fixtureGit(checkout, ['add', '--all']);
+  commitFixture(checkout);
   return checkout;
 }
 
@@ -672,45 +693,84 @@ test('a concurrent pack cannot read or restore another packs rewritten manifest'
 });
 
 test('bundle provenance uses its checkout despite inherited Git repository overrides', () => {
-  fixture(root => {
-    const checkout = builderCheckout(root);
-    const other = path.join(root, 'other');
-    fs.mkdirSync(other);
-    fixtureGit(other, ['init', '--quiet']);
-    commitFixture(other);
-    const revision = fixtureGit(checkout, ['rev-parse', 'HEAD'])
-      .toString()
-      .trim();
-    assert.notEqual(
-      revision,
-      fixtureGit(other, ['rev-parse', 'HEAD']).toString().trim(),
-    );
-    assert.equal(fixtureGit(other, ['status', '--porcelain']).length, 0);
-    assert(fixtureGit(checkout, ['status', '--porcelain']).length > 0);
-    const overrides = {
-      GIT_DIR: path.join(other, '.git'),
-      GIT_COMMON_DIR: path.join(other, '.git'),
-      GIT_WORK_TREE: other,
-      GIT_INDEX_FILE: path.join(other, '.git', 'index'),
-    };
-    const previous = Object.fromEntries(
-      Object.keys(overrides).map(name => [name, process.env[name]]),
-    );
-    try {
-      Object.assign(process.env, overrides);
-      const output = path.join(root, 'output');
-      buildPluginInstallBundle(checkout, output, args =>
-        fixturePacker(root, checkout, args),
-      );
-      assert.deepEqual(verifyPluginInstallBundle(output).source, {
+  for (const dirty of [false, true]) {
+    fixture(root => {
+      const checkout = builderCheckout(root);
+      if (dirty) fs.appendFileSync(path.join(checkout, 'package.json'), '\n');
+      const other = path.join(root, 'other');
+      fs.mkdirSync(other);
+      fixtureGit(other, ['init', '--quiet']);
+      commitFixture(other);
+      const revision = fixtureGit(checkout, ['rev-parse', 'HEAD'])
+        .toString()
+        .trim();
+      assert.notEqual(
         revision,
-        dirty: true,
-      });
-    } finally {
-      for (const [name, value] of Object.entries(previous)) {
-        if (value === undefined) delete process.env[name];
-        else process.env[name] = value;
+        fixtureGit(other, ['rev-parse', 'HEAD']).toString().trim(),
+      );
+      assert.equal(fixtureGit(other, ['status', '--porcelain']).length, 0);
+      assert.equal(
+        fixtureGit(checkout, ['status', '--porcelain']).length > 0,
+        dirty,
+      );
+      const overrides = {
+        GIT_DIR: path.join(other, '.git'),
+        GIT_COMMON_DIR: path.join(other, '.git'),
+        GIT_WORK_TREE: other,
+        GIT_INDEX_FILE: path.join(other, '.git', 'index'),
+        GIT_OBJECT_DIRECTORY: path.join(other, '.git', 'objects'),
+      };
+      const previous = Object.fromEntries(
+        Object.keys(overrides).map(name => [name, process.env[name]]),
+      );
+      try {
+        Object.assign(process.env, overrides);
+        const output = path.join(root, 'output');
+        buildPluginInstallBundle(checkout, output, args =>
+          fixturePacker(root, checkout, args),
+        );
+        assert.deepEqual(verifyPluginInstallBundle(output).source, {
+          revision,
+          dirty,
+        });
+      } finally {
+        for (const [name, value] of Object.entries(previous)) {
+          if (value === undefined) delete process.env[name];
+          else process.env[name] = value;
+        }
       }
+    });
+  }
+});
+
+test('packed public entry targets must exist even when archive hashes match', () => {
+  fixture((root, bundle, save) => {
+    for (const [name, target] of [
+      ['@internal/plugin-radius', 'dist/index.esm.js'],
+      ['@internal/plugin-radius', 'dist/alpha.esm.js'],
+      ['@internal/plugin-radius', 'dist/alpha.d.ts'],
+      ['@radapp.io/rad-components', 'dist/resourceId.esm.js'],
+    ]) {
+      const artifact = bundle.packages[name];
+      packFixture(
+        root,
+        artifact.path,
+        name,
+        artifact.version,
+        undefined,
+        target,
+      );
+      artifact.sha256 = bundleFileSha256(path.join(root, artifact.path));
+      bundle.files[artifact.path] = artifact.sha256;
+      save();
+      assert.throws(
+        () => verifyPluginInstallBundle(root),
+        /missing packed public entry target/,
+      );
+      packFixture(root, artifact.path, name, artifact.version);
+      artifact.sha256 = bundleFileSha256(path.join(root, artifact.path));
+      bundle.files[artifact.path] = artifact.sha256;
+      save();
     }
   });
 });

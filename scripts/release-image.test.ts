@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import {
   mkdirSync,
   mkdtempSync,
@@ -766,7 +766,7 @@ test('the CLI rejects unknown commands without attempting a build', () => {
   );
 });
 
-test('release asset preparation rejects a changed transfer archive with the original evidence', t => {
+test('release asset preparation binds the transfer archive to its sidecar and qualification manifest', t => {
   const tools = spawnSync(
     'bash',
     ['-c', 'command -v jq && command -v sha256sum'],
@@ -795,13 +795,34 @@ test('release asset preparation rejects a changed transfer archive with the orig
     const assets = join(directory, 'assets');
     mkdirSync(record, { recursive: true });
     const revision = 'a'.repeat(40);
-    const original = Buffer.from('tested transfer archive');
+    const transfer = (payload: string) => {
+      const manifest = Buffer.from(
+        JSON.stringify({ source: { revision, dirty: false }, payload }),
+      );
+      writeFileSync(join(record, 'bundle.json'), manifest);
+      execFileSync('tar', [
+        '-czf',
+        join(record, 'transfer.tar.gz'),
+        '-C',
+        record,
+        './bundle.json',
+      ]);
+      return {
+        bytes: readFileSync(join(record, 'transfer.tar.gz')),
+        manifestSha256: createHash('sha256').update(manifest).digest('hex'),
+      };
+    };
+    const first = transfer('tested payload');
+    const second = transfer('another payload from the same commit');
+    rmSync(join(record, 'bundle.json'));
+    rmSync(join(record, 'transfer.tar.gz'));
+    const original = first.bytes;
     const digest = createHash('sha256').update(original).digest('hex');
     const receipt = {
       stage: 'installed-external-frontend',
       bundle: {
         source: { revision, dirty: false },
-        manifestSha256: digest,
+        manifestSha256: first.manifestSha256,
         packages: Object.fromEntries(
           [
             '@internal/plugin-radius',
@@ -849,6 +870,25 @@ test('release asset preparation rejects a changed transfer archive with the orig
     assert.equal(
       readFileSync(join(assets, `${archive}.sha256`), 'utf8'),
       `${digest}  ${archive}\n`,
+    );
+    assert.notDeepEqual(second.bytes, first.bytes);
+    writeFileSync(
+      join(record, 'qualification.json'),
+      JSON.stringify({
+        ...receipt,
+        bundle: { ...receipt.bundle, manifestSha256: second.manifestSha256 },
+      }),
+    );
+    const swappedReceipt = run();
+    assert.ifError(swappedReceipt.error);
+    assert.notEqual(
+      swappedReceipt.status,
+      0,
+      'Another qualified payload from the same commit must not match this archive',
+    );
+    assert.deepEqual(
+      readFileSync(join(record, 'bundle-build.tar.gz')),
+      original,
     );
     for (const invalid of [
       {
@@ -915,7 +955,7 @@ test('release uploads stay bound to the event release and qualified commit on re
     .replace(/^ {10}/gm, '');
   const directory = mkdtempSync(join(tmpdir(), 'plugin-release-upload-'));
   try {
-    const tag = 'v0.63.0-rc.1';
+    const tag = 'v0.63.0-rc.1+build.1';
     const archive = `radius-backstage-plugin-${tag}.tar.gz`;
     const bytes = Buffer.from('qualified archive');
     writeFileSync(join(directory, archive), bytes);
@@ -995,9 +1035,16 @@ test('release uploads stay bound to the event release and qualified commit on re
           `radius-backstage-plugin-${tag}.qualification.json`,
         ]) {
           assert(
-            uploads.some(request =>
-              request.endsWith(`/releases/123/assets?name=${file}`),
-            ),
+            uploads.some(request => {
+              const endpoint = new URL(
+                request.slice(request.lastIndexOf(' ') + 1),
+              );
+              return (
+                endpoint.pathname.endsWith('/releases/123/assets') &&
+                endpoint.searchParams.get('name') === file &&
+                request.includes(`--input ${file} --silent`)
+              );
+            }),
           );
         }
       } else {

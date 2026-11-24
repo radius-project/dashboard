@@ -200,7 +200,7 @@ before publishing output. A build that starts with local edits stays marked as
 modified, even if those edits are restored during compilation. A changed revision
 or a newly modified checkout stops publication.
 
-Git metadata checks ignore command-scope config and repository/index redirects.
+Git metadata checks ignore command-scope config and repository, index and object-store redirects.
 For a trusted, host-owned checkout mounted in a container, configure that exact
 path in persistent global Git config before building:
 
@@ -238,13 +238,18 @@ the tested bundle, packages, compiler and installed lockfile, without raw logs
 or machine paths. It is frontend fixture evidence, not production auth approval.
 
 CI transfers the exact tested archive through a seven-day workflow artifact.
+A build step checks the archive's manifest hash against the qualification receipt,
+as well as the transfer checksum. Bundle verification also checks that the plugin's
+root and native entries and the forwarding package's public entries exist in their
+packed archives.
 A separate Dashboard job checks the checksum and uses the release event's fixed
 release ID to upload files through the GitHub API. It checks that the original
 release still has the expected tag and that the full tag ref still resolves to
 the qualified commit. Radius only supplies the release/version
 notification; it does not download the plugin or include it in the Radius release
 package. No npm package is published. Failed tests, missing evidence, modified
-source or a source-commit mismatch prevent upload.
+source or a source-commit mismatch prevent upload. Upload names are URL-encoded
+to preserve version tags that contain build metadata, such as `+build.1`.
 
 The published-release trigger ensures the Dashboard release exists before upload.
 If only the upload fails, rerun the failed Dashboard publisher while the successful

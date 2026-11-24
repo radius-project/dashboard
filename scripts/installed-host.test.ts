@@ -40,10 +40,20 @@ test('clean installed host seeds the tested dependency tuple and can update its 
             const workspace = args[1] === '@internal/plugin-radius'
               ? 'plugins/plugin-radius'
               : 'packages/rad-components';
-            fs.copyFileSync(
-              path.join(options.cwd, workspace, 'package.json'),
-              path.join(packed, 'package', 'package.json'),
-            );
+            const manifest = JSON.parse(fs.readFileSync(path.join(options.cwd, workspace, 'package.json'), 'utf8'));
+            const entries = workspace === 'plugins/plugin-radius' ? ['index', 'alpha'] : ['index', 'resourceId'];
+            manifest.exports = {};
+            fs.mkdirSync(path.join(packed, 'package', 'dist'));
+            for (const entry of entries) {
+              manifest.exports[entry === 'index' ? '.' : './' + entry] = {
+                import: './dist/' + entry + '.esm.js',
+                default: './dist/' + entry + '.esm.js',
+                types: './dist/' + entry + '.d.ts',
+              };
+              for (const suffix of ['.esm.js', '.d.ts'])
+                fs.writeFileSync(path.join(packed, 'package', 'dist', entry + suffix), 'export {};');
+            }
+            fs.writeFileSync(path.join(packed, 'package', 'package.json'), JSON.stringify(manifest));
             globalThis.qualificationExecFileSync('tar', ['-czf', args[output + 1], '-C', packed, 'package']);
           } finally {
             fs.rmSync(packed, { recursive: true, force: true });

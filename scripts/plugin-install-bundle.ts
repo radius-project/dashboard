@@ -62,6 +62,7 @@ export function buildPluginInstallBundle(
     'GIT_COMMON_DIR',
     'GIT_WORK_TREE',
     'GIT_INDEX_FILE',
+    'GIT_OBJECT_DIRECTORY',
     'GIT_CONFIG',
     'GIT_CONFIG_PARAMETERS',
   ])

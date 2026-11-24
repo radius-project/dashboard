@@ -120,6 +120,7 @@ jobs:
           BUNDLE_EVIDENCE: ${{ runner.temp }}/radius-plugin-bundle-evidence
           BUNDLE_ASSETS: ${{ runner.temp }}/radius-plugin-release-assets
         run: |
+          set -euo pipefail
           records=("${BUNDLE_EVIDENCE}"/installed-host-*/qualification.json)
           test "${#records[@]}" -eq 1
           record="${records[0]%/*}"
@@ -142,6 +143,8 @@ jobs:
           cd "${BUNDLE_ASSETS}" || exit 1
           printf '%s  %s\n' "${digest}" "${archive}" > "${archive}.sha256"
           sha256sum -c "${archive}.sha256"
+          manifest_digest="$(tar -xOf "${archive}" -- ./bundle.json | sha256sum)"
+          test "${manifest_digest%% *}" = "$(jq -er '.bundle.manifestSha256' "radius-backstage-plugin-${GITHUB_REF_NAME}.qualification.json")"
 
       - name: Retain Qualified Plugin Release Assets
         id: plugin-bundle-upload
@@ -324,7 +327,8 @@ jobs:
             "radius-backstage-plugin-${GITHUB_REF_NAME}.tar.gz.sha256" \
             "radius-backstage-plugin-${GITHUB_REF_NAME}.qualification.json"
           do
+            encoded_file="$(jq -rn --arg file "${file}" '$file | @uri')"
             gh api --method POST -H 'Content-Type: application/octet-stream' \
               --input "${file}" --silent \
-              "https://uploads.github.com/repos/${GH_REPO}/releases/${RELEASE_ID}/assets?name=${file}"
+              "https://uploads.github.com/repos/${GH_REPO}/releases/${RELEASE_ID}/assets?name=${encoded_file}"
           done
