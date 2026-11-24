@@ -350,6 +350,9 @@ an error. Each run creates a new consumer; it does not reuse an old install.
 The shared-library receipt stays beside its verified archives in
 `radius-plugin-bundle/archives/candidate.json`. Verify the retained receipt with
 `yarn verify:shared-candidate /absolute/path/to/installed-host-record/radius-plugin-bundle/archives/candidate.json`.
+The first install explicitly creates that consumer's lockfile, including in CI.
+A second install uses `--immutable` to verify it. Repository installs remain
+immutable.
 
 For WSL or another system with a slow mounted drive, set
 `QUALIFICATION_WORK_DIRECTORY` to an absolute, native-filesystem directory
@@ -372,6 +375,12 @@ external bindings, host-owned fixture identity, and visible HTTP denial.
 The same graph observer checks real cards and rejects missing CSS and a stub
 renderer. The repository and installed lockfile hashes identify the tested
 tuple; this command does not establish a Backstage or compiler support range.
+Qualification requires a clean checkout, with no tracked changes or non-ignored
+untracked files. Ignored build output is allowed. The runner reads its commit
+and tree from Git, checks any supplied `QUALIFICATION_SOURCE_REVISION` against
+that commit, and records both with the archive identities. Commit source changes
+before running the installed gate. An old receipt is a historical result, not
+qualification of the current dashboard.
 
 By default, this is **external frontend evidence, not full Phase 5
 qualification**. Its HTTP fixture implements the Kubernetes API boundary.
@@ -438,6 +447,136 @@ the result has `phase5Complete: false` and lists the open gates.
 See the [requirement map](../../../../plugins/plugin-radius/README.md#phase-5-installed-host-evidence)
 for the executable checks and evidence limits. The shared candidate preflight
 still reports `hostQualified: false`.
+
+The current ownership split is recorded in the
+[Phase 5/6 ownership review](../../../../plugins/plugin-radius/README.md#ownership-after-the-main-restoration).
+The live host uses the current public core/graph renderer APIs. Dashboard-owned
+queries, recipe handling and legacy adaptation remain in the packed plugin.
+The installed live bundle must contain its compiled query client and adapter;
+it must not contain Flow11. The separate public rad-components observer does
+exercise Flow11 because that dashboard compatibility contract remains supported.
+Neither path depends on a new producer API.
+
+#### Phase 6 CI gates and remaining policy decisions
+
+The existing required **Build Packages** job runs the contract, native frontend,
+backend and graph-record suites. Coverage results are advisory and do not block
+a pull request merge. The job still collects coverage, but its test command
+overrides Jest's thresholds with `--coverageThreshold='{}'`. Actual test failures
+still block the job. The root coverage floors remain unchanged for local use.
+The job also runs the package artifacts,
+standalone browser, component browser and full clean installed-host matrix on
+pull requests and release tags. The installed matrix uses the Phase 5 runner
+above; it does not copy host tests or use a running deployment. Its container
+is built from the new clean consumer. The job has a 60-minute limit.
+Component checks use the installed lockfile's Chromium, not system Chrome.
+Component and standalone qualification do not retry failed tests.
+
+Before tests, `node scripts/ci-policy.ts coverage <base-commit>` compares root
+coverage floors and exclusions with an immutable Git revision. Pull requests
+use their actual base SHA. Main pushes use the previous SHA; release tags use
+the tagged commit's parent. Missing history, removed/narrowed groups, missing
+metrics, a decrease in any existing floor, and changed exclusions produce an
+advisory step failure, not a merge block.
+The existing policy tests still require a full-source group for each workspace.
+No proposed T1 target replaces a stronger current floor.
+Both policies must have nonempty full-source workspace groups. New groups and
+metrics are also checked; narrowed paths and invalid percentages are rejected.
+The same job installs and builds the immutable base in a separate clean checkout,
+then runs the same coverage command with threshold enforcement disabled.
+This advisory step has its own ten-minute limit within the job's 60-minute
+limit, so a stalled base run does not consume all time for required gates.
+An exit trap removes that checkout, its build files and its Git worktree
+registration on success or failure, before downstream qualification starts.
+It compares all four measured counters in each existing full-source group with
+the candidate's JSON summary. Any decrease produces an advisory step failure,
+including a change smaller than the rounded floor margin. Missing groups,
+invalid counters and unavailable reports also produce advisory failures.
+Empty counter sets count as 100%, so the first uncovered branch is reported.
+The policy comparison, measured comparison and Codecov upload all use
+`continue-on-error: true`; none can fail the required job. Policy helper regression
+tests remain required. Codecov downloads its CLI into a temporary directory and
+cleans it up, so uploader files do not contaminate the source checkout before
+installed qualification. Team approval of T1 targets remains open.
+
+Failure uploads contain only validated revision/run identifiers and fixed stage
+outcomes, at most 1 KiB, retained for one day. They contain no raw logs,
+request bodies, configuration, tokens, resource names, screenshots or traces.
+Unset or empty stage outcomes are recorded as `skipped`; invalid text is rejected.
+Detailed host evidence stays on the disposable runner and is not uploaded.
+Cancelled runners may stop before evidence upload; missing evidence is not a pass.
+Use `yarn test:ci-policy` for the positive and negative policy regressions.
+
+**Consumer protocol status: not enabled for adoption.** The checked-in
+`.github/consumer-policy.json` has `status: pending`. The daily
+**Consumer pin freshness** workflow fails explicitly until T4 has an approval
+record, exact trusted producer/coordinator/consumer workflow revisions, an exact
+toolchain, required job names, a host matrix and a positive age window.
+There is deliberately no invented approved owner, window or initial consumer pin.
+This scheduled workflow does not make the external producer gate required.
+
+The pin identifies the exact dashboard version used to test changes to
+`@radius-project/core` and `@radius-project/graph-react`, including its lockfile,
+toolchain and host matrix. Freshness limits how old that dashboard test version
+can become before a reviewed refresh is needed. It is not a plugin publication
+pin, and the producer connection is not yet implemented.
+
+`yarn verify:consumer <trusted-policy.json> <proposed-pin.json>` is a
+service-record preflight for that future protected coordinator. It reads no
+candidate success report. It independently reads GitHub to check:
+
+- The immutable consumer commit, its age, lockfile SHA-256, runtime constraint,
+  exact approved Node/Yarn/compiler/React tuple, and locked compiler/React pair.
+- The producer repository, head repository, workflow path, run ID and candidate
+  revision; completed successful status; and matching producer workflow bytes
+  at the trusted revision and tested revision.
+- Invocation of both immutable coordinator and dashboard-owned consumer workflows.
+  Every approved job must appear exactly once and succeed in the latest run attempt.
+- The artifact's service-assigned ID, run, revision, tuple name, digest and
+  unexpired status; its creation time must fall in the latest successful attempt.
+  Missing, stale, pending, skipped, cancelled, failed or mismatched
+  records fail. Job pagination is bounded and fails if incomplete.
+
+An approved policy has `approval: {owner, date, reference}`, `maxPinAgeDays`,
+`producer: {repository, path, revision}`, `coordinator: {path, revision}`,
+`consumer: {path, revision}`, `requiredJobs`, `hostMatrix` and
+`toolchain: {node, packageManager, compiler, react}`. Workflow paths include the
+repository, for example `radius-project/dashboard/.github/workflows/consumer.yml`.
+Each revision is a full commit SHA. Toolchain versions are exact, not ranges.
+The host matrix must contain exactly `legacy-external`, `native-external`,
+`native-standalone` and `built-container`, without duplicates. Coordinator and
+consumer workflow paths must differ.
+A proposed pin has `revision`, `lockSha256`, `node`, `packageManager`, `compiler`,
+`react`, `hostMatrix`, `candidateRevision`, `runId` and `artifactId`.
+Its revision must equal the approved dashboard workflow revision.
+The expected artifact name is
+`dashboard-consumer-<consumer-revision>-<candidate-revision>`.
+
+The preflight is **not CP-03 integration or complete CP-04 qualification**.
+It does not download the artifact ZIP, prove its package contents, install a
+candidate, run journeys, or establish that a workflow's job implements the
+promised security boundary. Its service result must not authorize adoption by
+itself. The protected coordinator must bind the downloaded artifact bytes to
+GitHub's digest, check the package pair, install it through the existing
+candidate seam, and run the same clean host gate before accepting a new pin.
+Load policy and reporter code from a reviewed protected immutable revision,
+not the candidate checkout or artifact. Run retrieval/reporting separately
+from candidate execution. Candidate execution must have no signing, registry,
+cloud or host credentials, inherited tokens, or privileged host access.
+
+The producer invocation and protected coordinator are not configured by this
+dashboard change. Before closing Phase 6, CI owners must approve T4 and its
+refresh owner, implement and pin those workflows, test rejection paths through
+the real producer, and verify its required status/ruleset. A recommended starting
+proposal is a daily check with a seven-day pin age: it permits a weekly reviewed
+refresh while bounding drift. This is a proposal, not an agreed policy.
+
+On November 12, 2026, the live active main ruleset required **DCO**,
+**Build Packages** and **Build and Publish Container**. The dashboard checks
+above remain inside that existing required job; no required check is removed.
+They become enforced only when this workflow change lands and passes in GitHub.
+No ruleset edit, external required gate or public release qualification is
+claimed here. Phases 7/8 and production-auth qualification remain separate.
 
 **Build the dashboard container**
 

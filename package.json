@@ -25,6 +25,8 @@
     "test:qualification-runners": "node --test scripts/qualify-plugin-host.test.ts scripts/shared-library-candidate.test.ts scripts/installed-host.test.ts scripts/plugin-install-bundle.test.ts",
     "bundle:plugin": "node scripts/plugin-install-bundle.ts",
     "test:plugin-bundle": "node --test scripts/plugin-install-bundle.test.ts",
+    "test:ci-policy": "node --test scripts/ci-policy.test.ts scripts/consumer-policy.test.ts",
+    "verify:consumer": "node scripts/consumer-policy.ts",
     "verify:shared-candidate": "node scripts/shared-library-candidate.ts",
     "test:e2e": "playwright test",
     "test:e2e:standalone": "node scripts/qualify-standalone-host.ts",
