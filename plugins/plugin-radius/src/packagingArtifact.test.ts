@@ -129,8 +129,9 @@ const packWorkspace = (
   return withWorkspaceManifest(
     repoRoot,
     path.relative(repoRoot, path.dirname(manifestPath)),
-    before => {
+    (before, startPack) => {
       runYarn(['workspace', workspace, 'build']);
+      startPack();
       runYarn(['workspace', workspace, 'pack', '--out', output]);
       return {
         before,

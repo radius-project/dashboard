@@ -159,7 +159,9 @@ export function verifyPluginInstallBundle(directory: string) {
           );
           assert.match(
             target,
-            /^\.\/dist\/[a-zA-Z0-9._-]+\.(?:js|ts)$/,
+            condition === 'types'
+              ? /^\.\/dist\/[a-zA-Z0-9._-]+\.d\.ts$/
+              : /^\.\/dist\/[a-zA-Z0-9._-]+\.js$/,
             `${name}${entry}: expected a compiled public entry`,
           );
           assert(

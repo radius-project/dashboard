@@ -320,7 +320,8 @@ jobs:
           gh api "repos/${GH_REPO}/releases/${RELEASE_ID}" |
             jq -e --argjson id "${RELEASE_ID}" --arg tag "${GITHUB_REF_NAME}" \
               '.id == $id and .tag_name == $tag and .draft == false'
-          current_revision="$(gh api "repos/${GH_REPO}/commits/refs/tags/${GITHUB_REF_NAME}" --jq .sha)"
+          encoded_tag="$(jq -rn --arg tag "${GITHUB_REF_NAME}" '$tag | @uri')"
+          current_revision="$(gh api "repos/${GH_REPO}/commits/refs/tags/${encoded_tag}" --jq .sha)"
           test "${current_revision}" = "${qualified_revision}"
           for file in \
             "radius-backstage-plugin-${GITHUB_REF_NAME}.tar.gz" \

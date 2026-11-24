@@ -955,7 +955,7 @@ test('release uploads stay bound to the event release and qualified commit on re
     .replace(/^ {10}/gm, '');
   const directory = mkdtempSync(join(tmpdir(), 'plugin-release-upload-'));
   try {
-    const tag = 'v0.63.0-rc.1+build.1';
+    const tag = 'v0.63.0-rc.1+build.1#test';
     const archive = `radius-backstage-plugin-${tag}.tar.gz`;
     const bytes = Buffer.from('qualified archive');
     writeFileSync(join(directory, archive), bytes);
@@ -979,7 +979,7 @@ test('release uploads stay bound to the event release and qualified commit on re
           id="$RELEASE_ID"
           if [ "$SCENARIO" = replacement ]; then id=456; fi
           printf '{"id":%s,"tag_name":"%s","draft":false}\\n' "$id" "$GITHUB_REF_NAME"
-        elif [ "$2" = "repos/$GH_REPO/commits/refs/tags/$GITHUB_REF_NAME" ]; then
+        elif [[ "$2" == "repos/$GH_REPO/commits/refs/tags/"* ]]; then
           test "$SCENARIO" != tag-error || return 1
           if [ "$SCENARIO" = moved ]; then
             printf '%040d\\n' 0
@@ -1023,6 +1023,19 @@ test('release uploads stay bound to the event release and qualified commit on re
       );
       assert.ifError(result.error);
       const requests = readFileSync(trace, 'utf8').trim().split('\n');
+      for (const request of requests.filter(value =>
+        value.startsWith(`api repos/radius-project/dashboard/commits/`),
+      )) {
+        const endpoint = new URL(
+          request.split(' ')[1],
+          'https://api.github.com/',
+        );
+        assert.equal(endpoint.hash, '');
+        assert.equal(
+          decodeURIComponent(endpoint.pathname),
+          `/repos/radius-project/dashboard/commits/refs/tags/${tag}`,
+        );
+      }
       const uploads = requests.filter(request =>
         request.startsWith('api --method POST'),
       );
@@ -1168,7 +1181,7 @@ test('the actual build chain, offline CI tests, validation gates, and edge publi
     /RELEASE_ID: \$\{\{ github\.event\.release\.id \}\}/,
   );
   assert.match(bundlePublication, /releases\/\$\{RELEASE_ID\}\/assets\?name=/);
-  assert.match(bundlePublication, /commits\/refs\/tags\/\$\{GITHUB_REF_NAME\}/);
+  assert.match(bundlePublication, /commits\/refs\/tags\/\$\{encoded_tag\}/);
   assert.match(bundlePublication, /GH_REPO: \$\{\{ github\.repository \}\}/);
   assert.doesNotMatch(
     bundlePublication,

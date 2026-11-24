@@ -32,6 +32,10 @@ test('clean installed host seeds the tested dependency tuple and can update its 
       export function execFileSync(command, args, options) {
         if (command !== 'qualification-yarn')
           return globalThis.qualificationExecFileSync(command, args, options);
+        if (args[0] === '--version') {
+          fs.writeFileSync(options.stdio[1], ${JSON.stringify(JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')).packageManager.slice('yarn@'.length))} + '\\n');
+          return;
+        }
         const output = args.indexOf('--out');
         if (output !== -1) {
           const packed = fs.mkdtempSync(path.join(${JSON.stringify(evidence)}, 'packed-'));

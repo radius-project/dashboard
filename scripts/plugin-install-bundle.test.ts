@@ -135,6 +135,10 @@ function builderCheckout(root: string) {
 }
 
 function fixturePacker(root: string, checkout: string, args: string[]) {
+  if (args[0] === '--version')
+    return JSON.parse(
+      fs.readFileSync(path.join(checkout, 'package.json'), 'utf8'),
+    ).packageManager.slice('yarn@'.length);
   if (!args.includes('pack')) return;
   const workspace =
     args[1] === '@internal/plugin-radius'
@@ -581,6 +585,37 @@ test('workspace packing restores the original manifest if prepack fails', () => 
   });
 });
 
+test('workspace packing preserves manifest edits made during build and releases its lock', () => {
+  for (const fails of [false, true]) {
+    fixture(root => {
+      const workspace = path.join(root, 'plugin');
+      fs.mkdirSync(workspace);
+      const manifest = path.join(workspace, 'package.json');
+      fs.writeFileSync(manifest, '{"name":"@internal/plugin-radius"}\n');
+      const edited =
+        '{"name":"@internal/plugin-radius","description":"User edit"}\n';
+      let packed = false;
+      assert.throws(
+        () =>
+          packWorkspace(root, 'plugin', path.join(root, 'plugin.tgz'), args => {
+            if (args.includes('build')) {
+              fs.writeFileSync(manifest, edited);
+              if (fails) throw new Error('build failed');
+            }
+            if (args.includes('pack')) packed = true;
+          }),
+        fails ? /build failed/ : /Manifest changed during build/,
+      );
+      assert.equal(fs.readFileSync(manifest, 'utf8'), edited);
+      assert.equal(packed, false);
+      assert.equal(
+        fs.existsSync(path.join(root, '.radius-plugin-pack.lock')),
+        false,
+      );
+    });
+  }
+});
+
 test('failed manifest restoration retains the owner lock and blocks the next pack', () => {
   fixture(root => {
     const workspace = path.join(root, 'plugin');
@@ -775,6 +810,72 @@ test('packed public entry targets must exist even when archive hashes match', ()
   });
 });
 
+test('runtime exports require JavaScript and type exports require declarations even when both files exist', () => {
+  fixture((root, bundle, save) => {
+    const artifact = bundle.packages['@internal/plugin-radius'];
+    for (const condition of ['import', 'default', 'types']) {
+      verifyPluginInstallBundle(root);
+      const unpacked = path.join(root, 'repacked');
+      fs.mkdirSync(unpacked);
+      execFileSync('tar', [
+        '-xzf',
+        path.join(root, artifact.path),
+        '-C',
+        unpacked,
+      ]);
+      const manifestFile = path.join(unpacked, 'package', 'package.json');
+      const manifest = JSON.parse(fs.readFileSync(manifestFile, 'utf8'));
+      manifest.exports['./alpha'][condition] =
+        condition === 'types' ? './dist/alpha.esm.js' : './dist/alpha.d.ts';
+      fs.writeFileSync(manifestFile, JSON.stringify(manifest));
+      execFileSync('tar', [
+        '-czf',
+        path.join(root, artifact.path),
+        '-C',
+        unpacked,
+        'package',
+      ]);
+      fs.rmSync(unpacked, { recursive: true });
+      artifact.sha256 = bundleFileSha256(path.join(root, artifact.path));
+      bundle.files[artifact.path] = artifact.sha256;
+      save();
+      assert.throws(
+        () => verifyPluginInstallBundle(root),
+        /expected a compiled public entry/,
+      );
+      packFixture(
+        root,
+        artifact.path,
+        '@internal/plugin-radius',
+        artifact.version,
+      );
+      artifact.sha256 = bundleFileSha256(path.join(root, artifact.path));
+      bundle.files[artifact.path] = artifact.sha256;
+      save();
+    }
+  });
+});
+
+test('a different Yarn version cannot publish a bundle claiming the required toolchain', () => {
+  fixture(root => {
+    const checkout = builderCheckout(root);
+    const output = path.join(root, 'output');
+    const calls: string[][] = [];
+    assert.throws(
+      () =>
+        buildPluginInstallBundle(checkout, output, args => {
+          calls.push(args);
+          assert.deepEqual(args, ['--version']);
+          return '0.0.0\n';
+        }),
+      /Yarn version does not match/,
+    );
+    assert.deepEqual(calls, [['--version']]);
+    assert.equal(fs.existsSync(output), false);
+    assert.equal(fs.existsSync(`${output}.tar.gz`), false);
+  });
+});
+
 test('restoring edited build inputs cannot turn a dirty-source bundle into clean evidence', () => {
   for (const dirty of [false, true]) {
     fixture(root => {
@@ -796,7 +897,7 @@ test('restoring edited build inputs cannot turn a dirty-source bundle into clean
           assert.equal(fs.readFileSync(input, 'utf8'), edited);
           fs.writeFileSync(input, before);
         }
-        fixturePacker(root, checkout, args);
+        return fixturePacker(root, checkout, args);
       });
       assert.equal(fixtureGit(checkout, ['status', '--porcelain']).length, 0);
       assert.equal(verifyPluginInstallBundle(output).source.dirty, dirty);
@@ -818,7 +919,7 @@ test('source revision changes and newly modified inputs prevent output publicati
               if (change === 'revision') commitFixture(checkout);
               else fs.appendFileSync(path.join(checkout, 'package.json'), '\n');
             }
-            fixturePacker(root, checkout, args);
+            return fixturePacker(root, checkout, args);
           }),
         change === 'revision'
           ? /Source revision changed/
@@ -936,7 +1037,7 @@ test('destinations that appear during a build keep their bytes and only this run
               if (collision !== 'empty-directory')
                 fs.writeFileSync(marker, 'other build output');
             }
-            fixturePacker(root, checkout, args);
+            return fixturePacker(root, checkout, args);
           }),
         error => {
           assert(error instanceof Error);

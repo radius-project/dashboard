@@ -194,6 +194,8 @@ finished archive and checksum to the transfer drive.
 The bundle records the Dashboard commit, whether the source has changes, build
 tool versions and each file's SHA-256. It does not contain credentials, the
 Dashboard backend, a lockfile, or a copy of the portal. The packages stay private.
+The builder queries the selected Yarn executable once and stops if its version
+does not match the repository's `packageManager` before building or packing.
 
 The builder records Git state before reading build inputs and checks it again
 before publishing output. A build that starts with local edits stays marked as
@@ -225,6 +227,8 @@ Do not remove a lock based only on its age or while any pack is still running.
 If manifest restoration fails, packing closes the descriptor but retains the owner
 record and reports the lock path. Use the same recovery steps before retrying.
 The bundle builder and `yarn test:package` use this same lock.
+Restoration starts only when packing starts. If the manifest changes during the
+build step, packing stops, preserves those edits and releases the lock.
 
 When a `v*` release is published in the Dashboard repository, its release event
 supplies the version tag. Dashboard CI builds and tests the plugin, then attaches:
@@ -250,6 +254,8 @@ notification; it does not download the plugin or include it in the Radius releas
 package. No npm package is published. Failed tests, missing evidence, modified
 source or a source-commit mismatch prevent upload. Upload names are URL-encoded
 to preserve version tags that contain build metadata, such as `+build.1`.
+The tag is also URL-encoded for the commit lookup, so reserved characters cannot
+change which ref the API reads.
 
 The published-release trigger ensures the Dashboard release exists before upload.
 If only the upload fails, rerun the failed Dashboard publisher while the successful

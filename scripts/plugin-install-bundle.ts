@@ -16,7 +16,7 @@ import {
   type PluginInstallBundle,
 } from './verify-plugin-bundle.ts';
 
-export type RunYarn = (args: string[]) => void;
+export type RunYarn = (args: string[]) => string | void;
 
 export function yarnInvocation(args: string[]) {
   const yarn = process.env.COREPACK_ROOT
@@ -34,9 +34,10 @@ export function packWorkspace(
   file: string,
   runYarn: RunYarn,
 ) {
-  return withWorkspaceManifest(root, workspace, before => {
+  return withWorkspaceManifest(root, workspace, (before, startPack) => {
     const manifest = JSON.parse(before);
     runYarn(['workspace', manifest.name, 'build']);
+    startPack();
     runYarn(['workspace', manifest.name, 'pack', '--out', file]);
     return manifest;
   });
@@ -79,6 +80,21 @@ export function buildPluginInstallBundle(
       git(['status', '--porcelain', '--untracked-files=normal']).length > 0,
   });
   const source = sourceState();
+  const repository = JSON.parse(
+    fs.readFileSync(path.join(root, 'package.json'), 'utf8'),
+  );
+  const yarnVersion = runYarn(['--version']);
+  assert(
+    typeof yarnVersion === 'string' &&
+      /^yarn@\d+\.\d+\.\d+$/.test(repository.packageManager),
+    'Expected a Yarn version and an exact repository packageManager',
+  );
+  const packageManager = `yarn@${yarnVersion.trim()}`;
+  assert.equal(
+    packageManager,
+    repository.packageManager,
+    'Yarn version does not match the repository packageManager',
+  );
   const candidateDirectory = path.join(root, 'vendor', 'shared-libraries');
   const candidateFile = path.join(candidateDirectory, 'candidate.json');
   const candidate: SharedLibraryCandidate = JSON.parse(
@@ -151,15 +167,12 @@ export function buildPluginInstallBundle(
       path.join(root, 'scripts', 'verify-plugin-bundle.ts'),
       path.join(contents, 'verify.mts'),
     );
-    const repository = JSON.parse(
-      fs.readFileSync(path.join(root, 'package.json'), 'utf8'),
-    );
     const bundle: PluginInstallBundle = {
       formatVersion: 1,
       source,
       toolchain: {
         node: process.version,
-        packageManager: repository.packageManager,
+        packageManager,
       },
       packages,
       files: {},
@@ -275,6 +288,10 @@ if (
   );
   const result = buildPluginInstallBundle(process.cwd(), output, args => {
     const invocation = yarnInvocation(args);
+    if (args[0] === '--version')
+      return execFileSync(invocation.command, invocation.args, {
+        encoding: 'utf8',
+      });
     execFileSync(invocation.command, invocation.args, { stdio: 'inherit' });
   });
   console.log(

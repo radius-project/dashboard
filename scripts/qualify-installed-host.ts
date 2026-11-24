@@ -113,11 +113,13 @@ function run(
       `${JSON.stringify(commands, null, 2)}\n`,
     );
   }
+  return log;
 }
 
 const runYarn = (args: string[], cwd = root) => {
   const invocation = yarnInvocation(args);
-  run(invocation.command, invocation.args, cwd);
+  const log = run(invocation.command, invocation.args, cwd);
+  if (args[0] === '--version') return fs.readFileSync(log, 'utf8');
 };
 const repositoryManifest = JSON.parse(
   fs.readFileSync(path.join(root, 'package.json'), 'utf8'),
