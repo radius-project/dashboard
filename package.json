@@ -47,20 +47,20 @@
     "plugins/*"
   ],
   "devDependencies": {
-    "@backstage/cli": "^0.36.6",
-    "@backstage/cli-defaults": "^0.1.6",
+    "@backstage/cli": "^0.36.8",
+    "@backstage/cli-defaults": "^0.1.8",
     "@backstage/e2e-test-utils": "^0.1.2",
     "@internal/app": "workspace:^",
     "@jest/environment-jsdom-abstract": "^30.5.2",
-    "@module-federation/enhanced": "^2.9.2",
-    "@playwright/test": "^1.64.1",
+    "@module-federation/enhanced": "^2.9.3",
+    "@playwright/test": "^1.65.1",
     "@spotify/prettier-config": "^15.0.0",
-    "concurrently": "^10.0.6",
+    "concurrently": "^10.0.7",
     "jest": "^30.5.2",
     "jest-environment-jsdom": "^30.5.2",
-    "jsdom": "^29.1.1",
+    "jsdom": "^31.0.1",
     "node-gyp": "^13.1.0",
-    "prettier": "^3.9.10",
+    "prettier": "^3.10.1",
     "typescript": "~6.0.3"
   },
   "resolutions": {
